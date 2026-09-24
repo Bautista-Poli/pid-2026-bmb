@@ -1,6 +1,7 @@
 import { FechaHoraISO, FechaISO, HoraHHmm, Id } from './api.model';
 import { Cochera } from './cochera.model';
 import { Estacionamiento } from './estacionamiento.model';
+import { ModalidadReserva } from './tarifa.model';
 import { TipoVehiculo, Vehiculo } from './vehiculo.model';
 
 export type EstadoReserva =
@@ -33,6 +34,9 @@ export interface Reserva {
   fecha: FechaISO;
   horaDesde: HoraHHmm;
   horaHasta: HoraHHmm;
+  /** Dia en que termina: distinto de `fecha` cuando la reserva cruza la medianoche. */
+  fechaHasta: FechaISO;
+  modalidad: ModalidadReserva;
   estado: EstadoReserva;
   precioTotal: number;
   creadaEn: FechaHoraISO;
@@ -46,18 +50,20 @@ export interface Reserva {
  * a resolver cada FK por separado.
  */
 export interface ReservaDetallada extends Reserva {
-  estacionamiento: Pick<Estacionamiento, 'id' | 'nombre' | 'direccion' | 'precioPorHora'>;
+  estacionamiento: Pick<Estacionamiento, 'id' | 'nombre' | 'direccion'>;
   vehiculo: Pick<Vehiculo, 'id' | 'patente' | 'marca' | 'modelo' | 'tipo'>;
   cochera: Pick<Cochera, 'id' | 'identificador' | 'sector'> | null;
 }
 
-/** Datos que junta el flujo de reserva: vehiculo, fecha y franja horaria. */
+/** Datos que junta el flujo de reserva: vehiculo, modalidad, fecha y hora. */
 export interface NuevaReserva {
   estacionamientoId: Id;
   vehiculoId: Id;
+  modalidad: ModalidadReserva;
   fecha: FechaISO;
   horaDesde: HoraHHmm;
-  horaHasta: HoraHHmm;
+  /** Solo por hora; estadia y jornada terminan solas (12 h / 24 h despues). */
+  horaHasta: HoraHHmm | null;
 }
 
 /** Query de `GET /api/estacionamientos/:id/disponibilidad`. */
@@ -79,6 +85,7 @@ export interface FranjaDisponible {
 export interface BorradorReserva {
   estacionamientoId: Id | null;
   vehiculoId: Id | null;
+  modalidad: ModalidadReserva;
   fecha: FechaISO | null;
   horaDesde: HoraHHmm | null;
   horaHasta: HoraHHmm | null;
@@ -87,6 +94,7 @@ export interface BorradorReserva {
 export const BORRADOR_VACIO: BorradorReserva = {
   estacionamientoId: null,
   vehiculoId: null,
+  modalidad: 'HORA',
   fecha: null,
   horaDesde: null,
   horaHasta: null,

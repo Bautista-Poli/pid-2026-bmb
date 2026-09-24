@@ -74,6 +74,21 @@ export class EstacionamientoService {
       .delete<{ estacionamiento: EstacionamientoDto }>(`${this.ruta}/${id}`)
       .pipe(map(({ estacionamiento }) => aEstacionamiento(estacionamiento)));
   }
+
+  /**
+   * `PUT /api/estacionamientos/:id/foto`
+   *
+   * El body es el archivo crudo: `HttpClient` manda el `File` tal cual y usa su
+   * `type` como Content-Type, que es lo que espera el `express.raw()` de la API.
+   */
+  subirFoto(id: Id, archivo: File): Observable<void> {
+    return this.http.put<void>(`${this.ruta}/${id}/foto`, archivo);
+  }
+
+  /** `DELETE /api/estacionamientos/:id/foto` */
+  borrarFoto(id: Id): Observable<void> {
+    return this.http.delete<void>(`${this.ruta}/${id}/foto`);
+  }
 }
 
 /* --------------------------- helpers de filtrado --------------------------- */
@@ -84,7 +99,8 @@ const distancia = (estacionamiento: Estacionamiento) =>
 const COMPARADORES: Record<OrdenEstacionamiento, (a: Estacionamiento, b: Estacionamiento) => number> =
   {
     DISTANCIA: (a, b) => distancia(a) - distancia(b),
-    PRECIO: (a, b) => a.precioPorHora - b.precioPorHora,
+    PRECIO: (a, b) =>
+      (a.tarifas.hora ?? Number.MAX_VALUE) - (b.tarifas.hora ?? Number.MAX_VALUE),
   };
 
 /** Lo que la API no resuelve: solo con lugar libre, y el orden elegido. */

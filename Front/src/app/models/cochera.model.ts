@@ -15,8 +15,9 @@ export interface Cochera {
   id: Id;
   /** FK -> Estacionamiento.id. */
   estacionamientoId: Id;
-  /** Identificador visible para el usuario: `A-01`, `B-14`. */
+  /** Numero visible para el usuario. Puede ser `A-01` en datos viejos. */
   identificador: string;
+  /** Ubicacion en lenguaje natural ("Primer piso"). Se guarda en la columna `sector`. */
   sector: string;
   tipoVehiculo: TipoVehiculo;
   cubierta: boolean;
@@ -28,10 +29,25 @@ export interface Cochera {
 export interface NuevaCochera {
   estacionamientoId: Id;
   identificador: string;
+  /** Ubicacion en lenguaje natural ("Primer piso"). */
   sector?: string;
   tipoVehiculo: TipoVehiculo;
   cubierta?: boolean;
   estado?: EstadoCochera;
+}
+
+/**
+ * Payload de `POST /api/estacionamientos/:id/cocheras/lote`: da de alta
+ * `cantidad` cocheras iguales, numeradas por el backend a partir de la
+ * siguiente disponible.
+ */
+export interface NuevoLoteCocheras {
+  estacionamientoId: Id;
+  cantidad: number;
+  /** Ubicacion en lenguaje natural ("Primer piso"). Obligatoria: distingue un lote de otro. */
+  sector: string;
+  tipoVehiculo: TipoVehiculo;
+  cubierta?: boolean;
 }
 
 /** Estados en el orden en que se muestran en los filtros del tablero. */

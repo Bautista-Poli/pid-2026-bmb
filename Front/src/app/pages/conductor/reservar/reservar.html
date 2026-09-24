@@ -37,7 +37,7 @@
               >, de
               <span class="num-tabular font-medium text-tinta"
                 >{{ reserva.horaDesde }} a {{ reserva.horaHasta }}</span
-              >.
+              >{{ reserva.fechaHasta !== reserva.fecha ? ' del día siguiente' : '' }}.
             </p>
             <div class="flex items-center justify-between gap-4">
               <span class="text-[13px] text-plomo">Cochera asignada</span>
@@ -107,6 +107,22 @@
                 }
               </div>
 
+              @if (modalidades().length > 1) {
+                <div class="flex flex-col gap-3">
+                  <p class="label-campo">Modalidad</p>
+                  <div class="flex flex-wrap gap-2">
+                    @for (modalidad of modalidades(); track modalidad) {
+                      <ui-chip
+                        [activo]="borrador().modalidad === modalidad"
+                        (alternar)="elegirModalidad(modalidad)"
+                      >
+                        {{ etiquetaModalidad[modalidad] }}
+                      </ui-chip>
+                    }
+                  </div>
+                </div>
+              }
+
               <div class="flex flex-col gap-3">
                 <p class="label-campo">Fecha</p>
                 <app-selector-fecha
@@ -115,24 +131,42 @@
                 />
               </div>
 
-              <div class="flex flex-col gap-3">
-                <p class="label-campo">Franja horaria</p>
-                @if (recursoDisponibilidad.isLoading()) {
-                  <ui-cargando [cantidad]="1" />
-                } @else {
-                  <app-selector-franja
-                    [franjas]="recursoDisponibilidad.value()"
-                    [horaDesde]="borrador().horaDesde"
-                    (rangoElegido)="elegirRango($event)"
-                  />
-                }
-              </div>
+              @if (borrador().modalidad === 'HORA') {
+                <div class="flex flex-col gap-3">
+                  <p class="label-campo">Franja horaria</p>
+                  @if (recursoDisponibilidad.isLoading()) {
+                    <ui-cargando [cantidad]="1" />
+                  } @else {
+                    <app-selector-franja
+                      [franjas]="recursoDisponibilidad.value()"
+                      [horaDesde]="borrador().horaDesde"
+                      (rangoElegido)="elegirRango($event)"
+                    />
+                  }
+                </div>
+              } @else {
+                <div class="flex flex-col gap-3">
+                  <label class="campo">
+                    <span class="label-campo">Hora de ingreso</span>
+                    <input
+                      class="num-tabular"
+                      type="time"
+                      [value]="borrador().horaDesde ?? ''"
+                      (change)="elegirIngreso($event)"
+                    />
+                  </label>
+                  <p class="text-[12px] text-plomo">
+                    La reserva dura {{ horas() }} horas desde el ingreso.
+                  </p>
+                </div>
+              }
           </div>
 
           <!-- Resumen + confirmacion -->
           <div class="flex flex-col gap-4 lg:sticky lg:top-6">
             <ui-tarjeta relleno="lg">
               <app-resumen-reserva
+                [modalidad]="borrador().modalidad"
                 [horaDesde]="borrador().horaDesde"
                 [horaHasta]="borrador().horaHasta"
                 [horas]="horas()"

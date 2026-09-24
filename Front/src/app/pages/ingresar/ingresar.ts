@@ -45,9 +45,9 @@ export class Ingresar {
     this.error.set(null);
 
     this.auth.login(credenciales).subscribe({
-      next: (sesion) => {
+      next: (usuario) => {
         this.enviando.set(false);
-        void this.router.navigateByUrl(this.destino() ?? inicioSegunRol(sesion.usuario.rol));
+        void this.router.navigateByUrl(this.destino() ?? inicioSegunRol(usuario.rol));
       },
       error: (e: Error) => {
         this.enviando.set(false);

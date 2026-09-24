@@ -14,6 +14,7 @@ const router = Router();
 
 router.post('/register', validate(validarRegistro), authController.register);
 router.post('/login', validate(validarLogin), authController.login);
+router.post('/logout', authController.logout);
 router.get('/me', authenticate, authController.perfil);
 router.patch('/me', authenticate, validate(validarCambiosPerfil), authController.actualizarPerfil);
 router.delete('/me', authenticate, authController.eliminarCuenta);

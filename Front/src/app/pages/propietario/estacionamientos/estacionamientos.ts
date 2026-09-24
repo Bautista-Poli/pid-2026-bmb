@@ -3,6 +3,7 @@ import { rxResource } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { Boton, Cargando, EstadoVacio, Etiqueta, Tarjeta } from '@app/components/ui';
 import { direccionCorta, Estacionamiento } from '@app/models';
+import { resumenTarifas } from '@app/utils/tarifa.util';
 import { AuthService } from '@app/services/auth.service';
 import { EstacionamientoService } from '@app/services/estacionamiento.service';
 
@@ -19,6 +20,7 @@ import { EstacionamientoService } from '@app/services/estacionamiento.service';
   templateUrl: './estacionamientos.html',
 })
 export class Estacionamientos {
+  protected readonly resumenTarifas = resumenTarifas;
   private readonly estacionamientos = inject(EstacionamientoService);
   private readonly auth = inject(AuthService);
 

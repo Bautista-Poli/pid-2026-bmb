@@ -56,3 +56,25 @@ export function motivoFueraDeHorario(horarios, inicio, fin) {
 
   return null;
 }
+
+/**
+ * Motivo por el que un ingreso en `inicio` cae fuera del horario de atencion, o
+ * null si esta dentro. Lo usan las modalidades por bloque (estadia, jornada):
+ * el bloque puede seguir despues del cierre, pero el vehiculo tiene que entrar
+ * con el estacionamiento abierto. Sin horarios cargados no se restringe.
+ */
+export function motivoIngresoFueraDeHorario(horarios, inicio) {
+  if (horarios.length === 0) return null;
+
+  const { hora, diaSemana } = partesLocales(inicio);
+  const horario = horarios.find((h) => h.dia_semana === diaSemana);
+  if (!horario) return 'El estacionamiento no abre ese dia';
+
+  const apertura = horario.hora_apertura.slice(0, 5);
+  const cierre = horario.hora_cierre.slice(0, 5);
+  if (hora < apertura || hora >= cierre) {
+    return `El ingreso esta fuera del horario de atencion (${apertura} a ${cierre})`;
+  }
+
+  return null;
+}

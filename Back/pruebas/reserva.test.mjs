@@ -21,9 +21,13 @@ before(() => levantarApi('reserva'));
 after(() => cerrarApi());
 
 /** Propietario con estacionamiento y conductor con vehiculo, listos para reservar. */
-async function escenario({ cocheras = 1, horarios } = {}) {
+async function escenario({ cocheras = 1, horarios, tarifas } = {}) {
   const propietario = await crearUsuario({ rol: 'PROPIETARIO' });
-  const estacionamiento = await crearEstacionamiento(propietario.token, { cocheras, horarios });
+  const estacionamiento = await crearEstacionamiento(propietario.token, {
+    cocheras,
+    horarios,
+    tarifas,
+  });
   const conductor = await crearUsuario();
   const vehiculo = await crearVehiculo(conductor.token);
 
@@ -40,6 +44,14 @@ const reservar = (conductor, estacionamiento, vehiculo, cuando) =>
     },
   });
 
+/** Bloque de `horas` horas que arranca manana a `hora` (hora argentina). */
+function bloque(horas, hora = '08:00') {
+  const dia = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+  const inicio = `${dia}T${hora}:00-03:00`;
+  const fin = new Date(Date.parse(inicio) + horas * 3_600_000).toISOString();
+  return { inicio, fin };
+}
+
 describe('crear una reserva', () => {
   test('nace PENDIENTE y con una cochera asignada', async () => {
     const { conductor, estacionamiento, vehiculo } = await escenario();
@@ -50,6 +62,7 @@ describe('crear una reserva', () => {
     assert.equal(datos.reserva.estado, 'PENDIENTE');
     assert.ok(datos.reserva.id_cochera);
     assert.equal(datos.reserva.precio_total, 2000); // 2 horas x 1000
+    assert.equal(datos.reserva.modalidad, 'HORA');
   });
 
   test('aparece en las reservas del conductor y en las del estacionamiento', async () => {
@@ -324,5 +337,136 @@ describe('ciclo de la reserva', () => {
       token: comoPropietario,
     });
     assert.equal(confirmada.estado, 200);
+  });
+});
+
+describe('modalidades de tarifa', () => {
+  const TARIFAS = { tarifa_hora: 1000, tarifa_estadia: 5000, tarifa_jornada: 8000 };
+
+  test('estadia: 12 horas a precio fijo', async () => {
+    const { conductor, estacionamiento, vehiculo } = await escenario({ tarifas: TARIFAS });
+
+    const { estado, datos } = await reservar(conductor, estacionamiento, vehiculo, {
+      ...bloque(12),
+      modalidad: 'ESTADIA',
+    });
+
+    assert.equal(estado, 201);
+    assert.equal(datos.reserva.modalidad, 'ESTADIA');
+    assert.equal(datos.reserva.precio_total, 5000);
+  });
+
+  test('jornada: 24 horas a precio fijo', async () => {
+    const { conductor, estacionamiento, vehiculo } = await escenario({ tarifas: TARIFAS });
+
+    const { estado, datos } = await reservar(conductor, estacionamiento, vehiculo, {
+      ...bloque(24),
+      modalidad: 'JORNADA',
+    });
+
+    assert.equal(estado, 201);
+    assert.equal(datos.reserva.modalidad, 'JORNADA');
+    assert.equal(datos.reserva.precio_total, 8000);
+  });
+
+  test('una estadia que no dura 12 horas devuelve 400', async () => {
+    const { conductor, estacionamiento, vehiculo } = await escenario({ tarifas: TARIFAS });
+
+    const { estado, datos } = await reservar(conductor, estacionamiento, vehiculo, {
+      ...bloque(11),
+      modalidad: 'ESTADIA',
+    });
+
+    assert.equal(estado, 400);
+    assert.match(JSON.stringify(datos), /12 horas/);
+  });
+
+  test('una jornada que no dura 24 horas devuelve 400', async () => {
+    const { conductor, estacionamiento, vehiculo } = await escenario({ tarifas: TARIFAS });
+
+    const { estado } = await reservar(conductor, estacionamiento, vehiculo, {
+      ...bloque(12),
+      modalidad: 'JORNADA',
+    });
+
+    assert.equal(estado, 400);
+  });
+
+  test('una modalidad que el estacionamiento no ofrece devuelve 409', async () => {
+    const { conductor, estacionamiento, vehiculo } = await escenario(); // solo por hora
+
+    const respuesta = await reservar(conductor, estacionamiento, vehiculo, {
+      ...bloque(12),
+      modalidad: 'ESTADIA',
+    });
+
+    assert.equal(respuesta.estado, 409);
+    assert.match(motivo(respuesta), /ESTADIA/);
+  });
+
+  test('por hora en un estacionamiento que no la ofrece devuelve 409', async () => {
+    const { conductor, estacionamiento, vehiculo } = await escenario({
+      tarifas: { tarifa_estadia: 5000 },
+    });
+
+    const respuesta = await reservar(conductor, estacionamiento, vehiculo, franja());
+
+    assert.equal(respuesta.estado, 409);
+    assert.match(motivo(respuesta), /HORA/);
+  });
+
+  test('una estadia puede seguir despues del cierre si el ingreso esta en horario', async () => {
+    const horarios = [0, 1, 2, 3, 4, 5, 6].map((dia_semana) => ({
+      dia_semana,
+      hora_apertura: '08:00',
+      hora_cierre: '20:00',
+    }));
+    const { conductor, estacionamiento, vehiculo } = await escenario({
+      tarifas: TARIFAS,
+      horarios,
+    });
+
+    const { estado } = await reservar(conductor, estacionamiento, vehiculo, {
+      ...bloque(12, '18:00'),
+      modalidad: 'ESTADIA',
+    });
+
+    assert.equal(estado, 201);
+  });
+
+  test('una estadia con el ingreso fuera del horario devuelve 409', async () => {
+    const horarios = [0, 1, 2, 3, 4, 5, 6].map((dia_semana) => ({
+      dia_semana,
+      hora_apertura: '08:00',
+      hora_cierre: '20:00',
+    }));
+    const { conductor, estacionamiento, vehiculo } = await escenario({
+      tarifas: TARIFAS,
+      horarios,
+    });
+
+    const respuesta = await reservar(conductor, estacionamiento, vehiculo, {
+      ...bloque(12, '22:00'),
+      modalidad: 'ESTADIA',
+    });
+
+    assert.equal(respuesta.estado, 409);
+    assert.match(motivo(respuesta), /fuera del horario/);
+  });
+
+  test('el precio queda guardado aunque el propietario cambie la tarifa despues', async () => {
+    const { propietario, conductor, estacionamiento, vehiculo } = await escenario();
+
+    const alta = await reservar(conductor, estacionamiento, vehiculo, franja());
+    assert.equal(alta.datos.reserva.precio_total, 2000);
+
+    const cambio = await api('PATCH', `/estacionamientos/${estacionamiento.id_estacionamiento}`, {
+      token: propietario.token,
+      body: { tarifa_hora: 3000 },
+    });
+    assert.equal(cambio.estado, 200);
+
+    const mias = await api('GET', '/reservas', { token: conductor.token });
+    assert.equal(mias.datos.reservas[0].precio_total, 2000);
   });
 });

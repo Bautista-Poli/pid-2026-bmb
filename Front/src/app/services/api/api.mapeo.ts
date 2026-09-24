@@ -3,22 +3,24 @@ import {
   Estacionamiento,
   EstadoCochera,
   EstadoReserva,
+  FechaHoraISO,
   FranjaAtencion,
   FranjaDisponible,
+  HORAS_POR_MODALIDAD,
   NuevaCochera,
   NuevaReserva,
+  NuevoLoteCocheras,
   NuevoEstacionamiento,
   CambiosVehiculo,
   NuevoVehiculo,
   RegistroUsuario,
   ReservaDetallada,
-  SesionAuth,
   TipoVehiculo,
   Usuario,
   Vehiculo,
 } from '@app/models';
 import { aInstante, DIAS_POR_NUMERO, partesLocales } from '@app/utils/fecha.util';
-import { CocheraDto, EstacionamientoDto, EstadoReservaDto, FranjaDto, HorarioDto, ReservaDto, SesionDto, UsuarioDto, VehiculoDto } from './api.dto';
+import { CocheraDto, EstacionamientoDto, EstadoReservaDto, FranjaDto, HorarioDto, ReservaDto, UsuarioDto, VehiculoDto } from './api.dto';
 
 /*
  * Traduccion entre la API (snake_case, ids de catalogo, instantes ISO) y los
@@ -52,10 +54,6 @@ export function aUsuario(dto: UsuarioDto): Usuario {
     fechaAlta: dto.created_at,
     activo: dto.activo,
   };
-}
-
-export function aSesion(dto: SesionDto): SesionAuth {
-  return { token: dto.token, usuario: aUsuario(dto.usuario) };
 }
 
 export function aPayloadRegistro(datos: RegistroUsuario) {
@@ -92,14 +90,26 @@ export function aEstacionamiento(dto: EstacionamientoDto): Estacionamiento {
     telefonoContacto: dto.telefono_contacto,
     emailContacto: dto.email_contacto,
     horarios: (dto.horarios ?? []).map(aFranjaAtencion),
-    precioPorHora: dto.tarifa_hora,
+    tarifas: { hora: dto.tarifa_hora, estadia: dto.tarifa_estadia, jornada: dto.tarifa_jornada },
     cocherasTotales: dto.cocheras_activas ?? 0,
     cocherasDisponibles: dto.cocheras_libres ?? 0,
     tiposAdmitidos: (dto.tipos_vehiculo ?? []).map((id) => TIPO_POR_ID[id]),
     cubierto: dto.cubierto,
+    fotoUrl: urlDeFoto(dto),
     publicado: dto.publicado,
     activo: dto.activo,
   };
+}
+
+/**
+ * La foto se pide a la API, pero un `<img src>` no pasa por los interceptores,
+ * asi que la URL lleva el prefijo `/api` escrito. El `?v=` la hace cambiar
+ * cuando el propietario sube una nueva, para saltear el cache del navegador.
+ */
+function urlDeFoto(dto: EstacionamientoDto): string | null {
+  if (!dto.foto_actualizada) return null;
+  const version = Date.parse(dto.foto_actualizada);
+  return `/api/estacionamientos/${dto.id_estacionamiento}/foto?v=${version}`;
 }
 
 export function aPayloadEstacionamiento(datos: NuevoEstacionamiento) {
@@ -117,7 +127,9 @@ export function aPayloadEstacionamiento(datos: NuevoEstacionamiento) {
     longitud: direccion.longitud,
     telefono_contacto: datos.telefonoContacto,
     email_contacto: datos.emailContacto,
-    tarifa_hora: datos.precioPorHora,
+    tarifa_hora: datos.tarifas.hora,
+    tarifa_estadia: datos.tarifas.estadia,
+    tarifa_jornada: datos.tarifas.jornada,
     cubierto: datos.cubierto,
     publicado: datos.publicado,
     horarios: datos.horarios.map((franja) => ({
@@ -159,6 +171,15 @@ export function aPayloadCochera(datos: NuevaCochera) {
     sector: datos.sector || undefined,
     cubierta: datos.cubierta,
     estado_actual: datos.estado,
+  };
+}
+
+export function aPayloadLoteCochera(datos: NuevoLoteCocheras) {
+  return {
+    cantidad: datos.cantidad,
+    sector: datos.sector,
+    id_tipo_vehiculo: ID_TIPO_VEHICULO[datos.tipoVehiculo],
+    cubierta: datos.cubierta,
   };
 }
 
@@ -227,6 +248,8 @@ export function aReserva(dto: ReservaDto): ReservaDetallada {
     fecha: desde.fecha,
     horaDesde: desde.hora,
     horaHasta: hasta.hora,
+    fechaHasta: hasta.fecha,
+    modalidad: dto.modalidad,
     estado: dto.estado,
     precioTotal: dto.precio_total,
     creadaEn: dto.created_at,
@@ -244,7 +267,6 @@ export function aReserva(dto: ReservaDto): ReservaDetallada {
         latitud: null,
         longitud: null,
       },
-      precioPorHora: dto.tarifa_hora,
     },
     vehiculo: {
       id: dto.id_vehiculo,
@@ -259,12 +281,21 @@ export function aReserva(dto: ReservaDto): ReservaDetallada {
 
 /** El backend asigna la cochera: se reserva por estacionamiento. */
 export function aPayloadReserva(datos: NuevaReserva) {
+  const inicio = aInstante(datos.fecha, datos.horaDesde);
   return {
     id_estacionamiento: datos.estacionamientoId,
     id_vehiculo: datos.vehiculoId,
-    inicio: aInstante(datos.fecha, datos.horaDesde),
-    fin: aInstante(datos.fecha, datos.horaHasta),
+    modalidad: datos.modalidad,
+    inicio,
+    fin: finDeReserva(datos, inicio),
   };
+}
+
+/** Por hora el fin lo elige el conductor; estadia y jornada duran un bloque fijo desde el ingreso. */
+function finDeReserva(datos: NuevaReserva, inicio: FechaHoraISO): FechaHoraISO {
+  if (datos.modalidad === 'HORA') return aInstante(datos.fecha, datos.horaHasta ?? datos.horaDesde);
+  const horas = HORAS_POR_MODALIDAD[datos.modalidad];
+  return new Date(Date.parse(inicio) + horas * 3_600_000).toISOString();
 }
 
 export function aFranja(dto: FranjaDto): FranjaDisponible {

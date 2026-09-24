@@ -1,4 +1,5 @@
 import express from 'express';
+import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import morgan from 'morgan';
 
@@ -15,6 +16,7 @@ app.set('trust proxy', 1);
 app.disable('x-powered-by');
 
 app.use(cors());
+app.use(cookieParser());
 app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: true }));
 

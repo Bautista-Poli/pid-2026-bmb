@@ -1,15 +1,17 @@
 import { ESTADOS_COCHERA } from '../utils/roles.js';
+import { CAMPOS_TARIFA } from '../utils/tarifas.js';
 import { campos } from './helpers.js';
 
 const REGEX_FECHA = /^\d{4}-\d{2}-\d{2}$/;
+const vino = (valor) => valor !== undefined && valor !== null && valor !== '';
 const CAMPOS_EDITABLES = [
   'nombre', 'descripcion', 'calle', 'numero', 'ciudad', 'provincia', 'codigo_postal',
   'barrio_zona', 'latitud', 'longitud', 'telefono_contacto', 'email_contacto',
-  'tarifa_hora', 'cubierto', 'publicado', 'horarios',
+  'tarifa_hora', 'tarifa_estadia', 'tarifa_jornada', 'cubierto', 'publicado', 'horarios',
 ];
 const CAMPOS_BORRABLES = [
   'descripcion', 'codigo_postal', 'barrio_zona', 'latitud', 'longitud',
-  'telefono_contacto', 'email_contacto',
+  'telefono_contacto', 'email_contacto', 'tarifa_hora', 'tarifa_estadia', 'tarifa_jornada',
 ];
 const CAMPOS_COCHERA_EDITABLES = [
   'identificador',
@@ -33,11 +35,21 @@ export function validarEstacionamiento(body) {
     .numero('longitud', body.longitud, { requerido: false, min: -180, max: 180 })
     .texto('telefono_contacto', body.telefono_contacto, { requerido: false, max: 30 })
     .email('email_contacto', body.email_contacto, { requerido: false })
-    .numero('tarifa_hora', body.tarifa_hora, { requerido: false, min: 0, default: 0 })
+    .numero('tarifa_hora', body.tarifa_hora, { requerido: false, min: 0 })
+    .numero('tarifa_estadia', body.tarifa_estadia, { requerido: false, min: 0 })
+    .numero('tarifa_jornada', body.tarifa_jornada, { requerido: false, min: 0 })
     .booleano('cubierto', body.cubierto, { requerido: false, default: false })
     .booleano('publicado', body.publicado, { requerido: false, default: false });
 
   const { valores, errores } = validador.resultado();
+
+  // Tiene que ofrecer al menos una modalidad; null y vacio cuentan como "no la ofrece".
+  if (!CAMPOS_TARIFA.some((campo) => vino(body[campo]))) {
+    errores.push({
+      campo: 'tarifa_hora',
+      mensaje: 'ofrece al menos una tarifa (hora, estadia o jornada)',
+    });
+  }
 
   // `direccion` se guarda armada para la busqueda por texto y los listados.
   if (valores.calle && valores.numero) {
@@ -116,6 +128,8 @@ export function validarCambiosEstacionamiento(body) {
     .texto('telefono_contacto', body.telefono_contacto, { requerido: false, max: 30 })
     .email('email_contacto', body.email_contacto, { requerido: false })
     .numero('tarifa_hora', body.tarifa_hora, { requerido: false, min: 0 })
+    .numero('tarifa_estadia', body.tarifa_estadia, { requerido: false, min: 0 })
+    .numero('tarifa_jornada', body.tarifa_jornada, { requerido: false, min: 0 })
     .booleano('cubierto', body.cubierto, { requerido: false })
     .booleano('publicado', body.publicado, { requerido: false })
     .verificar(
@@ -142,7 +156,21 @@ export function validarCochera(body) {
   return campos(body)
     .texto('identificador', body.identificador, { min: 1, max: 20 })
     .entero('id_tipo_vehiculo', body.id_tipo_vehiculo, { min: 1 })
-    .texto('sector', body.sector, { requerido: false, max: 20 })
+    .texto('sector', body.sector, { requerido: false, max: 40 })
+    .booleano('cubierta', body.cubierta, { requerido: false, default: false })
+    .enumerado('estado_actual', body.estado_actual, Object.values(ESTADOS_COCHERA), {
+      requerido: false,
+      default: ESTADOS_COCHERA.LIBRE,
+    })
+    .resultado();
+}
+
+/** Alta en lote: `sector` es obligatorio porque es lo que distingue un lote de otro. */
+export function validarLoteCochera(body) {
+  return campos(body)
+    .entero('cantidad', body.cantidad, { min: 2, max: 200 })
+    .texto('sector', body.sector, { max: 40 })
+    .entero('id_tipo_vehiculo', body.id_tipo_vehiculo, { min: 1 })
     .booleano('cubierta', body.cubierta, { requerido: false, default: false })
     .enumerado('estado_actual', body.estado_actual, Object.values(ESTADOS_COCHERA), {
       requerido: false,
@@ -156,7 +184,7 @@ export function validarActualizacionCochera(body) {
   return campos(body)
     .texto('identificador', body.identificador, { requerido: false, min: 1, max: 20 })
     .entero('id_tipo_vehiculo', body.id_tipo_vehiculo, { requerido: false, min: 1 })
-    .texto('sector', body.sector, { requerido: false, max: 20 })
+    .texto('sector', body.sector, { requerido: false, max: 40 })
     .booleano('cubierta', body.cubierta, { requerido: false })
     .enumerado('estado_actual', body.estado_actual, Object.values(ESTADOS_COCHERA), {
       requerido: false,

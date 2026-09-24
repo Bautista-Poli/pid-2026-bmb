@@ -7,12 +7,15 @@ import {
   ConsultaDisponibilidad,
   FechaISO,
   FranjaDisponible,
+  HORAS_POR_MODALIDAD,
   Id,
   NuevaReserva,
   Reserva,
   ReservaDetallada,
+  Tarifas,
 } from '@app/models';
 import { duracionEnHoras } from '@app/utils/fecha.util';
+import { calcularPrecio } from '@app/utils/tarifa.util';
 import { FranjaDto, ReservaDto } from './api/api.dto';
 import { ID_TIPO_VEHICULO, aFranja, aPayloadReserva, aReserva } from './api/api.mapeo';
 
@@ -30,14 +33,17 @@ export class ReservaService {
 
   readonly borrador = this.borradorInterno.asReadonly();
 
+  /** Horas del borrador: las elegidas por hora, o el bloque fijo de estadia / jornada. */
   readonly duracionHoras = computed(() => {
-    const { horaDesde, horaHasta } = this.borradorInterno();
+    const { modalidad, horaDesde, horaHasta } = this.borradorInterno();
+    if (modalidad !== 'HORA') return HORAS_POR_MODALIDAD[modalidad];
     return horaDesde && horaHasta ? duracionEnHoras(horaDesde, horaHasta) : 0;
   });
 
   readonly borradorCompleto = computed(() => {
     const b = this.borradorInterno();
-    return Boolean(b.estacionamientoId && b.vehiculoId && b.fecha && b.horaDesde && b.horaHasta);
+    const tieneHorario = b.modalidad === 'HORA' ? Boolean(b.horaDesde && b.horaHasta) : Boolean(b.horaDesde);
+    return Boolean(b.estacionamientoId && b.vehiculoId && b.fecha && tieneHorario);
   });
 
   /* ------------------------------ borrador ------------------------------ */
@@ -57,15 +63,16 @@ export class ReservaService {
   /** Convierte el borrador en los datos de la nueva reserva. */
   aPayload(): NuevaReserva | null {
     const b = this.borradorInterno();
-    if (!b.estacionamientoId || !b.vehiculoId || !b.fecha || !b.horaDesde || !b.horaHasta) {
+    if (!this.borradorCompleto() || !b.estacionamientoId || !b.vehiculoId || !b.fecha || !b.horaDesde) {
       return null;
     }
     return {
       estacionamientoId: b.estacionamientoId,
       vehiculoId: b.vehiculoId,
+      modalidad: b.modalidad,
       fecha: b.fecha,
       horaDesde: b.horaDesde,
-      horaHasta: b.horaHasta,
+      horaHasta: b.modalidad === 'HORA' ? b.horaHasta : null,
     };
   }
 
@@ -141,8 +148,8 @@ export class ReservaService {
       .pipe(map(({ reserva }) => aReserva(reserva)));
   }
 
-  /** Precio estimado del borrador segun la tarifa del estacionamiento. */
-  precioEstimado(precioPorHora: number): number {
-    return Math.round(this.duracionHoras() * precioPorHora);
+  /** Precio estimado del borrador segun las tarifas del estacionamiento (el definitivo lo calcula el backend). */
+  precioEstimado(tarifas: Tarifas): number {
+    return calcularPrecio(this.borradorInterno().modalidad, tarifas, this.duracionHoras());
   }
 }

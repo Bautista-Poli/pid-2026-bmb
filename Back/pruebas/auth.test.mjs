@@ -62,7 +62,7 @@ describe('registro y login', () => {
       body: { email: usuario.email, password: PASSWORD },
     });
     assert.equal(ok.estado, 200);
-    assert.ok(ok.datos.token);
+    assert.match(ok.headers.get('set-cookie') ?? '', /^parkit_token=.+HttpOnly/i);
 
     const mal = await api('POST', '/auth/login', {
       body: { email: usuario.email, password: 'otracosa' },
@@ -73,6 +73,12 @@ describe('registro y login', () => {
   test('sin token no se accede al perfil', async () => {
     const { estado } = await api('GET', '/auth/me');
     assert.equal(estado, 401);
+  });
+
+  test('logout borra la cookie de sesion', async () => {
+    const { estado, headers } = await api('POST', '/auth/logout');
+    assert.equal(estado, 204);
+    assert.match(headers.get('set-cookie') ?? '', /^parkit_token=;/);
   });
 });
 

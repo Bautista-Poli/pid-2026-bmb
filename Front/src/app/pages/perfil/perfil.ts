@@ -181,14 +181,14 @@ export class Perfil {
     const rolAnterior = this.usuario()?.rol;
 
     this.auth.actualizarPerfil(cambios).subscribe({
-      next: (sesion) => {
+      next: (usuario) => {
         this.guardandoDatos.set(false);
         this.avisoDatos.set('Guardamos tus datos.');
 
         // Si se quito el perfil activo, el backend activa otro y hay que
         // mandar al usuario a la rama que ahora le corresponde.
-        if (sesion.usuario.rol !== rolAnterior) {
-          void this.router.navigateByUrl(inicioSegunRol(sesion.usuario.rol));
+        if (usuario.rol !== rolAnterior) {
+          void this.router.navigateByUrl(inicioSegunRol(usuario.rol));
         }
       },
       error: (e: Error) => {

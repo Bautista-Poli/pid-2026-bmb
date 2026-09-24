@@ -1,20 +1,28 @@
 <div class="aparece mx-auto w-full max-w-[940px] px-6 pt-5 pb-8 lg:px-10 lg:pt-[34px] lg:pb-11">
   <div class="flex flex-col gap-6">
-    <header>
-      <a
+    <header class="flex flex-wrap items-start gap-4">
+      <ui-miniatura
+        [src]="recursoEstacionamiento.value()?.fotoUrl ?? null"
+        [optimizada]="false"
+        icono="estacionamiento"
+        tamano="lg"
+      />
+      <div class="min-w-0 flex-1">
+        <a
         class="inline-flex items-center gap-1.5 rounded-boton text-[12px] font-medium text-plomo
                transition-colors duration-160 ease-out hover:text-acento"
         routerLink="/propietario/estacionamientos"
       >
-        ← Mis estacionamientos
-      </a>
-      <p class="eyebrow mt-3">Cocheras</p>
-      <h1 class="titulo-vista mt-1.5">
-        {{ recursoEstacionamiento.value()?.nombre ?? 'Estacionamiento' }}
-      </h1>
-      @if (!recursoCocheras.isLoading()) {
-        <p class="num-tabular mt-1.5 text-[13.5px] text-plomo">{{ activas() }} cocheras activas</p>
-      }
+          ← Mis estacionamientos
+        </a>
+        <p class="eyebrow mt-3">Cocheras</p>
+        <h1 class="titulo-vista mt-1.5">
+          {{ recursoEstacionamiento.value()?.nombre ?? 'Estacionamiento' }}
+        </h1>
+        @if (!recursoCocheras.isLoading()) {
+          <p class="num-tabular mt-1.5 text-[13.5px] text-plomo">{{ activas() }} cocheras activas</p>
+        }
+      </div>
     </header>
 
     <div class="grid gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
@@ -41,14 +49,11 @@
                          px-5 py-[13px] first:border-t-0 lg:px-6"
                   [class.bg-acento-suave]="editando()?.id === cochera.id"
                 >
-                  <div class="flex min-w-0 items-center gap-3.5">
-                    <app-foto-cochera [cochera]="cochera" />
-                    <div class="min-w-0">
-                      <p class="num-tabular text-[14px] font-semibold text-tinta">
-                        {{ cochera.identificador }}
-                      </p>
-                      <p class="mt-0.5 text-[12px] text-plomo">{{ detalle(cochera) }}</p>
-                    </div>
+                  <div class="min-w-0">
+                    <p class="num-tabular text-[14px] font-semibold text-tinta">
+                      {{ cochera.identificador }}
+                    </p>
+                    <p class="mt-0.5 text-[12px] text-plomo">{{ detalle(cochera) }}</p>
                   </div>
 
                   <div class="flex items-center gap-2">
@@ -82,19 +87,56 @@
               }
             </h2>
 
-            <div class="grid grid-cols-2 gap-3">
+            @if (!editando()) {
               <label class="campo">
-                <span class="label-campo">Identificador</span>
-                <input class="uppercase" type="text" formControlName="identificador" placeholder="A1" />
-                @if (invalido('identificador')) {
-                  <span class="campo-error">Hasta 20 caracteres.</span>
+                <span class="label-campo">Cantidad</span>
+                <input
+                  class="num-tabular"
+                  type="number"
+                  inputmode="numeric"
+                  min="1"
+                  max="200"
+                  formControlName="cantidad"
+                />
+                @if (invalido('cantidad')) {
+                  <span class="campo-error">Poné una cantidad del 1 al 200.</span>
+                } @else if (esLote()) {
+                  <span class="text-[12px] text-plomo">{{ rangoLote() }}</span>
                 }
               </label>
+            }
+
+            @if (!esLote()) {
               <label class="campo">
-                <span class="label-campo">Sector <span class="font-normal text-plomo">(opcional)</span></span>
-                <input type="text" formControlName="sector" placeholder="A" />
+                <span class="label-campo">Número</span>
+                <input
+                  class="num-tabular"
+                  type="number"
+                  inputmode="numeric"
+                  min="1"
+                  max="9999"
+                  formControlName="numero"
+                />
+                @if (invalido('numero')) {
+                  <span class="campo-error">Poné un número del 1 al 9999.</span>
+                }
               </label>
-            </div>
+            }
+
+            <label class="campo">
+              <span class="label-campo">
+                Ubicación
+                @if (!esLote()) {
+                  <span class="font-normal text-plomo">(opcional)</span>
+                }
+              </span>
+              <input type="text" formControlName="sector" placeholder="Primer piso" />
+              @if (invalido('sector')) {
+                <span class="campo-error">Contanos en qué piso o sector están.</span>
+              } @else {
+                <span class="text-[12px] text-plomo">Ej.: Primer piso, Subsuelo, Fondo.</span>
+              }
+            </label>
 
             <div class="flex flex-col gap-1.5" role="group" aria-labelledby="etiqueta-tipo">
               <span id="etiqueta-tipo" class="label-campo">Tipo de vehículo</span>
@@ -135,7 +177,7 @@
 
             <div class="flex flex-col gap-2">
               <ui-boton variante="primario" tipo="submit" [bloque]="true" [cargando]="enviando()">
-                {{ editando() ? 'Guardar cambios' : 'Agregar cochera' }}
+                {{ editando() ? 'Guardar cambios' : esLote() ? 'Agregar cocheras' : 'Agregar cochera' }}
               </ui-boton>
               @if (editando()) {
                 <ui-boton [bloque]="true" (presionado)="cancelarEdicion()">Cancelar</ui-boton>

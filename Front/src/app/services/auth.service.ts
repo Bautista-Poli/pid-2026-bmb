@@ -1,49 +1,62 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { Observable, map, tap } from 'rxjs';
-import { CambiosPerfil, Credenciales, RegistroUsuario, RolUsuario, SesionAuth, Usuario } from '@app/models';
-import { SesionDto, UsuarioDto } from './api/api.dto';
-import { aPayloadRegistro, aSesion, aUsuario } from './api/api.mapeo';
-
-const CLAVE_SESION = 'parkit.sesion';
+import { Observable, catchError, map, of, tap } from 'rxjs';
+import { CambiosPerfil, Credenciales, RegistroUsuario, RolUsuario, Usuario } from '@app/models';
+import { UsuarioDto } from './api/api.dto';
+import { aPayloadRegistro, aUsuario } from './api/api.mapeo';
 
 /**
  * Sesion del usuario y llamadas a `/api/auth`.
- * El estado vive en signals para que guards, layout y paginas lo lean sin
- * suscripciones manuales.
+ *
+ * La sesion vive en una cookie httpOnly que pone el backend (`/auth/login`,
+ * etc.): el front nunca la lee ni la guarda, asi que no hay token que un XSS
+ * pueda robar. Como consecuencia, al arrancar la app no hay nada en el
+ * cliente que diga "hay sesion" -- hay que preguntarle a `/auth/me` (ver
+ * `cargarSesion`, que dispara `app.config.ts` antes de habilitar el router).
  */
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly ruta = '/auth';
 
-  private readonly sesion = signal<SesionAuth | null>(this.leerSesionGuardada());
+  private readonly usuarioActual = signal<Usuario | null>(null);
 
-  readonly usuario = computed<Usuario | null>(() => this.sesion()?.usuario ?? null);
+  readonly usuario = this.usuarioActual.asReadonly();
   readonly rol = computed<RolUsuario | null>(() => this.usuario()?.rol ?? null);
-  readonly estaAutenticado = computed(() => this.sesion() !== null);
+  readonly estaAutenticado = computed(() => this.usuario() !== null);
   readonly esConductor = computed(() => this.rol() === 'CONDUCTOR');
   readonly esPropietario = computed(() => this.rol() === 'PROPIETARIO');
 
-  /** Token para el interceptor de autorizacion. */
-  token(): string | null {
-    return this.sesion()?.token ?? null;
+  /**
+   * Pregunta si hay una sesion vigente y la deja cargada. Nunca lanza: sin
+   * cookie o con una vencida, `/auth/me` responde 401 y queda sin sesion.
+   */
+  cargarSesion(): Observable<Usuario | null> {
+    return this.perfil().pipe(
+      tap((usuario) => this.usuarioActual.set(usuario)),
+      catchError(() => {
+        this.usuarioActual.set(null);
+        return of(null);
+      }),
+    );
   }
 
   /** `POST /api/auth/login` */
-  login(credenciales: Credenciales): Observable<SesionAuth> {
-    return this.http.post<SesionDto>(`${this.ruta}/login`, credenciales).pipe(
-      map(aSesion),
-      tap((sesion) => this.guardarSesion(sesion)),
+  login(credenciales: Credenciales): Observable<Usuario> {
+    return this.http.post<{ usuario: UsuarioDto }>(`${this.ruta}/login`, credenciales).pipe(
+      map((respuesta) => aUsuario(respuesta.usuario)),
+      tap((usuario) => this.usuarioActual.set(usuario)),
     );
   }
 
   /** `POST /api/auth/register` */
-  registro(datos: RegistroUsuario): Observable<SesionAuth> {
-    return this.http.post<SesionDto>(`${this.ruta}/register`, aPayloadRegistro(datos)).pipe(
-      map(aSesion),
-      tap((sesion) => this.guardarSesion(sesion)),
-    );
+  registro(datos: RegistroUsuario): Observable<Usuario> {
+    return this.http
+      .post<{ usuario: UsuarioDto }>(`${this.ruta}/register`, aPayloadRegistro(datos))
+      .pipe(
+        map((respuesta) => aUsuario(respuesta.usuario)),
+        tap((usuario) => this.usuarioActual.set(usuario)),
+      );
   }
 
   /** `GET /api/auth/me` */
@@ -53,19 +66,19 @@ export class AuthService {
       .pipe(map((respuesta) => aUsuario(respuesta.usuario)));
   }
 
-  /** `POST /api/auth/rol`: cambia el perfil activo y reemplaza el token. */
-  cambiarRol(rol: RolUsuario): Observable<SesionAuth> {
-    return this.http.post<SesionDto>(`${this.ruta}/rol`, { rol }).pipe(
-      map(aSesion),
-      tap((sesion) => this.guardarSesion(sesion)),
+  /** `POST /api/auth/rol`: cambia el perfil activo. */
+  cambiarRol(rol: RolUsuario): Observable<Usuario> {
+    return this.http.post<{ usuario: UsuarioDto }>(`${this.ruta}/rol`, { rol }).pipe(
+      map((respuesta) => aUsuario(respuesta.usuario)),
+      tap((usuario) => this.usuarioActual.set(usuario)),
     );
   }
 
   /** `PATCH /api/auth/me`: guarda los cambios y actualiza la sesion. */
-  actualizarPerfil(cambios: CambiosPerfil): Observable<SesionAuth> {
-    return this.http.patch<SesionDto>(`${this.ruta}/me`, cambios).pipe(
-      map(aSesion),
-      tap((sesion) => this.guardarSesion(sesion)),
+  actualizarPerfil(cambios: CambiosPerfil): Observable<Usuario> {
+    return this.http.patch<{ usuario: UsuarioDto }>(`${this.ruta}/me`, cambios).pipe(
+      map((respuesta) => aUsuario(respuesta.usuario)),
+      tap((usuario) => this.usuarioActual.set(usuario)),
     );
   }
 
@@ -73,29 +86,16 @@ export class AuthService {
   eliminarCuenta(): Observable<void> {
     return this.http
       .delete<void>(`${this.ruta}/me`)
-      .pipe(tap(() => this.logout()));
+      .pipe(tap(() => this.usuarioActual.set(null)));
   }
 
-  logout(): void {
-    this.sesion.set(null);
-    localStorage.removeItem(CLAVE_SESION);
-  }
-
-  private guardarSesion(sesion: SesionAuth): void {
-    this.sesion.set(sesion);
-    localStorage.setItem(CLAVE_SESION, JSON.stringify(sesion));
-  }
-
-  private leerSesionGuardada(): SesionAuth | null {
-    try {
-      const crudo = localStorage.getItem(CLAVE_SESION);
-      if (!crudo) return null;
-      const sesion = JSON.parse(crudo) as SesionAuth;
-      // Sesiones guardadas antes de que existiera `roles`.
-      sesion.usuario.roles ??= [sesion.usuario.rol];
-      return sesion;
-    } catch {
-      return null;
-    }
+  /**
+   * `POST /api/auth/logout`. La sesion local se limpia al toque (no depende
+   * de la red); la cookie es httpOnly, asi que hace falta este pedido para
+   * que el backend la borre.
+   */
+  logout(): Observable<void> {
+    this.usuarioActual.set(null);
+    return this.http.post<void>(`${this.ruta}/logout`, null);
   }
 }

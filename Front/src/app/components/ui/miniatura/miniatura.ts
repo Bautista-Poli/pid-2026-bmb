@@ -20,6 +20,10 @@ const TAMANO_ICONO: Record<TamanoMiniatura, number> = { sm: 30, lg: 40 };
  *
  * La imagen es decoracion (`alt` vacio): al lado siempre va el texto que la
  * describe, asi que anunciarla seria ruido para un lector de pantalla.
+ *
+ * `optimizada` distingue las fotos del repo (medidas, con `NgOptimizedImage`)
+ * de las que sube un usuario, que pueden tener cualquier tamano y harian saltar
+ * la advertencia de imagen sobredimensionada.
  */
 @Component({
   selector: 'ui-miniatura',
@@ -27,7 +31,11 @@ const TAMANO_ICONO: Record<TamanoMiniatura, number> = { sm: 30, lg: 40 };
   imports: [NgOptimizedImage, Icono],
   template: `
     @if (src(); as ruta) {
-      <img [ngSrc]="ruta" width="400" height="280" alt="" [class]="clases()" class="object-cover" />
+      @if (optimizada()) {
+        <img [ngSrc]="ruta" width="400" height="280" alt="" [class]="clases()" class="object-cover" />
+      } @else {
+        <img [src]="ruta" alt="" loading="lazy" [class]="clases()" class="object-cover" />
+      }
     } @else {
       <span
         [class]="clases()"
@@ -45,6 +53,8 @@ export class Miniatura {
   readonly src = input.required<string | null>();
   readonly icono = input.required<NombreIcono>();
   readonly tamano = input<TamanoMiniatura>('sm');
+  /** `false` para una foto subida por el usuario, de tamano desconocido. */
+  readonly optimizada = input(true);
 
   protected readonly tamanoIcono = computed(() => TAMANO_ICONO[this.tamano()]);
 

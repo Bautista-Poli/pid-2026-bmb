@@ -1,4 +1,4 @@
-import { query } from '../config/database.js';
+import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
 import { ESTADOS_COCHERA } from '../utils/roles.js';
 import { asegurarPropiedad } from './estacionamiento.service.js';
@@ -10,6 +10,15 @@ const CAMPOS =
   'id_cochera, id_estacionamiento, id_tipo_vehiculo, identificador, sector, cubierta, estado_actual, activo';
 
 const CAMPOS_EDITABLES = ['identificador', 'id_tipo_vehiculo', 'sector', 'cubierta', 'estado_actual'];
+
+/**
+ * `identificador` es texto, asi que ordenarlo tal cual pone la cochera 10 antes
+ * que la 2. Ordena por la parte numerica y deja al final los identificadores
+ * alfanumericos viejos ("A-01"), que ya no se pueden dar de alta.
+ */
+export const ORDEN_NATURAL = `
+  NULLIF(regexp_replace(c.identificador, '\\D', '', 'g'), '')::int NULLS LAST,
+  c.identificador`;
 
 /** Traduce las violaciones de constraints de COCHERA a errores entendibles. */
 function traducirError(error, datos) {
@@ -50,6 +59,58 @@ export async function crear(idEstacionamiento, idPropietario, datos) {
 }
 
 /**
+ * Alta en lote: crea `cantidad` cocheras iguales (mismo tipo, sector y
+ * cubierta), numeradas en secuencia a partir de la siguiente disponible. Sirve
+ * para cargar un piso entero de una vez en vez de cochera por cochera.
+ *
+ * El lock sobre ESTACIONAMIENTO serializa dos altas en lote simultaneas del
+ * mismo estacionamiento para que no calculen el mismo numero base; el UNIQUE
+ * de (id_estacionamiento, identificador) queda como red de seguridad.
+ */
+export async function crearLote(idEstacionamiento, idPropietario, datos) {
+  return withTransaction(async (client) => {
+    const { rows: propios } = await client.query(
+      'SELECT id_propietario, activo FROM estacionamiento WHERE id_estacionamiento = $1 FOR UPDATE',
+      [idEstacionamiento],
+    );
+
+    if (!propios[0]) throw ApiError.notFound('Estacionamiento no encontrado');
+    if (propios[0].id_propietario !== idPropietario) {
+      throw ApiError.forbidden('El estacionamiento pertenece a otro propietario');
+    }
+
+    const { rows: numerados } = await client.query(
+      `SELECT NULLIF(regexp_replace(identificador, '\\D', '', 'g'), '')::int AS numero
+         FROM cochera WHERE id_estacionamiento = $1`,
+      [idEstacionamiento],
+    );
+    const base = numerados.reduce((max, fila) => Math.max(max, fila.numero ?? 0), 0);
+
+    try {
+      const { rows } = await client.query(
+        `INSERT INTO cochera
+           (id_estacionamiento, id_tipo_vehiculo, identificador, sector, cubierta, estado_actual)
+         SELECT $1, $2, ($3 + n)::text, $4, $5, $6
+           FROM generate_series(1, $7) AS n
+         RETURNING ${CAMPOS}`,
+        [
+          idEstacionamiento,
+          datos.id_tipo_vehiculo,
+          base,
+          datos.sector,
+          datos.cubierta ?? false,
+          datos.estado_actual,
+          datos.cantidad,
+        ],
+      );
+      return rows;
+    } catch (error) {
+      return traducirError(error, { identificador: `${base + 1}..${base + datos.cantidad}` });
+    }
+  });
+}
+
+/**
  * `reservada_ahora` indica si hay una reserva vigente transcurriendo: el
  * `estado_actual` es el estado fisico y una reserva no lo modifica.
  */
@@ -66,7 +127,7 @@ export async function listarPorEstacionamiento(idEstacionamiento) {
        FROM cochera c
        JOIN tipo_vehiculo t ON t.id_tipo_vehiculo = c.id_tipo_vehiculo
       WHERE c.id_estacionamiento = $1
-      ORDER BY c.identificador`,
+      ORDER BY ${ORDEN_NATURAL}`,
     [idEstacionamiento],
   );
   return rows;

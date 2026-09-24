@@ -55,16 +55,16 @@ export class LayoutApp {
 
     this.cambiandoRol.set(true);
     this.auth.cambiarRol(rol).subscribe({
-      next: (sesion) => {
+      next: (usuario) => {
         this.cambiandoRol.set(false);
-        void this.router.navigateByUrl(inicioSegunRol(sesion.usuario.rol));
+        void this.router.navigateByUrl(inicioSegunRol(usuario.rol));
       },
       error: () => this.cambiandoRol.set(false),
     });
   }
 
   protected salir(): void {
-    this.auth.logout();
+    this.auth.logout().subscribe();
     void this.router.navigate(['/ingresar']);
   }
 }

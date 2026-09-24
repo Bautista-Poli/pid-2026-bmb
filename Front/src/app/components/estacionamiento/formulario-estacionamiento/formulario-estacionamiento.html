@@ -1,5 +1,12 @@
 <form class="flex flex-col gap-5" [formGroup]="formulario" (ngSubmit)="enviar()" novalidate>
   <ui-tarjeta relleno="lg">
+    <app-foto-estacionamiento
+      [fotoActual]="estacionamiento()?.fotoUrl ?? null"
+      (cambio)="elegirFoto($event)"
+    />
+  </ui-tarjeta>
+
+  <ui-tarjeta relleno="lg">
     <fieldset class="flex flex-col gap-4">
       <legend class="mb-4 text-[15px] font-semibold text-tinta">Datos</legend>
 
@@ -16,20 +23,40 @@
         <input type="text" formControlName="descripcion" placeholder="Cubierta, con acceso por Av. Belgrano" />
       </label>
 
-      <div class="grid grid-cols-2 gap-3">
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <label class="campo">
-          <span class="label-campo">Tarifa por hora ($)</span>
-          <input class="num-tabular" type="number" min="0" step="50" formControlName="tarifa" placeholder="900" />
-          @if (invalido('tarifa')) {
-            <span class="campo-error">Ingresá la tarifa.</span>
+          <span class="label-campo">Por hora ($)</span>
+          <input class="num-tabular" type="number" min="0" step="50" formControlName="tarifaHora" placeholder="900" />
+          @if (invalido('tarifaHora')) {
+            <span class="campo-error">La tarifa no puede ser negativa.</span>
           }
         </label>
-
-        <label class="flex items-center gap-2.5 self-end pb-3 text-[13px] text-grafito">
-          <input class="size-4 shrink-0 accent-acento" type="checkbox" formControlName="cubierto" />
-          Es cubierto
+        <label class="campo">
+          <span class="label-campo">Estadía · 12 h ($)</span>
+          <input class="num-tabular" type="number" min="0" step="50" formControlName="tarifaEstadia" placeholder="5000" />
+          @if (invalido('tarifaEstadia')) {
+            <span class="campo-error">La tarifa no puede ser negativa.</span>
+          }
+        </label>
+        <label class="campo">
+          <span class="label-campo">Jornada · 24 h ($)</span>
+          <input class="num-tabular" type="number" min="0" step="50" formControlName="tarifaJornada" placeholder="8000" />
+          @if (invalido('tarifaJornada')) {
+            <span class="campo-error">La tarifa no puede ser negativa.</span>
+          }
         </label>
       </div>
+      <p class="text-[12px] text-plomo">
+        Dejá vacía la modalidad que no ofrezcas. Tenés que ofrecer al menos una.
+      </p>
+      @if (formulario.hasError('sinTarifa') && formulario.touched) {
+        <span class="campo-error">Ingresá al menos una tarifa.</span>
+      }
+
+      <label class="flex items-center gap-2.5 text-[13px] text-grafito">
+        <input class="size-4 shrink-0 accent-acento" type="checkbox" formControlName="cubierto" />
+        Es cubierto
+      </label>
     </fieldset>
   </ui-tarjeta>
 

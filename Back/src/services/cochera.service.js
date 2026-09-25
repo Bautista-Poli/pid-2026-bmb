@@ -1,4 +1,4 @@
-import { query } from '../config/database.js';
+import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
 import { ESTADOS_COCHERA } from '../utils/roles.js';
 import { asegurarPropiedad } from './estacionamiento.service.js';
@@ -46,6 +46,55 @@ export async function crear(idEstacionamiento, idPropietario, datos) {
     return rows[0];
   } catch (error) {
     return traducirError(error, datos);
+  }
+}
+
+/**
+ * Alta por cantidad en una sola transaccion: si un lote falla no se crea nada.
+ * Cada lote numera desde el siguiente libre de su prefijo (`PB-1`, `PB-2`, ...),
+ * asi que un lote posterior con el mismo prefijo continua la numeracion.
+ */
+export async function crearLote(idEstacionamiento, idPropietario, lotes) {
+  await asegurarPropiedad(idEstacionamiento, idPropietario);
+
+  let loteActual;
+  try {
+    return await withTransaction(async (client) => {
+      const creadas = [];
+
+      for (const lote of lotes) {
+        loteActual = lote;
+        const { rows: maximo } = await client.query(
+          `SELECT COALESCE(MAX(substring(identificador FROM '^' || $2 || '-([0-9]+)$')::int), 0) AS ultimo
+             FROM cochera WHERE id_estacionamiento = $1`,
+          [idEstacionamiento, lote.prefijo],
+        );
+        const desde = maximo[0].ultimo + 1;
+
+        const { rows } = await client.query(
+          `INSERT INTO cochera
+             (id_estacionamiento, id_tipo_vehiculo, identificador, sector, cubierta, estado_actual)
+           SELECT $1, $2, $3 || '-' || n, $4, $5, $6
+             FROM generate_series($7::int, $8::int) AS n
+           RETURNING ${CAMPOS}`,
+          [
+            idEstacionamiento,
+            lote.id_tipo_vehiculo,
+            lote.prefijo,
+            lote.sector,
+            lote.cubierta ?? false,
+            ESTADOS_COCHERA.LIBRE,
+            desde,
+            desde + lote.cantidad - 1,
+          ],
+        );
+        creadas.push(...rows);
+      }
+
+      return creadas;
+    });
+  } catch (error) {
+    return traducirError(error, { identificador: `${loteActual?.prefijo}-…` });
   }
 }
 

@@ -34,6 +34,19 @@ export interface NuevaCochera {
   estado?: EstadoCochera;
 }
 
+/**
+ * Un lote de `POST /api/estacionamientos/:id/cocheras/lote`: `cantidad` cocheras
+ * con identificadores `<prefijo>-<n>` y el mismo detalle de ubicacion (`sector`).
+ */
+export interface LoteCocheras {
+  cantidad: number;
+  /** Detalle de ubicacion: `Planta baja`, `Primer piso`. */
+  sector: string;
+  prefijo: string;
+  tipoVehiculo: TipoVehiculo;
+  cubierta: boolean;
+}
+
 /** Estados en el orden en que se muestran en los filtros del tablero. */
 export const ESTADOS_COCHERA_ORDEN: { valor: EstadoCochera; etiqueta: string }[] = [
   { valor: 'LIBRE', etiqueta: 'Libres' },

@@ -49,7 +49,12 @@ export const crearCochera = asyncHandler(async (req, res) => {
   res.status(201).json({ cochera });
 });
 
-export const listarCocheras = asyncHandler(async (req, res) => {
+export const crearLoteCocheras = asyncHandler(async (req, res) => {
+  const cocheras = await cocheraService.crearLote(req.params.id, req.usuario.id, req.body.lotes);
+  res.status(201).json({ cocheras });
+});
+
+export const listarCocheras =asyncHandler(async (req, res) => {
   const cocheras = await cocheraService.listarPorEstacionamiento(req.params.id);
   res.json({ cocheras });
 });

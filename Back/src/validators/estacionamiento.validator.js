@@ -151,6 +151,61 @@ export function validarCochera(body) {
     .resultado();
 }
 
+const MAX_LOTES = 20;
+const MAX_COCHERAS_POR_LOTE = 200;
+const MAX_COCHERAS_POR_PEDIDO = 500;
+const REGEX_PREFIJO = /^[A-Za-z0-9_-]+$/;
+
+/**
+ * Alta por cantidad: cada lote crea `cantidad` cocheras con identificadores
+ * `<prefijo>-<n>` y el mismo detalle de ubicacion (`sector`).
+ */
+export function validarLoteCocheras(body) {
+  const valores = { lotes: [] };
+  const errores = [];
+
+  if (!Array.isArray(body.lotes) || body.lotes.length === 0) {
+    errores.push({ campo: 'lotes', mensaje: 'debe ser una lista con al menos un lote' });
+    return { valores, errores };
+  }
+  if (body.lotes.length > MAX_LOTES) {
+    errores.push({ campo: 'lotes', mensaje: `no puede tener mas de ${MAX_LOTES} lotes` });
+    return { valores, errores };
+  }
+
+  body.lotes.forEach((lote, i) => {
+    const validador = campos(lote ?? {})
+      .entero('cantidad', lote?.cantidad, { min: 1, max: MAX_COCHERAS_POR_LOTE })
+      .texto('sector', lote?.sector, { min: 1, max: 20 })
+      .texto('prefijo', lote?.prefijo, { min: 1, max: 10 })
+      .entero('id_tipo_vehiculo', lote?.id_tipo_vehiculo, { min: 1 })
+      .booleano('cubierta', lote?.cubierta, { requerido: false, default: false })
+      .resultado();
+
+    if (validador.valores.prefijo && !REGEX_PREFIJO.test(validador.valores.prefijo)) {
+      validador.errores.push({
+        campo: 'prefijo',
+        mensaje: 'solo admite letras, numeros, guion y guion bajo',
+      });
+    }
+
+    for (const error of validador.errores) {
+      errores.push({ campo: `lotes[${i}].${error.campo}`, mensaje: error.mensaje });
+    }
+    valores.lotes.push(validador.valores);
+  });
+
+  const total = valores.lotes.reduce((suma, lote) => suma + (lote.cantidad ?? 0), 0);
+  if (total > MAX_COCHERAS_POR_PEDIDO) {
+    errores.push({
+      campo: 'lotes',
+      mensaje: `no se pueden crear mas de ${MAX_COCHERAS_POR_PEDIDO} cocheras por pedido`,
+    });
+  }
+
+  return { valores, errores };
+}
+
 /** PATCH de cochera: todo opcional, pero tiene que venir al menos un campo. */
 export function validarActualizacionCochera(body) {
   return campos(body)

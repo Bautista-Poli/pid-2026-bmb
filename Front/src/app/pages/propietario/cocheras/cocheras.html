@@ -30,87 +30,214 @@
         } @else if (recursoCocheras.value().length === 0) {
           <ui-estado-vacio
             titulo="Este estacionamiento no tiene cocheras"
-            descripcion="Agregá la primera con el formulario."
+            descripcion="Indicá cuántas querés y dónde están con el formulario."
           />
         } @else {
           <ui-tarjeta relleno="ninguno" [recortar]="true">
-            <ul class="aparece-en-cadena">
-              @for (cochera of recursoCocheras.value(); track cochera.id) {
-                <li
-                  class="flex flex-wrap items-center justify-between gap-3 border-t border-borde-sutil
-                         px-5 py-[13px] first:border-t-0 lg:px-6"
-                  [class.bg-acento-suave]="editando()?.id === cochera.id"
+            @for (grupo of grupos(); track grupo.detalle) {
+              <div class="border-t border-borde-sutil first:border-t-0">
+                <h3
+                  class="flex items-center justify-between bg-fondo-suave px-5 py-2 text-[12px] font-semibold
+                         text-grafito lg:px-6"
                 >
-                  <div class="min-w-0">
-                    <p class="num-tabular text-[14px] font-semibold text-tinta">
-                      {{ cochera.identificador }}
-                    </p>
-                    <p class="mt-0.5 text-[12px] text-plomo">{{ detalle(cochera) }}</p>
-                  </div>
+                  {{ grupo.detalle }}
+                  <span class="num-tabular font-normal text-plomo">{{ grupo.cocheras.length }}</span>
+                </h3>
+                <ul class="aparece-en-cadena">
+                  @for (cochera of grupo.cocheras; track cochera.id) {
+                    <li
+                      class="flex flex-wrap items-center justify-between gap-3 border-t border-borde-sutil
+                             px-5 py-[13px] first:border-t-0 lg:px-6"
+                      [class.bg-acento-suave]="editando()?.id === cochera.id"
+                    >
+                      <div class="min-w-0">
+                        <p class="num-tabular text-[14px] font-semibold text-tinta">
+                          {{ cochera.identificador }}
+                        </p>
+                        <p class="mt-0.5 text-[12px] text-plomo">{{ detalle(cochera) }}</p>
+                      </div>
 
-                  <div class="flex items-center gap-2">
-                    <ui-etiqueta [tono]="tonoEstado[cochera.estado]">
-                      {{ etiquetaEstado[cochera.estado] }}
-                    </ui-etiqueta>
-                    @if (cochera.estado !== 'INACTIVA') {
-                      <ui-boton tamano="sm" variante="fantasma" (presionado)="editar(cochera)">
-                        Editar
-                      </ui-boton>
-                      <ui-boton tamano="sm" variante="peligro" (presionado)="darDeBaja(cochera)">
-                        Dar de baja
-                      </ui-boton>
-                    }
-                  </div>
-                </li>
-              }
-            </ul>
+                      <div class="flex items-center gap-2">
+                        <ui-etiqueta [tono]="tonoEstado[cochera.estado]">
+                          {{ etiquetaEstado[cochera.estado] }}
+                        </ui-etiqueta>
+                        @if (cochera.estado !== 'INACTIVA') {
+                          <ui-boton tamano="sm" variante="fantasma" (presionado)="editar(cochera)">
+                            Editar
+                          </ui-boton>
+                          <ui-boton tamano="sm" variante="peligro" (presionado)="darDeBaja(cochera)">
+                            Dar de baja
+                          </ui-boton>
+                        }
+                      </div>
+                    </li>
+                  }
+                </ul>
+              </div>
+            }
           </ui-tarjeta>
         }
       </section>
 
       <section class="order-first lg:order-last" aria-labelledby="titulo-formulario">
         <ui-tarjeta relleno="lg">
-          <form class="flex flex-col gap-4" [formGroup]="formulario" (ngSubmit)="guardar()" novalidate>
-            <h2 id="titulo-formulario" class="text-[15px] font-semibold text-tinta">
-              @if (editando(); as cochera) {
+          @if (editando(); as cochera) {
+            <form class="flex flex-col gap-4" [formGroup]="formulario" (ngSubmit)="guardar()" novalidate>
+              <h2 id="titulo-formulario" class="text-[15px] font-semibold text-tinta">
                 Editar cochera {{ cochera.identificador }}
-              } @else {
-                Agregar cochera
+              </h2>
+
+              <div class="grid grid-cols-2 gap-3">
+                <label class="campo">
+                  <span class="label-campo">Identificador</span>
+                  <input class="uppercase" type="text" formControlName="identificador" placeholder="PB-1" />
+                  @if (invalido('identificador')) {
+                    <span class="campo-error">Hasta 20 caracteres.</span>
+                  }
+                </label>
+                <label class="campo">
+                  <span class="label-campo">Detalle <span class="font-normal text-plomo">(opcional)</span></span>
+                  <input type="text" formControlName="sector" placeholder="Planta baja" />
+                </label>
+              </div>
+
+              <div class="flex flex-col gap-1.5" role="group" aria-labelledby="etiqueta-tipo">
+                <span id="etiqueta-tipo" class="label-campo">Tipo de vehículo</span>
+                <div class="flex flex-wrap gap-2">
+                  @for (tipo of tipos; track tipo) {
+                    <ui-chip
+                      [activo]="formulario.controls.tipo.value === tipo"
+                      (alternar)="elegirTipo(tipo)"
+                    >
+                      {{ etiquetaTipo[tipo] }}
+                    </ui-chip>
+                  }
+                </div>
+              </div>
+
+              <label class="flex items-center gap-2.5 text-[13px] text-grafito">
+                <input class="size-4 shrink-0 accent-acento" type="checkbox" formControlName="cubierta" />
+                Es cubierta
+              </label>
+
+              @if (error(); as mensaje) {
+                <p
+                  class="rounded-control border border-ocupada/25 bg-ocupada/5 px-4 py-3 text-[13px] text-ocupada"
+                  role="alert"
+                >
+                  {{ mensaje }}
+                </p>
               }
-            </h2>
 
-            <div class="grid grid-cols-2 gap-3">
-              <label class="campo">
-                <span class="label-campo">Identificador</span>
-                <input class="uppercase" type="text" formControlName="identificador" placeholder="A1" />
-                @if (invalido('identificador')) {
-                  <span class="campo-error">Hasta 20 caracteres.</span>
-                }
-              </label>
-              <label class="campo">
-                <span class="label-campo">Sector <span class="font-normal text-plomo">(opcional)</span></span>
-                <input type="text" formControlName="sector" placeholder="A" />
-              </label>
-            </div>
+              @if (aviso(); as mensaje) {
+                <p
+                  class="rounded-control border border-exito/25 bg-exito-suave px-4 py-3 text-[13px] text-exito"
+                  role="status"
+                >
+                  {{ mensaje }}
+                </p>
+              }
 
-            <div class="flex flex-col gap-1.5" role="group" aria-labelledby="etiqueta-tipo">
-              <span id="etiqueta-tipo" class="label-campo">Tipo de vehículo</span>
-              <div class="flex flex-wrap gap-2">
-                @for (tipo of tipos; track tipo) {
-                  <ui-chip
-                    [activo]="formulario.controls.tipo.value === tipo"
-                    (alternar)="elegirTipo(tipo)"
+              <div class="flex flex-col gap-2">
+                <ui-boton variante="primario" tipo="submit" [bloque]="true" [cargando]="enviando()">
+                  Guardar cambios
+                </ui-boton>
+                <ui-boton [bloque]="true" (presionado)="cancelarEdicion()">Cancelar</ui-boton>
+              </div>
+            </form>
+          } @else {
+            <form
+              class="flex flex-col gap-5"
+              [formGroup]="formularioLotes"
+              (ngSubmit)="crearLotes()"
+              novalidate
+            >
+              <div>
+                <h2 id="titulo-formulario" class="text-[15px] font-semibold text-tinta">Agregar cocheras</h2>
+                <p class="mt-1 text-[12.5px] text-plomo">
+                  Indicá cuántas hay y dónde están. Las creamos todas juntas.
+                </p>
+              </div>
+
+              <div class="flex flex-col gap-5" formArrayName="lotes">
+                @for (lote of lotes.controls; track lote; let i = $index) {
+                  <fieldset
+                    class="flex flex-col gap-3.5 rounded-control border border-borde-sutil p-4"
+                    [formGroupName]="i"
                   >
-                    {{ etiquetaTipo[tipo] }}
-                  </ui-chip>
+                    <legend class="label-campo px-1">Lote {{ i + 1 }}</legend>
+
+                    <div class="flex flex-wrap gap-2" role="group" [attr.aria-label]="'Detalles sugeridos del lote ' + (i + 1)">
+                      @for (sugerencia of sugerencias; track sugerencia.detalle) {
+                        <ui-chip
+                          [activo]="lote.controls.sector.value === sugerencia.detalle"
+                          (alternar)="usarSugerencia(i, sugerencia)"
+                        >
+                          {{ sugerencia.detalle }}
+                        </ui-chip>
+                      }
+                    </div>
+
+                    <label class="campo">
+                      <span class="label-campo">Detalle de ubicación</span>
+                      <input type="text" formControlName="sector" placeholder="Planta baja" />
+                      @if (invalidoLote(i, 'sector')) {
+                        <span class="campo-error">Obligatorio, hasta 20 caracteres.</span>
+                      }
+                    </label>
+
+                    <div class="grid grid-cols-2 gap-3">
+                      <label class="campo">
+                        <span class="label-campo">Cantidad</span>
+                        <input type="number" inputmode="numeric" min="1" max="200" formControlName="cantidad" />
+                        @if (invalidoLote(i, 'cantidad')) {
+                          <span class="campo-error">Entre 1 y 200.</span>
+                        }
+                      </label>
+                      <label class="campo">
+                        <span class="label-campo">Prefijo</span>
+                        <input class="uppercase" type="text" formControlName="prefijo" placeholder="PB" />
+                        @if (invalidoLote(i, 'prefijo')) {
+                          <span class="campo-error">Letras y números, hasta 10.</span>
+                        }
+                      </label>
+                    </div>
+
+                    <div class="flex flex-col gap-1.5" role="group" [attr.aria-label]="'Tipo de vehículo del lote ' + (i + 1)">
+                      <span class="label-campo">Tipo de vehículo</span>
+                      <div class="flex flex-wrap gap-2">
+                        @for (tipo of tipos; track tipo) {
+                          <ui-chip
+                            [activo]="lote.controls.tipo.value === tipo"
+                            (alternar)="elegirTipoLote(i, tipo)"
+                          >
+                            {{ etiquetaTipo[tipo] }}
+                          </ui-chip>
+                        }
+                      </div>
+                    </div>
+
+                    <label class="flex items-center gap-2.5 text-[13px] text-grafito">
+                      <input class="size-4 shrink-0 accent-acento" type="checkbox" formControlName="cubierta" />
+                      Es cubierta
+                    </label>
+
+                    @if (vistaPrevia(i); as vista) {
+                      <p class="num-tabular text-[12.5px] text-plomo">Se crearán: {{ vista }}</p>
+                    }
+
+                    @if (lotes.length > 1) {
+                      <div>
+                        <ui-boton tamano="sm" variante="fantasma" (presionado)="quitarLote(i)">
+                          Quitar lote
+                        </ui-boton>
+                      </div>
+                    }
+                  </fieldset>
                 }
               </div>
-            </div>
 
-            <label class="flex items-center gap-2.5 text-[13px] text-grafito">
-              <input class="size-4 shrink-0 accent-acento" type="checkbox" formControlName="cubierta" />
-              Es cubierta
-            </label>
+              <ui-boton (presionado)="agregarLote()">+ Agregar otro lote</ui-boton>
 
             @if (error(); as mensaje) {
               <p
@@ -130,15 +257,11 @@
               </p>
             }
 
-            <div class="flex flex-col gap-2">
               <ui-boton variante="primario" tipo="submit" [bloque]="true" [cargando]="enviando()">
-                {{ editando() ? 'Guardar cambios' : 'Agregar cochera' }}
+                Crear cocheras
               </ui-boton>
-              @if (editando()) {
-                <ui-boton [bloque]="true" (presionado)="cancelarEdicion()">Cancelar</ui-boton>
-              }
-            </div>
-          </form>
+            </form>
+          }
         </ui-tarjeta>
       </section>
     </div>

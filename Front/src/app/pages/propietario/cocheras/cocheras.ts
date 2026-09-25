@@ -24,6 +24,16 @@ import { EstacionamientoService } from '@app/services/estacionamiento.service';
 
 const TIPOS: TipoVehiculo[] = ['AUTO', 'MOTO', 'CAMIONETA'];
 
+/** Detalles de ubicacion comunes; al elegir uno se sugiere tambien el prefijo. */
+const SUGERENCIAS_DETALLE = [
+  { detalle: 'Planta baja', prefijo: 'PB' },
+  { detalle: 'Primer piso', prefijo: 'P1' },
+  { detalle: 'Segundo piso', prefijo: 'P2' },
+  { detalle: 'Subsuelo', prefijo: 'SS' },
+];
+
+const SIN_DETALLE = 'Sin detalle';
+
 const TONO_ESTADO: Record<EstadoCochera, TonoEtiqueta> = {
   LIBRE: 'exito',
   OCUPADA: 'peligro',
@@ -34,7 +44,8 @@ const TONO_ESTADO: Record<EstadoCochera, TonoEtiqueta> = {
 /**
  * Pantalla `/propietario/estacionamientos/:estacionamientoId/cocheras` · rol PROPIETARIO
  *
- * Alta, edicion y baja logica de las cocheras de un estacionamiento.
+ * Alta por cantidad (lotes con detalle de ubicacion), edicion y baja logica de
+ * las cocheras de un estacionamiento.
  */
 @Component({
   selector: 'app-cocheras',
@@ -69,8 +80,28 @@ export class Cocheras {
     () => this.recursoCocheras.value().filter((c) => c.estado !== 'INACTIVA').length,
   );
 
-  // Si hay una cochera elegida el formulario la edita; si no, da de alta una nueva.
+  /** Cocheras agrupadas por detalle de ubicacion, en el orden en que aparecen. */
+  protected readonly grupos = computed(() => {
+    const porDetalle = new Map<string, Cochera[]>();
+    for (const cochera of this.recursoCocheras.value()) {
+      const detalle = cochera.sector || SIN_DETALLE;
+      porDetalle.set(detalle, [...(porDetalle.get(detalle) ?? []), cochera]);
+    }
+    return [...porDetalle].map(([detalle, cocheras]) => ({ detalle, cocheras }));
+  });
+
+  // Con una cochera elegida se muestra el formulario de edicion; si no, el de alta por lotes.
   protected readonly editando = signal<Cochera | null>(null);
+
+  protected readonly sugerencias = SUGERENCIAS_DETALLE;
+
+  protected readonly formularioLotes = this.fb.group({
+    lotes: this.fb.array([this.nuevoLote()]),
+  });
+
+  protected get lotes() {
+    return this.formularioLotes.controls.lotes;
+  }
 
   protected readonly formulario = this.fb.nonNullable.group({
     identificador: ['', [Validators.required, Validators.maxLength(20)]],
@@ -84,12 +115,9 @@ export class Cocheras {
   protected readonly aviso = signal<string | null>(null);
 
   protected detalle(cochera: Cochera): string {
-    const partes = [
-      cochera.sector ? `Sector ${cochera.sector}` : '',
-      cochera.cubierta ? 'Cubierta' : 'Descubierta',
-      this.etiquetaTipo[cochera.tipoVehiculo],
-    ];
-    return partes.filter(Boolean).join(' · ');
+    return [cochera.cubierta ? 'Cubierta' : 'Descubierta', this.etiquetaTipo[cochera.tipoVehiculo]].join(
+      ' · ',
+    );
   }
 
   protected invalido(campo: string): boolean {
@@ -118,37 +146,98 @@ export class Cocheras {
     this.formulario.reset();
   }
 
+  protected agregarLote(): void {
+    this.lotes.push(this.nuevoLote());
+  }
+
+  protected quitarLote(indice: number): void {
+    if (this.lotes.length > 1) this.lotes.removeAt(indice);
+  }
+
+  protected elegirTipoLote(indice: number, tipo: TipoVehiculo): void {
+    this.lotes.at(indice).controls.tipo.setValue(tipo);
+  }
+
+  protected usarSugerencia(indice: number, sugerencia: { detalle: string; prefijo: string }): void {
+    this.lotes.at(indice).patchValue({ sector: sugerencia.detalle, prefijo: sugerencia.prefijo });
+  }
+
+  protected invalidoLote(indice: number, campo: 'cantidad' | 'sector' | 'prefijo'): boolean {
+    const control = this.lotes.at(indice).controls[campo];
+    return control.invalid && control.touched;
+  }
+
+  /** Identificadores que va a generar el lote, continuando la numeracion existente. */
+  protected vistaPrevia(indice: number): string {
+    const { cantidad, prefijo } = this.lotes.at(indice).getRawValue();
+    const base = prefijo.trim();
+    if (!base || !Number.isInteger(cantidad) || cantidad < 1) return '';
+
+    const desde = this.ultimoNumero(base, indice) + 1;
+    const hasta = desde + cantidad - 1;
+    return cantidad === 1 ? `${base}-${desde}` : `${base}-${desde} … ${base}-${hasta}`;
+  }
+
+  protected crearLotes(): void {
+    if (this.lotes.invalid) {
+      this.lotes.markAllAsTouched();
+      return;
+    }
+
+    const lotes = this.lotes.getRawValue().map((lote) => ({
+      cantidad: lote.cantidad,
+      sector: lote.sector.trim(),
+      prefijo: lote.prefijo.trim(),
+      tipoVehiculo: lote.tipo,
+      cubierta: lote.cubierta,
+    }));
+
+    this.enviando.set(true);
+    this.error.set(null);
+    this.aviso.set(null);
+
+    this.cocheras.crearLote(this.estacionamientoId(), lotes).subscribe({
+      next: (creadas) => {
+        this.enviando.set(false);
+        this.aviso.set(
+          creadas.length === 1 ? 'Agregamos 1 cochera.' : `Agregamos ${creadas.length} cocheras.`,
+        );
+        this.lotes.clear();
+        this.lotes.push(this.nuevoLote());
+        this.recursoCocheras.reload();
+      },
+      error: (e: Error) => {
+        this.enviando.set(false);
+        this.error.set(e.message);
+      },
+    });
+  }
+
   protected guardar(): void {
+    const cochera = this.editando();
+    if (!cochera) return;
+
     if (this.formulario.invalid) {
       this.formulario.markAllAsTouched();
       return;
     }
 
     const valores = this.formulario.getRawValue();
-    const datos = {
+    const cambios = {
       identificador: valores.identificador.trim(),
       sector: valores.sector.trim(),
       tipoVehiculo: valores.tipo,
       cubierta: valores.cubierta,
     };
 
-    const cochera = this.editando();
-    const pedido = cochera
-      ? this.cocheras.actualizar(cochera, datos)
-      : this.cocheras.crear({ ...datos, estacionamientoId: this.estacionamientoId() });
-
     this.enviando.set(true);
     this.error.set(null);
     this.aviso.set(null);
 
-    pedido.subscribe({
+    this.cocheras.actualizar(cochera, cambios).subscribe({
       next: (guardada) => {
         this.enviando.set(false);
-        this.aviso.set(
-          cochera
-            ? `Guardamos los cambios de la cochera ${guardada.identificador}.`
-            : `Agregamos la cochera ${guardada.identificador}.`,
-        );
+        this.aviso.set(`Guardamos los cambios de la cochera ${guardada.identificador}.`);
         this.cancelarEdicion();
         this.recursoCocheras.reload();
       },
@@ -176,5 +265,37 @@ export class Cocheras {
       },
       error: (e: Error) => this.error.set(e.message),
     });
+  }
+
+  private nuevoLote() {
+    return this.fb.nonNullable.group({
+      cantidad: [10, [Validators.required, Validators.min(1), Validators.max(200)]],
+      sector: ['', [Validators.required, Validators.maxLength(20)]],
+      prefijo: [
+        '',
+        [Validators.required, Validators.maxLength(10), Validators.pattern(/^[A-Za-z0-9_-]+$/)],
+      ],
+      tipo: this.fb.nonNullable.control<TipoVehiculo>('AUTO'),
+      cubierta: false,
+    });
+  }
+
+  /**
+   * Ultimo numero usado con ese prefijo, entre las cocheras cargadas y los lotes
+   * anteriores del formulario que comparten prefijo.
+   */
+  private ultimoNumero(prefijo: string, hastaLote: number): number {
+    const patron = new RegExp(`^${prefijo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-(\\d+)$`);
+    const numeros = this.recursoCocheras
+      .value()
+      .map((c) => Number(patron.exec(c.identificador)?.[1] ?? 0));
+
+    const anteriores = this.lotes
+      .getRawValue()
+      .slice(0, hastaLote)
+      .filter((lote) => lote.prefijo.trim() === prefijo)
+      .reduce((suma, lote) => suma + (Number.isInteger(lote.cantidad) ? lote.cantidad : 0), 0);
+
+    return Math.max(0, ...numeros) + anteriores;
   }
 }

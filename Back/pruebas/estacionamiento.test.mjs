@@ -217,3 +217,136 @@ describe('cocheras', () => {
     assert.equal(baja.datos.cochera.estado_actual, 'INACTIVA');
   });
 });
+
+describe('cocheras por lote', () => {
+  const rutaLote = (estacionamiento) =>
+    `/estacionamientos/${estacionamiento.id_estacionamiento}/cocheras/lote`;
+
+  const nuevoEstacionamientoVacio = async () => {
+    const propietario = await nuevoPropietario();
+    const estacionamiento = await crearEstacionamiento(propietario.token, { cocheras: 0 });
+    return { propietario, estacionamiento };
+  };
+
+  test('crea la cantidad pedida con el detalle y el prefijo indicados', async () => {
+    const { propietario, estacionamiento } = await nuevoEstacionamientoVacio();
+
+    const { estado, datos } = await api('POST', rutaLote(estacionamiento), {
+      token: propietario.token,
+      body: {
+        lotes: [{ cantidad: 3, sector: 'Planta baja', prefijo: 'PB', id_tipo_vehiculo: 1 }],
+      },
+    });
+
+    assert.equal(estado, 201);
+    assert.deepEqual(
+      datos.cocheras.map((c) => c.identificador).sort(),
+      ['PB-1', 'PB-2', 'PB-3'],
+    );
+    for (const cochera of datos.cocheras) {
+      assert.equal(cochera.sector, 'Planta baja');
+      assert.equal(cochera.estado_actual, 'LIBRE');
+      assert.equal(cochera.cubierta, false);
+    }
+  });
+
+  test('un segundo lote con el mismo prefijo continua la numeracion', async () => {
+    const { propietario, estacionamiento } = await nuevoEstacionamientoVacio();
+    const lote = { cantidad: 2, sector: 'Primer piso', prefijo: 'P1', id_tipo_vehiculo: 1 };
+
+    await api('POST', rutaLote(estacionamiento), { token: propietario.token, body: { lotes: [lote] } });
+    const { estado, datos } = await api('POST', rutaLote(estacionamiento), {
+      token: propietario.token,
+      body: { lotes: [{ ...lote, cantidad: 2 }] },
+    });
+
+    assert.equal(estado, 201);
+    assert.deepEqual(
+      datos.cocheras.map((c) => c.identificador).sort(),
+      ['P1-3', 'P1-4'],
+    );
+  });
+
+  test('acepta varios lotes en un mismo pedido, incluso con el mismo prefijo', async () => {
+    const { propietario, estacionamiento } = await nuevoEstacionamientoVacio();
+
+    const { estado, datos } = await api('POST', rutaLote(estacionamiento), {
+      token: propietario.token,
+      body: {
+        lotes: [
+          { cantidad: 2, sector: 'Planta baja', prefijo: 'PB', id_tipo_vehiculo: 1 },
+          { cantidad: 2, sector: 'Primer piso', prefijo: 'P1', id_tipo_vehiculo: 2, cubierta: true },
+          { cantidad: 1, sector: 'Planta baja', prefijo: 'PB', id_tipo_vehiculo: 2 },
+        ],
+      },
+    });
+
+    assert.equal(estado, 201);
+    assert.deepEqual(
+      datos.cocheras.map((c) => c.identificador).sort(),
+      ['P1-1', 'P1-2', 'PB-1', 'PB-2', 'PB-3'],
+    );
+    assert.ok(datos.cocheras.filter((c) => c.sector === 'Primer piso').every((c) => c.cubierta));
+
+    const listado = await api('GET', `/estacionamientos/${estacionamiento.id_estacionamiento}/cocheras`);
+    assert.equal(listado.datos.cocheras.length, 5);
+  });
+
+  test('rechaza cantidades y prefijos invalidos', async () => {
+    const { propietario, estacionamiento } = await nuevoEstacionamientoVacio();
+    const valido = { cantidad: 2, sector: 'Planta baja', prefijo: 'PB', id_tipo_vehiculo: 1 };
+    const invalidos = [
+      { ...valido, cantidad: 0 },
+      { ...valido, cantidad: 201 },
+      { ...valido, prefijo: '' },
+      { ...valido, prefijo: 'con espacio' },
+      { ...valido, prefijo: 'PREFIJO-MUY-LARGO' },
+      { ...valido, sector: '' },
+    ];
+
+    for (const lote of invalidos) {
+      const { estado } = await api('POST', rutaLote(estacionamiento), {
+        token: propietario.token,
+        body: { lotes: [lote] },
+      });
+      assert.equal(estado, 400, JSON.stringify(lote));
+    }
+
+    const vacio = await api('POST', rutaLote(estacionamiento), {
+      token: propietario.token,
+      body: { lotes: [] },
+    });
+    assert.equal(vacio.estado, 400);
+  });
+
+  test('es atomico: un tipo de vehiculo inexistente no crea ninguna cochera', async () => {
+    const { propietario, estacionamiento } = await nuevoEstacionamientoVacio();
+
+    const { estado } = await api('POST', rutaLote(estacionamiento), {
+      token: propietario.token,
+      body: {
+        lotes: [
+          { cantidad: 2, sector: 'Planta baja', prefijo: 'PB', id_tipo_vehiculo: 1 },
+          { cantidad: 2, sector: 'Subsuelo', prefijo: 'S', id_tipo_vehiculo: 9999 },
+        ],
+      },
+    });
+    assert.equal(estado, 400);
+
+    const listado = await api('GET', `/estacionamientos/${estacionamiento.id_estacionamiento}/cocheras`);
+    assert.equal(listado.datos.cocheras.length, 0);
+  });
+
+  test('solo el propietario del estacionamiento puede cargar lotes', async () => {
+    const { estacionamiento } = await nuevoEstacionamientoVacio();
+    const otro = await nuevoPropietario();
+    const conductor = await crearUsuario();
+    const body = { lotes: [{ cantidad: 1, sector: 'Planta baja', prefijo: 'PB', id_tipo_vehiculo: 1 }] };
+
+    const ajeno = await api('POST', rutaLote(estacionamiento), { token: otro.token, body });
+    assert.ok([403, 404].includes(ajeno.estado), `estado ${ajeno.estado}`);
+
+    const comoConductor = await api('POST', rutaLote(estacionamiento), { token: conductor.token, body });
+    assert.equal(comoConductor.estado, 403);
+  });
+});

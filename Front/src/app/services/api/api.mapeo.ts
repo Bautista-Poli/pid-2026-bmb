@@ -5,6 +5,7 @@ import {
   EstadoReserva,
   FranjaAtencion,
   FranjaDisponible,
+  LoteCocheras,
   NuevaCochera,
   NuevaReserva,
   NuevoEstacionamiento,
@@ -159,6 +160,18 @@ export function aPayloadCochera(datos: NuevaCochera) {
     sector: datos.sector || undefined,
     cubierta: datos.cubierta,
     estado_actual: datos.estado,
+  };
+}
+
+export function aPayloadLotes(lotes: LoteCocheras[]) {
+  return {
+    lotes: lotes.map((lote) => ({
+      cantidad: lote.cantidad,
+      sector: lote.sector,
+      prefijo: lote.prefijo,
+      id_tipo_vehiculo: ID_TIPO_VEHICULO[lote.tipoVehiculo],
+      cubierta: lote.cubierta,
+    })),
   };
 }
 

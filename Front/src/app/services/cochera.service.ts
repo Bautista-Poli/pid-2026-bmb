@@ -2,9 +2,9 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { environment } from '@env/environment';
-import { Cochera, EstadoCochera, Id, NuevaCochera } from '@app/models';
+import { Cochera, EstadoCochera, Id, LoteCocheras, NuevaCochera } from '@app/models';
 import { CocheraDto } from './api/api.dto';
-import { aCochera, aPayloadCambiosCochera, aPayloadCochera } from './api/api.mapeo';
+import { aCochera, aPayloadCambiosCochera, aPayloadCochera, aPayloadLotes } from './api/api.mapeo';
 import { COCHERAS_MOCK } from './mocks/datos-mock';
 import { clonar, simular } from './mocks/mock.util';
 
@@ -41,6 +41,29 @@ export class CocheraService {
     return this.http
       .post<{ cochera: CocheraDto }>(rutaCocheras(datos.estacionamientoId), aPayloadCochera(datos))
       .pipe(map((respuesta) => aCochera(respuesta.cochera)));
+  }
+
+  /** `POST /api/estacionamientos/:id/cocheras/lote` (todo o nada) */
+  crearLote(estacionamientoId: Id, lotes: LoteCocheras[]): Observable<Cochera[]> {
+    if (environment.usarMocks) {
+      return simular<Cochera[]>(
+        lotes.flatMap((lote) =>
+          Array.from({ length: lote.cantidad }, (_, i) => ({
+            id: `coc-${crypto.randomUUID()}`,
+            estacionamientoId,
+            identificador: `${lote.prefijo}-${i + 1}`,
+            sector: lote.sector,
+            tipoVehiculo: lote.tipoVehiculo,
+            cubierta: lote.cubierta,
+            estado: 'LIBRE' as const,
+          })),
+        ),
+      );
+    }
+
+    return this.http
+      .post<{ cocheras: CocheraDto[] }>(`${rutaCocheras(estacionamientoId)}/lote`, aPayloadLotes(lotes))
+      .pipe(map(({ cocheras }) => cocheras.map(aCochera)));
   }
 
   /** `PATCH /api/estacionamientos/:id/cocheras/:idCochera` */

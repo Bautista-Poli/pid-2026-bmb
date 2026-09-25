@@ -12,6 +12,7 @@ import {
   validarDisponibilidad,
   validarEstacionamiento,
   validarFiltroReservas,
+  validarLoteCocheras,
 } from '../validators/estacionamiento.validator.js';
 
 const router = Router();
@@ -61,6 +62,13 @@ router.post(
   ...soloPropietario,
   validate(validarCochera),
   estacionamientoController.crearCochera,
+);
+
+router.post(
+  '/:id/cocheras/lote',
+  ...soloPropietario,
+  validate(validarLoteCocheras),
+  estacionamientoController.crearLoteCocheras,
 );
 
 router.patch(

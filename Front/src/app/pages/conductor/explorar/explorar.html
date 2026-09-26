@@ -10,6 +10,12 @@
       <app-filtros-estacionamiento class="lg:shrink-0" [(filtros)]="filtros" />
     </header>
 
+    @if (sinUbicacion()) {
+      <p class="-mt-2 text-[13px] leading-normal text-plomo">
+        Activá la ubicación del navegador para ver a qué distancia está cada estacionamiento.
+      </p>
+    }
+
     <!-- Listado -->
     @if (recurso.isLoading()) {
       <ui-cargando [cantidad]="3" />
@@ -26,7 +32,7 @@
       </ui-estado-vacio>
     } @else {
       <div class="aparece-en-cadena grid gap-4 lg:grid-cols-2">
-        @for (estacionamiento of recurso.value(); track estacionamiento.id) {
+        @for (estacionamiento of listado(); track estacionamiento.id) {
           <app-tarjeta-estacionamiento
             [estacionamiento]="estacionamiento"
             (reservar)="irAReservar($event)"

@@ -3,6 +3,10 @@ import { ApiError } from '../utils/ApiError.js';
 import { CAMPOS_TARIFA } from '../utils/tarifas.js';
 import { ESTADOS_COCHERA, ESTADOS_VIGENTES } from '../utils/roles.js';
 import { listarPorEstacionamiento as listarCocheras } from './cochera.service.js';
+import { geocodificar } from './geocodificacion.service.js';
+
+const CAMPOS_DIRECCION = ['calle', 'numero', 'ciudad', 'provincia', 'codigo_postal'];
+const tieneCoordenadas = (datos) => datos.latitud != null && datos.longitud != null;
 
 const COLUMNAS = [
   'id_estacionamiento', 'id_propietario', 'nombre', 'descripcion', 'direccion',
@@ -56,8 +60,16 @@ const AGREGADOS = `
     WHERE f.id_estacionamiento = e.id_estacionamiento) AS foto_actualizada
 `;
 
-/** Crea el estacionamiento y sus horarios en una sola transaccion. */
-export async function crear(idPropietario, datos) {
+/**
+ * Crea el estacionamiento y sus horarios en una sola transaccion.
+ * Si no vienen coordenadas se obtienen de la direccion (fuera de la transaccion,
+ * para no tener una conexion tomada mientras se espera al geocodificador).
+ */
+export async function crear(idPropietario, entrada) {
+  const datos = tieneCoordenadas(entrada)
+    ? entrada
+    : { ...entrada, ...(await geocodificar(entrada)) };
+
   return withTransaction(async (client) => {
     const { rows } = await client.query(
       `INSERT INTO estacionamiento
@@ -239,12 +251,52 @@ async function asegurarAlgunaTarifa(client, idEstacionamiento, datos) {
 }
 
 /**
+ * Decide las coordenadas que se guardan en un PATCH:
+ *   - si vienen coordenadas distintas a las guardadas, se respetan;
+ *   - si cambio la direccion, o el estacionamiento todavia no tiene coordenadas,
+ *     se geocodifica la direccion resultante;
+ *   - si cambio la direccion y no se pudo geocodificar, se borran las viejas
+ *     (ya no corresponden al lugar y mostrarian una distancia falsa).
+ * El formulario del propietario manda siempre la direccion completa y las
+ * coordenadas que tenia, por eso se compara contra lo guardado.
+ */
+async function completarCoordenadas(idEstacionamiento, entrada) {
+  const { rows } = await query(
+    `SELECT ${[...CAMPOS_DIRECCION, 'latitud', 'longitud'].join(', ')}
+       FROM estacionamiento WHERE id_estacionamiento = $1`,
+    [idEstacionamiento],
+  );
+  const guardado = rows[0];
+
+  const coordenadasNuevas =
+    tieneCoordenadas(entrada) &&
+    (entrada.latitud !== guardado.latitud || entrada.longitud !== guardado.longitud);
+  if (coordenadasNuevas) return entrada;
+
+  const cambioDireccion = CAMPOS_DIRECCION.some(
+    (campo) => entrada[campo] !== undefined && (entrada[campo] ?? '') !== (guardado[campo] ?? ''),
+  );
+  if (!cambioDireccion && tieneCoordenadas(guardado)) return entrada;
+
+  const direccion = { ...guardado };
+  for (const campo of CAMPOS_DIRECCION) {
+    if (entrada[campo] !== undefined) direccion[campo] = entrada[campo];
+  }
+
+  const coordenadas = await geocodificar(direccion);
+  if (coordenadas) return { ...entrada, ...coordenadas };
+  return cambioDireccion ? { ...entrada, latitud: null, longitud: null } : entrada;
+}
+
+/**
  * Modifica los datos del estacionamiento. Si vienen `horarios` reemplazan a los
  * cargados: es lo que espera la pantalla, que manda la semana completa.
  */
-export async function actualizar(idEstacionamiento, idPropietario, datos) {
+export async function actualizar(idEstacionamiento, idPropietario, entrada) {
   const { activo } = await asegurarPropiedad(idEstacionamiento, idPropietario);
   if (!activo) throw ApiError.conflict('El estacionamiento esta dado de baja');
+
+  const datos = await completarCoordenadas(idEstacionamiento, entrada);
 
   await withTransaction(async (client) => {
     await asegurarAlgunaTarifa(client, idEstacionamiento, datos);

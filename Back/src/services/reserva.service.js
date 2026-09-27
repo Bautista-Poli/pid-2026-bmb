@@ -8,6 +8,7 @@ import {
   sumarDias,
 } from '../utils/horario.js';
 import { ESTADOS_COCHERA, ESTADOS_RESERVA, ESTADOS_VIGENTES } from '../utils/roles.js';
+import { sinSolapamiento } from '../utils/solapamiento.js';
 import { CAMPOS_TARIFA, MODALIDADES, precioDeReserva } from '../utils/tarifas.js';
 import { ORDEN_NATURAL } from './cochera.service.js';
 import { asegurarPropiedad } from './estacionamiento.service.js';
@@ -35,21 +36,6 @@ const SELECT_DETALLE = `
     JOIN estacionamiento e ON e.id_estacionamiento = c.id_estacionamiento
     JOIN usuario u         ON u.id_usuario = r.id_conductor
 `;
-
-/**
- * Condicion SQL "la cochera `c` no tiene reservas vigentes que se pisen con
- * [inicio, fin)". Recibe los placeholders de los parametros.
- * Dos rangos [a, b) y [c, d) se solapan si  a < d  AND  b > c.
- */
-function sinSolapamiento(estados, inicio, fin) {
-  return `NOT EXISTS (
-    SELECT 1 FROM reserva r
-     WHERE r.id_cochera = c.id_cochera
-       AND r.estado = ANY(${estados}::estado_reserva[])
-       AND r.inicio < ${fin}
-       AND r.fin > ${inicio}
-  )`;
-}
 
 /**
  * Crea una reserva garantizando que ninguna cochera quede sobrevendida.

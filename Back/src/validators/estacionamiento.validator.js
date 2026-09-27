@@ -165,18 +165,59 @@ export function validarCochera(body) {
     .resultado();
 }
 
-/** Alta en lote: `sector` es obligatorio porque es lo que distingue un lote de otro. */
-export function validarLoteCochera(body) {
-  return campos(body)
-    .entero('cantidad', body.cantidad, { min: 2, max: 200 })
-    .texto('sector', body.sector, { max: 40 })
-    .entero('id_tipo_vehiculo', body.id_tipo_vehiculo, { min: 1 })
-    .booleano('cubierta', body.cubierta, { requerido: false, default: false })
-    .enumerado('estado_actual', body.estado_actual, Object.values(ESTADOS_COCHERA), {
-      requerido: false,
-      default: ESTADOS_COCHERA.LIBRE,
-    })
-    .resultado();
+const MAX_LOTES = 20;
+const MAX_COCHERAS_POR_LOTE = 200;
+const MAX_COCHERAS_POR_PEDIDO = 500;
+const REGEX_PREFIJO = /^[A-Za-z0-9_-]+$/;
+
+/**
+ * Alta por cantidad: cada lote crea `cantidad` cocheras con identificadores
+ * `<prefijo>-<n>` y el mismo detalle de ubicacion (`sector`).
+ */
+export function validarLoteCocheras(body) {
+  const valores = { lotes: [] };
+  const errores = [];
+
+  if (!Array.isArray(body.lotes) || body.lotes.length === 0) {
+    errores.push({ campo: 'lotes', mensaje: 'debe ser una lista con al menos un lote' });
+    return { valores, errores };
+  }
+  if (body.lotes.length > MAX_LOTES) {
+    errores.push({ campo: 'lotes', mensaje: `no puede tener mas de ${MAX_LOTES} lotes` });
+    return { valores, errores };
+  }
+
+  body.lotes.forEach((lote, i) => {
+    const validador = campos(lote ?? {})
+      .entero('cantidad', lote?.cantidad, { min: 1, max: MAX_COCHERAS_POR_LOTE })
+      .texto('sector', lote?.sector, { min: 1, max: 20 })
+      .texto('prefijo', lote?.prefijo, { min: 1, max: 10 })
+      .entero('id_tipo_vehiculo', lote?.id_tipo_vehiculo, { min: 1 })
+      .booleano('cubierta', lote?.cubierta, { requerido: false, default: false })
+      .resultado();
+
+    if (validador.valores.prefijo && !REGEX_PREFIJO.test(validador.valores.prefijo)) {
+      validador.errores.push({
+        campo: 'prefijo',
+        mensaje: 'solo admite letras, numeros, guion y guion bajo',
+      });
+    }
+
+    for (const error of validador.errores) {
+      errores.push({ campo: `lotes[${i}].${error.campo}`, mensaje: error.mensaje });
+    }
+    valores.lotes.push(validador.valores);
+  });
+
+  const total = valores.lotes.reduce((suma, lote) => suma + (lote.cantidad ?? 0), 0);
+  if (total > MAX_COCHERAS_POR_PEDIDO) {
+    errores.push({
+      campo: 'lotes',
+      mensaje: `no se pueden crear mas de ${MAX_COCHERAS_POR_PEDIDO} cocheras por pedido`,
+    });
+  }
+
+  return { valores, errores };
 }
 
 /** PATCH de cochera: todo opcional, pero tiene que venir al menos un campo. */
@@ -197,17 +238,42 @@ export function validarActualizacionCochera(body) {
     .resultado();
 }
 
-/** Filtros de GET /api/estacionamientos. Todo opcional. */
+/**
+ * Filtros de GET /api/estacionamientos. Todo opcional. La disponibilidad se pide
+ * de una de dos formas, excluyentes: `disponible_ahora=true` o una franja
+ * `inicio` + `fin`.
+ */
 export function validarBusqueda(query) {
-  return campos(query)
+  const { valores, errores } = campos(query)
     .texto('q', query.q, { requerido: false, max: 120 })
     .texto('zona', query.zona, { requerido: false, max: 120 })
     .entero('id_tipo_vehiculo', query.id_tipo_vehiculo, { requerido: false, min: 1 })
+    .numero('tarifa_min', query.tarifa_min, { requerido: false, min: 0 })
     .numero('tarifa_max', query.tarifa_max, { requerido: false, min: 0 })
     .booleano('cubierto', query.cubierto, { requerido: false })
+    .booleano('disponible_ahora', query.disponible_ahora, { requerido: false })
+    .fechaHora('inicio', query.inicio, { requerido: false })
+    .fechaHora('fin', query.fin, { requerido: false })
     .entero('limit', query.limit, { requerido: false, min: 1, max: 100, default: 20 })
     .entero('offset', query.offset, { requerido: false, min: 0, default: 0 })
     .resultado();
+
+  const hayFranja = vino(query.inicio) || vino(query.fin);
+
+  const franjaCompleta = valores.inicio && valores.fin;
+  const franjaConError = errores.some((e) => e.campo === 'inicio' || e.campo === 'fin');
+
+  if (hayFranja && !franjaCompleta && !franjaConError) {
+    errores.push({ campo: 'inicio', mensaje: 'inicio y fin se envian juntos' });
+  }
+  if (franjaCompleta && valores.fin <= valores.inicio) {
+    errores.push({ campo: 'fin', mensaje: 'debe ser posterior a inicio' });
+  }
+  if (hayFranja && valores.disponible_ahora) {
+    errores.push({ campo: 'disponible_ahora', mensaje: 'no se combina con inicio y fin' });
+  }
+
+  return { valores, errores };
 }
 
 /** GET /api/estacionamientos/:id/disponibilidad?fecha=YYYY-MM-DD[&id_tipo_vehiculo=1] */

@@ -37,17 +37,16 @@ export interface NuevaCochera {
 }
 
 /**
- * Payload de `POST /api/estacionamientos/:id/cocheras/lote`: da de alta
- * `cantidad` cocheras iguales, numeradas por el backend a partir de la
- * siguiente disponible.
+ * Un lote de `POST /api/estacionamientos/:id/cocheras/lote`: `cantidad` cocheras
+ * con identificadores `<prefijo>-<n>` y el mismo detalle de ubicacion (`sector`).
  */
-export interface NuevoLoteCocheras {
-  estacionamientoId: Id;
+export interface LoteCocheras {
   cantidad: number;
-  /** Ubicacion en lenguaje natural ("Primer piso"). Obligatoria: distingue un lote de otro. */
+  /** Detalle de ubicacion: `Planta baja`, `Primer piso`. */
   sector: string;
+  prefijo: string;
   tipoVehiculo: TipoVehiculo;
-  cubierta?: boolean;
+  cubierta: boolean;
 }
 
 /** Estados en el orden en que se muestran en los filtros del tablero. */

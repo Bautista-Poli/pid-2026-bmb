@@ -2,15 +2,13 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
-  effect,
   inject,
   input,
   signal,
 } from '@angular/core';
-import { rxResource, toSignal } from '@angular/core/rxjs-interop';
+import { rxResource } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { Observable } from 'rxjs';
 import {
   Boton,
   Cargando,
@@ -29,11 +27,20 @@ import {
   Id,
   TipoVehiculo,
 } from '@app/models';
-import { numeroDeCochera, siguienteNumero } from '@app/utils/numero-cochera.util';
 import { CocheraService } from '@app/services/cochera.service';
 import { EstacionamientoService } from '@app/services/estacionamiento.service';
 
 const TIPOS: TipoVehiculo[] = ['AUTO', 'MOTO', 'CAMIONETA'];
+
+/** Detalles de ubicacion comunes; al elegir uno se sugiere tambien el prefijo. */
+const SUGERENCIAS_DETALLE = [
+  { detalle: 'Planta baja', prefijo: 'PB' },
+  { detalle: 'Primer piso', prefijo: 'P1' },
+  { detalle: 'Segundo piso', prefijo: 'P2' },
+  { detalle: 'Subsuelo', prefijo: 'SS' },
+];
+
+const SIN_DETALLE = 'Sin detalle';
 
 const TONO_ESTADO: Record<EstadoCochera, TonoEtiqueta> = {
   LIBRE: 'exito',
@@ -45,7 +52,8 @@ const TONO_ESTADO: Record<EstadoCochera, TonoEtiqueta> = {
 /**
  * Pantalla `/propietario/estacionamientos/:estacionamientoId/cocheras` · rol PROPIETARIO
  *
- * Alta, edicion y baja logica de las cocheras de un estacionamiento.
+ * Alta por cantidad (lotes con detalle de ubicacion), edicion y baja logica de
+ * las cocheras de un estacionamiento.
  */
 @Component({
   selector: 'app-cocheras',
@@ -90,76 +98,44 @@ export class Cocheras {
     () => this.recursoCocheras.value().filter((c) => c.estado !== 'INACTIVA').length,
   );
 
-  // Si hay una cochera elegida el formulario la edita; si no, da de alta una nueva.
+  /** Cocheras agrupadas por detalle de ubicacion, en el orden en que aparecen. */
+  protected readonly grupos = computed(() => {
+    const porDetalle = new Map<string, Cochera[]>();
+    for (const cochera of this.recursoCocheras.value()) {
+      const detalle = cochera.sector || SIN_DETALLE;
+      porDetalle.set(detalle, [...(porDetalle.get(detalle) ?? []), cochera]);
+    }
+    return [...porDetalle].map(([detalle, cocheras]) => ({ detalle, cocheras }));
+  });
+
+  // Con una cochera elegida se muestra el formulario de edicion; si no, el de alta por lotes.
   protected readonly editando = signal<Cochera | null>(null);
 
+  protected readonly sugerencias = SUGERENCIAS_DETALLE;
+
+  protected readonly formularioLotes = this.fb.group({
+    lotes: this.fb.array([this.nuevoLote()]),
+  });
+
+  protected get lotes() {
+    return this.formularioLotes.controls.lotes;
+  }
+
   protected readonly formulario = this.fb.nonNullable.group({
-    numero: [null as number | null, [Validators.required, Validators.min(1), Validators.max(9999)]],
-    cantidad: [1, [Validators.required, Validators.min(1), Validators.max(200)]],
-    sector: ['', [Validators.maxLength(40)]],
+    identificador: ['', [Validators.required, Validators.maxLength(20)]],
+    sector: ['', [Validators.maxLength(20)]],
     tipo: this.fb.nonNullable.control<TipoVehiculo>('AUTO'),
     cubierta: false,
-  });
-
-  private readonly cantidad = toSignal(this.formulario.controls.cantidad.valueChanges, {
-    initialValue: 1,
-  });
-
-  // Cargar varias cocheras de una (mismo piso/sector) en vez de una por una:
-  // con `cantidad` > 1 el numero lo asigna el backend, asi que el campo
-  // "Numero" se oculta y "Ubicacion" pasa a ser obligatorio.
-  protected readonly esLote = computed(() => !this.editando() && this.cantidad() > 1);
-
-  protected readonly rangoLote = computed(() => {
-    const desde = siguienteNumero(this.recursoCocheras.value());
-    const hasta = desde + this.cantidad() - 1;
-    return `Se van a crear del ${desde} al ${hasta}.`;
   });
 
   protected readonly enviando = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly aviso = signal<string | null>(null);
 
-  constructor() {
-    // Dar de alta una cochera es escribir un numero, y ese numero casi siempre
-    // es el que sigue: se propone solo, mientras el propietario no lo toque.
-    effect(() => {
-      const cocheras = this.recursoCocheras.value();
-      if (this.recursoCocheras.isLoading() || this.editando()) return;
-
-      const numero = this.formulario.controls.numero;
-      if (numero.pristine) numero.setValue(siguienteNumero(cocheras));
-    });
-
-    // En modo lote el numero no se elige (lo arma el backend) y la ubicacion
-    // pasa a ser obligatoria: es lo unico que distingue un lote de otro.
-    effect(() => {
-      const enLote = this.esLote();
-      const numero = this.formulario.controls.numero;
-      const sector = this.formulario.controls.sector;
-
-      if (enLote) numero.disable({ emitEvent: false });
-      else numero.enable({ emitEvent: false });
-
-      sector.setValidators(enLote ? [Validators.required, Validators.maxLength(40)] : [Validators.maxLength(40)]);
-      sector.updateValueAndValidity({ emitEvent: false });
-    });
-  }
-
-  /** Vuelve el formulario al alta, con el proximo numero propuesto. */
-  private proponerSiguiente(): void {
-    const numero = this.formulario.controls.numero;
-    numero.setValue(siguienteNumero(this.recursoCocheras.value()));
-    numero.markAsPristine();
-  }
-
   protected detalle(cochera: Cochera): string {
-    const partes = [
-      cochera.sector,
-      cochera.cubierta ? 'Cubierta' : 'Descubierta',
-      this.etiquetaTipo[cochera.tipoVehiculo],
-    ];
-    return partes.filter(Boolean).join(' · ');
+    return [cochera.cubierta ? 'Cubierta' : 'Descubierta', this.etiquetaTipo[cochera.tipoVehiculo]].join(
+      ' · ',
+    );
   }
 
   protected invalido(campo: string): boolean {
@@ -175,11 +151,8 @@ export class Cocheras {
     this.editando.set(cochera);
     this.error.set(null);
     this.aviso.set(null);
-    // Un identificador viejo (`A-01`) no tiene numero: el campo queda vacio y
-    // el `required` obliga a asignarle uno al guardar.
     this.formulario.setValue({
-      numero: numeroDeCochera(cochera.identificador),
-      cantidad: 1,
+      identificador: cochera.identificador,
       sector: cochera.sector,
       tipo: cochera.tipoVehiculo,
       cubierta: cochera.cubierta,
@@ -189,69 +162,100 @@ export class Cocheras {
   protected cancelarEdicion(): void {
     this.editando.set(null);
     this.formulario.reset();
-    this.proponerSiguiente();
+  }
+
+  protected agregarLote(): void {
+    this.lotes.push(this.nuevoLote());
+  }
+
+  protected quitarLote(indice: number): void {
+    if (this.lotes.length > 1) this.lotes.removeAt(indice);
+  }
+
+  protected elegirTipoLote(indice: number, tipo: TipoVehiculo): void {
+    this.lotes.at(indice).controls.tipo.setValue(tipo);
+  }
+
+  protected usarSugerencia(indice: number, sugerencia: { detalle: string; prefijo: string }): void {
+    this.lotes.at(indice).patchValue({ sector: sugerencia.detalle, prefijo: sugerencia.prefijo });
+  }
+
+  protected invalidoLote(indice: number, campo: 'cantidad' | 'sector' | 'prefijo'): boolean {
+    const control = this.lotes.at(indice).controls[campo];
+    return control.invalid && control.touched;
+  }
+
+  /** Identificadores que va a generar el lote, continuando la numeracion existente. */
+  protected vistaPrevia(indice: number): string {
+    const { cantidad, prefijo } = this.lotes.at(indice).getRawValue();
+    const base = prefijo.trim();
+    if (!base || !Number.isInteger(cantidad) || cantidad < 1) return '';
+
+    const desde = this.ultimoNumero(base, indice) + 1;
+    const hasta = desde + cantidad - 1;
+    return cantidad === 1 ? `${base}-${desde}` : `${base}-${desde} … ${base}-${hasta}`;
+  }
+
+  protected crearLotes(): void {
+    if (this.lotes.invalid) {
+      this.lotes.markAllAsTouched();
+      return;
+    }
+
+    const lotes = this.lotes.getRawValue().map((lote) => ({
+      cantidad: lote.cantidad,
+      sector: lote.sector.trim(),
+      prefijo: lote.prefijo.trim(),
+      tipoVehiculo: lote.tipo,
+      cubierta: lote.cubierta,
+    }));
+
+    this.enviando.set(true);
+    this.error.set(null);
+    this.aviso.set(null);
+
+    this.cocheras.crearLote(this.estacionamientoId(), lotes).subscribe({
+      next: (creadas) => {
+        this.enviando.set(false);
+        this.aviso.set(
+          creadas.length === 1 ? 'Agregamos 1 cochera.' : `Agregamos ${creadas.length} cocheras.`,
+        );
+        this.lotes.clear();
+        this.lotes.push(this.nuevoLote());
+        this.recursoCocheras.reload();
+      },
+      error: (e: Error) => {
+        this.enviando.set(false);
+        this.error.set(e.message);
+      },
+    });
   }
 
   protected guardar(): void {
+    const cochera = this.editando();
+    if (!cochera) return;
+
     if (this.formulario.invalid) {
       this.formulario.markAllAsTouched();
       return;
     }
 
     const valores = this.formulario.getRawValue();
-    const sector = valores.sector.trim();
-    const cochera = this.editando();
+    const cambios = {
+      identificador: valores.identificador.trim(),
+      sector: valores.sector.trim(),
+      tipoVehiculo: valores.tipo,
+      cubierta: valores.cubierta,
+    };
 
-    if (cochera) {
-      this.enviar(
-        this.cocheras.actualizar(cochera, {
-          identificador: String(valores.numero),
-          sector,
-          tipoVehiculo: valores.tipo,
-          cubierta: valores.cubierta,
-        }),
-        (guardada) => `Guardamos los cambios de la cochera ${guardada.identificador}.`,
-      );
-      return;
-    }
-
-    if (this.esLote()) {
-      this.enviar(
-        this.cocheras.crearLote({
-          estacionamientoId: this.estacionamientoId(),
-          cantidad: valores.cantidad,
-          sector,
-          tipoVehiculo: valores.tipo,
-          cubierta: valores.cubierta,
-        }),
-        (creadas) =>
-          `Agregamos ${creadas.length} cocheras en ${sector} (${creadas[0].identificador} a ${creadas.at(-1)!.identificador}).`,
-      );
-      return;
-    }
-
-    this.enviar(
-      this.cocheras.crear({
-        estacionamientoId: this.estacionamientoId(),
-        identificador: String(valores.numero),
-        sector,
-        tipoVehiculo: valores.tipo,
-        cubierta: valores.cubierta,
-      }),
-      (creada) => `Agregamos la cochera ${creada.identificador}.`,
-    );
-  }
-
-  /** Dispara el pedido de alta/edicion y maneja los signals de estado que comparten los tres. */
-  private enviar<T>(pedido: Observable<T>, mensaje: (resultado: T) => string): void {
     this.enviando.set(true);
     this.error.set(null);
     this.aviso.set(null);
 
-    pedido.subscribe({
-      next: (resultado) => {
+    this.cocheras.actualizar(cochera, cambios).subscribe({
+      next: (guardada) => {
         this.enviando.set(false);
-        this.aviso.set(mensaje(resultado));
+        this.aviso.set(`Guardamos los cambios de la cochera ${guardada.identificador}.`);
         this.cancelarEdicion();
         this.recursoCocheras.reload();
       },
@@ -264,7 +268,7 @@ export class Cocheras {
 
   protected darDeBaja(cochera: Cochera): void {
     const seguro = confirm(
-      `¿Dar de baja la cochera ${cochera.identificador}? No se va a poder reservar y no se puede deshacer.`,
+      `¿Dar de baja la cochera ${cochera.identificador}? No se va a poder reservar y se cancelan sus reservas vigentes. Podés reactivarla después.`,
     );
     if (!seguro) return;
 
@@ -279,5 +283,68 @@ export class Cocheras {
       },
       error: (e: Error) => this.error.set(e.message),
     });
+  }
+
+  protected reactivar(cochera: Cochera): void {
+    this.error.set(null);
+    this.aviso.set(null);
+
+    this.cocheras.reactivar(cochera).subscribe({
+      next: () => {
+        this.aviso.set(`La cochera ${cochera.identificador} volvió a estar activa.`);
+        this.recursoCocheras.reload();
+      },
+      error: (e: Error) => this.error.set(e.message),
+    });
+  }
+
+  protected eliminar(cochera: Cochera): void {
+    const seguro = confirm(
+      `¿Eliminar la cochera ${cochera.identificador}? Se borra definitivamente y no se puede deshacer. Solo es posible si nunca tuvo reservas.`,
+    );
+    if (!seguro) return;
+
+    this.error.set(null);
+    this.aviso.set(null);
+
+    this.cocheras.eliminar(cochera).subscribe({
+      next: () => {
+        this.aviso.set(`La cochera ${cochera.identificador} fue eliminada.`);
+        this.recursoCocheras.reload();
+      },
+      error: (e: Error) => this.error.set(e.message),
+    });
+  }
+
+  private nuevoLote() {
+    return this.fb.nonNullable.group({
+      cantidad: [10, [Validators.required, Validators.min(1), Validators.max(200)]],
+      sector: ['', [Validators.required, Validators.maxLength(20)]],
+      prefijo: [
+        '',
+        [Validators.required, Validators.maxLength(10), Validators.pattern(/^[A-Za-z0-9_-]+$/)],
+      ],
+      tipo: this.fb.nonNullable.control<TipoVehiculo>('AUTO'),
+      cubierta: false,
+    });
+  }
+
+  /**
+   * Ultimo numero usado con ese prefijo, entre las cocheras cargadas y los lotes
+   * anteriores del formulario que comparten prefijo.
+   */
+  private ultimoNumero(prefijo: string, hastaLote: number): number {
+    const patron = new RegExp(`^${prefijo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-(\\d+)$`);
+    const numeros = this.recursoCocheras
+      .value()
+      .map((c) => Number(patron.exec(c.identificador)?.[1] ?? 0));
+
+    const anteriores = this.lotes
+      .getRawValue()
+      .slice(0, hastaLote)
+      .filter((lote) => lote.prefijo.trim() === prefijo)
+      .reduce((suma, lote) => suma + (Number.isInteger(lote.cantidad) ? lote.cantidad : 0), 0);
+
+    return Math.max(0, ...numeros) + anteriores;
   }
 }

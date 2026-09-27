@@ -1,10 +1,12 @@
 import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
-import { ESTADOS_COCHERA } from '../utils/roles.js';
+import { ESTADOS_COCHERA, ESTADOS_VIGENTES } from '../utils/roles.js';
 import { asegurarPropiedad } from './estacionamiento.service.js';
 
 const VIOLACION_UNIQUE = '23505';
 const VIOLACION_FK = '23503';
+// ON DELETE RESTRICT falla con este codigo (NO ACTION usa el de arriba).
+const VIOLACION_RESTRICT = '23001';
 
 const CAMPOS =
   'id_cochera, id_estacionamiento, id_tipo_vehiculo, identificador, sector, cubierta, estado_actual, activo';
@@ -59,55 +61,52 @@ export async function crear(idEstacionamiento, idPropietario, datos) {
 }
 
 /**
- * Alta en lote: crea `cantidad` cocheras iguales (mismo tipo, sector y
- * cubierta), numeradas en secuencia a partir de la siguiente disponible. Sirve
- * para cargar un piso entero de una vez en vez de cochera por cochera.
- *
- * El lock sobre ESTACIONAMIENTO serializa dos altas en lote simultaneas del
- * mismo estacionamiento para que no calculen el mismo numero base; el UNIQUE
- * de (id_estacionamiento, identificador) queda como red de seguridad.
+ * Alta por cantidad en una sola transaccion: si un lote falla no se crea nada.
+ * Cada lote numera desde el siguiente libre de su prefijo (`PB-1`, `PB-2`, ...),
+ * asi que un lote posterior con el mismo prefijo continua la numeracion.
  */
-export async function crearLote(idEstacionamiento, idPropietario, datos) {
-  return withTransaction(async (client) => {
-    const { rows: propios } = await client.query(
-      'SELECT id_propietario, activo FROM estacionamiento WHERE id_estacionamiento = $1 FOR UPDATE',
-      [idEstacionamiento],
-    );
+export async function crearLote(idEstacionamiento, idPropietario, lotes) {
+  await asegurarPropiedad(idEstacionamiento, idPropietario);
 
-    if (!propios[0]) throw ApiError.notFound('Estacionamiento no encontrado');
-    if (propios[0].id_propietario !== idPropietario) {
-      throw ApiError.forbidden('El estacionamiento pertenece a otro propietario');
-    }
+  let loteActual;
+  try {
+    return await withTransaction(async (client) => {
+      const creadas = [];
 
-    const { rows: numerados } = await client.query(
-      `SELECT NULLIF(regexp_replace(identificador, '\\D', '', 'g'), '')::int AS numero
-         FROM cochera WHERE id_estacionamiento = $1`,
-      [idEstacionamiento],
-    );
-    const base = numerados.reduce((max, fila) => Math.max(max, fila.numero ?? 0), 0);
+      for (const lote of lotes) {
+        loteActual = lote;
+        const { rows: maximo } = await client.query(
+          `SELECT COALESCE(MAX(substring(identificador FROM '^' || $2 || '-([0-9]+)$')::int), 0) AS ultimo
+             FROM cochera WHERE id_estacionamiento = $1`,
+          [idEstacionamiento, lote.prefijo],
+        );
+        const desde = maximo[0].ultimo + 1;
 
-    try {
-      const { rows } = await client.query(
-        `INSERT INTO cochera
-           (id_estacionamiento, id_tipo_vehiculo, identificador, sector, cubierta, estado_actual)
-         SELECT $1, $2, ($3 + n)::text, $4, $5, $6
-           FROM generate_series(1, $7) AS n
-         RETURNING ${CAMPOS}`,
-        [
-          idEstacionamiento,
-          datos.id_tipo_vehiculo,
-          base,
-          datos.sector,
-          datos.cubierta ?? false,
-          datos.estado_actual,
-          datos.cantidad,
-        ],
-      );
-      return rows;
-    } catch (error) {
-      return traducirError(error, { identificador: `${base + 1}..${base + datos.cantidad}` });
-    }
-  });
+        const { rows } = await client.query(
+          `INSERT INTO cochera
+             (id_estacionamiento, id_tipo_vehiculo, identificador, sector, cubierta, estado_actual)
+           SELECT $1, $2, $3 || '-' || n, $4, $5, $6
+             FROM generate_series($7::int, $8::int) AS n
+           RETURNING ${CAMPOS}`,
+          [
+            idEstacionamiento,
+            lote.id_tipo_vehiculo,
+            lote.prefijo,
+            lote.sector,
+            lote.cubierta ?? false,
+            ESTADOS_COCHERA.LIBRE,
+            desde,
+            desde + lote.cantidad - 1,
+          ],
+        );
+        creadas.push(...rows);
+      }
+
+      return creadas;
+    });
+  } catch (error) {
+    return traducirError(error, { identificador: `${loteActual?.prefijo}-…` });
+  }
 }
 
 /**
@@ -137,6 +136,10 @@ export async function listarPorEstacionamiento(idEstacionamiento) {
 export async function actualizar(idEstacionamiento, idPropietario, idCochera, datos) {
   await asegurarPropiedad(idEstacionamiento, idPropietario);
 
+  if (datos.estado_actual === ESTADOS_COCHERA.INACTIVA) {
+    throw ApiError.badRequest('Para desactivar una cochera usa la baja (DELETE), no el estado');
+  }
+
   const asignaciones = [];
   const parametros = [];
   for (const campo of CAMPOS_EDITABLES) {
@@ -164,18 +167,80 @@ export async function actualizar(idEstacionamiento, idPropietario, idCochera, da
 
 /**
  * Baja logica: la cochera puede tener reservas historicas (FK RESTRICT), asi
- * que se desactiva en vez de borrarse.
+ * que se desactiva en vez de borrarse. Las reservas vigentes se cancelan, igual
+ * que al dar de baja el estacionamiento entero.
  */
 export async function darDeBaja(idEstacionamiento, idPropietario, idCochera) {
   await asegurarPropiedad(idEstacionamiento, idPropietario);
 
-  const { rows } = await query(
-    `UPDATE cochera SET activo = FALSE, estado_actual = $1
-      WHERE id_cochera = $2 AND id_estacionamiento = $3
-      RETURNING ${CAMPOS}`,
-    [ESTADOS_COCHERA.INACTIVA, idCochera, idEstacionamiento],
-  );
+  return withTransaction(async (client) => {
+    const { rows: existentes } = await client.query(
+      'SELECT activo FROM cochera WHERE id_cochera = $1 AND id_estacionamiento = $2 FOR UPDATE',
+      [idCochera, idEstacionamiento],
+    );
+    if (!existentes[0]) throw ApiError.notFound('La cochera no existe en este estacionamiento');
+    if (!existentes[0].activo) throw ApiError.conflict('La cochera ya esta dada de baja');
 
-  if (!rows[0]) throw ApiError.notFound('La cochera no existe en este estacionamiento');
+    await client.query(
+      `UPDATE reserva SET estado = 'CANCELADA'
+        WHERE id_cochera = $1 AND estado = ANY($2::estado_reserva[]) AND fin > now()`,
+      [idCochera, ESTADOS_VIGENTES],
+    );
+
+    const { rows } = await client.query(
+      `UPDATE cochera SET activo = FALSE, estado_actual = $1
+        WHERE id_cochera = $2
+        RETURNING ${CAMPOS}`,
+      [ESTADOS_COCHERA.INACTIVA, idCochera],
+    );
+    return rows[0];
+  });
+}
+
+/** Deshace la baja logica. No se puede reactivar dentro de un estacionamiento dado de baja. */
+export async function reactivar(idEstacionamiento, idPropietario, idCochera) {
+  const estacionamiento = await asegurarPropiedad(idEstacionamiento, idPropietario);
+  if (!estacionamiento.activo) {
+    throw ApiError.conflict('El estacionamiento esta dado de baja: no se puede reactivar una cochera');
+  }
+
+  const { rows: existentes } = await query(
+    'SELECT activo FROM cochera WHERE id_cochera = $1 AND id_estacionamiento = $2',
+    [idCochera, idEstacionamiento],
+  );
+  if (!existentes[0]) throw ApiError.notFound('La cochera no existe en este estacionamiento');
+  if (existentes[0].activo) throw ApiError.conflict('La cochera ya esta activa');
+
+  const { rows } = await query(
+    `UPDATE cochera SET activo = TRUE, estado_actual = $1
+      WHERE id_cochera = $2
+      RETURNING ${CAMPOS}`,
+    [ESTADOS_COCHERA.LIBRE, idCochera],
+  );
   return rows[0];
+}
+
+/**
+ * Borrado fisico, para una cochera cargada por error. Primero hay que darla de
+ * baja (pasar por INACTIVA) y solo procede si nunca tuvo reservas: con historial
+ * la FK lo impide y la cochera queda inactiva.
+ */
+export async function eliminar(idEstacionamiento, idPropietario, idCochera) {
+  await asegurarPropiedad(idEstacionamiento, idPropietario);
+
+  const { rows } = await query(
+    'SELECT activo FROM cochera WHERE id_cochera = $1 AND id_estacionamiento = $2',
+    [idCochera, idEstacionamiento],
+  );
+  if (!rows[0]) throw ApiError.notFound('La cochera no existe en este estacionamiento');
+  if (rows[0].activo) throw ApiError.conflict('Primero da de baja la cochera para poder eliminarla');
+
+  try {
+    await query('DELETE FROM cochera WHERE id_cochera = $1', [idCochera]);
+  } catch (error) {
+    if (error.code === VIOLACION_RESTRICT) {
+      throw ApiError.conflict('La cochera tiene reservas en su historial: queda inactiva, no se puede eliminar');
+    }
+    throw error;
+  }
 }

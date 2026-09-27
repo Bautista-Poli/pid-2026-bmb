@@ -52,11 +52,11 @@ export const crearCochera = asyncHandler(async (req, res) => {
 });
 
 export const crearLoteCocheras = asyncHandler(async (req, res) => {
-  const cocheras = await cocheraService.crearLote(req.params.id, req.usuario.id, req.body);
+  const cocheras = await cocheraService.crearLote(req.params.id, req.usuario.id, req.body.lotes);
   res.status(201).json({ cocheras });
 });
 
-export const listarCocheras = asyncHandler(async (req, res) => {
+export const listarCocheras =asyncHandler(async (req, res) => {
   const cocheras = await cocheraService.listarPorEstacionamiento(req.params.id);
   res.json({ cocheras });
 });
@@ -74,6 +74,16 @@ export const actualizarCochera = asyncHandler(async (req, res) => {
 export const darDeBajaCochera = asyncHandler(async (req, res) => {
   const cochera = await cocheraService.darDeBaja(req.params.id, req.usuario.id, req.params.idCochera);
   res.json({ cochera });
+});
+
+export const reactivarCochera = asyncHandler(async (req, res) => {
+  const cochera = await cocheraService.reactivar(req.params.id, req.usuario.id, req.params.idCochera);
+  res.json({ cochera });
+});
+
+export const eliminarCochera = asyncHandler(async (req, res) => {
+  await cocheraService.eliminar(req.params.id, req.usuario.id, req.params.idCochera);
+  res.status(204).end();
 });
 
 export const disponibilidad = asyncHandler(async (req, res) => {

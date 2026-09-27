@@ -1,27 +1,22 @@
 <div class="aparece mx-auto w-full max-w-[940px] px-6 pt-5 pb-8 lg:px-10 lg:pt-[34px] lg:pb-11">
   <div class="flex flex-col gap-6">
-    <!-- Header: en desktop el buscador y los chips van a la derecha del titulo -->
-    <header class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between lg:gap-8">
-      <div>
-        <p class="eyebrow">Explorar</p>
-        <h1 class="titulo-vista mt-1.5 lg:whitespace-nowrap">
-          {{ destino() ? 'Cerca de tu destino' : 'Estacionamientos cerca' }}
-        </h1>
+    @if (!exploracion()) {
+      <app-elegir-momento [buscarDirecciones]="buscarDestinos" (elegido)="iniciar($event)" />
+    } @else {
+    <header class="flex flex-col gap-4">
+      <div class="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p class="eyebrow">Explorar</p>
+          <h1 class="titulo-vista mt-1.5">Estacionamientos con lugar</h1>
+        </div>
+        <div class="flex items-center gap-2.5 text-[13.5px] text-grafito">
+          <span class="font-semibold text-tinta">{{ resumen() }}</span>
+          <ui-boton tamano="sm" variante="fantasma" (presionado)="cambiarExploracion()">Cambiar</ui-boton>
+        </div>
       </div>
 
-      <app-filtros-estacionamiento
-        class="lg:shrink-0"
-        [(filtros)]="filtros"
-        [(destino)]="destino"
-        [buscarDestinos]="buscarDestinos"
-      />
+      <app-filtros-estacionamiento [(filtros)]="filtros" />
     </header>
-
-    @if (sinUbicacion()) {
-      <p class="-mt-2 text-[13px] leading-normal text-plomo">
-        Activá la ubicación del navegador, o buscá la dirección a la que vas, para ver a qué distancia está cada estacionamiento.
-      </p>
-    }
 
     <!-- Listado -->
     @if (recurso.isLoading()) {
@@ -33,19 +28,20 @@
     } @else if (resultados() === 0) {
       <ui-estado-vacio
         titulo="Sin resultados"
-        descripcion="No hay estacionamientos que acepten ese tipo de vehiculo en la zona buscada."
+        descripcion="No hay estacionamientos con lugar libre en ese momento para esos filtros. Probá con otra franja o menos filtros."
       >
         <ui-boton (presionado)="limpiarFiltros()">Limpiar filtros</ui-boton>
       </ui-estado-vacio>
     } @else {
       <div class="aparece-en-cadena grid gap-4 lg:grid-cols-2">
-        @for (estacionamiento of listado(); track estacionamiento.id) {
+        @for (estacionamiento of recurso.value(); track estacionamiento.id) {
           <app-tarjeta-estacionamiento
             [estacionamiento]="estacionamiento"
             (reservar)="irAReservar($event)"
           />
         }
       </div>
+    }
     }
   </div>
 </div>

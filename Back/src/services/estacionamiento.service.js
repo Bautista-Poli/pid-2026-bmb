@@ -1,5 +1,6 @@
 import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
+import { sinSolapamiento } from '../utils/solapamiento.js';
 import { CAMPOS_TARIFA } from '../utils/tarifas.js';
 import { ESTADOS_COCHERA, ESTADOS_VIGENTES } from '../utils/roles.js';
 import { listarPorEstacionamiento as listarCocheras } from './cochera.service.js';
@@ -163,6 +164,11 @@ export async function buscar(filtros) {
     condiciones.push(`e.barrio_zona ILIKE $${parametros.length}`);
   }
 
+  if (filtros.tarifa_min !== undefined) {
+    parametros.push(filtros.tarifa_min);
+    condiciones.push(`e.tarifa_hora >= $${parametros.length}`);
+  }
+
   if (filtros.tarifa_max !== undefined) {
     parametros.push(filtros.tarifa_max);
     condiciones.push(`e.tarifa_hora <= $${parametros.length}`);
@@ -173,14 +179,26 @@ export async function buscar(filtros) {
     condiciones.push(`e.cubierto = $${parametros.length}`);
   }
 
+  // Una cochera "sirve" si esta activa, es del tipo pedido (si se pidio) y, si se
+  // pidio disponibilidad, no tiene una reserva vigente que se pise.
+  const compatibles = ['ct.id_estacionamiento = e.id_estacionamiento', 'ct.activo = TRUE'];
+
   if (filtros.id_tipo_vehiculo !== undefined) {
     parametros.push(filtros.id_tipo_vehiculo);
-    condiciones.push(`EXISTS (
-      SELECT 1 FROM cochera ct
-      WHERE ct.id_estacionamiento = e.id_estacionamiento
-        AND ct.activo = TRUE
-        AND ct.id_tipo_vehiculo = $${parametros.length}
-    )`);
+    compatibles.push(`ct.id_tipo_vehiculo = $${parametros.length}`);
+  }
+
+  if (filtros.inicio && filtros.fin) {
+    parametros.push(ESTADOS_VIGENTES, filtros.inicio, filtros.fin);
+    const n = parametros.length;
+    compatibles.push(sinSolapamiento(`$${n - 2}`, `$${n - 1}`, `$${n}`, 'ct.id_cochera'));
+  } else if (filtros.disponible_ahora) {
+    parametros.push(ESTADOS_VIGENTES);
+    compatibles.push(sinSolapamiento(`$${parametros.length}`, 'now()', 'now()', 'ct.id_cochera'));
+  }
+
+  if (compatibles.length > 2) {
+    condiciones.push(`EXISTS (SELECT 1 FROM cochera ct WHERE ${compatibles.join(' AND ')})`);
   }
 
   parametros.push(filtros.limit, filtros.offset);

@@ -7,8 +7,12 @@ import {
   cerrarApi,
   crearEstacionamiento,
   crearUsuario,
+  crearVehiculo,
+  franja,
   levantarApi,
   motivo,
+  ponerEnCurso,
+  query,
 } from './ayuda.mjs';
 
 before(() => levantarApi('estacionamiento'));
@@ -231,42 +235,229 @@ describe('cocheras', () => {
     const { datos } = await api('GET', ruta, { token: propietario.token });
     assert.deepEqual(datos.cocheras.map((c) => c.identificador), ['1', '2', '10']);
   });
+});
 
-  test('el alta en lote numera a partir de la siguiente cochera libre', async () => {
+describe('baja, reactivacion y eliminacion de cocheras', () => {
+  async function escenario() {
     const propietario = await nuevoPropietario();
-    const estacionamiento = await crearEstacionamiento(propietario.token, { cocheras: 0 });
+    const estacionamiento = await crearEstacionamiento(propietario.token, { cocheras: 1 });
     const ruta = `/estacionamientos/${estacionamiento.id_estacionamiento}/cocheras`;
-
-    await api('POST', ruta, { token: propietario.token, body: { identificador: '3', id_tipo_vehiculo: 1 } });
-
-    const lote = await api('POST', `${ruta}/lote`, {
-      token: propietario.token,
-      body: { cantidad: 3, sector: 'Planta baja', id_tipo_vehiculo: 1 },
-    });
-    assert.equal(lote.estado, 201);
-    assert.deepEqual(lote.datos.cocheras.map((c) => c.identificador), ['4', '5', '6']);
-    assert.ok(lote.datos.cocheras.every((c) => c.sector === 'Planta baja'));
-
     const { datos } = await api('GET', ruta, { token: propietario.token });
-    assert.deepEqual(datos.cocheras.map((c) => c.identificador), ['3', '4', '5', '6']);
+    return { propietario, estacionamiento, ruta, cochera: datos.cocheras[0] };
+  }
+
+  const reservar = async (estacionamiento, cuando) => {
+    const conductor = await crearUsuario();
+    const vehiculo = await crearVehiculo(conductor.token);
+    return api('POST', '/reservas', {
+      token: conductor.token,
+      body: {
+        id_estacionamiento: estacionamiento.id_estacionamiento,
+        id_vehiculo: vehiculo.id_vehiculo,
+        ...cuando,
+      },
+    });
+  };
+
+  test('la baja cancela las reservas vigentes de la cochera', async () => {
+    const { propietario, estacionamiento, ruta, cochera } = await escenario();
+    const reserva = await reservar(estacionamiento, franja());
+    assert.equal(reserva.estado, 201);
+
+    const baja = await api('DELETE', `${ruta}/${cochera.id_cochera}`, { token: propietario.token });
+    assert.equal(baja.estado, 200);
+    assert.equal(baja.datos.cochera.activo, false);
+
+    const { rows } = await query('SELECT estado FROM reserva WHERE id_reserva = $1', [
+      reserva.datos.reserva.id_reserva,
+    ]);
+    assert.equal(rows[0].estado, 'CANCELADA');
+
+    const repetida = await api('DELETE', `${ruta}/${cochera.id_cochera}`, { token: propietario.token });
+    assert.equal(repetida.estado, 409);
   });
 
-  test('el alta en lote pide sector y una cantidad de al menos 2', async () => {
+  test('una cochera dada de baja se puede reactivar', async () => {
+    const { propietario, ruta, cochera } = await escenario();
+    await api('DELETE', `${ruta}/${cochera.id_cochera}`, { token: propietario.token });
+
+    const reactivada = await api('POST', `${ruta}/${cochera.id_cochera}/reactivar`, {
+      token: propietario.token,
+    });
+    assert.equal(reactivada.estado, 200);
+    assert.equal(reactivada.datos.cochera.activo, true);
+    assert.equal(reactivada.datos.cochera.estado_actual, 'LIBRE');
+
+    const otraVez = await api('POST', `${ruta}/${cochera.id_cochera}/reactivar`, {
+      token: propietario.token,
+    });
+    assert.equal(otraVez.estado, 409);
+  });
+
+  test('no se puede reactivar una cochera de un estacionamiento dado de baja', async () => {
+    const { propietario, estacionamiento, ruta, cochera } = await escenario();
+    await api('DELETE', `/estacionamientos/${estacionamiento.id_estacionamiento}`, {
+      token: propietario.token,
+    });
+
+    const { estado } = await api('POST', `${ruta}/${cochera.id_cochera}/reactivar`, {
+      token: propietario.token,
+    });
+    assert.equal(estado, 409);
+  });
+
+  test('el PATCH no permite marcarla INACTIVA', async () => {
+    const { propietario, ruta, cochera } = await escenario();
+    const { estado } = await api('PATCH', `${ruta}/${cochera.id_cochera}`, {
+      token: propietario.token,
+      body: { estado_actual: 'INACTIVA' },
+    });
+    assert.equal(estado, 400);
+  });
+
+  test('una cochera activa no se puede eliminar: primero hay que darla de baja', async () => {
+    const { propietario, ruta, cochera } = await escenario();
+
+    const { estado } = await api('DELETE', `${ruta}/${cochera.id_cochera}/definitiva`, {
+      token: propietario.token,
+    });
+    assert.equal(estado, 409);
+  });
+
+  test('una cochera inactiva sin reservas se puede eliminar de verdad', async () => {
+    const { propietario, ruta, cochera } = await escenario();
+    await api('DELETE', `${ruta}/${cochera.id_cochera}`, { token: propietario.token });
+
+    const { estado } = await api('DELETE', `${ruta}/${cochera.id_cochera}/definitiva`, {
+      token: propietario.token,
+    });
+    assert.equal(estado, 204);
+
+    const { datos } = await api('GET', ruta, { token: propietario.token });
+    assert.equal(datos.cocheras.length, 0);
+  });
+
+  test('con reservas en el historial no se puede eliminar, aunque este inactiva', async () => {
+    const { propietario, estacionamiento, ruta, cochera } = await escenario();
+    await reservar(estacionamiento, franja());
+    await api('DELETE', `${ruta}/${cochera.id_cochera}`, { token: propietario.token });
+
+    const { estado, datos } = await api('DELETE', `${ruta}/${cochera.id_cochera}/definitiva`, {
+      token: propietario.token,
+    });
+    assert.equal(estado, 409);
+    assert.match(datos.error.message, /historial/);
+  });
+
+  test('otro propietario no puede reactivar ni eliminar', async () => {
+    const { ruta, cochera } = await escenario();
+    const ajeno = await nuevoPropietario();
+
+    const reactivar = await api('POST', `${ruta}/${cochera.id_cochera}/reactivar`, { token: ajeno.token });
+    assert.equal(reactivar.estado, 403);
+    const eliminar = await api('DELETE', `${ruta}/${cochera.id_cochera}/definitiva`, { token: ajeno.token });
+    assert.equal(eliminar.estado, 403);
+  });
+});
+
+describe('busqueda con filtros', () => {
+  const buscar = (estacionamiento, filtros = {}) => {
+    const params = new URLSearchParams({ q: estacionamiento.nombre, ...filtros });
+    return api('GET', `/estacionamientos?${params}`);
+  };
+  const ids = (respuesta) => respuesta.datos.estacionamientos.map((e) => e.id_estacionamiento);
+
+  async function conConductor() {
     const propietario = await nuevoPropietario();
-    const estacionamiento = await crearEstacionamiento(propietario.token, { cocheras: 0 });
-    const ruta = `/estacionamientos/${estacionamiento.id_estacionamiento}/cocheras/lote`;
+    const estacionamiento = await crearEstacionamiento(propietario.token, { cocheras: 1 });
+    const conductor = await crearUsuario();
+    const vehiculo = await crearVehiculo(conductor.token);
+    const reservar = (cuando) =>
+      api('POST', '/reservas', {
+        token: conductor.token,
+        body: {
+          id_estacionamiento: estacionamiento.id_estacionamiento,
+          id_vehiculo: vehiculo.id_vehiculo,
+          ...cuando,
+        },
+      });
+    return { propietario, estacionamiento, conductor, reservar };
+  }
 
-    const sinSector = await api('POST', ruta, {
+  test('filtra por zona, por precio maximo y por tipo de vehiculo', async () => {
+    const propietario = await nuevoPropietario();
+    const estacionamiento = await crearEstacionamiento(propietario.token);
+    const zona = `Zona${crypto.randomUUID().slice(0, 6)}`;
+    await api('PATCH', `/estacionamientos/${estacionamiento.id_estacionamiento}`, {
       token: propietario.token,
-      body: { cantidad: 5, id_tipo_vehiculo: 1 },
+      body: { barrio_zona: zona },
     });
-    assert.equal(sinSector.estado, 400);
+    const id = estacionamiento.id_estacionamiento;
 
-    const cantidadInvalida = await api('POST', ruta, {
-      token: propietario.token,
-      body: { cantidad: 1, sector: 'Fondo', id_tipo_vehiculo: 1 },
+    assert.deepEqual(ids(await buscar(estacionamiento, { zona })), [id]);
+    assert.deepEqual(ids(await buscar(estacionamiento, { zona: 'Inexistente' })), []);
+
+    assert.deepEqual(ids(await buscar(estacionamiento, { tarifa_max: 1000 })), [id]);
+    assert.deepEqual(ids(await buscar(estacionamiento, { tarifa_max: 999 })), []);
+
+    assert.deepEqual(ids(await buscar(estacionamiento, { tarifa_min: 1000 })), [id]);
+    assert.deepEqual(ids(await buscar(estacionamiento, { tarifa_min: 1001 })), []);
+
+    assert.deepEqual(ids(await buscar(estacionamiento, { id_tipo_vehiculo: 1 })), [id]);
+    assert.deepEqual(ids(await buscar(estacionamiento, { id_tipo_vehiculo: 2 })), []);
+  });
+
+  test('con franja: excluye si la unica cochera esta reservada, incluye si esta libre o cancelada', async () => {
+    const { estacionamiento, conductor, reservar } = await conConductor();
+    const id = estacionamiento.id_estacionamiento;
+    const ocupada = franja('08:00', '10:00');
+    const reserva = await reservar(ocupada);
+    assert.equal(reserva.estado, 201);
+
+    assert.deepEqual(ids(await buscar(estacionamiento, ocupada)), []);
+    assert.deepEqual(ids(await buscar(estacionamiento, franja('09:00', '11:00'))), []);
+    assert.deepEqual(ids(await buscar(estacionamiento, franja('10:00', '12:00'))), [id]);
+    assert.deepEqual(ids(await buscar(estacionamiento, franja('08:00', '10:00', 2))), [id]);
+
+    await api('PATCH', `/reservas/${reserva.datos.reserva.id_reserva}/cancelar`, {
+      token: conductor.token,
     });
-    assert.equal(cantidadInvalida.estado, 400);
+    assert.deepEqual(ids(await buscar(estacionamiento, ocupada)), [id]);
+  });
+
+  test('la franja respeta el tipo de vehiculo pedido', async () => {
+    const { estacionamiento } = await conConductor();
+    const cuando = franja('08:00', '10:00');
+    assert.deepEqual(ids(await buscar(estacionamiento, { ...cuando, id_tipo_vehiculo: 2 })), []);
+  });
+
+  test('disponible_ahora excluye la cochera con una reserva en curso', async () => {
+    const { estacionamiento, reservar } = await conConductor();
+    const id = estacionamiento.id_estacionamiento;
+    const reserva = await reservar(franja('08:00', '10:00'));
+
+    assert.deepEqual(ids(await buscar(estacionamiento, { disponible_ahora: 'true' })), [id]);
+
+    await ponerEnCurso(reserva.datos.reserva.id_reserva);
+    assert.deepEqual(ids(await buscar(estacionamiento, { disponible_ahora: 'true' })), []);
+    assert.deepEqual(ids(await buscar(estacionamiento, { disponible_ahora: 'false' })), [id]);
+  });
+
+  test('rechaza combinaciones invalidas de disponibilidad', async () => {
+    const { estacionamiento } = await conConductor();
+    const { inicio, fin } = franja('08:00', '10:00');
+
+    for (const filtros of [
+      { inicio },
+      { fin },
+      { inicio: fin, fin: inicio },
+      { inicio, fin: inicio },
+      { inicio, fin, disponible_ahora: 'true' },
+      { inicio: 'ayer', fin },
+    ]) {
+      const respuesta = await buscar(estacionamiento, filtros);
+      assert.equal(respuesta.estado, 400, JSON.stringify(filtros));
+    }
   });
 });
 
@@ -412,5 +603,138 @@ describe('tarifas por modalidad', () => {
 
     const actual = await api('GET', rutaDe(estacionamiento), { token: propietario.token });
     assert.equal(actual.datos.estacionamiento.tarifa_hora, 1000);
+  });
+});
+
+describe('cocheras por lote', () => {
+  const rutaLote = (estacionamiento) =>
+    `/estacionamientos/${estacionamiento.id_estacionamiento}/cocheras/lote`;
+
+  const nuevoEstacionamientoVacio = async () => {
+    const propietario = await nuevoPropietario();
+    const estacionamiento = await crearEstacionamiento(propietario.token, { cocheras: 0 });
+    return { propietario, estacionamiento };
+  };
+
+  test('crea la cantidad pedida con el detalle y el prefijo indicados', async () => {
+    const { propietario, estacionamiento } = await nuevoEstacionamientoVacio();
+
+    const { estado, datos } = await api('POST', rutaLote(estacionamiento), {
+      token: propietario.token,
+      body: {
+        lotes: [{ cantidad: 3, sector: 'Planta baja', prefijo: 'PB', id_tipo_vehiculo: 1 }],
+      },
+    });
+
+    assert.equal(estado, 201);
+    assert.deepEqual(
+      datos.cocheras.map((c) => c.identificador).sort(),
+      ['PB-1', 'PB-2', 'PB-3'],
+    );
+    for (const cochera of datos.cocheras) {
+      assert.equal(cochera.sector, 'Planta baja');
+      assert.equal(cochera.estado_actual, 'LIBRE');
+      assert.equal(cochera.cubierta, false);
+    }
+  });
+
+  test('un segundo lote con el mismo prefijo continua la numeracion', async () => {
+    const { propietario, estacionamiento } = await nuevoEstacionamientoVacio();
+    const lote = { cantidad: 2, sector: 'Primer piso', prefijo: 'P1', id_tipo_vehiculo: 1 };
+
+    await api('POST', rutaLote(estacionamiento), { token: propietario.token, body: { lotes: [lote] } });
+    const { estado, datos } = await api('POST', rutaLote(estacionamiento), {
+      token: propietario.token,
+      body: { lotes: [{ ...lote, cantidad: 2 }] },
+    });
+
+    assert.equal(estado, 201);
+    assert.deepEqual(
+      datos.cocheras.map((c) => c.identificador).sort(),
+      ['P1-3', 'P1-4'],
+    );
+  });
+
+  test('acepta varios lotes en un mismo pedido, incluso con el mismo prefijo', async () => {
+    const { propietario, estacionamiento } = await nuevoEstacionamientoVacio();
+
+    const { estado, datos } = await api('POST', rutaLote(estacionamiento), {
+      token: propietario.token,
+      body: {
+        lotes: [
+          { cantidad: 2, sector: 'Planta baja', prefijo: 'PB', id_tipo_vehiculo: 1 },
+          { cantidad: 2, sector: 'Primer piso', prefijo: 'P1', id_tipo_vehiculo: 2, cubierta: true },
+          { cantidad: 1, sector: 'Planta baja', prefijo: 'PB', id_tipo_vehiculo: 2 },
+        ],
+      },
+    });
+
+    assert.equal(estado, 201);
+    assert.deepEqual(
+      datos.cocheras.map((c) => c.identificador).sort(),
+      ['P1-1', 'P1-2', 'PB-1', 'PB-2', 'PB-3'],
+    );
+    assert.ok(datos.cocheras.filter((c) => c.sector === 'Primer piso').every((c) => c.cubierta));
+
+    const listado = await api('GET', `/estacionamientos/${estacionamiento.id_estacionamiento}/cocheras`);
+    assert.equal(listado.datos.cocheras.length, 5);
+  });
+
+  test('rechaza cantidades y prefijos invalidos', async () => {
+    const { propietario, estacionamiento } = await nuevoEstacionamientoVacio();
+    const valido = { cantidad: 2, sector: 'Planta baja', prefijo: 'PB', id_tipo_vehiculo: 1 };
+    const invalidos = [
+      { ...valido, cantidad: 0 },
+      { ...valido, cantidad: 201 },
+      { ...valido, prefijo: '' },
+      { ...valido, prefijo: 'con espacio' },
+      { ...valido, prefijo: 'PREFIJO-MUY-LARGO' },
+      { ...valido, sector: '' },
+    ];
+
+    for (const lote of invalidos) {
+      const { estado } = await api('POST', rutaLote(estacionamiento), {
+        token: propietario.token,
+        body: { lotes: [lote] },
+      });
+      assert.equal(estado, 400, JSON.stringify(lote));
+    }
+
+    const vacio = await api('POST', rutaLote(estacionamiento), {
+      token: propietario.token,
+      body: { lotes: [] },
+    });
+    assert.equal(vacio.estado, 400);
+  });
+
+  test('es atomico: un tipo de vehiculo inexistente no crea ninguna cochera', async () => {
+    const { propietario, estacionamiento } = await nuevoEstacionamientoVacio();
+
+    const { estado } = await api('POST', rutaLote(estacionamiento), {
+      token: propietario.token,
+      body: {
+        lotes: [
+          { cantidad: 2, sector: 'Planta baja', prefijo: 'PB', id_tipo_vehiculo: 1 },
+          { cantidad: 2, sector: 'Subsuelo', prefijo: 'S', id_tipo_vehiculo: 9999 },
+        ],
+      },
+    });
+    assert.equal(estado, 400);
+
+    const listado = await api('GET', `/estacionamientos/${estacionamiento.id_estacionamiento}/cocheras`);
+    assert.equal(listado.datos.cocheras.length, 0);
+  });
+
+  test('solo el propietario del estacionamiento puede cargar lotes', async () => {
+    const { estacionamiento } = await nuevoEstacionamientoVacio();
+    const otro = await nuevoPropietario();
+    const conductor = await crearUsuario();
+    const body = { lotes: [{ cantidad: 1, sector: 'Planta baja', prefijo: 'PB', id_tipo_vehiculo: 1 }] };
+
+    const ajeno = await api('POST', rutaLote(estacionamiento), { token: otro.token, body });
+    assert.ok([403, 404].includes(ajeno.estado), `estado ${ajeno.estado}`);
+
+    const comoConductor = await api('POST', rutaLote(estacionamiento), { token: conductor.token, body });
+    assert.equal(comoConductor.estado, 403);
   });
 });

@@ -1,19 +1,24 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { rxResource } from '@angular/core/rxjs-interop';
+import { rxResource, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
-import { Observable, map, of } from 'rxjs';
+import { Observable, debounceTime, map, of } from 'rxjs';
 import {
+  ElegirMomento,
+  Exploracion,
   FiltrosEstacionamiento as FiltrosComponent,
   TarjetaEstacionamiento,
 } from '@app/components/estacionamiento';
 import { Boton, Cargando, EstadoVacio, Sugerencia } from '@app/components/ui';
-import { Estacionamiento, FiltrosEstacionamiento } from '@app/models';
+import { Estacionamiento, FiltrosEstacionamiento, Vehiculo } from '@app/models';
 import { EstacionamientoService } from '@app/services/estacionamiento.service';
-import { DireccionGeoref, GeorefService, ZonaBusqueda } from '@app/services/georef.service';
-import { UbicacionService } from '@app/services/ubicacion.service';
-import { distanciaHasta, porCercania } from '@app/utils/distancia.util';
+import { GeorefService, ZonaBusqueda } from '@app/services/georef.service';
+import { VehiculoService } from '@app/services/vehiculo.service';
+import { desdeFechaISO } from '@app/utils/fecha.util';
 
-/** El filtro por tipo de vehiculo es obligatorio y arranca en AUTO. */
+/** Espera antes de pedir al backend mientras se escribe en zona, precio o busqueda. */
+const ESPERA_TIPEO_MS = 300;
+
+/** El filtro por tipo de vehiculo es obligatorio; el valor real se pisa al elegir momento y ubicacion. */
 const FILTROS_INICIALES: FiltrosEstacionamiento = {
   busqueda: '',
   tipoVehiculo: 'AUTO',
@@ -23,40 +28,71 @@ const FILTROS_INICIALES: FiltrosEstacionamiento = {
 /**
  * Pantalla `/conductor/explorar` · rol CONDUCTOR
  *
- * Listado y filtrado de estacionamientos. Es el inicio del conductor.
- * Las distancias se miden desde el destino elegido en el buscador o, si no
- * eligio ninguno, desde su ubicacion actual.
+ * Inicio del conductor. Primero pregunta donde y cuando quiere estacionar y
+ * recien despues lista y filtra los estacionamientos con lugar libre.
+ *
+ * Las distancias se miden desde la ubicacion actual o desde la direccion que
+ * elija en esa pregunta ("Pueyrredon 2409"), que se busca en Georef.
  */
 @Component({
   selector: 'app-explorar',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FiltrosComponent, TarjetaEstacionamiento, Cargando, EstadoVacio, Boton],
+  imports: [ElegirMomento, FiltrosComponent, TarjetaEstacionamiento, Cargando, EstadoVacio, Boton],
   templateUrl: './explorar.html',
 })
 export class Explorar {
   private readonly estacionamientos = inject(EstacionamientoService);
+  private readonly vehiculos = inject(VehiculoService);
   private readonly router = inject(Router);
-  private readonly ubicacion = inject(UbicacionService);
   private readonly georef = inject(GeorefService);
 
   protected readonly filtros = signal<FiltrosEstacionamiento>({ ...FILTROS_INICIALES });
 
-  /** Se vuelve a pedir al backend cada vez que cambia algun filtro. */
+  /** Mientras es null se muestra la pregunta "¿Donde y cuando queres estacionar?". */
+  protected readonly exploracion = signal<Exploracion | null>(null);
+
+  /** Vehiculos del conductor, para preseleccionar el tipo al terminar esa pregunta. */
+  private readonly recursoVehiculos = rxResource({
+    stream: () => this.vehiculos.listarMisVehiculos(),
+    defaultValue: [] as Vehiculo[],
+  });
+
+  protected readonly resumen = computed(() => {
+    const exploracion = this.exploracion();
+    if (!exploracion) return '';
+    return `${this.resumenUbicacion(exploracion)} · ${this.resumenMomento(exploracion)}`;
+  });
+
+  private readonly filtrosConContexto = computed(() => {
+    const exploracion = this.exploracion();
+    const ubicacion = exploracion?.ubicacion;
+    return {
+      ...this.filtros(),
+      momento: exploracion?.momento ?? null,
+      // La ubicacion actual y una direccion elegida son un punto: se mide la distancia desde ahi.
+      origen:
+        ubicacion?.tipo === 'ACTUAL' || ubicacion?.tipo === 'DIRECCION'
+          ? { latitud: ubicacion.latitud, longitud: ubicacion.longitud }
+          : null,
+    };
+  });
+  private readonly filtrosEstables = toSignal(
+    toObservable(this.filtrosConContexto).pipe(debounceTime(ESPERA_TIPEO_MS)),
+    { initialValue: this.filtrosConContexto() },
+  );
+
+  /** Se vuelve a pedir al backend cuando cambia un filtro o el contexto (sin pedir hasta responder la primera pregunta). */
   protected readonly recurso = rxResource({
-    params: () => this.filtros(),
+    params: () => (this.filtrosEstables().momento ? this.filtrosEstables() : undefined),
     stream: ({ params }) => this.estacionamientos.listar(params),
     defaultValue: [] as Estacionamiento[],
   });
 
-  /* -------------------------------- Destino -------------------------------- */
-
-  /** Direccion elegida en el buscador: las distancias se miden desde ahi. */
-  protected readonly destino = signal<DireccionGeoref | null>(null);
+  /* ------------------------ Direcciones de "otra zona" ----------------------- */
 
   /**
    * Todos los estacionamientos publicados, sin filtros: de ahi salen las ciudades
-   * donde buscar el destino. No sirve el listado filtrado porque mientras se
-   * escribe "Pueyrredon 2409" el filtro de texto lo deja vacio.
+   * donde buscar las direcciones que sugiere la pregunta inicial.
    */
   private readonly todos = rxResource({
     stream: () => this.estacionamientos.listar({}),
@@ -64,7 +100,7 @@ export class Explorar {
   });
 
   /**
-   * Las ciudades donde hay estacionamientos: el destino se busca solo ahi. No
+   * Las ciudades donde hay estacionamientos: las direcciones se buscan solo ahi. No
    * sirve de nada un "Pueyrredon 2409" en una ciudad sin cocheras, y sin acotar
    * Georef devuelve esa altura en decenas de ciudades del pais.
    */
@@ -92,47 +128,45 @@ export class Explorar {
       );
   };
 
-  /* ------------------------------- Listado --------------------------------- */
-
-  /** Desde donde se miden las distancias: el destino elegido o la ubicacion actual. */
-  private readonly origen = computed(
-    () => this.destino()?.coordenadas ?? this.ubicacion.posicion(),
-  );
-
-  /**
-   * El listado con la distancia desde el origen y, si el orden es por distancia
-   * (el de siempre), del mas cercano al mas lejano. Se calcula aca y no en el
-   * backend, asi la ubicacion del conductor no sale del navegador. Cuando cambia
-   * el origen se reordena sin volver a pedir el listado.
-   */
-  protected readonly listado = computed(() => {
-    const origen = this.origen();
-    const conDistancia = this.recurso.value().map((estacionamiento) => ({
-      ...estacionamiento,
-      distanciaKm: distanciaHasta(origen, estacionamiento.direccion),
-    }));
-    // Con orden PRECIO se respeta el que ya trae el servicio.
-    return this.filtros().orden === 'PRECIO' ? conDistancia : conDistancia.sort(porCercania);
-  });
-
-  /** Aviso cuando no se puede mostrar la distancia: no hay destino ni ubicacion. */
-  protected readonly sinUbicacion = computed(() => {
-    const estado = this.ubicacion.estado();
-    return !this.destino() && (estado === 'denegada' || estado === 'no-disponible');
-  });
-
   protected readonly resultados = computed(() => this.recurso.value().length);
 
-  constructor() {
-    this.ubicacion.solicitar();
+  protected limpiarFiltros(): void {
+    this.filtros.set({ ...FILTROS_INICIALES, tipoVehiculo: this.filtros().tipoVehiculo });
   }
 
-  protected limpiarFiltros(): void {
-    this.filtros.set({ ...FILTROS_INICIALES });
-    this.destino.set(null);
+  /** Ubicacion, momento y tipo de vehiculo (el del predeterminado del conductor) quedan elegidos juntos. */
+  protected iniciar(exploracion: Exploracion): void {
+    const vehiculos = this.recursoVehiculos.value();
+    const predeterminado = vehiculos.find((v) => v.predeterminado) ?? vehiculos[0];
+    const zona = exploracion.ubicacion.tipo === 'OTRA' ? exploracion.ubicacion.zona : undefined;
+
+    this.filtros.set({ ...FILTROS_INICIALES, tipoVehiculo: predeterminado?.tipo ?? 'AUTO', zona });
+    this.exploracion.set(exploracion);
+  }
+
+  protected cambiarExploracion(): void {
+    this.exploracion.set(null);
   }
 
   protected irAReservar(estacionamiento: Estacionamiento): void {
     void this.router.navigate(['/conductor/reservar', estacionamiento.id]);
+  }
+
+  private resumenUbicacion(exploracion: Exploracion): string {
+    const ubicacion = exploracion.ubicacion;
+    if (ubicacion.tipo === 'ACTUAL') return 'Cerca de mi ubicación';
+    if (ubicacion.tipo === 'DIRECCION') return `Cerca de ${ubicacion.direccion}`;
+    return ubicacion.zona;
+  }
+
+  private resumenMomento(exploracion: Exploracion): string {
+    const momento = exploracion.momento;
+    if (momento.tipo === 'AHORA') return 'Ahora';
+    const dia = desdeFechaISO(momento.fecha).toLocaleDateString('es-AR', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+    });
+    return `${dia} · ${momento.horaDesde} a ${momento.horaHasta}`;
   }
 }

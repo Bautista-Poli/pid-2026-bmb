@@ -1,58 +1,89 @@
-import { ChangeDetectionStrategy, Component, computed, input, model } from '@angular/core';
-import { Observable } from 'rxjs';
+import { ChangeDetectionStrategy, Component, computed, model, signal } from '@angular/core';
 import {
   ETIQUETA_TIPO_VEHICULO,
   FiltrosEstacionamiento as Filtros,
   TipoVehiculo,
 } from '@app/models';
-import { CampoBusqueda, Chip, Sugerencia } from '@app/components/ui';
-import { DireccionGeoref } from '@app/services/georef.service';
+import { Boton, CampoBusqueda, Chip, Modal } from '@app/components/ui';
 
 /** Orden de los chips segun el diseno. */
 const TIPOS: TipoVehiculo[] = ['AUTO', 'MOTO', 'CAMIONETA'];
 
+/** Rangos rapidos del panel de precio, al estilo "Precio" de los marketplaces. */
+const RANGOS_PRECIO: { etiqueta: string; minimo: number | null; maximo: number | null }[] = [
+  { etiqueta: 'Hasta $1.000', minimo: null, maximo: 1000 },
+  { etiqueta: '$1.000 - $2.000', minimo: 1000, maximo: 2000 },
+  { etiqueta: '$2.000 - $4.000', minimo: 2000, maximo: 4000 },
+  { etiqueta: 'Más de $4.000', minimo: 4000, maximo: null },
+];
+
 /**
- * Buscador + filtro por tipo de vehiculo.
+ * Buscador, tipo de vehiculo y filtro de precio (min/max con rangos rapidos,
+ * en un panel aparte como el de un marketplace).
  * El tipo es de seleccion unica obligatoria (siempre hay uno activo).
- *
- * El buscador hace dos cosas: lo que se escribe filtra por nombre o zona, y si
- * es una direccion ("Pueyrredon 2409") sugiere direcciones reales. Elegir una la
- * vuelve el `destino`: se deja de filtrar por texto y quien usa el componente
- * mide las distancias desde ahi. Escribir de nuevo quita el destino.
  */
 @Component({
   selector: 'app-filtros-estacionamiento',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CampoBusqueda, Chip],
+  imports: [CampoBusqueda, Chip, Boton, Modal],
   templateUrl: './filtros-estacionamiento.html',
   host: { class: 'block' },
 })
 export class FiltrosEstacionamiento {
   readonly filtros = model.required<Filtros>();
-  readonly destino = model<DireccionGeoref | null>(null);
-  /** Sugerencias de direcciones para el buscador. Sin esto, solo filtra por texto. */
-  readonly buscarDestinos = input<((texto: string) => Observable<Sugerencia[]>) | null>(null);
 
   protected readonly tipos = TIPOS;
   protected readonly etiquetaTipo = ETIQUETA_TIPO_VEHICULO;
+  protected readonly rangos = RANGOS_PRECIO;
 
-  /** Con un destino elegido el campo muestra su direccion; si no, lo escrito. */
-  protected readonly textoBusqueda = computed(
-    () => this.destino()?.nombre ?? this.filtros().busqueda ?? '',
+  protected readonly panelAbierto = signal(false);
+
+  /** Borrador del panel: se aplica recien al confirmar, no en cada tecla. */
+  protected readonly borradorMinimo = signal<number | null>(null);
+  protected readonly borradorMaximo = signal<number | null>(null);
+
+  protected readonly hayPrecioAplicado = computed(
+    () => this.filtros().precioMinimo != null || this.filtros().precioMaximo != null,
   );
+
+  protected abrirPanel(): void {
+    this.borradorMinimo.set(this.filtros().precioMinimo ?? null);
+    this.borradorMaximo.set(this.filtros().precioMaximo ?? null);
+    this.panelAbierto.set(true);
+  }
+
+  protected cerrarPanel(): void {
+    this.panelAbierto.set(false);
+  }
+
+  protected usarRango(rango: (typeof RANGOS_PRECIO)[number]): void {
+    this.borradorMinimo.set(rango.minimo);
+    this.borradorMaximo.set(rango.maximo);
+  }
+
+  protected rangoActivo(rango: (typeof RANGOS_PRECIO)[number]): boolean {
+    return this.borradorMinimo() === rango.minimo && this.borradorMaximo() === rango.maximo;
+  }
+
+  protected aplicarPrecio(): void {
+    this.actualizar({ precioMinimo: this.borradorMinimo(), precioMaximo: this.borradorMaximo() });
+    this.panelAbierto.set(false);
+  }
+
+  protected limpiarPrecio(): void {
+    this.borradorMinimo.set(null);
+    this.borradorMaximo.set(null);
+    this.actualizar({ precioMinimo: null, precioMaximo: null });
+    this.panelAbierto.set(false);
+  }
+
+  /** Un campo vacio o negativo saca ese limite. */
+  protected numero(texto: string): number | null {
+    const valor = Number(texto);
+    return texto.trim() !== '' && Number.isFinite(valor) && valor >= 0 ? valor : null;
+  }
 
   protected actualizar(cambios: Partial<Filtros>): void {
     this.filtros.update((actual) => ({ ...actual, ...cambios }));
-  }
-
-  protected escribir(texto: string): void {
-    if (this.destino()) this.destino.set(null);
-    this.actualizar({ busqueda: texto });
-  }
-
-  protected elegirDestino(sugerencia: Sugerencia): void {
-    this.destino.set(sugerencia.dato as DireccionGeoref);
-    // La direccion es el punto de partida, no un filtro: se muestran todos.
-    this.actualizar({ busqueda: '' });
   }
 }

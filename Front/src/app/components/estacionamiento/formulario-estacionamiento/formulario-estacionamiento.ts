@@ -1,12 +1,15 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   effect,
   inject,
   input,
   output,
   signal,
+  untracked,
 } from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
   FormBuilder,
@@ -15,9 +18,16 @@ import {
   Validators,
 } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { Boton, Tarjeta } from '@app/components/ui';
+import { Observable, catchError, map, of } from 'rxjs';
+import { Boton, CampoAutocompletar, Sugerencia, Tarjeta } from '@app/components/ui';
 import { FotoEstacionamiento } from '../foto-estacionamiento/foto-estacionamiento';
-import { DiaSemana, Estacionamiento, NuevoEstacionamiento } from '@app/models';
+import { DiaSemana, Direccion, Estacionamiento, NuevoEstacionamiento } from '@app/models';
+import {
+  GeorefService,
+  LugarGeoref,
+  filtrarLugares,
+  normalizar,
+} from '@app/services/georef.service';
 
 const DIAS: { dia: DiaSemana; etiqueta: string }[] = [
   { dia: 'LUNES', etiqueta: 'Lunes' },
@@ -53,11 +63,12 @@ function algunaTarifa(grupo: AbstractControl): ValidationErrors | null {
 @Component({
   selector: 'app-formulario-estacionamiento',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, RouterLink, Boton, FotoEstacionamiento, Tarjeta],
+  imports: [ReactiveFormsModule, RouterLink, Boton, CampoAutocompletar, FotoEstacionamiento, Tarjeta],
   templateUrl: './formulario-estacionamiento.html',
 })
 export class FormularioEstacionamiento {
   private readonly fb = inject(FormBuilder);
+  private readonly georef = inject(GeorefService);
 
   /** Estacionamiento a editar. `null` (el default) es el modo alta. */
   readonly estacionamiento = input<Estacionamiento | null>(null);
@@ -117,42 +128,198 @@ export class FormularioEstacionamiento {
 
   protected readonly horarios = this.formulario.controls.horarios;
 
+  /* ------------------------------- Direccion ------------------------------- */
+  // Provincia, ciudad y calle salen de Georef (la API oficial de direcciones):
+  // cada una se elige de una lista y depende de la anterior, asi no se puede
+  // cargar una ciudad o una calle inventada. El backend lo vuelve a validar.
+
+  protected readonly errorProvincias = signal(false);
+  protected readonly provincias = toSignal(
+    this.georef.provincias$.pipe(
+      catchError(() => {
+        this.errorProvincias.set(true);
+        return of([] as LugarGeoref[]);
+      }),
+    ),
+    { initialValue: [] as LugarGeoref[] },
+  );
+
+  private readonly provinciaElegida = toSignal(this.formulario.controls.provincia.valueChanges, {
+    initialValue: '',
+  });
+  private readonly provinciaId = computed(
+    () => this.provincias().find((p) => p.nombre === this.provinciaElegida())?.id ?? null,
+  );
+  /** Id de Georef de la ciudad elegida: con el se buscan sus calles. */
+  private readonly ciudadId = signal<string | null>(null);
+
+  /** La direccion guardada no coincide con Georef (cargada antes de este cambio). */
+  protected readonly direccionDesactualizada = signal(false);
+
+  protected readonly buscarCiudades = (texto: string): Observable<Sugerencia[]> => {
+    const provinciaId = this.provinciaId();
+    if (!provinciaId) return of([]);
+    return this.georef.ciudadesDe(provinciaId).pipe(
+      map((ciudades) =>
+        filtrarLugares(ciudades, texto).map((c) => ({
+          nombre: c.nombre,
+          detalle: c.detalle,
+          dato: c.id,
+        })),
+      ),
+    );
+  };
+
+  protected readonly buscarCalles = (texto: string): Observable<Sugerencia[]> => {
+    const ciudadId = this.ciudadId();
+    if (!ciudadId) return of([]);
+    return this.georef
+      .callesDe(ciudadId)
+      .pipe(map((calles) => filtrarLugares(calles, texto).map((c) => ({ nombre: c.nombre }))));
+  };
+
+  protected elegirCiudad(sugerencia: Sugerencia): void {
+    const ciudadId = sugerencia.dato as string;
+    this.ciudadId.set(ciudadId);
+    // Se piden las calles ya, asi estan listas cuando empiecen a escribir.
+    this.georef.callesDe(ciudadId);
+  }
+
   constructor() {
+    const { provincia, ciudad, calle } = this.formulario.controls;
+
+    // Cadena provincia -> ciudad -> calle: cambiar una borra las que dependen
+    // de ella, y cada una esta deshabilitada hasta que se elige la anterior.
+    ciudad.disable({ emitEvent: false });
+    calle.disable({ emitEvent: false });
+
+    provincia.valueChanges.pipe(takeUntilDestroyed()).subscribe((valor) => {
+      ciudad.setValue('');
+      if (valor) ciudad.enable({ emitEvent: false });
+      else ciudad.disable({ emitEvent: false });
+      this.elegirCiudadUnica(valor);
+    });
+
+    ciudad.valueChanges.pipe(takeUntilDestroyed()).subscribe((valor) => {
+      if (valor) {
+        calle.enable({ emitEvent: false });
+        return;
+      }
+      this.ciudadId.set(null);
+      calle.setValue('', { emitEvent: false });
+      calle.disable({ emitEvent: false });
+    });
+
     // Al abrir el editor, el formulario se precarga con lo que hay cargado.
+    // `untracked`: al cargar los campos corren las suscripciones de la cadena de
+    // direccion, que leen otras senales; no tienen que volver a disparar esto.
     effect(() => {
       const estacionamiento = this.estacionamiento();
       if (!estacionamiento) return;
+      untracked(() => {
 
-      const { direccion } = estacionamiento;
-      this.formulario.patchValue({
-        nombre: estacionamiento.nombre,
-        descripcion: estacionamiento.descripcion,
-        calle: direccion.calle,
-        numero: direccion.numero,
-        ciudad: direccion.ciudad,
-        provincia: direccion.provincia,
-        codigoPostal: direccion.codigoPostal,
-        barrioZona: estacionamiento.barrioZona ?? '',
-        telefono: estacionamiento.telefonoContacto ?? '',
-        email: estacionamiento.emailContacto ?? '',
-        tarifaHora: estacionamiento.tarifas.hora,
-        tarifaEstadia: estacionamiento.tarifas.estadia,
-        tarifaJornada: estacionamiento.tarifas.jornada,
-        cubierto: estacionamiento.cubierto,
-      });
+        const { direccion } = estacionamiento;
+        // En orden: cada campo de la cadena borra los que dependen de el.
+        provincia.setValue(direccion.provincia);
+        ciudad.setValue(direccion.ciudad);
+        calle.setValue(direccion.calle);
 
-      // Los dias que no vienen en `horarios` estan cerrados.
-      this.horarios.controls.forEach((grupo) => {
-        const franja = estacionamiento.horarios.find(
-          (horario) => horario.dia === grupo.controls.dia.value,
-        );
-        grupo.patchValue({
-          abierto: Boolean(franja),
-          desde: franja?.desde ?? '08:00',
-          hasta: franja?.hasta ?? '20:00',
+        this.formulario.patchValue({
+          nombre: estacionamiento.nombre,
+          descripcion: estacionamiento.descripcion,
+          numero: direccion.numero,
+          codigoPostal: direccion.codigoPostal,
+          barrioZona: estacionamiento.barrioZona ?? '',
+          telefono: estacionamiento.telefonoContacto ?? '',
+          email: estacionamiento.emailContacto ?? '',
+          tarifaHora: estacionamiento.tarifas.hora,
+          tarifaEstadia: estacionamiento.tarifas.estadia,
+          tarifaJornada: estacionamiento.tarifas.jornada,
+          cubierto: estacionamiento.cubierto,
+        });
+
+        // Los dias que no vienen en `horarios` estan cerrados.
+        this.horarios.controls.forEach((grupo) => {
+          const franja = estacionamiento.horarios.find(
+            (horario) => horario.dia === grupo.controls.dia.value,
+          );
+          grupo.patchValue({
+            abierto: Boolean(franja),
+            desde: franja?.desde ?? '08:00',
+            hasta: franja?.hasta ?? '20:00',
+          });
         });
       });
     });
+
+    // Al editar, se confirma que la direccion guardada exista en Georef y se
+    // busca el id de su ciudad (hace falta para buscar calles). Si no existe
+    // (se cargo antes de este cambio), se vacia para que la elijan de la lista.
+    effect(() => {
+      const estacionamiento = this.estacionamiento();
+      const provincias = this.provincias();
+      if (!estacionamiento || provincias.length === 0) return;
+      untracked(() => this.verificarDireccionGuardada(estacionamiento.direccion, provincias));
+    });
+  }
+
+  /**
+   * Si la provincia tiene una sola ciudad (CABA: "Ciudad Autonoma de Buenos
+   * Aires", que nadie busca por ese nombre) se completa sola. No pisa una
+   * ciudad ya cargada, como la que precarga el editor.
+   */
+  private elegirCiudadUnica(provinciaNombre: string): void {
+    const provincia = this.provincias().find((p) => p.nombre === provinciaNombre);
+    if (!provincia) return;
+
+    const { provincia: controlProvincia, ciudad } = this.formulario.controls;
+    this.georef
+      .ciudadesDe(provincia.id)
+      .pipe(catchError(() => of([] as LugarGeoref[])))
+      .subscribe((ciudades) => {
+        const [unica] = ciudades;
+        if (ciudades.length !== 1 || ciudad.value || controlProvincia.value !== provinciaNombre) {
+          return;
+        }
+        ciudad.setValue(unica.nombre);
+        this.elegirCiudad({ nombre: unica.nombre, dato: unica.id });
+      });
+  }
+
+  private verificarDireccionGuardada(direccion: Direccion, provincias: LugarGeoref[]): void {
+    const { provincia, ciudad } = this.formulario.controls;
+    const desactualizada = () => {
+      this.direccionDesactualizada.set(true);
+      provincia.markAsTouched();
+      ciudad.markAsTouched();
+    };
+
+    const provinciaGuardada = provincias.find((p) => p.nombre === direccion.provincia);
+    if (!provinciaGuardada) {
+      provincia.setValue('');
+      desactualizada();
+      return;
+    }
+
+    const buscada = normalizar(direccion.ciudad);
+    this.georef
+      .ciudadesDe(provinciaGuardada.id)
+      .pipe(
+        map((ciudades) => ciudades.find((c) => normalizar(c.nombre) === buscada) ?? null),
+        catchError(() => of(undefined)),
+      )
+      .subscribe((encontrada) => {
+        // `undefined`: Georef no respondio. Se deja como esta: el backend valida al guardar.
+        if (encontrada === undefined) return;
+        if (encontrada) {
+          this.ciudadId.set(encontrada.id);
+          this.georef.callesDe(encontrada.id);
+        } else {
+          ciudad.setValue('');
+          desactualizada();
+          this.elegirCiudadUnica(provinciaGuardada.nombre);
+        }
+      });
   }
 
   protected elegirFoto(archivo: File | null): void {

@@ -4,15 +4,22 @@
     <header class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between lg:gap-8">
       <div>
         <p class="eyebrow">Explorar</p>
-        <h1 class="titulo-vista mt-1.5 lg:whitespace-nowrap">Estacionamientos cerca</h1>
+        <h1 class="titulo-vista mt-1.5 lg:whitespace-nowrap">
+          {{ destino() ? 'Cerca de tu destino' : 'Estacionamientos cerca' }}
+        </h1>
       </div>
 
-      <app-filtros-estacionamiento class="lg:shrink-0" [(filtros)]="filtros" />
+      <app-filtros-estacionamiento
+        class="lg:shrink-0"
+        [(filtros)]="filtros"
+        [(destino)]="destino"
+        [buscarDestinos]="buscarDestinos"
+      />
     </header>
 
     @if (sinUbicacion()) {
       <p class="-mt-2 text-[13px] leading-normal text-plomo">
-        Activá la ubicación del navegador para ver a qué distancia está cada estacionamiento.
+        Activá la ubicación del navegador, o buscá la dirección a la que vas, para ver a qué distancia está cada estacionamiento.
       </p>
     }
 

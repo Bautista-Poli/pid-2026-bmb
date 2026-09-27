@@ -1,8 +1,10 @@
 <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-2.5">
   <div class="lg:w-[280px]">
     <ui-campo-busqueda
-      [valor]="filtros().busqueda ?? ''"
-      (valorChange)="actualizar({ busqueda: $event })"
+      [valor]="textoBusqueda()"
+      [buscar]="buscarDestinos()"
+      (valorChange)="escribir($event)"
+      (elegida)="elegirDestino($event)"
     />
   </div>
 

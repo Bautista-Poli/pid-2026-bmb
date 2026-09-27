@@ -1,4 +1,4 @@
-import { distanciaHasta, distanciaKm } from './distancia.util';
+import { distanciaHasta, distanciaKm, porCercania } from './distancia.util';
 
 const OBELISCO = { latitud: -34.603722, longitud: -58.381592 };
 const CONGRESO = { latitud: -34.609722, longitud: -58.392222 };
@@ -28,5 +28,24 @@ describe('distanciaHasta', () => {
 
   it('con ambos puntos calcula la distancia', () => {
     expect(distanciaHasta(OBELISCO, CONGRESO)).toBeCloseTo(1.18, 2);
+  });
+});
+
+describe('porCercania', () => {
+  it('ordena del mas cercano al mas lejano y deja al final los que no tienen distancia', () => {
+    const lista = [
+      { id: 'lejos', distanciaKm: 5 },
+      { id: 'sin-dato' },
+      { id: 'cerca', distanciaKm: 0.3 },
+      { id: 'sin-dato-2' },
+      { id: 'medio', distanciaKm: 1.2 },
+    ];
+    expect([...lista].sort(porCercania).map((e) => e.id)).toEqual([
+      'cerca',
+      'medio',
+      'lejos',
+      'sin-dato',
+      'sin-dato-2',
+    ]);
   });
 });

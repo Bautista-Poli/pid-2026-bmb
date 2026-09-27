@@ -76,6 +76,16 @@ export const darDeBajaCochera = asyncHandler(async (req, res) => {
   res.json({ cochera });
 });
 
+export const reactivarCochera = asyncHandler(async (req, res) => {
+  const cochera = await cocheraService.reactivar(req.params.id, req.usuario.id, req.params.idCochera);
+  res.json({ cochera });
+});
+
+export const eliminarCochera = asyncHandler(async (req, res) => {
+  await cocheraService.eliminar(req.params.id, req.usuario.id, req.params.idCochera);
+  res.status(204).end();
+});
+
 export const disponibilidad = asyncHandler(async (req, res) => {
   const resultado = await reservaService.disponibilidad(req.params.id, req.query);
   res.json(resultado);

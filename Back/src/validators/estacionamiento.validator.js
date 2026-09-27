@@ -238,17 +238,42 @@ export function validarActualizacionCochera(body) {
     .resultado();
 }
 
-/** Filtros de GET /api/estacionamientos. Todo opcional. */
+/**
+ * Filtros de GET /api/estacionamientos. Todo opcional. La disponibilidad se pide
+ * de una de dos formas, excluyentes: `disponible_ahora=true` o una franja
+ * `inicio` + `fin`.
+ */
 export function validarBusqueda(query) {
-  return campos(query)
+  const { valores, errores } = campos(query)
     .texto('q', query.q, { requerido: false, max: 120 })
     .texto('zona', query.zona, { requerido: false, max: 120 })
     .entero('id_tipo_vehiculo', query.id_tipo_vehiculo, { requerido: false, min: 1 })
+    .numero('tarifa_min', query.tarifa_min, { requerido: false, min: 0 })
     .numero('tarifa_max', query.tarifa_max, { requerido: false, min: 0 })
     .booleano('cubierto', query.cubierto, { requerido: false })
+    .booleano('disponible_ahora', query.disponible_ahora, { requerido: false })
+    .fechaHora('inicio', query.inicio, { requerido: false })
+    .fechaHora('fin', query.fin, { requerido: false })
     .entero('limit', query.limit, { requerido: false, min: 1, max: 100, default: 20 })
     .entero('offset', query.offset, { requerido: false, min: 0, default: 0 })
     .resultado();
+
+  const hayFranja = vino(query.inicio) || vino(query.fin);
+
+  const franjaCompleta = valores.inicio && valores.fin;
+  const franjaConError = errores.some((e) => e.campo === 'inicio' || e.campo === 'fin');
+
+  if (hayFranja && !franjaCompleta && !franjaConError) {
+    errores.push({ campo: 'inicio', mensaje: 'inicio y fin se envian juntos' });
+  }
+  if (franjaCompleta && valores.fin <= valores.inicio) {
+    errores.push({ campo: 'fin', mensaje: 'debe ser posterior a inicio' });
+  }
+  if (hayFranja && valores.disponible_ahora) {
+    errores.push({ campo: 'disponible_ahora', mensaje: 'no se combina con inicio y fin' });
+  }
+
+  return { valores, errores };
 }
 
 /** GET /api/estacionamientos/:id/disponibilidad?fecha=YYYY-MM-DD[&id_tipo_vehiculo=1] */

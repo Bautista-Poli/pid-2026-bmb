@@ -76,6 +76,13 @@
                           <ui-boton tamano="sm" variante="peligro" (presionado)="darDeBaja(cochera)">
                             Dar de baja
                           </ui-boton>
+                        } @else {
+                          <ui-boton tamano="sm" variante="fantasma" (presionado)="reactivar(cochera)">
+                            Reactivar
+                          </ui-boton>
+                          <ui-boton tamano="sm" variante="peligro" (presionado)="eliminar(cochera)">
+                            Eliminar
+                          </ui-boton>
                         }
                       </div>
                     </li>

@@ -9,6 +9,8 @@ import {
   OrdenEstacionamiento,
 } from '@app/models';
 import { EstacionamientoDto } from './api/api.dto';
+import { distanciaKm } from '@app/utils/distancia.util';
+import { aInstante } from '@app/utils/fecha.util';
 import { ID_TIPO_VEHICULO, aEstacionamiento, aPayloadEstacionamiento } from './api/api.mapeo';
 
 /** La API acepta hasta 100 resultados por pagina. */
@@ -26,7 +28,8 @@ export class EstacionamientoService {
       .get<{ estacionamientos: EstacionamientoDto[] }>(this.ruta, { params: aParams(filtros) })
       .pipe(
         map(({ estacionamientos }) => estacionamientos.map(aEstacionamiento)),
-        map((items) => aplicarFiltrosLocales(items, filtros)),
+        map((items) => conDistancia(items, filtros.origen)),
+        map((items) => ordenar(items, filtros)),
       );
   }
 
@@ -103,25 +106,44 @@ const COMPARADORES: Record<OrdenEstacionamiento, (a: Estacionamiento, b: Estacio
       (a.tarifas.hora ?? Number.MAX_VALUE) - (b.tarifas.hora ?? Number.MAX_VALUE),
   };
 
-/** Lo que la API no resuelve: solo con lugar libre, y el orden elegido. */
-function aplicarFiltrosLocales(
+/** Con `origen`, calcula la distancia de cada estacionamiento; si no tiene coordenadas, queda sin distancia. */
+function conDistancia(
   items: Estacionamiento[],
-  filtros: FiltrosEstacionamiento,
+  origen: FiltrosEstacionamiento['origen'],
 ): Estacionamiento[] {
-  const visibles = filtros.soloDisponibles
-    ? items.filter((est) => est.cocherasDisponibles > 0)
-    : items;
-  return [...visibles].sort(COMPARADORES[filtros.orden ?? 'DISTANCIA']);
+  if (!origen) return items;
+  return items.map((estacionamiento) => {
+    const { latitud, longitud } = estacionamiento.direccion;
+    if (latitud == null || longitud == null) return estacionamiento;
+    return { ...estacionamiento, distanciaKm: distanciaKm(origen, { latitud, longitud }) };
+  });
+}
+
+/** Lo unico que no resuelve la API: el orden elegido. */
+function ordenar(items: Estacionamiento[], filtros: FiltrosEstacionamiento): Estacionamiento[] {
+  return [...items].sort(COMPARADORES[filtros.orden ?? 'DISTANCIA']);
 }
 
 function aParams(filtros: FiltrosEstacionamiento): HttpParams {
   let params = new HttpParams().set('limit', LIMITE_BUSQUEDA);
   const busqueda = filtros.busqueda?.trim();
   if (busqueda) params = params.set('q', busqueda);
+  const zona = filtros.zona?.trim();
+  if (zona) params = params.set('zona', zona);
   if (filtros.tipoVehiculo) {
     params = params.set('id_tipo_vehiculo', ID_TIPO_VEHICULO[filtros.tipoVehiculo]);
   }
+  if (filtros.precioMinimo != null) params = params.set('tarifa_min', filtros.precioMinimo);
   if (filtros.precioMaximo != null) params = params.set('tarifa_max', filtros.precioMaximo);
   if (filtros.soloCubiertos) params = params.set('cubierto', true);
+
+  const momento = filtros.momento;
+  if (momento?.tipo === 'AHORA') {
+    params = params.set('disponible_ahora', true);
+  } else if (momento?.tipo === 'FRANJA') {
+    params = params
+      .set('inicio', aInstante(momento.fecha, momento.horaDesde))
+      .set('fin', aInstante(momento.fecha, momento.horaHasta));
+  }
   return params;
 }

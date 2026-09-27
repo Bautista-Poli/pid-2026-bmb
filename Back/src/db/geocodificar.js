@@ -1,31 +1,37 @@
-// Completa latitud/longitud de los estacionamientos que no las tienen,
-// geocodificando su direccion. Ejecutar con: npm run db:geocodificar
-//
-// Es idempotente: solo toca los que tienen coordenadas en NULL, asi que se
-// puede volver a correr si alguno fallo. Va de a uno por segundo (limite de
-// Nominatim), asi que con muchos estacionamientos tarda un rato.
+// Completa latitud/longitud de los estacionamientos geocodificando su direccion.
+//   npm run db:geocodificar              -> solo los que no tienen coordenadas
+//   npm run db:geocodificar -- --todos   -> recalcula todos (por ejemplo, para
+//                                           reemplazar las que habia dado Nominatim)
+// Se puede volver a correr las veces que haga falta.
 import { pool, query } from '../config/database.js';
 import { geocodificar } from '../services/geocodificacion.service.js';
 
+const todos = process.argv.includes('--todos');
+
 try {
   const { rows } = await query(
-    `SELECT id_estacionamiento, nombre, calle, numero, ciudad, provincia, codigo_postal
+    `SELECT id_estacionamiento, nombre, calle, numero, ciudad, provincia
        FROM estacionamiento
-      WHERE activo AND (latitud IS NULL OR longitud IS NULL)
+      WHERE activo ${todos ? '' : 'AND (latitud IS NULL OR longitud IS NULL)'}
       ORDER BY nombre`,
   );
 
-  console.log(`[geocodificar] ${rows.length} estacionamientos sin coordenadas`);
+  console.log(`[geocodificar] ${rows.length} estacionamientos ${todos ? 'en total' : 'sin coordenadas'}`);
   let completados = 0;
 
   for (const estacionamiento of rows) {
-    const coordenadas = await geocodificar(estacionamiento);
-    const etiqueta = `${estacionamiento.nombre} (${estacionamiento.calle} ${estacionamiento.numero}, ${estacionamiento.ciudad})`;
+    const resultado = await geocodificar(estacionamiento);
+    const etiqueta = `${estacionamiento.nombre} (${estacionamiento.calle} ${estacionamiento.numero}, ${estacionamiento.ciudad}, ${estacionamiento.provincia})`;
 
-    if (!coordenadas) {
-      console.log(`  ✗ ${etiqueta}: no se encontro la direccion`);
+    if (resultado?.latitud == null) {
+      const motivo =
+        resultado?.encontrada === false
+          ? 'Georef no conoce esa direccion: editala desde la app eligiendo de la lista'
+          : 'no se pudo obtener la ubicacion';
+      console.log(`  ✗ ${etiqueta}: ${motivo}`);
       continue;
     }
+    const coordenadas = resultado;
 
     await query(
       'UPDATE estacionamiento SET latitud = $1, longitud = $2 WHERE id_estacionamiento = $3',

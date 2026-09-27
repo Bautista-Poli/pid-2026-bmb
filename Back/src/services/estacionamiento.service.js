@@ -5,8 +5,22 @@ import { ESTADOS_COCHERA, ESTADOS_VIGENTES } from '../utils/roles.js';
 import { listarPorEstacionamiento as listarCocheras } from './cochera.service.js';
 import { geocodificar } from './geocodificacion.service.js';
 
-const CAMPOS_DIRECCION = ['calle', 'numero', 'ciudad', 'provincia', 'codigo_postal'];
+const CAMPOS_DIRECCION = ['calle', 'numero', 'ciudad', 'provincia'];
 const tieneCoordenadas = (datos) => datos.latitud != null && datos.longitud != null;
+
+const DIRECCION_INEXISTENTE =
+  'No encontramos esa direccion. Elegi provincia, ciudad y calle de la lista y revisa la altura.';
+
+/**
+ * Verifica la direccion contra Georef y devuelve sus coordenadas. Lanza 400 si
+ * Georef responde que no existe. Si no se pudo consultar, deja pasar sin
+ * coordenadas: una caida del servicio no tiene que impedir cargar el lugar.
+ */
+async function verificarDireccion(direccion) {
+  const resultado = await geocodificar(direccion);
+  if (resultado?.encontrada === false) throw ApiError.badRequest(DIRECCION_INEXISTENTE);
+  return { latitud: resultado?.latitud ?? null, longitud: resultado?.longitud ?? null };
+}
 
 const COLUMNAS = [
   'id_estacionamiento', 'id_propietario', 'nombre', 'descripcion', 'direccion',
@@ -62,13 +76,12 @@ const AGREGADOS = `
 
 /**
  * Crea el estacionamiento y sus horarios en una sola transaccion.
- * Si no vienen coordenadas se obtienen de la direccion (fuera de la transaccion,
- * para no tener una conexion tomada mientras se espera al geocodificador).
+ * Antes verifica la direccion y obtiene sus coordenadas (fuera de la
+ * transaccion, para no tener una conexion tomada mientras se espera a Georef).
  */
 export async function crear(idPropietario, entrada) {
-  const datos = tieneCoordenadas(entrada)
-    ? entrada
-    : { ...entrada, ...(await geocodificar(entrada)) };
+  const coordenadas = await verificarDireccion(entrada);
+  const datos = tieneCoordenadas(entrada) ? entrada : { ...entrada, ...coordenadas };
 
   return withTransaction(async (client) => {
     const { rows } = await client.query(
@@ -251,14 +264,14 @@ async function asegurarAlgunaTarifa(client, idEstacionamiento, datos) {
 }
 
 /**
- * Decide las coordenadas que se guardan en un PATCH:
- *   - si vienen coordenadas distintas a las guardadas, se respetan;
- *   - si cambio la direccion, o el estacionamiento todavia no tiene coordenadas,
- *     se geocodifica la direccion resultante;
- *   - si cambio la direccion y no se pudo geocodificar, se borran las viejas
- *     (ya no corresponden al lugar y mostrarian una distancia falsa).
- * El formulario del propietario manda siempre la direccion completa y las
- * coordenadas que tenia, por eso se compara contra lo guardado.
+ * Decide las coordenadas que se guardan en un PATCH. El formulario del
+ * propietario manda siempre la direccion completa y las coordenadas que tenia,
+ * por eso se compara contra lo guardado:
+ *   - si cambio la direccion, se verifica (400 si no existe) y se toman las
+ *     coordenadas nuevas, salvo que el cliente mande otras explicitamente;
+ *   - si no cambio pero el estacionamiento no tiene coordenadas, se intenta
+ *     completarlas. No se rechaza: puede ser una direccion cargada antes de
+ *     que existiera la validacion, y no tiene que trabar editar otros datos.
  */
 async function completarCoordenadas(idEstacionamiento, entrada) {
   const { rows } = await query(
@@ -268,24 +281,29 @@ async function completarCoordenadas(idEstacionamiento, entrada) {
   );
   const guardado = rows[0];
 
-  const coordenadasNuevas =
-    tieneCoordenadas(entrada) &&
-    (entrada.latitud !== guardado.latitud || entrada.longitud !== guardado.longitud);
-  if (coordenadasNuevas) return entrada;
-
-  const cambioDireccion = CAMPOS_DIRECCION.some(
-    (campo) => entrada[campo] !== undefined && (entrada[campo] ?? '') !== (guardado[campo] ?? ''),
-  );
-  if (!cambioDireccion && tieneCoordenadas(guardado)) return entrada;
-
   const direccion = { ...guardado };
   for (const campo of CAMPOS_DIRECCION) {
     if (entrada[campo] !== undefined) direccion[campo] = entrada[campo];
   }
 
-  const coordenadas = await geocodificar(direccion);
-  if (coordenadas) return { ...entrada, ...coordenadas };
-  return cambioDireccion ? { ...entrada, latitud: null, longitud: null } : entrada;
+  const coordenadasNuevas =
+    tieneCoordenadas(entrada) &&
+    (entrada.latitud !== guardado.latitud || entrada.longitud !== guardado.longitud);
+  const cambioDireccion = CAMPOS_DIRECCION.some(
+    (campo) => (direccion[campo] ?? '') !== (guardado[campo] ?? ''),
+  );
+
+  if (cambioDireccion) {
+    const coordenadas = await verificarDireccion(direccion);
+    return coordenadasNuevas ? entrada : { ...entrada, ...coordenadas };
+  }
+
+  if (coordenadasNuevas || tieneCoordenadas(guardado)) return entrada;
+
+  const resultado = await geocodificar(direccion);
+  return resultado?.latitud != null
+    ? { ...entrada, latitud: resultado.latitud, longitud: resultado.longitud }
+    : entrada;
 }
 
 /**

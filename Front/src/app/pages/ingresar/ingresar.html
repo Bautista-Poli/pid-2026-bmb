@@ -64,24 +64,6 @@
           Ingresar
         </ui-boton>
       </form>
-
-      <div class="mt-6 flex items-center gap-3" aria-hidden="true">
-        <span class="h-px flex-1 bg-borde-sutil"></span>
-        <span class="eyebrow eyebrow-neutro">Accesos de prueba</span>
-        <span class="h-px flex-1 bg-borde-sutil"></span>
-      </div>
-
-      <div class="mt-4 flex flex-col gap-2">
-        @for (demo of demos; track demo.rol) {
-          <ui-boton
-            [bloque]="true"
-            [deshabilitado]="enviando()"
-            (presionado)="ingresarComo(demo.email)"
-          >
-            {{ demo.etiqueta }}
-          </ui-boton>
-        }
-      </div>
     </div>
 
     <p class="mt-6 text-center text-[13px] text-plomo">

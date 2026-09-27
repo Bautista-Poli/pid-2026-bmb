@@ -12,11 +12,24 @@
       <h1 class="titulo-vista mt-1.5">Nuevo estacionamiento</h1>
     </header>
 
-    <app-formulario-estacionamiento
-      textoEnviar="Crear estacionamiento"
-      [enviando]="enviando()"
-      [error]="error()"
-      (guardar)="crear($event)"
-    />
+    @if (avisoFoto(); as id) {
+      <p
+        class="rounded-control border border-baja/25 bg-baja/5 px-4 py-3 text-[13px] text-baja"
+        role="alert"
+      >
+        Creamos el estacionamiento, pero no pudimos subir la foto. Podés reintentar desde Editar.
+      </p>
+      <ui-boton variante="primario" [bloque]="true" (presionado)="continuarSinFoto()">
+        Continuar sin la foto
+      </ui-boton>
+    } @else {
+      <app-formulario-estacionamiento
+        textoEnviar="Crear estacionamiento"
+        [enviando]="enviando()"
+        [error]="error()"
+        (guardar)="crear($event)"
+        (fotoElegida)="elegirFoto($event)"
+      />
+    }
   </div>
 </div>

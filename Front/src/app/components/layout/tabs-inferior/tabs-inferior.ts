@@ -21,7 +21,7 @@ import { Icono } from '@app/components/ui';
                      text-[11px] font-semibold text-plomo
                      transition-[background-color,box-shadow,color] duration-160 ease-out"
               [routerLink]="item.ruta"
-              routerLinkActive="bg-acento text-white shadow-elevada"
+              routerLinkActive="bg-acento text-sobre-acento shadow-elevada"
             >
               <ui-icono [nombre]="item.icono" [tamano]="21" />
               {{ item.etiqueta }}

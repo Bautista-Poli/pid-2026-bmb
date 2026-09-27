@@ -37,7 +37,7 @@
   flex-shrink: 0;
   width: 16px;
   height: 16px;
-  border: 1.5px solid #cbd5e1;
+  border: 1.5px solid var(--color-borde);
   border-radius: 50%;
   background: var(--color-papel);
   transition:

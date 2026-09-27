@@ -1,20 +1,28 @@
 <div class="aparece mx-auto w-full max-w-[940px] px-6 pt-5 pb-8 lg:px-10 lg:pt-[34px] lg:pb-11">
   <div class="flex flex-col gap-6">
-    <header>
-      <a
+    <header class="flex flex-wrap items-start gap-4">
+      <ui-miniatura
+        [src]="recursoEstacionamiento.value()?.fotoUrl ?? null"
+        [optimizada]="false"
+        icono="estacionamiento"
+        tamano="lg"
+      />
+      <div class="min-w-0 flex-1">
+        <a
         class="inline-flex items-center gap-1.5 rounded-boton text-[12px] font-medium text-plomo
                transition-colors duration-160 ease-out hover:text-acento"
         routerLink="/propietario/estacionamientos"
       >
-        ← Mis estacionamientos
-      </a>
-      <p class="eyebrow mt-3">Cocheras</p>
-      <h1 class="titulo-vista mt-1.5">
-        {{ recursoEstacionamiento.value()?.nombre ?? 'Estacionamiento' }}
-      </h1>
-      @if (!recursoCocheras.isLoading()) {
-        <p class="num-tabular mt-1.5 text-[13.5px] text-plomo">{{ activas() }} cocheras activas</p>
-      }
+          ← Mis estacionamientos
+        </a>
+        <p class="eyebrow mt-3">Cocheras</p>
+        <h1 class="titulo-vista mt-1.5">
+          {{ recursoEstacionamiento.value()?.nombre ?? 'Estacionamiento' }}
+        </h1>
+        @if (!recursoCocheras.isLoading()) {
+          <p class="num-tabular mt-1.5 text-[13.5px] text-plomo">{{ activas() }} cocheras activas</p>
+        }
+      </div>
     </header>
 
     <div class="grid gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">

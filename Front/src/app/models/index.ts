@@ -4,3 +4,4 @@ export * from './vehiculo.model';
 export * from './estacionamiento.model';
 export * from './cochera.model';
 export * from './reserva.model';
+export * from './tarifa.model';

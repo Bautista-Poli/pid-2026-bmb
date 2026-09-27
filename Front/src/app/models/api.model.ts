@@ -12,14 +12,6 @@ export interface RespuestaError {
   };
 }
 
-/** Envoltorio de listados paginados. */
-export interface Pagina<T> {
-  items: T[];
-  total: number;
-  pagina: number;
-  porPagina: number;
-}
-
 /** Fecha en formato ISO (`2026-09-04`). */
 export type FechaISO = string;
 

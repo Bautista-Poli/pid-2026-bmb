@@ -92,11 +92,88 @@
       </form>
     </ui-tarjeta>
 
+    <!-- Apariencia -->
+    <ui-tarjeta relleno="lg">
+      <div class="flex flex-col gap-4">
+        <div>
+          <h2 class="text-[15px] font-semibold text-tinta">Apariencia</h2>
+          <p class="mt-1 text-[12.5px] text-plomo">
+            Se guarda en este dispositivo: podés tener modo noche acá y modo día en el teléfono.
+          </p>
+        </div>
+
+        <fieldset class="flex flex-col gap-2">
+          <legend class="sr-only">Tema de la aplicación</legend>
+          <div class="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Tema de la aplicación">
+            @for (opcion of temas; track opcion.valor) {
+              <button
+                type="button"
+                role="radio"
+                class="flex flex-col items-center gap-1.5 rounded-control border px-2 py-3 text-[12.5px] transition-colors duration-160"
+                [class]="
+                  temaElegido() === opcion.valor
+                    ? 'border-acento bg-acento text-sobre-acento font-semibold shadow-elevada'
+                    : 'border-borde bg-papel text-grafito hover:border-acento-borde hover:bg-acento-suave'
+                "
+                [attr.aria-checked]="temaElegido() === opcion.valor"
+                (click)="elegirTema(opcion.valor)"
+              >
+                <ui-icono [nombre]="opcion.icono" [tamano]="18" />
+                {{ opcion.etiqueta }}
+              </button>
+            }
+          </div>
+          <span class="campo-ayuda">{{ ayudaTema() }}</span>
+        </fieldset>
+      </div>
+    </ui-tarjeta>
+
     <!-- Contrasena -->
     <ui-tarjeta relleno="lg">
-      <form class="flex flex-col gap-4" [formGroup]="clave" (ngSubmit)="cambiarPassword()" novalidate>
-        <h2 class="text-[15px] font-semibold text-tinta">Contraseña</h2>
+      <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
+        <div>
+          <h2 class="text-[15px] font-semibold text-tinta">Contraseña</h2>
+          <p class="mt-0.5 text-[13px] text-plomo">
+            Para cambiarla te vamos a pedir la actual.
+          </p>
+        </div>
+        <ui-boton (presionado)="abrirModalClave()">Cambiar contraseña</ui-boton>
+      </div>
 
+      @if (avisoClave(); as mensaje) {
+        <p
+          class="mt-4 rounded-control border border-exito/25 bg-exito-suave px-4 py-3 text-[13px] text-exito"
+          role="status"
+        >
+          {{ mensaje }}
+        </p>
+      }
+    </ui-tarjeta>
+
+    <!-- Baja -->
+    <section
+      class="flex flex-col gap-3 rounded-tarjeta border border-ocupada/20 bg-ocupada/[0.03]
+             px-5 py-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6"
+      aria-labelledby="titulo-eliminar"
+    >
+      <div>
+        <h2 id="titulo-eliminar" class="text-[14px] font-semibold text-tinta">Eliminar mi cuenta</h2>
+        <p class="mt-0.5 text-[13px] text-plomo">
+          Se cancelan tus reservas futuras y tus estacionamientos dejan de publicarse. El historial
+          se conserva.
+        </p>
+      </div>
+      <ui-boton variante="peligro" [cargando]="borrando()" (presionado)="eliminarCuenta()">
+        Eliminar
+      </ui-boton>
+    </section>
+
+    <ui-modal
+      titulo="Cambiar contraseña"
+      [abierto]="modalClave()"
+      (cerrado)="cerrarModalClave()"
+    >
+      <form class="flex flex-col gap-4" [formGroup]="clave" (ngSubmit)="cambiarPassword()" novalidate>
         <label class="campo">
           <span class="label-campo">Contraseña actual</span>
           <input type="password" formControlName="passwordActual" autocomplete="current-password" />
@@ -130,35 +207,20 @@
             {{ mensaje }}
           </p>
         }
-        @if (avisoClave(); as mensaje) {
-          <p
-            class="rounded-control border border-exito/25 bg-exito-suave px-4 py-3 text-[13px] text-exito"
-            role="status"
+
+        <div class="mt-1 flex justify-end gap-2">
+          <ui-boton
+            variante="fantasma"
+            [deshabilitado]="guardandoClave()"
+            (presionado)="cerrarModalClave()"
           >
-            {{ mensaje }}
-          </p>
-        }
-
-        <ui-boton tipo="submit" [cargando]="guardandoClave()">Cambiar contraseña</ui-boton>
+            Cancelar
+          </ui-boton>
+          <ui-boton variante="primario" tipo="submit" [cargando]="guardandoClave()">
+            Cambiar contraseña
+          </ui-boton>
+        </div>
       </form>
-    </ui-tarjeta>
-
-    <!-- Baja -->
-    <section
-      class="flex flex-col gap-3 rounded-tarjeta border border-ocupada/20 bg-ocupada/[0.03]
-             px-5 py-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6"
-      aria-labelledby="titulo-eliminar"
-    >
-      <div>
-        <h2 id="titulo-eliminar" class="text-[14px] font-semibold text-tinta">Eliminar mi cuenta</h2>
-        <p class="mt-0.5 text-[13px] text-plomo">
-          Se cancelan tus reservas futuras y tus estacionamientos dejan de publicarse. El historial
-          se conserva.
-        </p>
-      </div>
-      <ui-boton variante="peligro" [cargando]="borrando()" (presionado)="eliminarCuenta()">
-        Eliminar
-      </ui-boton>
-    </section>
+    </ui-modal>
   </div>
 </div>

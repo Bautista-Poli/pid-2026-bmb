@@ -25,6 +25,10 @@ export function errorHandler(err, _req, res, _next) {
     // Body con JSON mal formado (lo lanza express.json()).
     statusCode = 400;
     mensaje = 'El cuerpo del request no es JSON valido';
+  } else if (err.type === 'entity.too.large') {
+    // Body mas grande que el limite del parser (lo lanza express.raw() al subir fotos).
+    statusCode = 413;
+    mensaje = 'El archivo es demasiado grande';
   } else if (ERRORES_PG[err.code]) {
     statusCode = ERRORES_PG[err.code].status;
     mensaje = ERRORES_PG[err.code].mensaje;

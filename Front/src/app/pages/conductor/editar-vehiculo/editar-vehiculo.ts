@@ -1,9 +1,9 @@
 import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
-import { FormularioVehiculo } from '@app/components/vehiculo';
+import { FormularioVehiculo, FotoVehiculo } from '@app/components/vehiculo';
 import { Boton, Cargando, EstadoVacio, Tarjeta } from '@app/components/ui';
-import { Id, NuevoVehiculo } from '@app/models';
+import { descripcionVehiculo, Id, NuevoVehiculo } from '@app/models';
 import { VehiculoService } from '@app/services/vehiculo.service';
 
 /**
@@ -15,7 +15,7 @@ import { VehiculoService } from '@app/services/vehiculo.service';
 @Component({
   selector: 'app-editar-vehiculo',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, FormularioVehiculo, Boton, Cargando, EstadoVacio, Tarjeta],
+  imports: [RouterLink, FormularioVehiculo, FotoVehiculo, Boton, Cargando, EstadoVacio, Tarjeta],
   templateUrl: './editar-vehiculo.html',
 })
 export class EditarVehiculo {
@@ -29,6 +29,8 @@ export class EditarVehiculo {
     params: () => this.vehiculoId(),
     stream: ({ params }) => this.vehiculos.obtener(params),
   });
+
+  protected readonly descripcion = descripcionVehiculo;
 
   protected readonly enviando = signal(false);
   protected readonly borrando = signal(false);

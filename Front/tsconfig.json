@@ -14,12 +14,11 @@
     "importHelpers": true,
     "target": "ES2022",
     "module": "preserve",
-    /* Alias de imports: `@app/...` apunta a src/app y `@env/...` a src/environments,
-       asi un import dice de que habla y no cuantas carpetas hay que subir. */
+    /* Alias de imports: `@app/...` apunta a src/app, asi un import dice de que
+       habla y no cuantas carpetas hay que subir. */
     "baseUrl": ".",
     "paths": {
-      "@app/*": ["src/app/*"],
-      "@env/*": ["src/environments/*"]
+      "@app/*": ["src/app/*"]
     }
   },
   "angularCompilerOptions": {

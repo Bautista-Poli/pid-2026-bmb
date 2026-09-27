@@ -1,6 +1,7 @@
 import { FechaHoraISO, FechaISO, HoraHHmm, Id } from './api.model';
 import { Cochera } from './cochera.model';
 import { Estacionamiento } from './estacionamiento.model';
+import { ModalidadReserva } from './tarifa.model';
 import { TipoVehiculo, Vehiculo } from './vehiculo.model';
 
 export type EstadoReserva =
@@ -33,6 +34,9 @@ export interface Reserva {
   fecha: FechaISO;
   horaDesde: HoraHHmm;
   horaHasta: HoraHHmm;
+  /** Dia en que termina: distinto de `fecha` cuando la reserva cruza la medianoche. */
+  fechaHasta: FechaISO;
+  modalidad: ModalidadReserva;
   estado: EstadoReserva;
   precioTotal: number;
   creadaEn: FechaHoraISO;
@@ -46,18 +50,20 @@ export interface Reserva {
  * a resolver cada FK por separado.
  */
 export interface ReservaDetallada extends Reserva {
-  estacionamiento: Pick<Estacionamiento, 'id' | 'nombre' | 'direccion' | 'precioPorHora'>;
+  estacionamiento: Pick<Estacionamiento, 'id' | 'nombre' | 'direccion'>;
   vehiculo: Pick<Vehiculo, 'id' | 'patente' | 'marca' | 'modelo' | 'tipo'>;
   cochera: Pick<Cochera, 'id' | 'identificador' | 'sector'> | null;
 }
 
-/** Datos que junta el flujo de reserva: vehiculo, fecha y franja horaria. */
+/** Datos que junta el flujo de reserva: vehiculo, modalidad, fecha y hora. */
 export interface NuevaReserva {
   estacionamientoId: Id;
   vehiculoId: Id;
+  modalidad: ModalidadReserva;
   fecha: FechaISO;
   horaDesde: HoraHHmm;
-  horaHasta: HoraHHmm;
+  /** Solo por hora; estadia y jornada terminan solas (12 h / 24 h despues). */
+  horaHasta: HoraHHmm | null;
 }
 
 /** Query de `GET /api/estacionamientos/:id/disponibilidad`. */
@@ -75,18 +81,11 @@ export interface FranjaDisponible {
   cocherasLibres: number;
 }
 
-/** Franjas que ofrece el estacionamiento, segun el handoff de diseno. */
-export const FRANJAS_ESTANDAR: { horaDesde: HoraHHmm; horaHasta: HoraHHmm }[] = [
-  { horaDesde: '08:00', horaHasta: '10:00' },
-  { horaDesde: '10:00', horaHasta: '13:00' },
-  { horaDesde: '13:00', horaHasta: '17:00' },
-  { horaDesde: '17:00', horaHasta: '21:00' },
-];
-
 /** Estado del formulario de reserva mientras el usuario lo completa. */
 export interface BorradorReserva {
   estacionamientoId: Id | null;
   vehiculoId: Id | null;
+  modalidad: ModalidadReserva;
   fecha: FechaISO | null;
   horaDesde: HoraHHmm | null;
   horaHasta: HoraHHmm | null;
@@ -95,6 +94,7 @@ export interface BorradorReserva {
 export const BORRADOR_VACIO: BorradorReserva = {
   estacionamientoId: null,
   vehiculoId: null,
+  modalidad: 'HORA',
   fecha: null,
   horaDesde: null,
   horaHasta: null,

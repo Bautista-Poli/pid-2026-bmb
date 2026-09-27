@@ -48,7 +48,7 @@
 
               <p class="num-tabular text-[13px] text-grafito">
                 {{ estacionamiento.cocherasTotales }} cocheras ·
-                $ {{ estacionamiento.precioPorHora.toLocaleString('es-AR') }} por hora
+                {{ resumenTarifas(estacionamiento.tarifas) }}
               </p>
 
               <div class="mt-auto flex gap-2">

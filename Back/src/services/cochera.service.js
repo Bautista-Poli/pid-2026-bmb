@@ -11,6 +11,15 @@ const CAMPOS =
 
 const CAMPOS_EDITABLES = ['identificador', 'id_tipo_vehiculo', 'sector', 'cubierta', 'estado_actual'];
 
+/**
+ * `identificador` es texto, asi que ordenarlo tal cual pone la cochera 10 antes
+ * que la 2. Ordena por la parte numerica y deja al final los identificadores
+ * alfanumericos viejos ("A-01"), que ya no se pueden dar de alta.
+ */
+export const ORDEN_NATURAL = `
+  NULLIF(regexp_replace(c.identificador, '\\D', '', 'g'), '')::int NULLS LAST,
+  c.identificador`;
+
 /** Traduce las violaciones de constraints de COCHERA a errores entendibles. */
 function traducirError(error, datos) {
   if (error.code === VIOLACION_UNIQUE) {
@@ -115,7 +124,7 @@ export async function listarPorEstacionamiento(idEstacionamiento) {
        FROM cochera c
        JOIN tipo_vehiculo t ON t.id_tipo_vehiculo = c.id_tipo_vehiculo
       WHERE c.id_estacionamiento = $1
-      ORDER BY c.identificador`,
+      ORDER BY ${ORDEN_NATURAL}`,
     [idEstacionamiento],
   );
   return rows;

@@ -36,16 +36,44 @@ export class EditarEstacionamiento {
   protected readonly error = signal<string | null>(null);
   protected readonly aviso = signal<string | null>(null);
 
-  /** `PATCH /api/estacionamientos/:id` con el formulario completo. */
+  // `undefined` = no se toco la foto en este envio, `null` = se pidio
+  // quitarla, `File` = se elige una nueva.
+  private foto: File | null | undefined;
+
+  protected elegirFoto(archivo: File | null): void {
+    this.foto = archivo;
+  }
+
+  /** `PATCH /api/estacionamientos/:id` con el formulario completo, y la foto si se toco. */
   protected guardar(datos: NuevoEstacionamiento): void {
     this.enviando.set(true);
     this.error.set(null);
 
     this.estacionamientos.actualizar(this.estacionamientoId(), datos).subscribe({
-      next: () => this.volverAlListado(),
+      next: () => this.guardarFoto(),
       error: (e: Error) => {
         this.enviando.set(false);
         this.error.set(e.message);
+      },
+    });
+  }
+
+  private guardarFoto(): void {
+    if (this.foto === undefined) {
+      this.volverAlListado();
+      return;
+    }
+
+    const id = this.estacionamientoId();
+    const pedido = this.foto
+      ? this.estacionamientos.subirFoto(id, this.foto)
+      : this.estacionamientos.borrarFoto(id);
+
+    pedido.subscribe({
+      next: () => this.volverAlListado(),
+      error: (e: Error) => {
+        this.enviando.set(false);
+        this.error.set(`Guardamos los datos, pero la foto no se pudo actualizar: ${e.message}`);
       },
     });
   }

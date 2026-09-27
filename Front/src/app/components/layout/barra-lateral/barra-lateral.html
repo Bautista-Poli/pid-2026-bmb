@@ -13,7 +13,7 @@
                    font-medium text-plomo transition-[background-color,box-shadow,color]
                    duration-160 ease-out hover:bg-acento-suave hover:text-acento-fuerte"
             [routerLink]="item.ruta"
-            routerLinkActive="bg-acento text-white font-semibold shadow-elevada hover:bg-acento hover:text-white"
+            routerLinkActive="bg-acento text-sobre-acento font-semibold shadow-elevada hover:bg-acento hover:text-sobre-acento"
           >
             <ui-icono [nombre]="item.icono" [tamano]="19" />
             {{ item.etiqueta }}
@@ -24,40 +24,16 @@
   </nav>
 
   @if (usuario(); as datos) {
-    <div class="mt-auto flex flex-col gap-3">
-      @if (rolAlternativo()) {
-        <button
-          type="button"
-          class="rounded-boton border border-borde px-3.5 py-2.5 text-left text-[12.5px]
-                 font-medium text-plomo transition-colors duration-160 ease-out
-                 hover:border-acento-borde hover:bg-acento-suave hover:text-acento-fuerte
-                 disabled:pointer-events-none disabled:opacity-60"
-          [disabled]="cambiandoRol()"
-          (click)="cambiarRol.emit()"
-        >
-          Cambiar a perfil {{ etiquetaRolAlternativo() }}
-        </button>
-      }
-      <div class="flex items-center gap-2.5 border-t border-borde-sutil px-2.5 pt-3">
-        <span
-          class="grid size-7 shrink-0 place-items-center rounded-full border border-acento-borde
-                 bg-acento-suave text-[11px] font-semibold text-acento-fuerte"
-        >
-          {{ inicial() }}
-        </span>
-        <div class="min-w-0 flex-1">
-          <p class="truncate text-[12.5px] font-medium text-tinta">{{ nombre() }}</p>
-          <p class="text-[11px] text-humo">{{ rol() }}</p>
-        </div>
-        <button
-          type="button"
-          class="rounded-boton px-2 py-1 text-[11px] font-medium text-plomo
-                 transition-colors duration-160 ease-out hover:bg-borde-sutil hover:text-tinta"
-          (click)="salir.emit()"
-        >
-          Salir
-        </button>
-      </div>
+    <div class="mt-auto flex items-center gap-1.5 border-t border-borde-sutil pt-3">
+      <app-menu-usuario
+        class="min-w-0 flex-1"
+        [usuario]="datos"
+        [rolAlternativo]="rolAlternativo()"
+        [cambiandoRol]="cambiandoRol()"
+        (cambiarRol)="cambiarRol.emit()"
+        (salir)="salir.emit()"
+      />
+      <ui-boton-tema />
     </div>
   }
 </aside>

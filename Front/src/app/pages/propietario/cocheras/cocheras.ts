@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -8,6 +15,7 @@ import {
   Chip,
   EstadoVacio,
   Etiqueta,
+  Miniatura,
   Tarjeta,
   TonoEtiqueta,
 } from '@app/components/ui';
@@ -50,7 +58,17 @@ const TONO_ESTADO: Record<EstadoCochera, TonoEtiqueta> = {
 @Component({
   selector: 'app-cocheras',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, RouterLink, Boton, Cargando, Chip, EstadoVacio, Etiqueta, Tarjeta],
+  imports: [
+    ReactiveFormsModule,
+    RouterLink,
+    Boton,
+    Cargando,
+    Chip,
+    EstadoVacio,
+    Etiqueta,
+    Miniatura,
+    Tarjeta,
+  ],
   templateUrl: './cocheras.html',
 })
 export class Cocheras {

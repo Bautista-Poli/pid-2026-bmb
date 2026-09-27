@@ -55,6 +55,12 @@
   --color-acento-suave: #eaf0f7;
   --color-acento-borde: #c2d4e8;
 
+  /* Lo que se escribe *encima* del acento (boton primario, chip activo, item
+     de nav activo). En claro el acento es oscuro y va texto blanco; en oscuro
+     el acento se aclara para leerse sobre el fondo, y este token se da vuelta.
+     Por eso existe: sin el, el modo noche deja blanco sobre celeste. */
+  --color-sobre-acento: #ffffff;
+
   /* Estados. El verde (`exito`) es el otro color de la marca —el del check y
      la "it"— y por eso se usa tambien como acento secundario. */
   --color-ocupada: #dc2626;
@@ -90,4 +96,86 @@
 
   /* Entradas (pantallas, listas, avisos). Los hover siguen en 160ms. */
   --duracion-entrada: 220ms;
+}
+
+/* ---------------------------------------------------------------------------
+   Modo noche.
+
+   Toda la app pinta con los tokens de arriba, asi que el tema oscuro es una
+   redefinicion de esos mismos custom properties: no hay que tocar ninguna
+   plantilla. Son tres estados, no dos:
+
+     sin `data-theme`         -> manda el sistema operativo
+     data-theme="claro"       -> claro aunque el sistema este en oscuro
+     data-theme="oscuro"      -> oscuro aunque el sistema este en claro
+
+   Las reglas van fuera de `@layer` a proposito: `@theme` deja los tokens en
+   `@layer theme`, y una regla sin capa le gana a cualquier regla con capa.
+--------------------------------------------------------------------------- */
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='claro']) {
+    color-scheme: dark;
+
+    --color-lienzo: #0d1017;
+    --color-papel: #141926;
+    --color-borde: #283044;
+    --color-borde-sutil: #1d2432;
+
+    --color-tinta: #e9edf6;
+    --color-grafito: #c3cbdb;
+    --color-plomo: #98a3b8;
+    --color-humo: #768299;
+
+    --color-acento: #7aabe0;
+    --color-acento-fuerte: #9cc3ec;
+    --color-acento-suave: #16263a;
+    --color-acento-borde: #2f4a6b;
+    --color-sobre-acento: #0b1220;
+
+    --color-ocupada: #f87171;
+    --color-baja: #fbbf24;
+    --color-reservada: #8c99ad;
+    --color-exito: #34d399;
+    --color-exito-suave: #0d2c22;
+
+    /* Las sombras tintadas con `tinta` desaparecen sobre fondo oscuro. */
+    --shadow-tarjeta: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-elevada: 0 4px 12px rgb(0 0 0 / 0.45), 0 2px 4px rgb(0 0 0 / 0.3);
+    --shadow-flotante: 0 10px 30px rgb(0 0 0 / 0.55), 0 4px 8px rgb(0 0 0 / 0.35);
+  }
+}
+
+:root[data-theme='oscuro'] {
+  color-scheme: dark;
+
+  --color-lienzo: #0d1017;
+  --color-papel: #141926;
+  --color-borde: #283044;
+  --color-borde-sutil: #1d2432;
+
+  --color-tinta: #e9edf6;
+  --color-grafito: #c3cbdb;
+  --color-plomo: #98a3b8;
+  --color-humo: #768299;
+
+  --color-acento: #7aabe0;
+  --color-acento-fuerte: #9cc3ec;
+  --color-acento-suave: #16263a;
+  --color-acento-borde: #2f4a6b;
+  --color-sobre-acento: #0b1220;
+
+  --color-ocupada: #f87171;
+  --color-baja: #fbbf24;
+  --color-reservada: #8c99ad;
+  --color-exito: #34d399;
+  --color-exito-suave: #0d2c22;
+
+  --shadow-tarjeta: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-elevada: 0 4px 12px rgb(0 0 0 / 0.45), 0 2px 4px rgb(0 0 0 / 0.3);
+  --shadow-flotante: 0 10px 30px rgb(0 0 0 / 0.55), 0 4px 8px rgb(0 0 0 / 0.35);
+}
+
+:root[data-theme='claro'] {
+  color-scheme: light;
 }

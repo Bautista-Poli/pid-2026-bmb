@@ -5,12 +5,20 @@ export type NombreIcono =
   | 'explorar'
   | 'reservas'
   | 'auto'
+  | 'moto'
   | 'tablero'
   | 'estacionamiento'
   | 'mas'
   | 'editar'
   | 'reloj'
-  | 'perfil';
+  | 'perfil'
+  | 'sol'
+  | 'luna'
+  | 'sistema'
+  | 'cerrar'
+  | 'cheuron'
+  | 'intercambiar'
+  | 'salida';
 
 /**
  * Icono de linea sobre un lienzo de 24x24. Todos comparten estilo (trazo de
@@ -51,6 +59,26 @@ export type NombreIcono =
           <circle cx="7.3" cy="16.2" r="1.6" />
           <circle cx="16.7" cy="16.2" r="1.6" />
         }
+        @case ('moto') {
+          <circle cx="5.6" cy="16.9" r="3.3" />
+          <circle cx="18.4" cy="16.9" r="3.3" />
+          <path d="M5.6 16.9 9.4 11h5l4 5.9" />
+          <path d="M9.4 11 7.9 8.3h3.2" />
+          <path d="M14.4 11l2.6-2.7h2.3" />
+        }
+        @case ('cerrar') {
+          <path d="M6.6 6.6l10.8 10.8M17.4 6.6L6.6 17.4" />
+        }
+        @case ('cheuron') {
+          <path d="M6.5 9.4 12 14.9l5.5-5.5" />
+        }
+        @case ('intercambiar') {
+          <path d="M7.4 4.6 3.9 8.1l3.5 3.5M3.9 8.1h12.4M16.6 19.4l3.5-3.5-3.5-3.5M20.1 15.9H7.7" />
+        }
+        @case ('salida') {
+          <path d="M14.6 7.4V5.2a1.7 1.7 0 0 0-1.7-1.7H5.6a1.7 1.7 0 0 0-1.7 1.7v13.6a1.7 1.7 0 0 0 1.7 1.7h7.3a1.7 1.7 0 0 0 1.7-1.7v-2.2" />
+          <path d="M9.6 12h10.5m0 0-3.2-3.2M20.1 12l-3.2 3.2" />
+        }
         @case ('tablero') {
           <rect x="3.5" y="3.5" width="7.2" height="7.2" rx="1.4" />
           <rect x="13.3" y="3.5" width="7.2" height="7.2" rx="1.4" />
@@ -76,6 +104,19 @@ export type NombreIcono =
         @case ('perfil') {
           <circle cx="12" cy="8.3" r="3.8" />
           <path d="M4.8 20.2c.9-3.6 3.7-5.6 7.2-5.6s6.3 2 7.2 5.6" />
+        }
+        @case ('sol') {
+          <circle cx="12" cy="12" r="4" />
+          <path
+            d="M12 2.6v2.2M12 19.2v2.2M4.4 4.4l1.6 1.6M18 18l1.6 1.6M2.6 12h2.2M19.2 12h2.2M4.4 19.6l1.6-1.6M18 6l1.6-1.6"
+          />
+        }
+        @case ('luna') {
+          <path d="M20.6 14.2A8.6 8.6 0 0 1 9.8 3.4a8.6 8.6 0 1 0 10.8 10.8Z" />
+        }
+        @case ('sistema') {
+          <rect x="2.8" y="4.4" width="18.4" height="12" rx="2" />
+          <path d="M8.6 19.6h6.8M12 16.4v3.2" />
         }
       }
     </svg>

@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, effect, inject, input, output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import {
   AbstractControl,
   FormBuilder,
@@ -8,6 +16,7 @@ import {
 } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { Boton, Tarjeta } from '@app/components/ui';
+import { FotoEstacionamiento } from '../foto-estacionamiento/foto-estacionamiento';
 import { DiaSemana, Estacionamiento, NuevoEstacionamiento } from '@app/models';
 
 const DIAS: { dia: DiaSemana; etiqueta: string }[] = [
@@ -28,6 +37,13 @@ function horarioValido(grupo: AbstractControl): ValidationErrors | null {
   return abierto && (!desde || !hasta || hasta <= desde) ? { horarioInvalido: true } : null;
 }
 
+// El estacionamiento tiene que ofrecer al menos una modalidad (vacio = no la ofrece).
+function algunaTarifa(grupo: AbstractControl): ValidationErrors | null {
+  const { tarifaHora, tarifaEstadia, tarifaJornada } = grupo.value;
+  const ofrecida = [tarifaHora, tarifaEstadia, tarifaJornada].some((t) => t !== null && t !== '');
+  return ofrecida ? null : { sinTarifa: true };
+}
+
 /**
  * Formulario de un estacionamiento, compartido por el alta y la edicion.
  * Si recibe un `estacionamiento` precarga sus datos; si no, arranca vacio.
@@ -37,7 +53,7 @@ function horarioValido(grupo: AbstractControl): ValidationErrors | null {
 @Component({
   selector: 'app-formulario-estacionamiento',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, RouterLink, Boton, Tarjeta],
+  imports: [ReactiveFormsModule, RouterLink, Boton, FotoEstacionamiento, Tarjeta],
   templateUrl: './formulario-estacionamiento.html',
 })
 export class FormularioEstacionamiento {
@@ -50,8 +66,23 @@ export class FormularioEstacionamiento {
   readonly textoEnviar = input('Guardar');
 
   readonly guardar = output<NuevoEstacionamiento>();
+  /**
+   * Se emite junto con `guardar`, en el mismo `enviar()`, solo si el
+   * propietario toco la foto: `null` para sacarla, o el archivo elegido.
+   * Va aparte porque subirla es un request distinto (multipart/binario) y
+   * porque en el alta recien se puede mandar despues del POST, cuando el
+   * estacionamiento ya tiene id.
+   */
+  readonly fotoElegida = output<File | null>();
 
   protected readonly dias = DIAS;
+
+  /**
+   * `undefined` = no se toco la foto, `null` = se pidio quitarla, `File` = se
+   * elige una nueva. Quien usa el formulario decide como subirla: necesita el
+   * id del estacionamiento, que en el alta recien existe despues de crearlo.
+   */
+  protected readonly archivoFoto = signal<File | null | undefined>(undefined);
 
   /** Mismos limites que valida el backend (estacionamiento.validator.js). */
   protected readonly formulario = this.fb.nonNullable.group({
@@ -65,7 +96,9 @@ export class FormularioEstacionamiento {
     barrioZona: ['', [Validators.maxLength(120)]],
     telefono: ['', [Validators.maxLength(30)]],
     email: ['', [Validators.email, Validators.maxLength(160)]],
-    tarifa: [null as number | null, [Validators.required, Validators.min(0)]],
+    tarifaHora: [null as number | null, [Validators.min(0)]],
+    tarifaEstadia: [null as number | null, [Validators.min(0)]],
+    tarifaJornada: [null as number | null, [Validators.min(0)]],
     cubierto: false,
     horarios: this.fb.nonNullable.array(
       DIAS.map(({ dia }) =>
@@ -80,7 +113,7 @@ export class FormularioEstacionamiento {
         ),
       ),
     ),
-  });
+  }, { validators: algunaTarifa });
 
   protected readonly horarios = this.formulario.controls.horarios;
 
@@ -102,7 +135,9 @@ export class FormularioEstacionamiento {
         barrioZona: estacionamiento.barrioZona ?? '',
         telefono: estacionamiento.telefonoContacto ?? '',
         email: estacionamiento.emailContacto ?? '',
-        tarifa: estacionamiento.precioPorHora,
+        tarifaHora: estacionamiento.tarifas.hora,
+        tarifaEstadia: estacionamiento.tarifas.estadia,
+        tarifaJornada: estacionamiento.tarifas.jornada,
         cubierto: estacionamiento.cubierto,
       });
 
@@ -120,6 +155,10 @@ export class FormularioEstacionamiento {
     });
   }
 
+  protected elegirFoto(archivo: File | null): void {
+    this.archivoFoto.set(archivo);
+  }
+
   protected invalido(campo: string): boolean {
     const control = this.formulario.get(campo);
     return Boolean(control?.invalid && control.touched);
@@ -132,6 +171,9 @@ export class FormularioEstacionamiento {
     }
 
     const valores = this.formulario.getRawValue();
+    const foto = this.archivoFoto();
+    if (foto !== undefined) this.fotoElegida.emit(foto);
+
     this.guardar.emit({
       nombre: valores.nombre.trim(),
       descripcion: valores.descripcion.trim(),
@@ -148,7 +190,11 @@ export class FormularioEstacionamiento {
       barrioZona: valores.barrioZona.trim() || null,
       telefonoContacto: valores.telefono.trim() || null,
       emailContacto: valores.email.trim() || null,
-      precioPorHora: valores.tarifa ?? 0,
+      tarifas: {
+        hora: valores.tarifaHora,
+        estadia: valores.tarifaEstadia,
+        jornada: valores.tarifaJornada,
+      },
       cubierto: valores.cubierto,
       // La publicacion se maneja aparte, desde la pantalla de edicion.
       publicado: this.estacionamiento()?.publicado ?? true,

@@ -48,16 +48,6 @@ export interface CambiosPerfil {
   passwordActual?: string;
 }
 
-/** Respuesta de `POST /api/auth/login` y `/register`. */
-export interface SesionAuth {
-  token: string;
-  usuario: Usuario;
-}
-
-export function nombreCompleto(usuario: Usuario): string {
-  return `${usuario.nombre} ${usuario.apellido}`.trim();
-}
-
 /** "M. Álvarez": el formato que usa el bloque de usuario del sidebar. */
 export function nombreCorto(usuario: Usuario): string {
   return `${usuario.nombre.charAt(0)}. ${usuario.apellido}`;

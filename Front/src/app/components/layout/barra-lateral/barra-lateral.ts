@@ -1,14 +1,17 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
-import { ETIQUETA_ROL, iniciales, nombreCorto, RolUsuario, Usuario } from '@app/models';
-import { ItemNavegacion } from '@app/components/layout';
-import { Icono, Logo } from '@app/components/ui';
+import { RolUsuario, Usuario } from '@app/models';
+// MenuUsuario se importa por ruta directa, no por el barrel: el barrel importa
+// a este archivo y el ciclo rompe la resolucion de metadata (NG0919).
+import type { ItemNavegacion } from '../navegacion.model';
+import { MenuUsuario } from '../menu-usuario/menu-usuario';
+import { BotonTema, Icono, Logo } from '@app/components/ui';
 
 /** Nav lateral de 238px que reemplaza a la tab bar en >= 1024px. */
 @Component({
   selector: 'app-barra-lateral',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, RouterLinkActive, Icono, Logo],
+  imports: [RouterLink, RouterLinkActive, BotonTema, Icono, Logo, MenuUsuario],
   templateUrl: './barra-lateral.html',
   host: { class: 'block h-full' },
 })
@@ -21,24 +24,4 @@ export class BarraLateral {
 
   readonly salir = output<void>();
   readonly cambiarRol = output<void>();
-
-  protected readonly nombre = computed(() => {
-    const usuario = this.usuario();
-    return usuario ? nombreCorto(usuario) : '';
-  });
-
-  protected readonly inicial = computed(() => {
-    const usuario = this.usuario();
-    return usuario ? iniciales(usuario) : '';
-  });
-
-  protected readonly rol = computed(() => {
-    const usuario = this.usuario();
-    return usuario ? ETIQUETA_ROL[usuario.rol] : '';
-  });
-
-  protected readonly etiquetaRolAlternativo = computed(() => {
-    const rol = this.rolAlternativo();
-    return rol ? ETIQUETA_ROL[rol] : '';
-  });
 }

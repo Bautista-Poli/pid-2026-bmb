@@ -6,7 +6,7 @@ export type TamanoBoton = 'sm' | 'md';
 const VARIANTES: Record<VarianteBoton, string> = {
   // Primario: acento solido con elevacion; es la unica accion de cada vista.
   primario:
-    'border border-acento bg-acento text-white shadow-elevada hover:border-acento-fuerte hover:bg-acento-fuerte',
+    'border border-acento bg-acento text-sobre-acento shadow-elevada hover:border-acento-fuerte hover:bg-acento-fuerte',
   // Secundario: papel + borde. Al hover se tinta del acento en lugar de gris,
   // asi la accion se lee como accionable y no como deshabilitada.
   secundario:

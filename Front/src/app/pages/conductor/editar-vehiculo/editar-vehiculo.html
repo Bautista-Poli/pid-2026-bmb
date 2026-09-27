@@ -19,6 +19,16 @@
         <ui-boton (presionado)="recurso.reload()">Reintentar</ui-boton>
       </ui-estado-vacio>
     } @else if (recurso.value(); as vehiculo) {
+      <div class="flex items-center gap-4">
+        <app-foto-vehiculo [vehiculo]="vehiculo" tamano="lg" />
+        <div class="min-w-0">
+          <p class="num-tabular truncate text-[15px] font-semibold text-tinta">
+            {{ vehiculo.patente }}
+          </p>
+          <p class="mt-0.5 truncate text-[13px] text-plomo">{{ descripcion(vehiculo) }}</p>
+        </div>
+      </div>
+
       <ui-tarjeta relleno="lg">
         <app-formulario-vehiculo
           textoEnviar="Guardar cambios"

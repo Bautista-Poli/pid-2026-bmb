@@ -7,7 +7,13 @@ import { AuthService } from '@app/services/auth.service';
 
 /**
  * Normaliza el formato de error de Express (`{ error: { message, details } }`)
- * a un Error con mensaje mostrable, y cierra la sesion ante un 401.
+ * a un Error con mensaje mostrable, y cierra la sesion si un 401 tira abajo
+ * una que estaba vigente.
+ *
+ * Un 401 sin sesion previa no cuenta: es lo que responde `/auth/me` al
+ * arrancar la app cuando todavia no se sabe si hay cookie (`cargarSesion` en
+ * `AuthService`), y forzar la redireccion ahi mandaria a cualquier pantalla
+ * publica derecho al login.
  */
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
@@ -15,8 +21,8 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
-      if (error.status === 401) {
-        auth.logout();
+      if (error.status === 401 && auth.estaAutenticado()) {
+        auth.logout().subscribe();
         void router.navigate(['/ingresar']);
       }
 

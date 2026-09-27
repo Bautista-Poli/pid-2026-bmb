@@ -13,3 +13,4 @@ export * from './icono/icono';
 export * from './logo/logo';
 export * from './miniatura/miniatura';
 export * from './modal/modal';
+export * from './campo-autocompletar/campo-autocompletar';

@@ -17,6 +17,9 @@ import { pool, query } from '../src/config/database.js';
 
 export { query };
 
+// Las pruebas no geocodifican: no dependen de la red ni del cupo de Nominatim.
+process.env.GEOCODING_ENABLED = 'false';
+
 /** Contrasena de todos los usuarios de prueba. */
 export const PASSWORD = 'prueba1234';
 

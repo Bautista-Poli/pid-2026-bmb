@@ -1,19 +1,47 @@
-/** Radio medio de la Tierra, en km. */
+/** Un punto en el mapa, en grados decimales. */
+export interface Coordenadas {
+  latitud: number;
+  longitud: number;
+}
+
+/** Radio medio de la Tierra en km. */
 const RADIO_TIERRA_KM = 6371;
 
-/** Distancia entre dos puntos (formula de Haversine), en linea recta. */
-export function distanciaKm(
-  origen: { latitud: number; longitud: number },
-  destino: { latitud: number; longitud: number },
-): number {
+const aRadianes = (grados: number) => (grados * Math.PI) / 180;
+
+/**
+ * Distancia en linea recta entre dos puntos, en km (formula de Haversine).
+ * No es la distancia manejando, pero alcanza para ordenar por cercania.
+ */
+export function distanciaKm(origen: Coordenadas, destino: Coordenadas): number {
   const dLat = aRadianes(destino.latitud - origen.latitud);
   const dLon = aRadianes(destino.longitud - origen.longitud);
   const a =
     Math.sin(dLat / 2) ** 2 +
     Math.cos(aRadianes(origen.latitud)) * Math.cos(aRadianes(destino.latitud)) * Math.sin(dLon / 2) ** 2;
-  return RADIO_TIERRA_KM * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return 2 * RADIO_TIERRA_KM * Math.asin(Math.sqrt(a));
 }
 
-function aRadianes(grados: number): number {
-  return (grados * Math.PI) / 180;
+/**
+ * Distancia desde `origen` hasta un lugar cuyas coordenadas pueden faltar
+ * (estacionamientos cargados antes de geocodificar). `undefined` si falta algo.
+ */
+export function distanciaHasta(
+  origen: Coordenadas | null,
+  destino: { latitud: number | null; longitud: number | null },
+): number | undefined {
+  if (!origen || destino.latitud == null || destino.longitud == null) return undefined;
+  return distanciaKm(origen, { latitud: destino.latitud, longitud: destino.longitud });
+}
+
+/**
+ * Comparador para `sort`: el mas cercano primero. Los que no tienen distancia
+ * (sin coordenadas o sin ubicacion del usuario) van al final, en el orden que
+ * traian (`sort` es estable).
+ */
+export function porCercania(
+  a: { distanciaKm?: number },
+  b: { distanciaKm?: number },
+): number {
+  return (a.distanciaKm ?? Number.POSITIVE_INFINITY) - (b.distanciaKm ?? Number.POSITIVE_INFINITY) || 0;
 }

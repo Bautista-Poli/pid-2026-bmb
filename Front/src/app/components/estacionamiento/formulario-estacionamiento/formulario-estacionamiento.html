@@ -64,36 +64,65 @@
     <fieldset class="flex flex-col gap-4">
       <legend class="mb-4 text-[15px] font-semibold text-tinta">Ubicación</legend>
 
-      <div class="grid grid-cols-[1fr_120px] gap-3">
-        <label class="campo">
-          <span class="label-campo">Calle</span>
-          <input type="text" formControlName="calle" placeholder="Av. Belgrano" autocomplete="address-line1" />
-          @if (invalido('calle')) {
-            <span class="campo-error">Ingresá la calle.</span>
-          }
-        </label>
-        <label class="campo">
-          <span class="label-campo">Número</span>
-          <input type="text" formControlName="numero" placeholder="1240" />
-          @if (invalido('numero')) {
-            <span class="campo-error">Falta el número.</span>
-          }
-        </label>
-      </div>
+      @if (direccionDesactualizada()) {
+        <p class="campo-error">
+          La dirección guardada no figura en el registro oficial. Volvé a elegirla de la lista.
+        </p>
+      }
+      @if (errorProvincias()) {
+        <p class="campo-error">No pudimos cargar las provincias. Recargá la página para intentar de nuevo.</p>
+      }
 
-      <div class="grid grid-cols-2 gap-3">
-        <label class="campo">
-          <span class="label-campo">Ciudad</span>
-          <input type="text" formControlName="ciudad" placeholder="CABA" autocomplete="address-level2" />
-          @if (invalido('ciudad')) {
-            <span class="campo-error">Ingresá la ciudad.</span>
-          }
-        </label>
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label class="campo">
           <span class="label-campo">Provincia</span>
-          <input type="text" formControlName="provincia" placeholder="Buenos Aires" autocomplete="address-level1" />
+          <select formControlName="provincia">
+            <option value="" disabled>Elegí la provincia</option>
+            @for (provincia of provincias(); track provincia.id) {
+              <option [value]="provincia.nombre">{{ provincia.nombre }}</option>
+            }
+          </select>
           @if (invalido('provincia')) {
-            <span class="campo-error">Ingresá la provincia.</span>
+            <span class="campo-error">Elegí la provincia.</span>
+          }
+        </label>
+
+        <div class="campo">
+          <label class="label-campo" for="campo-ciudad">Ciudad</label>
+          <ui-campo-autocompletar
+            formControlName="ciudad"
+            idCampo="campo-ciudad"
+            [buscar]="buscarCiudades"
+            [minimo]="1"
+            marcador="Empezá a escribir la ciudad"
+            sinResultados="No hay ciudades con ese nombre en la provincia"
+            (elegida)="elegirCiudad($event)"
+          />
+          @if (invalido('ciudad')) {
+            <span class="campo-error">Elegí la ciudad de la lista.</span>
+          }
+        </div>
+      </div>
+
+      <div class="grid grid-cols-[1fr_120px] gap-3">
+        <div class="campo">
+          <label class="label-campo" for="campo-calle">Calle</label>
+          <ui-campo-autocompletar
+            formControlName="calle"
+            idCampo="campo-calle"
+            [buscar]="buscarCalles"
+            marcador="Empezá a escribir la calle"
+            sinResultados="No hay calles con ese nombre en la ciudad"
+          />
+          @if (invalido('calle')) {
+            <span class="campo-error">Elegí la calle de la lista.</span>
+          }
+        </div>
+        <label class="campo">
+          <span class="label-campo">Número</span>
+          <input type="text" inputmode="numeric" formControlName="numero" placeholder="1240" />
+          @if (invalido('numero')) {
+            <span class="campo-error">Falta el número.</span>
           }
         </label>
       </div>

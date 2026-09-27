@@ -1,6 +1,8 @@
-import { ChangeDetectionStrategy, Component, computed, output, signal } from '@angular/core';
-import { Boton, Chip, Tarjeta } from '@app/components/ui';
+import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
+import { Observable } from 'rxjs';
+import { Boton, CampoBusqueda, Chip, Sugerencia, Tarjeta } from '@app/components/ui';
 import { HoraHHmm, Momento, Ubicacion } from '@app/models';
+import { DireccionGeoref } from '@app/services/georef.service';
 import { aFechaISO } from '@app/utils/fecha.util';
 
 /** Lo que se pregunta antes de listar: donde busca el conductor y para cuando. */
@@ -10,22 +12,30 @@ export interface Exploracion {
 }
 
 /**
- * Primera pantalla al explorar: ubicacion (actual o una zona escrita a mano) y
- * momento (ahora, o una franja en "busqueda avanzada"). Emite ambas juntas;
- * los resultados recien se piden despues.
+ * Primera pantalla al explorar: ubicacion (actual u otra zona) y momento
+ * (ahora, o una franja en "busqueda avanzada"). Emite ambas juntas; los
+ * resultados recien se piden despues.
+ *
+ * En "otra zona", si escribe una direccion con altura ("Pueyrredon 2409") se
+ * sugieren direcciones reales: elegir una ordena los resultados por distancia a
+ * ese punto. Si escribe un barrio sin elegir sugerencia, filtra por zona.
  */
 @Component({
   selector: 'app-elegir-momento',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Boton, Chip, Tarjeta],
+  imports: [Boton, CampoBusqueda, Chip, Tarjeta],
   templateUrl: './elegir-momento.html',
   host: { class: 'block' },
 })
 export class ElegirMomento {
   readonly elegido = output<Exploracion>();
+  /** Sugerencias de direcciones para "otra zona". Sin esto, la zona es solo texto. */
+  readonly buscarDirecciones = input<((texto: string) => Observable<Sugerencia[]>) | null>(null);
 
   protected readonly tipoUbicacion = signal<'ACTUAL' | 'OTRA'>('ACTUAL');
   protected readonly zona = signal('');
+  /** Direccion elegida de las sugerencias. Se pierde si vuelve a escribir. */
+  protected readonly direccionElegida = signal<DireccionGeoref | null>(null);
   protected readonly buscandoUbicacion = signal(false);
   protected readonly errorUbicacion = signal<string | null>(null);
   /** Se marca al intentar avanzar (con "Ahora" o con la franja), para no mostrar el error de zona de entrada. */
@@ -49,6 +59,17 @@ export class ElegirMomento {
   protected readonly errorUbicacionElegida = computed(() =>
     this.tipoUbicacion() === 'OTRA' && !this.zona().trim() ? 'Contanos la zona donde querés buscar.' : null,
   );
+
+  protected escribirZona(texto: string): void {
+    this.zona.set(texto);
+    this.direccionElegida.set(null);
+  }
+
+  protected elegirDireccion(sugerencia: Sugerencia): void {
+    const direccion = sugerencia.dato as DireccionGeoref;
+    this.direccionElegida.set(direccion);
+    this.zona.set(direccion.nombre);
+  }
 
   protected alternarAvanzada(): void {
     this.avanzadaAbierta.update((abierta) => !abierta);
@@ -75,13 +96,27 @@ export class ElegirMomento {
     );
   }
 
-  /** Con "otra zona" resuelve al toque; con la actual, primero pide permiso de geolocalizacion. */
+  /**
+   * Con "otra zona" resuelve al toque: si eligio una direccion sugerida la usa
+   * como punto de partida, si no filtra por la zona escrita. Con la actual,
+   * primero pide permiso de geolocalizacion.
+   */
   private resolverUbicacion(continuar: (ubicacion: Ubicacion) => void): void {
     this.intentadoUbicacion.set(true);
     if (this.errorUbicacionElegida()) return;
 
     if (this.tipoUbicacion() === 'OTRA') {
-      continuar({ tipo: 'OTRA', zona: this.zona().trim() });
+      const direccion = this.direccionElegida();
+      continuar(
+        direccion
+          ? {
+              tipo: 'DIRECCION',
+              direccion: direccion.nombre,
+              latitud: direccion.coordenadas.latitud,
+              longitud: direccion.coordenadas.longitud,
+            }
+          : { tipo: 'OTRA', zona: this.zona().trim() },
+      );
       return;
     }
 

@@ -4,6 +4,24 @@ import { sinSolapamiento } from '../utils/solapamiento.js';
 import { CAMPOS_TARIFA } from '../utils/tarifas.js';
 import { ESTADOS_COCHERA, ESTADOS_VIGENTES } from '../utils/roles.js';
 import { listarPorEstacionamiento as listarCocheras } from './cochera.service.js';
+import { geocodificar } from './geocodificacion.service.js';
+
+const CAMPOS_DIRECCION = ['calle', 'numero', 'ciudad', 'provincia'];
+const tieneCoordenadas = (datos) => datos.latitud != null && datos.longitud != null;
+
+const DIRECCION_INEXISTENTE =
+  'No encontramos esa direccion. Elegi provincia, ciudad y calle de la lista y revisa la altura.';
+
+/**
+ * Verifica la direccion contra Georef y devuelve sus coordenadas. Lanza 400 si
+ * Georef responde que no existe. Si no se pudo consultar, deja pasar sin
+ * coordenadas: una caida del servicio no tiene que impedir cargar el lugar.
+ */
+async function verificarDireccion(direccion) {
+  const resultado = await geocodificar(direccion);
+  if (resultado?.encontrada === false) throw ApiError.badRequest(DIRECCION_INEXISTENTE);
+  return { latitud: resultado?.latitud ?? null, longitud: resultado?.longitud ?? null };
+}
 
 const COLUMNAS = [
   'id_estacionamiento', 'id_propietario', 'nombre', 'descripcion', 'direccion',
@@ -57,8 +75,15 @@ const AGREGADOS = `
     WHERE f.id_estacionamiento = e.id_estacionamiento) AS foto_actualizada
 `;
 
-/** Crea el estacionamiento y sus horarios en una sola transaccion. */
-export async function crear(idPropietario, datos) {
+/**
+ * Crea el estacionamiento y sus horarios en una sola transaccion.
+ * Antes verifica la direccion y obtiene sus coordenadas (fuera de la
+ * transaccion, para no tener una conexion tomada mientras se espera a Georef).
+ */
+export async function crear(idPropietario, entrada) {
+  const coordenadas = await verificarDireccion(entrada);
+  const datos = tieneCoordenadas(entrada) ? entrada : { ...entrada, ...coordenadas };
+
   return withTransaction(async (client) => {
     const { rows } = await client.query(
       `INSERT INTO estacionamiento
@@ -257,12 +282,57 @@ async function asegurarAlgunaTarifa(client, idEstacionamiento, datos) {
 }
 
 /**
+ * Decide las coordenadas que se guardan en un PATCH. El formulario del
+ * propietario manda siempre la direccion completa y las coordenadas que tenia,
+ * por eso se compara contra lo guardado:
+ *   - si cambio la direccion, se verifica (400 si no existe) y se toman las
+ *     coordenadas nuevas, salvo que el cliente mande otras explicitamente;
+ *   - si no cambio pero el estacionamiento no tiene coordenadas, se intenta
+ *     completarlas. No se rechaza: puede ser una direccion cargada antes de
+ *     que existiera la validacion, y no tiene que trabar editar otros datos.
+ */
+async function completarCoordenadas(idEstacionamiento, entrada) {
+  const { rows } = await query(
+    `SELECT ${[...CAMPOS_DIRECCION, 'latitud', 'longitud'].join(', ')}
+       FROM estacionamiento WHERE id_estacionamiento = $1`,
+    [idEstacionamiento],
+  );
+  const guardado = rows[0];
+
+  const direccion = { ...guardado };
+  for (const campo of CAMPOS_DIRECCION) {
+    if (entrada[campo] !== undefined) direccion[campo] = entrada[campo];
+  }
+
+  const coordenadasNuevas =
+    tieneCoordenadas(entrada) &&
+    (entrada.latitud !== guardado.latitud || entrada.longitud !== guardado.longitud);
+  const cambioDireccion = CAMPOS_DIRECCION.some(
+    (campo) => (direccion[campo] ?? '') !== (guardado[campo] ?? ''),
+  );
+
+  if (cambioDireccion) {
+    const coordenadas = await verificarDireccion(direccion);
+    return coordenadasNuevas ? entrada : { ...entrada, ...coordenadas };
+  }
+
+  if (coordenadasNuevas || tieneCoordenadas(guardado)) return entrada;
+
+  const resultado = await geocodificar(direccion);
+  return resultado?.latitud != null
+    ? { ...entrada, latitud: resultado.latitud, longitud: resultado.longitud }
+    : entrada;
+}
+
+/**
  * Modifica los datos del estacionamiento. Si vienen `horarios` reemplazan a los
  * cargados: es lo que espera la pantalla, que manda la semana completa.
  */
-export async function actualizar(idEstacionamiento, idPropietario, datos) {
+export async function actualizar(idEstacionamiento, idPropietario, entrada) {
   const { activo } = await asegurarPropiedad(idEstacionamiento, idPropietario);
   if (!activo) throw ApiError.conflict('El estacionamiento esta dado de baja');
+
+  const datos = await completarCoordenadas(idEstacionamiento, entrada);
 
   await withTransaction(async (client) => {
     await asegurarAlgunaTarifa(client, idEstacionamiento, datos);

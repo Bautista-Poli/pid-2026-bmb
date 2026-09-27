@@ -1,16 +1,17 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { rxResource, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
-import { debounceTime } from 'rxjs';
+import { Observable, debounceTime, map, of } from 'rxjs';
 import {
   ElegirMomento,
   Exploracion,
   FiltrosEstacionamiento as FiltrosComponent,
   TarjetaEstacionamiento,
 } from '@app/components/estacionamiento';
-import { Boton, Cargando, EstadoVacio } from '@app/components/ui';
+import { Boton, Cargando, EstadoVacio, Sugerencia } from '@app/components/ui';
 import { Estacionamiento, FiltrosEstacionamiento, Vehiculo } from '@app/models';
 import { EstacionamientoService } from '@app/services/estacionamiento.service';
+import { GeorefService, ZonaBusqueda } from '@app/services/georef.service';
 import { VehiculoService } from '@app/services/vehiculo.service';
 import { desdeFechaISO } from '@app/utils/fecha.util';
 
@@ -29,6 +30,9 @@ const FILTROS_INICIALES: FiltrosEstacionamiento = {
  *
  * Inicio del conductor. Primero pregunta donde y cuando quiere estacionar y
  * recien despues lista y filtra los estacionamientos con lugar libre.
+ *
+ * Las distancias se miden desde la ubicacion actual o desde la direccion que
+ * elija en esa pregunta ("Pueyrredon 2409"), que se busca en Georef.
  */
 @Component({
   selector: 'app-explorar',
@@ -40,6 +44,7 @@ export class Explorar {
   private readonly estacionamientos = inject(EstacionamientoService);
   private readonly vehiculos = inject(VehiculoService);
   private readonly router = inject(Router);
+  private readonly georef = inject(GeorefService);
 
   protected readonly filtros = signal<FiltrosEstacionamiento>({ ...FILTROS_INICIALES });
 
@@ -64,7 +69,11 @@ export class Explorar {
     return {
       ...this.filtros(),
       momento: exploracion?.momento ?? null,
-      origen: ubicacion?.tipo === 'ACTUAL' ? { latitud: ubicacion.latitud, longitud: ubicacion.longitud } : null,
+      // La ubicacion actual y una direccion elegida son un punto: se mide la distancia desde ahi.
+      origen:
+        ubicacion?.tipo === 'ACTUAL' || ubicacion?.tipo === 'DIRECCION'
+          ? { latitud: ubicacion.latitud, longitud: ubicacion.longitud }
+          : null,
     };
   });
   private readonly filtrosEstables = toSignal(
@@ -78,6 +87,46 @@ export class Explorar {
     stream: ({ params }) => this.estacionamientos.listar(params),
     defaultValue: [] as Estacionamiento[],
   });
+
+  /* ------------------------ Direcciones de "otra zona" ----------------------- */
+
+  /**
+   * Todos los estacionamientos publicados, sin filtros: de ahi salen las ciudades
+   * donde buscar las direcciones que sugiere la pregunta inicial.
+   */
+  private readonly todos = rxResource({
+    stream: () => this.estacionamientos.listar({}),
+    defaultValue: [] as Estacionamiento[],
+  });
+
+  /**
+   * Las ciudades donde hay estacionamientos: las direcciones se buscan solo ahi. No
+   * sirve de nada un "Pueyrredon 2409" en una ciudad sin cocheras, y sin acotar
+   * Georef devuelve esa altura en decenas de ciudades del pais.
+   */
+  private readonly zonas = computed<ZonaBusqueda[]>(() => {
+    const vistas = new Map<string, ZonaBusqueda>();
+    for (const { direccion } of this.todos.value()) {
+      if (!direccion.ciudad || !direccion.provincia) continue;
+      vistas.set(`${direccion.ciudad}|${direccion.provincia}`, {
+        ciudad: direccion.ciudad,
+        provincia: direccion.provincia,
+      });
+    }
+    return [...vistas.values()];
+  });
+
+  protected readonly buscarDestinos = (texto: string): Observable<Sugerencia[]> => {
+    // Sin altura no hay un punto al cual medir: Georef devolveria la calle entera.
+    if (!/\d/.test(texto)) return of([]);
+    return this.georef
+      .buscarDestinos(texto, this.zonas())
+      .pipe(
+        map((destinos) =>
+          destinos.map((d) => ({ nombre: d.nombre, detalle: d.detalle, dato: d })),
+        ),
+      );
+  };
 
   protected readonly resultados = computed(() => this.recurso.value().length);
 
@@ -105,7 +154,9 @@ export class Explorar {
 
   private resumenUbicacion(exploracion: Exploracion): string {
     const ubicacion = exploracion.ubicacion;
-    return ubicacion.tipo === 'ACTUAL' ? 'Cerca de mi ubicación' : ubicacion.zona;
+    if (ubicacion.tipo === 'ACTUAL') return 'Cerca de mi ubicación';
+    if (ubicacion.tipo === 'DIRECCION') return `Cerca de ${ubicacion.direccion}`;
+    return ubicacion.zona;
   }
 
   private resumenMomento(exploracion: Exploracion): string {

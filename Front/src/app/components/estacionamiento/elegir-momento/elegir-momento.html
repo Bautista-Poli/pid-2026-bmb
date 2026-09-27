@@ -20,18 +20,20 @@
       </div>
 
       @if (tipoUbicacion() === 'OTRA') {
-        <label class="campo">
-          <span class="label-campo">Zona o barrio</span>
-          <input
-            type="text"
-            placeholder="Palermo, Microcentro..."
-            [value]="zona()"
-            (input)="zona.set($any($event.target).value)"
+        <div class="flex flex-col gap-1.5">
+          <span class="label-campo">Zona o dirección</span>
+          <ui-campo-busqueda
+            etiqueta="Zona o dirección"
+            marcador="Palermo, Recoleta..."
+            [valor]="zona()"
+            [buscar]="buscarDirecciones()"
+            (valorChange)="escribirZona($event)"
+            (elegida)="elegirDireccion($event)"
           />
           @if (intentadoUbicacion() && errorUbicacionElegida(); as mensaje) {
             <span class="campo-error">{{ mensaje }}</span>
           }
-        </label>
+        </div>
       }
 
       @if (errorUbicacion(); as mensaje) {

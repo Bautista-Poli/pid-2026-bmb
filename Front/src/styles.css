@@ -130,7 +130,8 @@
     gap: 6px;
   }
 
-  .campo input {
+  .campo input,
+  .campo select {
     padding: 12px 14px;
     border: 1px solid var(--color-borde);
     border-radius: var(--radius-control);
@@ -149,23 +150,37 @@
 
   /* El anillo tenue reemplaza al `outline: none` del prototipo: el foco sigue
      siendo visible por teclado y ademas se ve al hacer clic. */
-  .campo input:focus {
+  .campo input:focus,
+  .campo select:focus {
     border-color: var(--color-acento);
     box-shadow: 0 0 0 3px var(--color-acento-suave);
     outline: none;
   }
 
-  .campo input:focus-visible {
+  .campo input:focus-visible,
+  .campo select:focus-visible {
     outline: 2px solid var(--color-acento);
     outline-offset: 2px;
   }
 
-  .campo input.ng-touched.ng-invalid {
+  .campo input.ng-touched.ng-invalid,
+  .campo select.ng-touched.ng-invalid,
+  .campo ui-campo-autocompletar.ng-touched.ng-invalid input {
     border-color: var(--color-ocupada);
   }
 
-  .campo input.ng-touched.ng-invalid:focus {
+  .campo input.ng-touched.ng-invalid:focus,
+  .campo select.ng-touched.ng-invalid:focus,
+  .campo ui-campo-autocompletar.ng-touched.ng-invalid input:focus {
     box-shadow: 0 0 0 3px rgb(220 38 38 / 0.12);
+  }
+
+  /* Un campo que depende de otro (la ciudad de la provincia, la calle de la
+     ciudad) se ve apagado hasta que se completa el anterior. */
+  .campo input:disabled,
+  .campo select:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
   }
 
   /* Texto de ayuda y de error debajo de un campo. */

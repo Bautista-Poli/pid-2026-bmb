@@ -34,4 +34,17 @@ export const config = {
   },
 
   bcryptRounds: Number(process.env.BCRYPT_ROUNDS) || 10,
+
+  // Direccion -> coordenadas con Georef (y Nominatim de respaldo). En las pruebas
+  // arranca apagado para no depender de la red ni gastar el cupo del servicio.
+  // `habilitada` se lee en cada uso (getter) para que las pruebas puedan apagarla
+  // despues de importar la app.
+  geocodificacion: {
+    get habilitada() {
+      return (process.env.GEOCODING_ENABLED ?? (nodeEnv === 'test' ? 'false' : 'true')) === 'true';
+    },
+    georefUrl: process.env.GEOREF_URL || 'https://apis.datos.gob.ar/georef/api',
+    nominatimUrl: process.env.NOMINATIM_URL || 'https://nominatim.openstreetmap.org',
+    userAgent: process.env.GEOCODING_USER_AGENT || 'Parkit/1.0 (proyecto PID 2026)',
+  },
 };

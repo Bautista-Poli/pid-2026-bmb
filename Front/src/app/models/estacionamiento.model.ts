@@ -64,11 +64,15 @@ export type Momento =
   | { tipo: 'FRANJA'; fecha: FechaISO; horaDesde: HoraHHmm; horaHasta: HoraHHmm };
 
 /**
- * Desde donde busca el conductor: su ubicacion actual (ordena por distancia,
- * calculada en el front) u otra zona escrita a mano (usa el filtro `zona`).
+ * Desde donde busca el conductor:
+ * - `ACTUAL`: su ubicacion (ordena por distancia, calculada en el front).
+ * - `DIRECCION`: una direccion real elegida de las sugerencias ("Av Pueyrredon
+ *   2409"); ordena por distancia a ese punto, como si estuviera ahi.
+ * - `OTRA`: una zona escrita a mano sin elegir direccion (usa el filtro `zona`).
  */
 export type Ubicacion =
   | { tipo: 'ACTUAL'; latitud: number; longitud: number }
+  | { tipo: 'DIRECCION'; direccion: string; latitud: number; longitud: number }
   | { tipo: 'OTRA'; zona: string };
 
 /** Filtros del listado: los resuelve todos la API, incluida la disponibilidad del `momento`. */

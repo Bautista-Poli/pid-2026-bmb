@@ -1,4 +1,4 @@
-import { HoraHHmm, Id } from './api.model';
+import { FechaISO, HoraHHmm, Id } from './api.model';
 import { Tarifas } from './tarifa.model';
 import { TipoVehiculo } from './vehiculo.model';
 
@@ -55,13 +55,33 @@ export interface Estacionamiento {
   activo: boolean;
 }
 
-/** Filtros del listado. Texto, tipo, precio y cubierto los resuelve la API. */
+/**
+ * Cuando quiere estacionar el conductor: en este instante o en una franja de un
+ * dia. Es lo primero que se pregunta al explorar.
+ */
+export type Momento =
+  | { tipo: 'AHORA' }
+  | { tipo: 'FRANJA'; fecha: FechaISO; horaDesde: HoraHHmm; horaHasta: HoraHHmm };
+
+/**
+ * Desde donde busca el conductor: su ubicacion actual (ordena por distancia,
+ * calculada en el front) u otra zona escrita a mano (usa el filtro `zona`).
+ */
+export type Ubicacion =
+  | { tipo: 'ACTUAL'; latitud: number; longitud: number }
+  | { tipo: 'OTRA'; zona: string };
+
+/** Filtros del listado: los resuelve todos la API, incluida la disponibilidad del `momento`. */
 export interface FiltrosEstacionamiento {
   busqueda?: string;
+  zona?: string;
   tipoVehiculo?: TipoVehiculo | null;
+  precioMinimo?: number | null;
   precioMaximo?: number | null;
   soloCubiertos?: boolean;
-  soloDisponibles?: boolean;
+  momento?: Momento | null;
+  /** Coordenadas del conductor, para calcular `distanciaKm` en el front. No se manda a la API. */
+  origen?: { latitud: number; longitud: number } | null;
   orden?: OrdenEstacionamiento;
 }
 

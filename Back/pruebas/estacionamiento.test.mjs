@@ -7,8 +7,12 @@ import {
   cerrarApi,
   crearEstacionamiento,
   crearUsuario,
+  crearVehiculo,
+  franja,
   levantarApi,
   motivo,
+  ponerEnCurso,
+  query,
 } from './ayuda.mjs';
 
 before(() => levantarApi('estacionamiento'));
@@ -230,6 +234,230 @@ describe('cocheras', () => {
 
     const { datos } = await api('GET', ruta, { token: propietario.token });
     assert.deepEqual(datos.cocheras.map((c) => c.identificador), ['1', '2', '10']);
+  });
+});
+
+describe('baja, reactivacion y eliminacion de cocheras', () => {
+  async function escenario() {
+    const propietario = await nuevoPropietario();
+    const estacionamiento = await crearEstacionamiento(propietario.token, { cocheras: 1 });
+    const ruta = `/estacionamientos/${estacionamiento.id_estacionamiento}/cocheras`;
+    const { datos } = await api('GET', ruta, { token: propietario.token });
+    return { propietario, estacionamiento, ruta, cochera: datos.cocheras[0] };
+  }
+
+  const reservar = async (estacionamiento, cuando) => {
+    const conductor = await crearUsuario();
+    const vehiculo = await crearVehiculo(conductor.token);
+    return api('POST', '/reservas', {
+      token: conductor.token,
+      body: {
+        id_estacionamiento: estacionamiento.id_estacionamiento,
+        id_vehiculo: vehiculo.id_vehiculo,
+        ...cuando,
+      },
+    });
+  };
+
+  test('la baja cancela las reservas vigentes de la cochera', async () => {
+    const { propietario, estacionamiento, ruta, cochera } = await escenario();
+    const reserva = await reservar(estacionamiento, franja());
+    assert.equal(reserva.estado, 201);
+
+    const baja = await api('DELETE', `${ruta}/${cochera.id_cochera}`, { token: propietario.token });
+    assert.equal(baja.estado, 200);
+    assert.equal(baja.datos.cochera.activo, false);
+
+    const { rows } = await query('SELECT estado FROM reserva WHERE id_reserva = $1', [
+      reserva.datos.reserva.id_reserva,
+    ]);
+    assert.equal(rows[0].estado, 'CANCELADA');
+
+    const repetida = await api('DELETE', `${ruta}/${cochera.id_cochera}`, { token: propietario.token });
+    assert.equal(repetida.estado, 409);
+  });
+
+  test('una cochera dada de baja se puede reactivar', async () => {
+    const { propietario, ruta, cochera } = await escenario();
+    await api('DELETE', `${ruta}/${cochera.id_cochera}`, { token: propietario.token });
+
+    const reactivada = await api('POST', `${ruta}/${cochera.id_cochera}/reactivar`, {
+      token: propietario.token,
+    });
+    assert.equal(reactivada.estado, 200);
+    assert.equal(reactivada.datos.cochera.activo, true);
+    assert.equal(reactivada.datos.cochera.estado_actual, 'LIBRE');
+
+    const otraVez = await api('POST', `${ruta}/${cochera.id_cochera}/reactivar`, {
+      token: propietario.token,
+    });
+    assert.equal(otraVez.estado, 409);
+  });
+
+  test('no se puede reactivar una cochera de un estacionamiento dado de baja', async () => {
+    const { propietario, estacionamiento, ruta, cochera } = await escenario();
+    await api('DELETE', `/estacionamientos/${estacionamiento.id_estacionamiento}`, {
+      token: propietario.token,
+    });
+
+    const { estado } = await api('POST', `${ruta}/${cochera.id_cochera}/reactivar`, {
+      token: propietario.token,
+    });
+    assert.equal(estado, 409);
+  });
+
+  test('el PATCH no permite marcarla INACTIVA', async () => {
+    const { propietario, ruta, cochera } = await escenario();
+    const { estado } = await api('PATCH', `${ruta}/${cochera.id_cochera}`, {
+      token: propietario.token,
+      body: { estado_actual: 'INACTIVA' },
+    });
+    assert.equal(estado, 400);
+  });
+
+  test('una cochera activa no se puede eliminar: primero hay que darla de baja', async () => {
+    const { propietario, ruta, cochera } = await escenario();
+
+    const { estado } = await api('DELETE', `${ruta}/${cochera.id_cochera}/definitiva`, {
+      token: propietario.token,
+    });
+    assert.equal(estado, 409);
+  });
+
+  test('una cochera inactiva sin reservas se puede eliminar de verdad', async () => {
+    const { propietario, ruta, cochera } = await escenario();
+    await api('DELETE', `${ruta}/${cochera.id_cochera}`, { token: propietario.token });
+
+    const { estado } = await api('DELETE', `${ruta}/${cochera.id_cochera}/definitiva`, {
+      token: propietario.token,
+    });
+    assert.equal(estado, 204);
+
+    const { datos } = await api('GET', ruta, { token: propietario.token });
+    assert.equal(datos.cocheras.length, 0);
+  });
+
+  test('con reservas en el historial no se puede eliminar, aunque este inactiva', async () => {
+    const { propietario, estacionamiento, ruta, cochera } = await escenario();
+    await reservar(estacionamiento, franja());
+    await api('DELETE', `${ruta}/${cochera.id_cochera}`, { token: propietario.token });
+
+    const { estado, datos } = await api('DELETE', `${ruta}/${cochera.id_cochera}/definitiva`, {
+      token: propietario.token,
+    });
+    assert.equal(estado, 409);
+    assert.match(datos.error.message, /historial/);
+  });
+
+  test('otro propietario no puede reactivar ni eliminar', async () => {
+    const { ruta, cochera } = await escenario();
+    const ajeno = await nuevoPropietario();
+
+    const reactivar = await api('POST', `${ruta}/${cochera.id_cochera}/reactivar`, { token: ajeno.token });
+    assert.equal(reactivar.estado, 403);
+    const eliminar = await api('DELETE', `${ruta}/${cochera.id_cochera}/definitiva`, { token: ajeno.token });
+    assert.equal(eliminar.estado, 403);
+  });
+});
+
+describe('busqueda con filtros', () => {
+  const buscar = (estacionamiento, filtros = {}) => {
+    const params = new URLSearchParams({ q: estacionamiento.nombre, ...filtros });
+    return api('GET', `/estacionamientos?${params}`);
+  };
+  const ids = (respuesta) => respuesta.datos.estacionamientos.map((e) => e.id_estacionamiento);
+
+  async function conConductor() {
+    const propietario = await nuevoPropietario();
+    const estacionamiento = await crearEstacionamiento(propietario.token, { cocheras: 1 });
+    const conductor = await crearUsuario();
+    const vehiculo = await crearVehiculo(conductor.token);
+    const reservar = (cuando) =>
+      api('POST', '/reservas', {
+        token: conductor.token,
+        body: {
+          id_estacionamiento: estacionamiento.id_estacionamiento,
+          id_vehiculo: vehiculo.id_vehiculo,
+          ...cuando,
+        },
+      });
+    return { propietario, estacionamiento, conductor, reservar };
+  }
+
+  test('filtra por zona, por precio maximo y por tipo de vehiculo', async () => {
+    const propietario = await nuevoPropietario();
+    const estacionamiento = await crearEstacionamiento(propietario.token);
+    const zona = `Zona${crypto.randomUUID().slice(0, 6)}`;
+    await api('PATCH', `/estacionamientos/${estacionamiento.id_estacionamiento}`, {
+      token: propietario.token,
+      body: { barrio_zona: zona },
+    });
+    const id = estacionamiento.id_estacionamiento;
+
+    assert.deepEqual(ids(await buscar(estacionamiento, { zona })), [id]);
+    assert.deepEqual(ids(await buscar(estacionamiento, { zona: 'Inexistente' })), []);
+
+    assert.deepEqual(ids(await buscar(estacionamiento, { tarifa_max: 1000 })), [id]);
+    assert.deepEqual(ids(await buscar(estacionamiento, { tarifa_max: 999 })), []);
+
+    assert.deepEqual(ids(await buscar(estacionamiento, { tarifa_min: 1000 })), [id]);
+    assert.deepEqual(ids(await buscar(estacionamiento, { tarifa_min: 1001 })), []);
+
+    assert.deepEqual(ids(await buscar(estacionamiento, { id_tipo_vehiculo: 1 })), [id]);
+    assert.deepEqual(ids(await buscar(estacionamiento, { id_tipo_vehiculo: 2 })), []);
+  });
+
+  test('con franja: excluye si la unica cochera esta reservada, incluye si esta libre o cancelada', async () => {
+    const { estacionamiento, conductor, reservar } = await conConductor();
+    const id = estacionamiento.id_estacionamiento;
+    const ocupada = franja('08:00', '10:00');
+    const reserva = await reservar(ocupada);
+    assert.equal(reserva.estado, 201);
+
+    assert.deepEqual(ids(await buscar(estacionamiento, ocupada)), []);
+    assert.deepEqual(ids(await buscar(estacionamiento, franja('09:00', '11:00'))), []);
+    assert.deepEqual(ids(await buscar(estacionamiento, franja('10:00', '12:00'))), [id]);
+    assert.deepEqual(ids(await buscar(estacionamiento, franja('08:00', '10:00', 2))), [id]);
+
+    await api('PATCH', `/reservas/${reserva.datos.reserva.id_reserva}/cancelar`, {
+      token: conductor.token,
+    });
+    assert.deepEqual(ids(await buscar(estacionamiento, ocupada)), [id]);
+  });
+
+  test('la franja respeta el tipo de vehiculo pedido', async () => {
+    const { estacionamiento } = await conConductor();
+    const cuando = franja('08:00', '10:00');
+    assert.deepEqual(ids(await buscar(estacionamiento, { ...cuando, id_tipo_vehiculo: 2 })), []);
+  });
+
+  test('disponible_ahora excluye la cochera con una reserva en curso', async () => {
+    const { estacionamiento, reservar } = await conConductor();
+    const id = estacionamiento.id_estacionamiento;
+    const reserva = await reservar(franja('08:00', '10:00'));
+
+    assert.deepEqual(ids(await buscar(estacionamiento, { disponible_ahora: 'true' })), [id]);
+
+    await ponerEnCurso(reserva.datos.reserva.id_reserva);
+    assert.deepEqual(ids(await buscar(estacionamiento, { disponible_ahora: 'true' })), []);
+    assert.deepEqual(ids(await buscar(estacionamiento, { disponible_ahora: 'false' })), [id]);
+  });
+
+  test('rechaza combinaciones invalidas de disponibilidad', async () => {
+    const { estacionamiento } = await conConductor();
+    const { inicio, fin } = franja('08:00', '10:00');
+
+    for (const filtros of [
+      { inicio },
+      { fin },
+      { inicio: fin, fin: inicio },
+      { inicio, fin: inicio },
+      { inicio, fin, disponible_ahora: 'true' },
+      { inicio: 'ayer', fin },
+    ]) {
+      const respuesta = await buscar(estacionamiento, filtros);
+      assert.equal(respuesta.estado, 400, JSON.stringify(filtros));
+    }
   });
 });
 

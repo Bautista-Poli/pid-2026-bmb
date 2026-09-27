@@ -95,4 +95,16 @@ router.delete(
   estacionamientoController.darDeBajaCochera,
 );
 
+router.post(
+  '/:id/cocheras/:idCochera/reactivar',
+  ...soloPropietario,
+  estacionamientoController.reactivarCochera,
+);
+
+router.delete(
+  '/:id/cocheras/:idCochera/definitiva',
+  ...soloPropietario,
+  estacionamientoController.eliminarCochera,
+);
+
 export default router;

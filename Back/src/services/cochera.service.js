@@ -1,10 +1,12 @@
 import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
-import { ESTADOS_COCHERA } from '../utils/roles.js';
+import { ESTADOS_COCHERA, ESTADOS_VIGENTES } from '../utils/roles.js';
 import { asegurarPropiedad } from './estacionamiento.service.js';
 
 const VIOLACION_UNIQUE = '23505';
 const VIOLACION_FK = '23503';
+// ON DELETE RESTRICT falla con este codigo (NO ACTION usa el de arriba).
+const VIOLACION_RESTRICT = '23001';
 
 const CAMPOS =
   'id_cochera, id_estacionamiento, id_tipo_vehiculo, identificador, sector, cubierta, estado_actual, activo';
@@ -134,6 +136,10 @@ export async function listarPorEstacionamiento(idEstacionamiento) {
 export async function actualizar(idEstacionamiento, idPropietario, idCochera, datos) {
   await asegurarPropiedad(idEstacionamiento, idPropietario);
 
+  if (datos.estado_actual === ESTADOS_COCHERA.INACTIVA) {
+    throw ApiError.badRequest('Para desactivar una cochera usa la baja (DELETE), no el estado');
+  }
+
   const asignaciones = [];
   const parametros = [];
   for (const campo of CAMPOS_EDITABLES) {
@@ -161,18 +167,80 @@ export async function actualizar(idEstacionamiento, idPropietario, idCochera, da
 
 /**
  * Baja logica: la cochera puede tener reservas historicas (FK RESTRICT), asi
- * que se desactiva en vez de borrarse.
+ * que se desactiva en vez de borrarse. Las reservas vigentes se cancelan, igual
+ * que al dar de baja el estacionamiento entero.
  */
 export async function darDeBaja(idEstacionamiento, idPropietario, idCochera) {
   await asegurarPropiedad(idEstacionamiento, idPropietario);
 
-  const { rows } = await query(
-    `UPDATE cochera SET activo = FALSE, estado_actual = $1
-      WHERE id_cochera = $2 AND id_estacionamiento = $3
-      RETURNING ${CAMPOS}`,
-    [ESTADOS_COCHERA.INACTIVA, idCochera, idEstacionamiento],
-  );
+  return withTransaction(async (client) => {
+    const { rows: existentes } = await client.query(
+      'SELECT activo FROM cochera WHERE id_cochera = $1 AND id_estacionamiento = $2 FOR UPDATE',
+      [idCochera, idEstacionamiento],
+    );
+    if (!existentes[0]) throw ApiError.notFound('La cochera no existe en este estacionamiento');
+    if (!existentes[0].activo) throw ApiError.conflict('La cochera ya esta dada de baja');
 
-  if (!rows[0]) throw ApiError.notFound('La cochera no existe en este estacionamiento');
+    await client.query(
+      `UPDATE reserva SET estado = 'CANCELADA'
+        WHERE id_cochera = $1 AND estado = ANY($2::estado_reserva[]) AND fin > now()`,
+      [idCochera, ESTADOS_VIGENTES],
+    );
+
+    const { rows } = await client.query(
+      `UPDATE cochera SET activo = FALSE, estado_actual = $1
+        WHERE id_cochera = $2
+        RETURNING ${CAMPOS}`,
+      [ESTADOS_COCHERA.INACTIVA, idCochera],
+    );
+    return rows[0];
+  });
+}
+
+/** Deshace la baja logica. No se puede reactivar dentro de un estacionamiento dado de baja. */
+export async function reactivar(idEstacionamiento, idPropietario, idCochera) {
+  const estacionamiento = await asegurarPropiedad(idEstacionamiento, idPropietario);
+  if (!estacionamiento.activo) {
+    throw ApiError.conflict('El estacionamiento esta dado de baja: no se puede reactivar una cochera');
+  }
+
+  const { rows: existentes } = await query(
+    'SELECT activo FROM cochera WHERE id_cochera = $1 AND id_estacionamiento = $2',
+    [idCochera, idEstacionamiento],
+  );
+  if (!existentes[0]) throw ApiError.notFound('La cochera no existe en este estacionamiento');
+  if (existentes[0].activo) throw ApiError.conflict('La cochera ya esta activa');
+
+  const { rows } = await query(
+    `UPDATE cochera SET activo = TRUE, estado_actual = $1
+      WHERE id_cochera = $2
+      RETURNING ${CAMPOS}`,
+    [ESTADOS_COCHERA.LIBRE, idCochera],
+  );
   return rows[0];
+}
+
+/**
+ * Borrado fisico, para una cochera cargada por error. Primero hay que darla de
+ * baja (pasar por INACTIVA) y solo procede si nunca tuvo reservas: con historial
+ * la FK lo impide y la cochera queda inactiva.
+ */
+export async function eliminar(idEstacionamiento, idPropietario, idCochera) {
+  await asegurarPropiedad(idEstacionamiento, idPropietario);
+
+  const { rows } = await query(
+    'SELECT activo FROM cochera WHERE id_cochera = $1 AND id_estacionamiento = $2',
+    [idCochera, idEstacionamiento],
+  );
+  if (!rows[0]) throw ApiError.notFound('La cochera no existe en este estacionamiento');
+  if (rows[0].activo) throw ApiError.conflict('Primero da de baja la cochera para poder eliminarla');
+
+  try {
+    await query('DELETE FROM cochera WHERE id_cochera = $1', [idCochera]);
+  } catch (error) {
+    if (error.code === VIOLACION_RESTRICT) {
+      throw ApiError.conflict('La cochera tiene reservas en su historial: queda inactiva, no se puede eliminar');
+    }
+    throw error;
+  }
 }

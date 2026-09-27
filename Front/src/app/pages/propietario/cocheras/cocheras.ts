@@ -268,7 +268,7 @@ export class Cocheras {
 
   protected darDeBaja(cochera: Cochera): void {
     const seguro = confirm(
-      `¿Dar de baja la cochera ${cochera.identificador}? No se va a poder reservar y no se puede deshacer.`,
+      `¿Dar de baja la cochera ${cochera.identificador}? No se va a poder reservar y se cancelan sus reservas vigentes. Podés reactivarla después.`,
     );
     if (!seguro) return;
 
@@ -279,6 +279,37 @@ export class Cocheras {
       next: () => {
         if (this.editando()?.id === cochera.id) this.cancelarEdicion();
         this.aviso.set(`La cochera ${cochera.identificador} quedó dada de baja.`);
+        this.recursoCocheras.reload();
+      },
+      error: (e: Error) => this.error.set(e.message),
+    });
+  }
+
+  protected reactivar(cochera: Cochera): void {
+    this.error.set(null);
+    this.aviso.set(null);
+
+    this.cocheras.reactivar(cochera).subscribe({
+      next: () => {
+        this.aviso.set(`La cochera ${cochera.identificador} volvió a estar activa.`);
+        this.recursoCocheras.reload();
+      },
+      error: (e: Error) => this.error.set(e.message),
+    });
+  }
+
+  protected eliminar(cochera: Cochera): void {
+    const seguro = confirm(
+      `¿Eliminar la cochera ${cochera.identificador}? Se borra definitivamente y no se puede deshacer. Solo es posible si nunca tuvo reservas.`,
+    );
+    if (!seguro) return;
+
+    this.error.set(null);
+    this.aviso.set(null);
+
+    this.cocheras.eliminar(cochera).subscribe({
+      next: () => {
+        this.aviso.set(`La cochera ${cochera.identificador} fue eliminada.`);
         this.recursoCocheras.reload();
       },
       error: (e: Error) => this.error.set(e.message),

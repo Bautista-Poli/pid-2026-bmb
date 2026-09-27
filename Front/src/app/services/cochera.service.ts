@@ -42,6 +42,18 @@ export class CocheraService {
     return this.actualizar(cochera, { estado });
   }
 
+  /** `POST /api/estacionamientos/:id/cocheras/:idCochera/reactivar` */
+  reactivar(cochera: Cochera): Observable<Cochera> {
+    return this.http
+      .post<{ cochera: CocheraDto }>(`${rutaCochera(cochera)}/reactivar`, {})
+      .pipe(map((respuesta) => aCochera(respuesta.cochera)));
+  }
+
+  /** `DELETE /api/estacionamientos/:id/cocheras/:idCochera/definitiva` (solo inactivas y sin reservas) */
+  eliminar(cochera: Cochera): Observable<void> {
+    return this.http.delete<void>(`${rutaCochera(cochera)}/definitiva`);
+  }
+
   /** `DELETE /api/estacionamientos/:id/cocheras/:idCochera` (baja logica) */
   darDeBaja(cochera: Cochera): Observable<Cochera> {
     return this.http

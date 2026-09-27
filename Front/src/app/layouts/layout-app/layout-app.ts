@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterOutlet } from '@angular/router';
-import { BarraLateral, ItemNavegacion, MenuUsuario, TabsInferior } from '@app/components/layout';
+import { BarraSuperior, ItemNavegacion, MenuUsuario, TabsInferior } from '@app/components/layout';
 import { BotonTema, Logo } from '@app/components/ui';
 import { inicioSegunRol } from '@app/guards/rol.guard';
 import { RolUsuario } from '@app/models';
@@ -21,13 +21,14 @@ const NAVEGACION: Record<RolUsuario, ItemNavegacion[]> = {
 };
 
 /**
- * Shell de la app: tab bar abajo en mobile, sidebar de 238px desde 1024px.
- * El canvas de desktop limita el contenido a 940px, como en el diseno.
+ * Shell de la app: tab bar abajo en mobile y barra de navegacion arriba desde
+ * 1024px. Cada pantalla decide su ancho (la mayoria limita a 940px; el mapa
+ * ocupa todo).
  */
 @Component({
   selector: 'app-layout-app',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, TabsInferior, BarraLateral, BotonTema, Logo, MenuUsuario],
+  imports: [RouterOutlet, TabsInferior, BarraSuperior, BotonTema, Logo, MenuUsuario],
   templateUrl: './layout-app.html',
 })
 export class LayoutApp {

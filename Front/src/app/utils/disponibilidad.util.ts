@@ -48,3 +48,17 @@ export function formatearDistancia(km: number | undefined): string | null {
   if (km < 1) return `${Math.round(km * 1000)} m`;
   return `${km.toLocaleString('es-AR', { maximumFractionDigits: 1 })} km`;
 }
+
+/** Estado para el mapa y su leyenda: mismos cortes que `tonoDisponibilidad`. */
+export type EstadoDisponibilidad = 'DISPONIBLE' | 'POCA' | 'AGOTADO';
+
+export const ETIQUETA_ESTADO: Record<EstadoDisponibilidad, string> = {
+  DISPONIBLE: 'Disponible',
+  POCA: 'Poca disponibilidad',
+  AGOTADO: 'Agotado',
+};
+
+export function estadoDisponibilidad(libres: number): EstadoDisponibilidad {
+  if (libres === 0) return 'AGOTADO';
+  return libres < 5 ? 'POCA' : 'DISPONIBLE';
+}

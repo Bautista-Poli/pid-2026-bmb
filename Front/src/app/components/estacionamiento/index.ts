@@ -4,3 +4,4 @@ export * from './filtros-estacionamiento/filtros-estacionamiento';
 export * from './formulario-estacionamiento/formulario-estacionamiento';
 export * from './foto-estacionamiento/foto-estacionamiento';
 export * from './elegir-momento/elegir-momento';
+export * from './mapa-estacionamientos/mapa-estacionamientos';

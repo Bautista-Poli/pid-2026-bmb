@@ -18,7 +18,15 @@ export type NombreIcono =
   | 'cerrar'
   | 'cheuron'
   | 'intercambiar'
-  | 'salida';
+  | 'salida'
+  | 'camioneta'
+  | 'calendario'
+  | 'menos'
+  | 'ubicar'
+  | 'navegar'
+  | 'techo'
+  | 'moneda'
+  | 'buscar';
 
 /**
  * Icono de linea sobre un lienzo de 24x24. Todos comparten estilo (trazo de
@@ -117,6 +125,40 @@ export type NombreIcono =
         @case ('sistema') {
           <rect x="2.8" y="4.4" width="18.4" height="12" rx="2" />
           <path d="M8.6 19.6h6.8M12 16.4v3.2" />
+        }
+        @case ('camioneta') {
+          <path d="M2.5 15.8V8.6a1.1 1.1 0 0 1 1.1-1.1h9.2v8.3" />
+          <path d="M12.8 10.3h4.1a1.5 1.5 0 0 1 1.2.6l2.9 3.8v1.1a1 1 0 0 1-1 1H2.5" />
+          <circle cx="7" cy="17.1" r="1.7" />
+          <circle cx="17.1" cy="17.1" r="1.7" />
+        }
+        @case ('calendario') {
+          <rect x="3.5" y="5" width="17" height="15.5" rx="2.2" />
+          <path d="M3.5 9.5h17M8 3.5v3.2M16 3.5v3.2" />
+        }
+        @case ('menos') {
+          <path d="M5.2 12h13.6" />
+        }
+        @case ('ubicar') {
+          <circle cx="12" cy="12" r="6.4" />
+          <circle cx="12" cy="12" r="2.1" />
+          <path d="M12 2.6v3M12 18.4v3M2.6 12h3M18.4 12h3" />
+        }
+        @case ('navegar') {
+          <path d="M20.2 3.8 3.9 10.6l7 2.5 2.5 7 6.8-16.3Z" />
+        }
+        @case ('techo') {
+          <path d="M3.5 11.2 12 4.5l8.5 6.7" />
+          <path d="M5.8 9.6v9.9h12.4V9.6" />
+          <path d="M9.6 19.5v-5.2h4.8v5.2" />
+        }
+        @case ('moneda') {
+          <circle cx="12" cy="12" r="8.2" />
+          <path d="M14.6 9.2c-.4-.9-1.4-1.4-2.6-1.4-1.5 0-2.6.8-2.6 2s1.1 1.7 2.6 2c1.5.3 2.6.8 2.6 2s-1.1 2-2.6 2c-1.2 0-2.2-.5-2.6-1.4M12 6.3v1.5M12 16.2v1.5" />
+        }
+        @case ('buscar') {
+          <circle cx="10.8" cy="10.8" r="6.3" />
+          <path d="m15.5 15.5 4.4 4.4" />
         }
       }
     </svg>

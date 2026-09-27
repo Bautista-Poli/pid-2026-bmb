@@ -1,0 +1,313 @@
+<!--
+  Mobile: buscador (con filtros plegables) -> mapa -> lista, uno debajo del otro.
+  Desktop: columna izquierda con buscador, filtros y resultados (scrollea sola)
+  y el mapa ocupando el resto. El wrapper de la izquierda es `contents` en
+  mobile para que sus dos partes puedan ubicarse arriba y abajo del mapa.
+-->
+<div class="flex flex-1 flex-col lg:grid lg:h-[calc(100dvh-4rem)] lg:grid-cols-[minmax(380px,460px)_1fr]">
+  <div
+    class="contents lg:flex lg:min-h-0 lg:flex-col lg:overflow-y-auto lg:border-r lg:border-borde lg:bg-papel"
+  >
+    <!-- ============================ Buscador y filtros ============================ -->
+    <!-- z-[900]: las sugerencias del buscador tienen que quedar sobre el mapa
+         (Leaflet usa z-index de 400 a 800). -->
+    <section class="relative z-[900] order-1 flex flex-col gap-5 px-5 pt-4 pb-5 lg:px-6 lg:pt-6">
+      <div class="flex items-center gap-2">
+        <ui-campo-busqueda
+          class="min-w-0 flex-1"
+          etiqueta="Buscar por dirección, lugar o zona"
+          marcador="Buscar por dirección, lugar o zona..."
+          [valor]="texto()"
+          [buscar]="buscarDirecciones"
+          (valorChange)="escribir($event)"
+          (elegida)="elegirDestino($event)"
+        />
+        <button
+          type="button"
+          class="grid size-[46px] shrink-0 place-items-center rounded-control border border-borde bg-papel
+                 text-acento shadow-tarjeta hover:border-acento-borde"
+          aria-label="Usar mi ubicación"
+          title="Usar mi ubicación"
+          (click)="usarMiUbicacion()"
+        >
+          <ui-icono nombre="navegar" [tamano]="19" />
+        </button>
+        <button
+          type="button"
+          class="grid size-[46px] shrink-0 place-items-center rounded-control border border-borde bg-papel
+                 text-grafito shadow-tarjeta hover:border-acento-borde lg:hidden"
+          [attr.aria-expanded]="filtrosAbiertos()"
+          aria-controls="filtros-mapa"
+          [attr.aria-label]="filtrosAbiertos() ? 'Ocultar filtros' : 'Mostrar filtros'"
+          (click)="filtrosAbiertos.set(!filtrosAbiertos())"
+        >
+          <ui-icono
+            nombre="cheuron"
+            [tamano]="20"
+            class="transition-transform duration-160"
+            [class.rotate-180]="filtrosAbiertos()"
+          />
+        </button>
+      </div>
+
+      <form
+        id="filtros-mapa"
+        class="aparece flex-col gap-5 lg:flex"
+        [class.flex]="filtrosAbiertos()"
+        [class.hidden]="!filtrosAbiertos()"
+        (submit)="$event.preventDefault(); buscar()"
+        novalidate
+      >
+        <!-- Tipo de vehiculo -->
+        <div class="grid grid-cols-3 gap-2" role="group" aria-label="Tipo de vehículo">
+          @for (opcion of tipos; track opcion.tipo) {
+            <button
+              type="button"
+              class="flex items-center justify-center gap-2 rounded-control border px-2 py-3 text-[13.5px]
+                     font-semibold transition-colors duration-160"
+              [class]="
+                panel().tipo === opcion.tipo
+                  ? 'border-acento bg-acento text-sobre-acento shadow-elevada'
+                  : 'border-borde bg-papel text-grafito hover:border-acento-borde'
+              "
+              [attr.aria-pressed]="panel().tipo === opcion.tipo"
+              (click)="cambiar({ tipo: opcion.tipo })"
+            >
+              <ui-icono [nombre]="opcion.icono" [tamano]="20" />
+              {{ etiquetaTipo[opcion.tipo] }}
+            </button>
+          }
+        </div>
+
+        <!-- Fecha y horario -->
+        <div class="grid grid-cols-2 gap-2">
+          <label
+            class="flex items-center gap-3 rounded-control border border-borde bg-papel px-3.5 py-2.5
+                   focus-within:border-acento"
+          >
+            <ui-icono nombre="calendario" [tamano]="19" class="text-plomo" />
+            <span class="flex min-w-0 flex-col">
+              <span class="text-[11.5px] text-plomo">Fecha</span>
+              <input
+                type="date"
+                class="num-tabular w-full border-0 bg-transparent p-0 text-[13px] font-medium text-tinta
+                       focus:outline-none"
+                [min]="hoy"
+                [value]="panel().fecha"
+                (input)="cambiar({ fecha: $any($event.target).value })"
+              />
+            </span>
+          </label>
+          <div
+            class="flex items-center gap-3 rounded-control border border-borde bg-papel px-3.5 py-2.5
+                   focus-within:border-acento"
+          >
+            <ui-icono nombre="reloj" [tamano]="19" class="text-plomo" />
+            <span class="flex min-w-0 flex-col">
+              <span class="text-[11.5px] text-plomo">Horario <span class="text-humo">(vacío: ahora)</span></span>
+              <span class="flex items-center gap-1 text-[13px] font-medium text-tinta">
+                <input
+                  type="time"
+                  aria-label="Desde"
+                  class="num-tabular w-full min-w-0 border-0 bg-transparent p-0 focus:outline-none"
+                  [value]="panel().desde"
+                  (input)="cambiar({ desde: $any($event.target).value })"
+                />
+                <span class="text-plomo">–</span>
+                <input
+                  type="time"
+                  aria-label="Hasta"
+                  class="num-tabular w-full min-w-0 border-0 bg-transparent p-0 focus:outline-none"
+                  [value]="panel().hasta"
+                  (input)="cambiar({ hasta: $any($event.target).value })"
+                />
+              </span>
+            </span>
+          </div>
+        </div>
+        @if (intentoBuscar() && errorHorario(); as mensaje) {
+          <p class="campo-error -mt-3" role="alert">{{ mensaje }}</p>
+        }
+
+        <!-- Rango de precios -->
+        <div class="flex flex-col gap-3">
+          <div class="flex items-baseline justify-between">
+            <span class="text-[13.5px] font-semibold text-tinta">Rango de precios <span class="font-normal text-plomo">(por hora)</span></span>
+            <span class="num-tabular text-[12.5px] text-plomo">{{ textoPrecio() }}</span>
+          </div>
+          <div class="rango-doble">
+            <span
+              class="rango-doble__relleno"
+              [style.left.%]="(panel().precioMinimo / precioTope) * 100"
+              [style.right.%]="100 - (panel().precioMaximo / precioTope) * 100"
+            ></span>
+            <input
+              type="range"
+              min="0"
+              [max]="precioTope"
+              [step]="precioPaso"
+              aria-label="Precio mínimo"
+              [value]="panel().precioMinimo"
+              (input)="moverMinimo($any($event.target).value)"
+            />
+            <input
+              type="range"
+              min="0"
+              [max]="precioTope"
+              [step]="precioPaso"
+              aria-label="Precio máximo"
+              [value]="panel().precioMaximo"
+              (input)="moverMaximo($any($event.target).value)"
+            />
+          </div>
+        </div>
+
+        <!-- Filtros adicionales -->
+        <div class="flex flex-col gap-2.5">
+          <span class="text-[13.5px] font-semibold text-tinta">Filtros adicionales</span>
+          <div class="flex flex-wrap gap-2">
+            <ui-chip [activo]="panel().orden === 'DISTANCIA'" (alternar)="cambiar({ orden: 'DISTANCIA' })">
+              <span class="flex items-center gap-1.5"><ui-icono nombre="explorar" [tamano]="15" />Más cercano</span>
+            </ui-chip>
+            <ui-chip [activo]="panel().orden === 'PRECIO'" (alternar)="cambiar({ orden: 'PRECIO' })">
+              <span class="flex items-center gap-1.5"><ui-icono nombre="moneda" [tamano]="15" />Más barato</span>
+            </ui-chip>
+            <ui-chip [activo]="panel().soloCubiertos" (alternar)="cambiar({ soloCubiertos: !panel().soloCubiertos })">
+              <span class="flex items-center gap-1.5"><ui-icono nombre="techo" [tamano]="15" />Cubierto</span>
+            </ui-chip>
+          </div>
+        </div>
+
+        <button
+          type="submit"
+          class="flex items-center justify-center gap-2 rounded-control bg-acento px-4 py-3 text-[14px]
+                 font-semibold text-sobre-acento shadow-elevada transition-colors duration-160
+                 hover:bg-acento-fuerte"
+        >
+          <ui-icono nombre="buscar" [tamano]="18" />
+          Buscar estacionamientos
+        </button>
+      </form>
+
+      @if (sinOrigen()) {
+        <p class="text-[12.5px] leading-normal text-plomo">
+          Activá la ubicación del navegador, o buscá la dirección a la que vas, para ver a qué distancia
+          está cada estacionamiento.
+        </p>
+      }
+    </section>
+
+    <!-- ================================ Resultados ================================ -->
+    <section
+      class="order-3 flex flex-col gap-4 rounded-t-[20px] bg-papel px-5 pt-3 pb-8 shadow-flotante
+             lg:rounded-none lg:border-t lg:border-borde-sutil lg:px-6 lg:pt-5 lg:shadow-none"
+      aria-labelledby="titulo-resultados"
+    >
+      <span class="mx-auto h-1 w-10 rounded-full bg-borde lg:hidden" aria-hidden="true"></span>
+
+      <div class="flex items-end justify-between gap-3">
+        <div>
+          <h2 id="titulo-resultados" class="text-[16px] font-semibold text-tinta">
+            {{ destino() ? 'Cerca de tu destino' : 'Estacionamientos cercanos' }}
+          </h2>
+          <p class="mt-0.5 text-[12.5px] text-plomo">
+            {{ resultados().length }} {{ resultados().length === 1 ? 'estacionamiento encontrado' : 'estacionamientos encontrados' }}
+          </p>
+        </div>
+        <label class="flex flex-col gap-1 text-[11.5px] text-plomo">
+          Ordenar por
+          <select
+            class="rounded-boton border border-borde bg-papel px-2.5 py-1.5 text-[12.5px] font-medium text-tinta"
+            [value]="orden()"
+            (change)="ordenar($any($event.target).value)"
+          >
+            <option value="DISTANCIA">Más cercano</option>
+            <option value="PRECIO">Más barato</option>
+          </select>
+        </label>
+      </div>
+
+      @if (recurso.isLoading()) {
+        <ui-cargando [cantidad]="3" />
+      } @else if (recurso.error(); as error) {
+        <ui-estado-vacio titulo="No pudimos cargar los estacionamientos" [descripcion]="error.message">
+          <button type="button" class="text-[13px] font-semibold text-acento" (click)="recurso.reload()">
+            Reintentar
+          </button>
+        </ui-estado-vacio>
+      } @else if (resultados().length === 0) {
+        <ui-estado-vacio
+          titulo="Sin resultados"
+          descripcion="No hay estacionamientos con lugar para esos filtros. Probá con otro horario, otro precio o menos filtros."
+        />
+      } @else {
+        <ul class="aparece-en-cadena flex flex-col gap-2.5">
+          @for (estacionamiento of resultados(); track estacionamiento.id) {
+            <li [id]="'estacionamiento-' + estacionamiento.id">
+              <button
+                type="button"
+                class="flex w-full items-center gap-3.5 rounded-tarjeta border bg-papel p-3.5 text-left
+                       shadow-tarjeta transition-[border-color,box-shadow] duration-160 hover:shadow-elevada"
+                [class.border-acento]="seleccionadoId() === estacionamiento.id"
+                [class.border-borde]="seleccionadoId() !== estacionamiento.id"
+                (mouseenter)="seleccionadoId.set(estacionamiento.id)"
+                (focus)="seleccionadoId.set(estacionamiento.id)"
+                (click)="irAReservar(estacionamiento)"
+              >
+                @if (estacionamiento.fotoUrl; as foto) {
+                  <img [src]="foto" alt="" loading="lazy" class="size-12 shrink-0 rounded-full object-cover" />
+                } @else {
+                  <span
+                    class="grid size-12 shrink-0 place-items-center rounded-full bg-acento text-[20px] font-bold
+                           text-sobre-acento"
+                    aria-hidden="true"
+                    >P</span
+                  >
+                }
+
+                <span class="min-w-0 flex-1">
+                  <span class="block truncate text-[14.5px] font-semibold text-tinta">{{ estacionamiento.nombre }}</span>
+                  <span class="mt-0.5 block truncate text-[12.5px] text-plomo">
+                    {{ estacionamiento.direccion.calle }} {{ estacionamiento.direccion.numero }}
+                  </span>
+                  @if (distancia(estacionamiento); as texto) {
+                    <span class="mt-1 flex items-center gap-1 text-[12.5px] text-grafito">
+                      <ui-icono nombre="explorar" [tamano]="14" class="text-plomo" />
+                      {{ texto }}
+                    </span>
+                  }
+                </span>
+
+                <span class="flex shrink-0 flex-col items-end gap-1.5">
+                  <span class="num-tabular text-[14.5px] font-bold text-tinta">{{ precio(estacionamiento) }}</span>
+                  <span
+                    class="rounded-full px-2.5 py-0.5 text-[11.5px] font-semibold"
+                    [class]="claseEstado[estado(estacionamiento)]"
+                    >{{ etiquetaEstado[estado(estacionamiento)] }}</span
+                  >
+                  <span class="num-tabular text-[11.5px] text-plomo">{{ horario(estacionamiento) }}</span>
+                </span>
+
+                <ui-icono nombre="cheuron" [tamano]="18" class="-rotate-90 text-humo" />
+              </button>
+            </li>
+          }
+        </ul>
+      }
+
+    </section>
+  </div>
+
+  <!-- =================================== Mapa =================================== -->
+  <app-mapa-estacionamientos
+    class="order-2 h-[52vh] min-h-[320px] lg:h-full"
+    [estacionamientos]="resultados()"
+    [ubicacion]="ubicacionActual()"
+    [destino]="destino()?.coordenadas ?? null"
+    [tituloOrigen]="tituloOrigen()"
+    [detalleOrigen]="detalleOrigen()"
+    [seleccionadoId]="seleccionadoId()"
+    (seleccionar)="seleccionarDesdeMapa($event)"
+    (pedirUbicacion)="usarMiUbicacion()"
+  />
+</div>

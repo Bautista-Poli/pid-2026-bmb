@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Coordenadas } from '@app/utils/distancia.util';
-import { Observable, expand, map, of, reduce, shareReplay } from 'rxjs';
+import { Observable, catchError, expand, forkJoin, map, of, reduce, shareReplay } from 'rxjs';
 
 /**
  * Georef: API oficial de direcciones de Argentina (datos.gob.ar). Se llama
@@ -50,6 +50,14 @@ interface DireccionDto {
   ubicacion: { lat: number | null; lon: number | null } | null;
 }
 
+interface LocalidadDto {
+  nombre: string;
+  centroide: { lat: number | null; lon: number | null } | null;
+  departamento: { nombre: string | null } | null;
+  localidad_censal: { nombre: string | null } | null;
+  provincia: { nombre: string };
+}
+
 interface Pagina {
   total: number;
   inicio: number;
@@ -62,6 +70,7 @@ export class GeorefService {
   private readonly http = inject(HttpClient);
   private readonly ciudades = new Map<string, Observable<LugarGeoref[]>>();
   private readonly calles = new Map<string, Observable<LugarGeoref[]>>();
+  private readonly zonas = new Map<string, Observable<DireccionGeoref[]>>();
 
   /** Las 24 provincias, ordenadas por nombre. */
   readonly provincias$: Observable<LugarGeoref[]> = this.todas<{ id: string; nombre: string }>(
@@ -163,6 +172,44 @@ export class GeorefService {
     );
   }
 
+  /**
+   * Barrios y localidades de una provincia con su punto central ("Palermo",
+   * "Rosario"), para buscar por zona. Se piden una vez por provincia.
+   */
+  zonasDe(provincia: string): Observable<DireccionGeoref[]> {
+    return enCache(this.zonas, provincia, () =>
+      this.todas<LocalidadDto>('localidades', {
+        provincia,
+        campos: 'nombre,centroide,departamento.nombre,localidad_censal.nombre,provincia.nombre',
+        orden: 'nombre',
+      }).pipe(
+        map((localidades) =>
+          localidades.flatMap((l) =>
+            l.centroide?.lat == null || l.centroide.lon == null
+              ? []
+              : [
+                  {
+                    nombre: l.nombre,
+                    detalle: detalleDeZona(l),
+                    coordenadas: { latitud: l.centroide.lat, longitud: l.centroide.lon },
+                  },
+                ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /** Zonas de esas provincias que coinciden con `texto` (filtro local, por principio de palabra). */
+  buscarZonas(texto: string, provincias: string[]): Observable<DireccionGeoref[]> {
+    if (provincias.length === 0) return of([]);
+    return forkJoin(
+      provincias.slice(0, MAX_ZONAS).map((provincia) =>
+        this.zonasDe(provincia).pipe(catchError(() => of([] as DireccionGeoref[]))),
+      ),
+    ).pipe(map((listas) => filtrarLugares(listas.flat(), texto, 5)));
+  }
+
   /** Recorre todas las paginas de un recurso de Georef. */
   private todas<T>(recurso: string, params: Record<string, string>): Observable<T[]> {
     const pagina = (inicio: number) =>
@@ -208,6 +255,15 @@ function detalleDeDireccion(d: DireccionDto): string {
   return lugar ? `${lugar}, ${provincia}` : provincia;
 }
 
+/** "Comuna 14, CABA" en la Capital; "Rosario, Santa Fe" en el resto. */
+function detalleDeZona(l: LocalidadDto): string {
+  const provincia = l.provincia.nombre === CABA ? 'CABA' : l.provincia.nombre;
+  const lugar = [l.departamento?.nombre, l.localidad_censal?.nombre].find(
+    (nombre) => nombre && nombre !== l.nombre && nombre !== l.provincia.nombre,
+  );
+  return lugar ? `${lugar}, ${provincia}` : provincia;
+}
+
 /** Minusculas, sin acentos ni dieresis, y la ñ como n (Georef escribe "ORONO"). */
 export function normalizar(texto: string): string {
   return texto
@@ -228,12 +284,16 @@ const TIPO_DE_VIA = /^(av|avda|avenida|bv|bulevar|boulevard|calle|pje|pasaje|dia
  * -> "Bv Orono"). Primero los que empiezan con lo escrito, sin contar el tipo
  * de via ("colon" -> "Av Colon" antes que "Colonia Anita"), despues el resto.
  */
-export function filtrarLugares(lista: LugarGeoref[], texto: string, maximo = 10): LugarGeoref[] {
+export function filtrarLugares<T extends { nombre: string }>(
+  lista: T[],
+  texto: string,
+  maximo = 10,
+): T[] {
   const buscado = normalizar(texto);
   if (!buscado) return [];
   const palabras = buscado.split(' ');
 
-  const coincidencias: { lugar: LugarGeoref; alPrincipio: boolean; base: string }[] = [];
+  const coincidencias: { lugar: T; alPrincipio: boolean; base: string }[] = [];
   for (const lugar of lista) {
     const nombre = normalizar(lugar.nombre);
     const suyas = nombre.split(' ');

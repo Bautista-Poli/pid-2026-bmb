@@ -330,3 +330,243 @@
     background-position: -200% 0;
   }
 }
+
+/* ------------------------------------------------------------------
+   Mapa de estacionamientos (Leaflet). Los pines se dibujan como HTML
+   dentro del mapa, fuera de los componentes de Angular: por eso sus
+   estilos viven aca y no en el componente.
+------------------------------------------------------------------ */
+@layer components {
+  .leaflet-container {
+    font: inherit;
+    background: var(--color-lienzo);
+  }
+
+  /* Sin clave de CARTO se usan los mosaicos de OSM, muy coloridos: se apagan
+     para que resalten los pines y en modo oscuro se invierten (el giro de tono
+     deja el agua azul). */
+  .mapa-osm .leaflet-tile-pane {
+    filter: saturate(0.45) brightness(1.04) contrast(0.92);
+  }
+
+  .mapa-osm--oscuro .leaflet-tile-pane {
+    filter: invert(1) hue-rotate(180deg) saturate(0.35) brightness(0.85) contrast(0.9);
+  }
+
+  /* Pin: la "P" en una gota de color y, debajo, el precio en una pastilla. */
+  .pin {
+    --pin-color: var(--color-exito);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: 96px;
+    cursor: pointer;
+    transition: transform 160ms var(--ease-suave);
+    transform-origin: 50% 36px;
+  }
+
+  .pin--poca {
+    --pin-color: var(--color-baja);
+  }
+
+  .pin--agotado {
+    --pin-color: var(--color-ocupada);
+  }
+
+  .pin__cabeza {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border: 2px solid var(--color-papel);
+    border-radius: 50% 50% 50% 0;
+    background: var(--pin-color);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    box-shadow: var(--shadow-elevada);
+    transform: rotate(-45deg);
+  }
+
+  /* La letra vuelve a quedar derecha dentro de la gota girada. */
+  .pin__cabeza > b {
+    font-weight: inherit;
+    transform: rotate(45deg);
+  }
+
+  .pin__precio {
+    padding: 3px 9px;
+    border: 1px solid var(--color-borde);
+    border-radius: 999px;
+    background: var(--color-papel);
+    color: var(--pin-color);
+    font-size: 12.5px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    box-shadow: var(--shadow-tarjeta);
+  }
+
+  .pin:hover,
+  .pin--activo {
+    transform: scale(1.12);
+  }
+
+  .pin--activo .pin__precio {
+    border-color: var(--pin-color);
+    background: var(--pin-color);
+    color: #fff;
+  }
+
+  /* Origen: punto azul con halo, como el "estas aca" de cualquier mapa. */
+  .punto-origen span {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: rgb(37 99 235 / 0.16);
+  }
+
+  .punto-origen span::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 16px;
+    height: 16px;
+    border: 3px solid #fff;
+    border-radius: 50%;
+    background: #2563eb;
+    box-shadow: 0 1px 4px rgb(0 0 0 / 0.3);
+    transform: translate(-50%, -50%);
+  }
+
+  /* Rango doble (precio minimo y maximo): dos sliders superpuestos que solo
+     reciben el mouse en sus manijas, sobre un riel con el tramo elegido pintado. */
+  .rango-doble {
+    position: relative;
+    height: 22px;
+  }
+
+  .rango-doble::before,
+  .rango-doble__relleno {
+    content: '';
+    position: absolute;
+    top: 50%;
+    height: 4px;
+    border-radius: 999px;
+    transform: translateY(-50%);
+  }
+
+  .rango-doble::before {
+    inset-inline: 0;
+    background: var(--color-borde);
+  }
+
+  .rango-doble__relleno {
+    background: var(--color-acento);
+  }
+
+  .rango-doble input[type='range'] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    margin: 0;
+    background: none;
+    pointer-events: none;
+    appearance: none;
+  }
+
+  .rango-doble input[type='range']::-webkit-slider-thumb {
+    width: 20px;
+    height: 20px;
+    border: 3px solid var(--color-papel);
+    border-radius: 50%;
+    background: var(--color-acento);
+    box-shadow: var(--shadow-elevada);
+    cursor: grab;
+    pointer-events: auto;
+    appearance: none;
+  }
+
+  .rango-doble input[type='range']::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border: 3px solid var(--color-papel);
+    border-radius: 50%;
+    background: var(--color-acento);
+    box-shadow: var(--shadow-elevada);
+    cursor: grab;
+    pointer-events: auto;
+  }
+
+  .rango-doble input[type='range']::-moz-range-track {
+    background: none;
+  }
+
+  .rango-doble input[type='range']:focus-visible::-webkit-slider-thumb {
+    outline: 2px solid var(--color-acento);
+    outline-offset: 2px;
+  }
+
+  /* Destino buscado: gota oscura con punto blanco (el "a donde voy"). Distinta
+     de los pines de colores para no confundirla con un estacionamiento. No se
+     puede tocar: es solo una referencia. */
+  .pin-destino {
+    position: relative;
+    width: 36px;
+    height: 48px;
+    filter: drop-shadow(0 3px 4px rgb(0 0 0 / 0.35));
+    animation: caer-pin 360ms var(--ease-suave);
+  }
+
+  .pin-destino::before {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 3px;
+    width: 30px;
+    height: 30px;
+    border: 2.5px solid #fff;
+    border-radius: 50% 50% 50% 0;
+    background: var(--color-tinta);
+    transform: rotate(-45deg);
+  }
+
+  .pin-destino span {
+    position: absolute;
+    top: 12px;
+    left: 13px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    /* papel: blanco de dia y oscuro de noche, siempre contrasta con la gota. */
+    background: var(--color-papel);
+  }
+
+  @keyframes caer-pin {
+    from {
+      opacity: 0;
+      transform: translateY(-14px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  /* Botones cuadrados de 40px del mapa (zoom, centrar). */
+  .control-mapa {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    color: var(--color-grafito);
+    transition: background-color 160ms var(--ease-suave);
+  }
+
+  .control-mapa:hover {
+    background: var(--color-acento-suave);
+    color: var(--color-acento);
+  }
+}

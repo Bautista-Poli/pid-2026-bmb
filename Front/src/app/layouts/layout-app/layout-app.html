@@ -1,7 +1,7 @@
-<div class="flex min-h-dvh bg-lienzo">
-  <!-- Desktop: nav lateral fija -->
-  <div class="sticky top-0 hidden h-dvh lg:block">
-    <app-barra-lateral
+<div class="flex min-h-dvh flex-col bg-lienzo">
+  <!-- Desktop: nav superior fija -->
+  <div class="sticky top-0 z-[1000] hidden lg:block">
+    <app-barra-superior
       [items]="items()"
       [usuario]="usuario()"
       [rolAlternativo]="rolAlternativo()"
@@ -11,35 +11,33 @@
     />
   </div>
 
-  <div class="flex min-w-0 flex-1 flex-col">
-    <!-- Mobile: marca + salida, ocupa el lugar de la status bar del prototipo -->
-    <div
-      class="sticky top-0 z-10 flex items-center justify-between border-b border-borde-sutil
-             bg-lienzo/85 px-6 py-3 backdrop-blur-md lg:hidden"
-    >
-      <ui-logo [tamano]="24" />
-      <span class="flex items-center gap-1.5">
-        <ui-boton-tema />
-        @if (usuario(); as datos) {
-          <app-menu-usuario
-            [compacto]="true"
-            direccion="abajo"
-            [usuario]="datos"
-            [rolAlternativo]="rolAlternativo()"
-            [cambiandoRol]="cambiandoRol()"
-            (cambiarRol)="cambiarRol()"
-            (salir)="salir()"
-          />
-        }
-      </span>
-    </div>
+  <!-- Mobile: marca + salida, ocupa el lugar de la status bar del prototipo -->
+  <div
+    class="sticky top-0 z-[1000] flex items-center justify-between border-b border-borde-sutil
+           bg-lienzo/85 px-6 py-3 backdrop-blur-md lg:hidden"
+  >
+    <ui-logo [tamano]="24" />
+    <span class="flex items-center gap-1.5">
+      <ui-boton-tema />
+      @if (usuario(); as datos) {
+        <app-menu-usuario
+          [compacto]="true"
+          direccion="abajo"
+          [usuario]="datos"
+          [rolAlternativo]="rolAlternativo()"
+          [cambiandoRol]="cambiandoRol()"
+          (cambiarRol)="cambiarRol()"
+          (salir)="salir()"
+        />
+      }
+    </span>
+  </div>
 
-    <main class="flex-1">
-      <router-outlet />
-    </main>
+  <main class="flex min-w-0 flex-1 flex-col">
+    <router-outlet />
+  </main>
 
-    <div class="sticky bottom-0 z-10 lg:hidden">
-      <app-tabs-inferior [items]="items()" />
-    </div>
+  <div class="sticky bottom-0 z-[1000] lg:hidden">
+    <app-tabs-inferior [items]="items()" />
   </div>
 </div>

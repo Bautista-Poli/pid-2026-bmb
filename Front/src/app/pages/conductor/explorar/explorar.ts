@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { rxResource, toObservable, toSignal } from '@angular/core/rxjs-interop';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { Observable, debounceTime, map, of } from 'rxjs';
 import {
   ElegirMomento,
@@ -37,7 +37,7 @@ const FILTROS_INICIALES: FiltrosEstacionamiento = {
 @Component({
   selector: 'app-explorar',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ElegirMomento, FiltrosComponent, TarjetaEstacionamiento, Cargando, EstadoVacio, Boton],
+  imports: [RouterLink, ElegirMomento, FiltrosComponent, TarjetaEstacionamiento, Cargando, EstadoVacio, Boton],
   templateUrl: './explorar.html',
 })
 export class Explorar {

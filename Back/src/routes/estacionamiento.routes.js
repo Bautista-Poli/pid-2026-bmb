@@ -12,7 +12,7 @@ import {
   validarDisponibilidad,
   validarEstacionamiento,
   validarFiltroReservas,
-  validarLoteCochera,
+  validarLoteCocheras,
 } from '../validators/estacionamiento.validator.js';
 
 const router = Router();
@@ -78,7 +78,7 @@ router.post(
 router.post(
   '/:id/cocheras/lote',
   ...soloPropietario,
-  validate(validarLoteCochera),
+  validate(validarLoteCocheras),
   estacionamientoController.crearLoteCocheras,
 );
 
@@ -93,6 +93,18 @@ router.delete(
   '/:id/cocheras/:idCochera',
   ...soloPropietario,
   estacionamientoController.darDeBajaCochera,
+);
+
+router.post(
+  '/:id/cocheras/:idCochera/reactivar',
+  ...soloPropietario,
+  estacionamientoController.reactivarCochera,
+);
+
+router.delete(
+  '/:id/cocheras/:idCochera/definitiva',
+  ...soloPropietario,
+  estacionamientoController.eliminarCochera,
 );
 
 export default router;

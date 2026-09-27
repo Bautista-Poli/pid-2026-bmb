@@ -1,9 +1,9 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
-import { Cochera, EstadoCochera, Id, NuevaCochera, NuevoLoteCocheras } from '@app/models';
+import { Cochera, EstadoCochera, Id, LoteCocheras, NuevaCochera } from '@app/models';
 import { CocheraDto } from './api/api.dto';
-import { aCochera, aPayloadCambiosCochera, aPayloadCochera, aPayloadLoteCochera } from './api/api.mapeo';
+import { aCochera, aPayloadCambiosCochera, aPayloadCochera, aPayloadLotes } from './api/api.mapeo';
 
 /** Cocheras de un estacionamiento: `/api/estacionamientos/:id/cocheras`. */
 @Injectable({ providedIn: 'root' })
@@ -24,14 +24,11 @@ export class CocheraService {
       .pipe(map((respuesta) => aCochera(respuesta.cochera)));
   }
 
-  /** `POST /api/estacionamientos/:id/cocheras/lote` */
-  crearLote(datos: NuevoLoteCocheras): Observable<Cochera[]> {
+  /** `POST /api/estacionamientos/:id/cocheras/lote` (todo o nada) */
+  crearLote(estacionamientoId: Id, lotes: LoteCocheras[]): Observable<Cochera[]> {
     return this.http
-      .post<{ cocheras: CocheraDto[] }>(
-        `${rutaCocheras(datos.estacionamientoId)}/lote`,
-        aPayloadLoteCochera(datos),
-      )
-      .pipe(map((respuesta) => respuesta.cocheras.map(aCochera)));
+      .post<{ cocheras: CocheraDto[] }>(`${rutaCocheras(estacionamientoId)}/lote`, aPayloadLotes(lotes))
+      .pipe(map(({ cocheras }) => cocheras.map(aCochera)));
   }
 
   /** `PATCH /api/estacionamientos/:id/cocheras/:idCochera` */
@@ -43,6 +40,18 @@ export class CocheraService {
 
   cambiarEstado(cochera: Cochera, estado: EstadoCochera): Observable<Cochera> {
     return this.actualizar(cochera, { estado });
+  }
+
+  /** `POST /api/estacionamientos/:id/cocheras/:idCochera/reactivar` */
+  reactivar(cochera: Cochera): Observable<Cochera> {
+    return this.http
+      .post<{ cochera: CocheraDto }>(`${rutaCochera(cochera)}/reactivar`, {})
+      .pipe(map((respuesta) => aCochera(respuesta.cochera)));
+  }
+
+  /** `DELETE /api/estacionamientos/:id/cocheras/:idCochera/definitiva` (solo inactivas y sin reservas) */
+  eliminar(cochera: Cochera): Observable<void> {
+    return this.http.delete<void>(`${rutaCochera(cochera)}/definitiva`);
   }
 
   /** `DELETE /api/estacionamientos/:id/cocheras/:idCochera` (baja logica) */

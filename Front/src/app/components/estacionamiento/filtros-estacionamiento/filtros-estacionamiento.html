@@ -1,18 +1,64 @@
 <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-2.5">
   <div class="lg:w-[280px]">
     <ui-campo-busqueda
-      [valor]="textoBusqueda()"
-      [buscar]="buscarDestinos()"
-      (valorChange)="escribir($event)"
-      (elegida)="elegirDestino($event)"
+      [valor]="filtros().busqueda ?? ''"
+      (valorChange)="actualizar({ busqueda: $event })"
     />
   </div>
 
-  <div class="flex gap-2">
+  <div class="flex flex-wrap gap-2">
     @for (tipo of tipos; track tipo) {
       <ui-chip [activo]="filtros().tipoVehiculo === tipo" (alternar)="actualizar({ tipoVehiculo: tipo })">
         {{ etiquetaTipo[tipo] }}
       </ui-chip>
     }
+
+    <ui-chip [activo]="hayPrecioAplicado()" (alternar)="abrirPanel()">
+      Filtrar por precio
+    </ui-chip>
   </div>
 </div>
+
+<ui-modal titulo="Filtrar por precio" [abierto]="panelAbierto()" (cerrado)="cerrarPanel()">
+  <div class="flex flex-col gap-4">
+    <div class="flex flex-wrap gap-2">
+      @for (rango of rangos; track rango.etiqueta) {
+        <ui-chip [activo]="rangoActivo(rango)" (alternar)="usarRango(rango)">
+          {{ rango.etiqueta }}
+        </ui-chip>
+      }
+    </div>
+
+    <div class="grid grid-cols-2 gap-3">
+      <label class="campo">
+        <span class="label-campo">Precio mínimo</span>
+        <input
+          type="number"
+          inputmode="numeric"
+          min="0"
+          class="num-tabular"
+          placeholder="$"
+          [value]="borradorMinimo() ?? ''"
+          (input)="borradorMinimo.set(numero($any($event.target).value))"
+        />
+      </label>
+      <label class="campo">
+        <span class="label-campo">Precio máximo</span>
+        <input
+          type="number"
+          inputmode="numeric"
+          min="0"
+          class="num-tabular"
+          placeholder="$"
+          [value]="borradorMaximo() ?? ''"
+          (input)="borradorMaximo.set(numero($any($event.target).value))"
+        />
+      </label>
+    </div>
+
+    <div class="flex gap-2.5">
+      <ui-boton [bloque]="true" (presionado)="limpiarPrecio()">Limpiar</ui-boton>
+      <ui-boton variante="primario" [bloque]="true" (presionado)="aplicarPrecio()">Aplicar</ui-boton>
+    </div>
+  </div>
+</ui-modal>

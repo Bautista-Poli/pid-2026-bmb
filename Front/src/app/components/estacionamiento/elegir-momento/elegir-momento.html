@@ -1,0 +1,109 @@
+<div class="mx-auto flex w-full max-w-[520px] flex-col gap-4">
+  <div>
+    <h2 class="titulo-vista">¿Dónde y cuándo querés estacionar?</h2>
+    <p class="mt-1.5 text-[13.5px] text-plomo">
+      Te mostramos solo los estacionamientos con lugar libre en ese momento.
+    </p>
+  </div>
+
+  <ui-tarjeta relleno="lg">
+    <div class="flex flex-col gap-3">
+      <h3 class="text-[15px] font-semibold text-tinta">Ubicación</h3>
+
+      <div class="flex gap-2">
+        <ui-chip [activo]="tipoUbicacion() === 'ACTUAL'" (alternar)="tipoUbicacion.set('ACTUAL')">
+          Mi ubicación actual
+        </ui-chip>
+        <ui-chip [activo]="tipoUbicacion() === 'OTRA'" (alternar)="tipoUbicacion.set('OTRA')">
+          Otra zona
+        </ui-chip>
+      </div>
+
+      @if (tipoUbicacion() === 'OTRA') {
+        <div class="flex flex-col gap-1.5">
+          <span class="label-campo">Zona o dirección</span>
+          <ui-campo-busqueda
+            etiqueta="Zona o dirección"
+            marcador="Palermo, Recoleta..."
+            [valor]="zona()"
+            [buscar]="buscarDirecciones()"
+            (valorChange)="escribirZona($event)"
+            (elegida)="elegirDireccion($event)"
+          />
+          @if (intentadoUbicacion() && errorUbicacionElegida(); as mensaje) {
+            <span class="campo-error">{{ mensaje }}</span>
+          }
+        </div>
+      }
+
+      @if (errorUbicacion(); as mensaje) {
+        <p class="campo-error" role="alert">{{ mensaje }}</p>
+      }
+    </div>
+  </ui-tarjeta>
+
+  <ui-tarjeta relleno="lg">
+    <div class="flex flex-col gap-4">
+      <div>
+        <h3 class="text-[15px] font-semibold text-tinta">Cuándo</h3>
+        <p class="mt-0.5 text-[12.5px] text-plomo">Por defecto buscamos lugares libres en este momento.</p>
+      </div>
+
+      <ui-boton variante="primario" [bloque]="true" [cargando]="buscandoUbicacion()" (presionado)="ahora()">
+        Buscar ahora
+      </ui-boton>
+
+      <ui-boton [bloque]="true" (presionado)="alternarAvanzada()">
+        Búsqueda avanzada
+      </ui-boton>
+
+      @if (avanzadaAbierta()) {
+        <form
+          class="aparece flex flex-col gap-4 border-t border-borde-sutil pt-4"
+          (submit)="$event.preventDefault(); buscarFranja()"
+          novalidate
+        >
+          <label class="campo">
+            <span class="label-campo">Día</span>
+            <input
+              type="date"
+              class="num-tabular"
+              [min]="hoy"
+              [value]="fecha()"
+              (input)="fecha.set($any($event.target).value)"
+            />
+          </label>
+
+          <div class="grid grid-cols-2 gap-3">
+            <label class="campo">
+              <span class="label-campo">Desde</span>
+              <input
+                type="time"
+                class="num-tabular"
+                [value]="horaDesde()"
+                (input)="horaDesde.set($any($event.target).value)"
+              />
+            </label>
+            <label class="campo">
+              <span class="label-campo">Hasta</span>
+              <input
+                type="time"
+                class="num-tabular"
+                [value]="horaHasta()"
+                (input)="horaHasta.set($any($event.target).value)"
+              />
+            </label>
+          </div>
+
+          @if (intentadoFranja() && errorFranja(); as mensaje) {
+            <p class="campo-error" role="alert">{{ mensaje }}</p>
+          }
+
+          <ui-boton variante="primario" tipo="submit" [bloque]="true" [cargando]="buscandoUbicacion()">
+            Buscar en esa franja
+          </ui-boton>
+        </form>
+      }
+    </div>
+  </ui-tarjeta>
+</div>

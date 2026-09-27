@@ -7,10 +7,11 @@ import {
   Validators,
 } from '@angular/forms';
 import { Router } from '@angular/router';
-import { Boton, Tarjeta } from '@app/components/ui';
+import { Boton, Icono, Modal, NombreIcono, Tarjeta } from '@app/components/ui';
 import { inicioSegunRol } from '@app/guards/rol.guard';
 import { CambiosPerfil, ETIQUETA_ROL, RolUsuario } from '@app/models';
 import { AuthService } from '@app/services/auth.service';
+import { PreferenciaTema, TemaService } from '@app/services/tema.service';
 
 const PASSWORD_MIN = 8;
 const PASSWORD_MAX = 72;
@@ -18,6 +19,12 @@ const PASSWORD_MAX = 72;
 const PERFILES: { rol: RolUsuario; control: 'conductor' | 'propietario'; descripcion: string }[] = [
   { rol: 'CONDUCTOR', control: 'conductor', descripcion: 'Buscar y reservar cocheras.' },
   { rol: 'PROPIETARIO', control: 'propietario', descripcion: 'Administrar estacionamientos.' },
+];
+
+const TEMAS: { valor: PreferenciaTema; etiqueta: string; icono: NombreIcono }[] = [
+  { valor: 'claro', etiqueta: 'Día', icono: 'sol' },
+  { valor: 'oscuro', etiqueta: 'Noche', icono: 'luna' },
+  { valor: 'sistema', etiqueta: 'Automático', icono: 'sistema' },
 ];
 
 function alMenosUnPerfil(grupo: AbstractControl): ValidationErrors | null {
@@ -45,16 +52,19 @@ function passwordsIguales(grupo: AbstractControl): ValidationErrors | null {
 @Component({
   selector: 'app-perfil',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, Boton, Tarjeta],
+  imports: [ReactiveFormsModule, Boton, Icono, Modal, Tarjeta],
   templateUrl: './perfil.html',
 })
 export class Perfil {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
+  private readonly tema = inject(TemaService);
 
   protected readonly usuario = this.auth.usuario;
   protected readonly perfiles = PERFILES;
+  protected readonly temas = TEMAS;
+  protected readonly temaElegido = this.tema.elegida;
   protected readonly etiquetaRol = ETIQUETA_ROL;
   protected readonly passwordMin = PASSWORD_MIN;
 
@@ -82,6 +92,9 @@ export class Perfil {
     { validators: passwordsIguales },
   );
 
+  /** Controla el modal de cambio de contrasena. */
+  protected readonly modalClave = signal(false);
+
   protected readonly guardandoDatos = signal(false);
   protected readonly guardandoClave = signal(false);
   protected readonly borrando = signal(false);
@@ -93,6 +106,13 @@ export class Perfil {
   protected readonly rolActivo = computed(() => {
     const usuario = this.usuario();
     return usuario ? ETIQUETA_ROL[usuario.rol] : '';
+  });
+
+  protected readonly ayudaTema = computed(() => {
+    if (this.temaElegido() !== 'sistema') return 'Parkit ignora el tema del sistema.';
+    return this.tema.esOscuro()
+      ? 'Tu sistema está en oscuro, así que Parkit se ve de noche.'
+      : 'Tu sistema está en claro, así que Parkit se ve de día.';
   });
 
   constructor() {
@@ -107,6 +127,23 @@ export class Perfil {
         propietario: usuario.roles.includes('PROPIETARIO'),
       });
     }
+  }
+
+  protected elegirTema(preferencia: PreferenciaTema): void {
+    this.tema.elegir(preferencia);
+  }
+
+  protected abrirModalClave(): void {
+    this.clave.reset();
+    this.errorClave.set(null);
+    this.avisoClave.set(null);
+    this.modalClave.set(true);
+  }
+
+  /** No se cierra en medio de un guardado para no dejar la accion a ciegas. */
+  protected cerrarModalClave(): void {
+    if (this.guardandoClave()) return;
+    this.modalClave.set(false);
   }
 
   protected invalidoDatos(campo: string): boolean {
@@ -144,14 +181,14 @@ export class Perfil {
     const rolAnterior = this.usuario()?.rol;
 
     this.auth.actualizarPerfil(cambios).subscribe({
-      next: (sesion) => {
+      next: (usuario) => {
         this.guardandoDatos.set(false);
         this.avisoDatos.set('Guardamos tus datos.');
 
         // Si se quito el perfil activo, el backend activa otro y hay que
         // mandar al usuario a la rama que ahora le corresponde.
-        if (sesion.usuario.rol !== rolAnterior) {
-          void this.router.navigateByUrl(inicioSegunRol(sesion.usuario.rol));
+        if (usuario.rol !== rolAnterior) {
+          void this.router.navigateByUrl(inicioSegunRol(usuario.rol));
         }
       },
       error: (e: Error) => {
@@ -176,8 +213,9 @@ export class Perfil {
     this.auth.actualizarPerfil({ passwordActual, password }).subscribe({
       next: () => {
         this.guardandoClave.set(false);
-        this.avisoClave.set('Cambiamos tu contraseña.');
         this.clave.reset();
+        this.modalClave.set(false);
+        this.avisoClave.set('Cambiamos tu contraseña.');
       },
       error: (e: Error) => {
         this.guardandoClave.set(false);

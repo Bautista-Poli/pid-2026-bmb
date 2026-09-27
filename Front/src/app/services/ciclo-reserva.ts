@@ -9,7 +9,7 @@ import { ReservaService } from './reserva.service';
  * segunda condicion quedaria para siempre entre las vigentes.
  */
 export function reservaEnJuego(reserva: Reserva): boolean {
-  const fin = Date.parse(aInstante(reserva.fecha, reserva.horaHasta));
+  const fin = Date.parse(aInstante(reserva.fechaHasta, reserva.horaHasta));
   return esReservaActiva(reserva) && fin > Date.now();
 }
 

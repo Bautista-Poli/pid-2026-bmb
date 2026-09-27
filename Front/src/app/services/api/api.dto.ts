@@ -1,4 +1,4 @@
-import { EstadoCochera, RolUsuario } from '@app/models';
+import { EstadoCochera, ModalidadReserva, RolUsuario } from '@app/models';
 
 /*
  * Forma exacta de las respuestas de la API de Express (snake_case, tal cual
@@ -24,11 +24,6 @@ export interface UsuarioDto {
   telefono: string | null;
   activo: boolean;
   created_at: string;
-}
-
-export interface SesionDto {
-  usuario: UsuarioDto;
-  token: string;
 }
 
 export interface HorarioDto {
@@ -68,7 +63,9 @@ export interface EstacionamientoDto {
   longitud: number | null;
   telefono_contacto: string | null;
   email_contacto: string | null;
-  tarifa_hora: number;
+  tarifa_hora: number | null;
+  tarifa_estadia: number | null;
+  tarifa_jornada: number | null;
   cubierto: boolean;
   publicado: boolean;
   activo: boolean;
@@ -76,6 +73,8 @@ export interface EstacionamientoDto {
   cocheras_libres?: number;
   tipos_vehiculo?: number[];
   horarios?: HorarioDto[];
+  /** Cuando se subio la foto. `null` o ausente si el estacionamiento no tiene. */
+  foto_actualizada?: string | null;
 }
 
 export interface VehiculoDto {
@@ -111,8 +110,8 @@ export interface ReservaDto {
   id_estacionamiento: string;
   estacionamiento: string;
   direccion: string;
-  tarifa_hora: number;
   precio_total: number;
+  modalidad: ModalidadReserva;
 }
 
 export interface FranjaDto {

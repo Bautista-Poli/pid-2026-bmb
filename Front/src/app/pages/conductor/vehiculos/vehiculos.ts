@@ -2,7 +2,8 @@ import { ChangeDetectionStrategy, Component, computed, inject, input } from '@an
 import { rxResource } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { Boton, Cargando, EstadoVacio, Etiqueta, Tarjeta } from '@app/components/ui';
-import { ETIQUETA_TIPO_VEHICULO, Vehiculo } from '@app/models';
+import { FotoVehiculo } from '@app/components/vehiculo';
+import { descripcionVehiculo, Vehiculo } from '@app/models';
 import { VehiculoService } from '@app/services/vehiculo.service';
 
 /**
@@ -14,7 +15,7 @@ import { VehiculoService } from '@app/services/vehiculo.service';
 @Component({
   selector: 'app-vehiculos',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, Boton, Cargando, EstadoVacio, Etiqueta, Tarjeta],
+  imports: [RouterLink, Boton, Cargando, EstadoVacio, Etiqueta, FotoVehiculo, Tarjeta],
   templateUrl: './vehiculos.html',
 })
 export class Vehiculos {
@@ -23,7 +24,7 @@ export class Vehiculos {
   /** Query param `volver`: la reserva desde la que llego el conductor. */
   readonly volver = input<string>();
 
-  protected readonly etiquetaTipo = ETIQUETA_TIPO_VEHICULO;
+  protected readonly descripcion = descripcionVehiculo;
 
   protected readonly recurso = rxResource({
     stream: () => this.vehiculos.listarMisVehiculos(),
@@ -42,9 +43,4 @@ export class Vehiculos {
     return volver ? { volver } : {};
   });
 
-  /** "Toyota Corolla · Gris · Auto" */
-  protected descripcion(vehiculo: Vehiculo): string {
-    const nombre = [vehiculo.marca, vehiculo.modelo].filter(Boolean).join(' ');
-    return [nombre, vehiculo.color, this.etiquetaTipo[vehiculo.tipo]].filter(Boolean).join(' · ');
-  }
 }

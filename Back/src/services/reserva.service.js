@@ -4,9 +4,12 @@ import {
   FRANJAS_ESTANDAR,
   instanteLocal,
   motivoFueraDeHorario,
+  motivoIngresoFueraDeHorario,
   sumarDias,
 } from '../utils/horario.js';
 import { ESTADOS_COCHERA, ESTADOS_RESERVA, ESTADOS_VIGENTES } from '../utils/roles.js';
+import { CAMPOS_TARIFA, MODALIDADES, precioDeReserva } from '../utils/tarifas.js';
+import { ORDEN_NATURAL } from './cochera.service.js';
 import { asegurarPropiedad } from './estacionamiento.service.js';
 
 const VIOLACION_EXCLUSION = '23P01';
@@ -14,7 +17,7 @@ const VIOLACION_EXCLUSION = '23P01';
 // El vehiculo puede llegar hasta 30 minutos antes de su franja.
 const MARGEN_INGRESO_MS = 30 * 60 * 1000;
 
-/** Reserva con todo lo que muestran los listados, incluido el precio total. */
+/** Reserva con todo lo que muestran los listados, con la modalidad y el precio guardados al reservar. */
 const SELECT_DETALLE = `
   SELECT r.id_reserva, r.id_conductor, r.inicio, r.fin, r.created_at,
          r.ingreso_real, r.egreso_real,
@@ -23,8 +26,8 @@ const SELECT_DETALLE = `
          r.id_vehiculo, v.patente, v.marca, v.modelo, v.id_tipo_vehiculo,
          r.id_cochera, c.identificador AS cochera,
          c.sector AS cochera_sector, c.cubierta AS cochera_cubierta,
-         e.id_estacionamiento, e.nombre AS estacionamiento, e.direccion, e.tarifa_hora,
-         ROUND(EXTRACT(EPOCH FROM (r.fin - r.inicio)) / 3600 * e.tarifa_hora, 2) AS precio_total,
+         e.id_estacionamiento, e.nombre AS estacionamiento, e.direccion,
+         r.modalidad, r.precio_total,
          u.nombre AS conductor_nombre, u.apellido AS conductor_apellido
     FROM reserva r
     JOIN vehiculo v        ON v.id_vehiculo = r.id_vehiculo
@@ -65,7 +68,10 @@ function sinSolapamiento(estados, inicio, fin) {
  * Ademas, el EXCLUDE constraint `reserva_sin_solapamiento` (ver schema.sql)
  * repite la garantia a nivel base de datos; si salta, se traduce a un 409.
  */
-export async function crear(idConductor, { id_cochera, id_estacionamiento, id_vehiculo, inicio, fin }) {
+export async function crear(
+  idConductor,
+  { id_cochera, id_estacionamiento, id_vehiculo, inicio, fin, modalidad = MODALIDADES.HORA },
+) {
   return withTransaction(async (client) => {
     const vehiculo = await obtenerVehiculo(client, id_vehiculo, idConductor);
     await asegurarVehiculoLibre(client, id_vehiculo, inicio, fin);
@@ -74,15 +80,26 @@ export async function crear(idConductor, { id_cochera, id_estacionamiento, id_ve
       ? await bloquearCochera(client, id_cochera, vehiculo, inicio, fin)
       : await asignarCochera(client, id_estacionamiento, vehiculo, inicio, fin);
 
-    await validarHorario(client, cochera.id_estacionamiento, inicio, fin);
+    const precio = await precioDe(client, cochera.id_estacionamiento, modalidad, inicio, fin);
+    await validarHorario(client, cochera.id_estacionamiento, inicio, fin, modalidad);
 
     let idReserva;
     try {
       const { rows } = await client.query(
-        `INSERT INTO reserva (id_conductor, id_vehiculo, id_cochera, inicio, fin, estado)
-         VALUES ($1, $2, $3, $4, $5, $6)
+        `INSERT INTO reserva
+           (id_conductor, id_vehiculo, id_cochera, inicio, fin, estado, modalidad, precio_total)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
          RETURNING id_reserva`,
-        [idConductor, id_vehiculo, cochera.id_cochera, inicio, fin, ESTADOS_RESERVA.PENDIENTE],
+        [
+          idConductor,
+          id_vehiculo,
+          cochera.id_cochera,
+          inicio,
+          fin,
+          ESTADOS_RESERVA.PENDIENTE,
+          modalidad,
+          precio,
+        ],
       );
       idReserva = rows[0].id_reserva;
     } catch (error) {
@@ -241,7 +258,7 @@ async function asignarCochera(client, idEstacionamiento, vehiculo, inicio, fin) 
        FROM cochera c
       WHERE c.id_cochera = ANY($1::uuid[])
         AND ${sinSolapamiento('$2', '$3', '$4')}
-      ORDER BY c.identificador
+      ORDER BY ${ORDEN_NATURAL}
       LIMIT 1`,
     [candidatas.map((c) => c.id_cochera), ESTADOS_VIGENTES, inicio, fin],
   );
@@ -253,13 +270,34 @@ async function asignarCochera(client, idEstacionamiento, vehiculo, inicio, fin) 
   return libres[0];
 }
 
-async function validarHorario(client, idEstacionamiento, inicio, fin) {
+/** Precio de la reserva segun la tarifa vigente; 409 si el estacionamiento no ofrece la modalidad. */
+async function precioDe(client, idEstacionamiento, modalidad, inicio, fin) {
+  const { rows } = await client.query(
+    `SELECT ${CAMPOS_TARIFA.join(', ')} FROM estacionamiento WHERE id_estacionamiento = $1`,
+    [idEstacionamiento],
+  );
+
+  const precio = precioDeReserva(modalidad, rows[0], inicio, fin);
+  if (precio === null) {
+    throw ApiError.conflict(`El estacionamiento no ofrece la modalidad ${modalidad}`);
+  }
+  return precio;
+}
+
+/**
+ * Por hora se valida todo el rango. Estadia y jornada duran 12 y 24 horas, que
+ * violarian cualquier horario que no sea corrido: solo se valida el ingreso.
+ */
+async function validarHorario(client, idEstacionamiento, inicio, fin, modalidad) {
   const { rows: horarios } = await client.query(
     'SELECT dia_semana, hora_apertura, hora_cierre FROM horario WHERE id_estacionamiento = $1',
     [idEstacionamiento],
   );
 
-  const motivo = motivoFueraDeHorario(horarios, inicio, fin);
+  const motivo =
+    modalidad === MODALIDADES.HORA
+      ? motivoFueraDeHorario(horarios, inicio, fin)
+      : motivoIngresoFueraDeHorario(horarios, inicio);
   if (motivo) throw ApiError.conflict(motivo);
 }
 

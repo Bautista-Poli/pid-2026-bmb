@@ -101,9 +101,9 @@ export class Registro {
     this.error.set(null);
 
     this.auth.registro(datos).subscribe({
-      next: (sesion) => {
+      next: (usuario) => {
         this.enviando.set(false);
-        void this.router.navigateByUrl(destinoTrasRegistro(sesion.usuario.rol));
+        void this.router.navigateByUrl(destinoTrasRegistro(usuario.rol));
       },
       error: (e: Error) => {
         this.enviando.set(false);

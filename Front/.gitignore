@@ -46,5 +46,7 @@ Thumbs.db
 # Documentacion interna (no se versiona)
 /DOCUMENTACION.md
 /ARQUITECTURA.html
+/FLUJO-PERFIL.html
+/FLUJO-PERFIL.pdf
 
 .claude

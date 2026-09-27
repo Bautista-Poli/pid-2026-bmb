@@ -1,0 +1,84 @@
+<button
+  type="button"
+  data-disparador
+  class="flex w-full items-center gap-2.5 rounded-boton text-left transition-colors duration-160
+         ease-out hover:bg-borde-sutil"
+  [class]="compacto() ? 'p-0.5' : 'px-2 py-1.5'"
+  [attr.aria-expanded]="abierto()"
+  [attr.aria-label]="compacto() ? 'Tu cuenta: ' + nombre() : null"
+  (click)="alternar()"
+>
+  <span
+    class="grid size-7 shrink-0 place-items-center rounded-full border border-acento-borde
+           bg-acento-suave text-[11px] font-semibold text-acento-fuerte"
+  >
+    {{ inicial() }}
+  </span>
+
+  @if (!compacto()) {
+    <span class="min-w-0 flex-1">
+      <span class="block truncate text-[12.5px] font-medium text-tinta">{{ nombre() }}</span>
+      <span class="block text-[11px] text-humo">{{ rol() }}</span>
+    </span>
+    <ui-icono
+      class="text-humo transition-transform duration-160 ease-out"
+      [class.rotate-180]="abierto()"
+      nombre="cheuron"
+      [tamano]="15"
+    />
+  }
+</button>
+
+@if (abierto()) {
+  <div
+    class="absolute right-0 left-0 z-20 flex flex-col gap-0.5 rounded-tarjeta border border-borde
+           bg-papel p-1.5 shadow-flotante"
+    [class]="direccion() === 'arriba' ? 'bottom-full mb-2' : 'top-full mt-2 left-auto w-[210px]'"
+  >
+    @if (compacto()) {
+      <div class="border-b border-borde-sutil px-2.5 pt-1 pb-2">
+        <p class="truncate text-[12.5px] font-medium text-tinta">{{ nombre() }}</p>
+        <p class="text-[11px] text-humo">{{ rol() }}</p>
+      </div>
+    }
+
+    <a
+      class="flex items-center gap-2.5 rounded-boton px-2.5 py-2 text-[12.5px] font-medium
+             text-grafito transition-colors duration-160 ease-out hover:bg-acento-suave
+             hover:text-acento-fuerte"
+      [routerLink]="rutaPerfil()"
+      (click)="cerrar()"
+    >
+      <ui-icono nombre="perfil" [tamano]="16" />
+      Mi perfil
+    </a>
+
+    @if (rolAlternativo()) {
+      <button
+        type="button"
+        class="flex items-center gap-2.5 rounded-boton px-2.5 py-2 text-left text-[12.5px]
+               font-medium text-grafito transition-colors duration-160 ease-out
+               hover:bg-acento-suave hover:text-acento-fuerte
+               disabled:pointer-events-none disabled:opacity-60"
+        [disabled]="cambiandoRol()"
+        (click)="pedirCambioDeRol()"
+      >
+        <ui-icono nombre="intercambiar" [tamano]="16" />
+        Cambiar a perfil {{ etiquetaRolAlternativo() }}
+      </button>
+    }
+
+    <hr class="my-1 border-0 border-t border-borde-sutil" />
+
+    <button
+      type="button"
+      class="flex items-center gap-2.5 rounded-boton px-2.5 py-2 text-left text-[12.5px]
+             font-medium text-plomo transition-colors duration-160 ease-out
+             hover:bg-ocupada/5 hover:text-ocupada"
+      (click)="pedirSalida()"
+    >
+      <ui-icono nombre="salida" [tamano]="16" />
+      Cerrar sesión
+    </button>
+  </div>
+}

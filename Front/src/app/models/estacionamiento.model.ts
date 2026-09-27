@@ -1,4 +1,5 @@
 import { HoraHHmm, Id } from './api.model';
+import { Tarifas } from './tarifa.model';
 import { TipoVehiculo } from './vehiculo.model';
 
 export type DiaSemana =
@@ -9,16 +10,6 @@ export type DiaSemana =
   | 'VIERNES'
   | 'SABADO'
   | 'DOMINGO';
-
-export const DIAS_SEMANA: DiaSemana[] = [
-  'LUNES',
-  'MARTES',
-  'MIERCOLES',
-  'JUEVES',
-  'VIERNES',
-  'SABADO',
-  'DOMINGO',
-];
 
 export interface FranjaAtencion {
   dia: DiaSemana;
@@ -49,13 +40,15 @@ export interface Estacionamiento {
   telefonoContacto: string | null;
   emailContacto: string | null;
   horarios: FranjaAtencion[];
-  precioPorHora: number;
+  tarifas: Tarifas;
   /** Derivados del agregado de Cochera, los calcula el backend. */
   cocherasTotales: number;
   /** Cocheras libres en este momento. */
   cocherasDisponibles: number;
   tiposAdmitidos: TipoVehiculo[];
   cubierto: boolean;
+  /** URL publica de la foto que subio el propietario, o `null` si no cargo ninguna. */
+  fotoUrl: string | null;
   /** Distancia al usuario en km. Solo viene en busquedas geolocalizadas. */
   distanciaKm?: number;
   publicado: boolean;
@@ -74,11 +67,6 @@ export interface FiltrosEstacionamiento {
 
 export type OrdenEstacionamiento = 'DISTANCIA' | 'PRECIO';
 
-export const ETIQUETA_ORDEN: Record<OrdenEstacionamiento, string> = {
-  DISTANCIA: 'Cercania',
-  PRECIO: 'Precio',
-};
-
 /** Payload de `POST /api/estacionamientos`. */
 export interface NuevoEstacionamiento {
   nombre: string;
@@ -87,7 +75,7 @@ export interface NuevoEstacionamiento {
   barrioZona?: string | null;
   telefonoContacto?: string | null;
   emailContacto?: string | null;
-  precioPorHora: number;
+  tarifas: Tarifas;
   cubierto?: boolean;
   publicado: boolean;
   horarios: FranjaAtencion[];

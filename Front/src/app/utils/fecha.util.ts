@@ -73,17 +73,7 @@ export function aMinutos(hora: HoraHHmm): number {
   return h * 60 + m;
 }
 
-export function aHora(minutos: number): HoraHHmm {
-  const h = Math.floor(minutos / 60) % 24;
-  const m = minutos % 60;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-}
-
 /** Duracion en horas entre dos horarios de la misma jornada. */
 export function duracionEnHoras(desde: HoraHHmm, hasta: HoraHHmm): number {
   return Math.max(0, (aMinutos(hasta) - aMinutos(desde)) / 60);
-}
-
-export function esHoy(fecha: FechaISO): boolean {
-  return fecha === aFechaISO(new Date());
 }

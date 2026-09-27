@@ -1,19 +1,21 @@
 import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
+import { CAMPOS_TARIFA } from '../utils/tarifas.js';
 import { ESTADOS_COCHERA, ESTADOS_VIGENTES } from '../utils/roles.js';
 import { listarPorEstacionamiento as listarCocheras } from './cochera.service.js';
 
 const COLUMNAS = [
   'id_estacionamiento', 'id_propietario', 'nombre', 'descripcion', 'direccion',
   'calle', 'numero', 'ciudad', 'provincia', 'codigo_postal', 'barrio_zona',
-  'latitud', 'longitud', 'telefono_contacto', 'email_contacto', 'tarifa_hora',
+  'latitud', 'longitud', 'telefono_contacto', 'email_contacto',
+  'tarifa_hora', 'tarifa_estadia', 'tarifa_jornada',
   'cubierto', 'publicado', 'activo',
 ];
 
 const CAMPOS_EDITABLES = [
   'nombre', 'descripcion', 'calle', 'numero', 'ciudad', 'provincia', 'codigo_postal',
   'barrio_zona', 'latitud', 'longitud', 'telefono_contacto', 'email_contacto',
-  'tarifa_hora', 'cubierto', 'publicado',
+  'tarifa_hora', 'tarifa_estadia', 'tarifa_jornada', 'cubierto', 'publicado',
 ];
 
 const CAMPOS = COLUMNAS.join(', ');
@@ -48,7 +50,10 @@ const AGREGADOS = `
             'hora_cierre', to_char(h.hora_cierre, 'HH24:MI')
           ) ORDER BY h.dia_semana), '[]'::json)
      FROM horario h
-    WHERE h.id_estacionamiento = e.id_estacionamiento) AS horarios
+    WHERE h.id_estacionamiento = e.id_estacionamiento) AS horarios,
+  (SELECT f.actualizada
+     FROM estacionamiento_foto f
+    WHERE f.id_estacionamiento = e.id_estacionamiento) AS foto_actualizada
 `;
 
 /** Crea el estacionamiento y sus horarios en una sola transaccion. */
@@ -58,8 +63,8 @@ export async function crear(idPropietario, datos) {
       `INSERT INTO estacionamiento
          (id_propietario, nombre, descripcion, direccion, calle, numero, ciudad, provincia,
           codigo_postal, barrio_zona, latitud, longitud, telefono_contacto, email_contacto,
-          tarifa_hora, cubierto, publicado)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+          tarifa_hora, tarifa_estadia, tarifa_jornada, cubierto, publicado)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
        RETURNING ${CAMPOS}`,
       [
         idPropietario,
@@ -76,7 +81,9 @@ export async function crear(idPropietario, datos) {
         datos.longitud ?? null,
         datos.telefono_contacto ?? null,
         datos.email_contacto ?? null,
-        datos.tarifa_hora ?? 0,
+        datos.tarifa_hora ?? null,
+        datos.tarifa_estadia ?? null,
+        datos.tarifa_jornada ?? null,
         datos.cubierto ?? false,
         datos.publicado ?? false,
       ],
@@ -208,6 +215,30 @@ export async function listarPorPropietario(idPropietario) {
 }
 
 /**
+ * Despues de aplicar los cambios el estacionamiento tiene que seguir ofreciendo
+ * alguna modalidad. Se toma la fila con FOR UPDATE para que dos PATCH
+ * simultaneos no puedan borrar entre los dos todas las tarifas.
+ */
+async function asegurarAlgunaTarifa(client, idEstacionamiento, datos) {
+  const { rows } = await client.query(
+    `SELECT ${CAMPOS_TARIFA.join(', ')}
+       FROM estacionamiento WHERE id_estacionamiento = $1 FOR UPDATE`,
+    [idEstacionamiento],
+  );
+
+  const ofreceAlguna = CAMPOS_TARIFA.some((campo) => {
+    const resultante = datos[campo] !== undefined ? datos[campo] : rows[0][campo];
+    return resultante !== null;
+  });
+
+  if (!ofreceAlguna) {
+    throw ApiError.badRequest(
+      'El estacionamiento tiene que ofrecer al menos una tarifa (hora, estadia o jornada)',
+    );
+  }
+}
+
+/**
  * Modifica los datos del estacionamiento. Si vienen `horarios` reemplazan a los
  * cargados: es lo que espera la pantalla, que manda la semana completa.
  */
@@ -216,6 +247,7 @@ export async function actualizar(idEstacionamiento, idPropietario, datos) {
   if (!activo) throw ApiError.conflict('El estacionamiento esta dado de baja');
 
   await withTransaction(async (client) => {
+    await asegurarAlgunaTarifa(client, idEstacionamiento, datos);
     const asignaciones = [];
     const parametros = [];
 

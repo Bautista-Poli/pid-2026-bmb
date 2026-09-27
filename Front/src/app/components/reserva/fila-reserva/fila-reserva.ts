@@ -1,6 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
-import { EstadoReserva, ETIQUETA_ESTADO_RESERVA, ReservaDetallada } from '@app/models';
+import { EstadoReserva, ETIQUETA_ESTADO_RESERVA, ETIQUETA_MODALIDAD, ReservaDetallada } from '@app/models';
 import { reservaEnJuego } from '@app/services/ciclo-reserva';
 import { desdeFechaISO } from '@app/utils/fecha.util';
 import { Boton, Etiqueta, TonoEtiqueta } from '@app/components/ui';
@@ -49,6 +49,7 @@ export class FilaReserva {
   readonly avanzar = output<ReservaDetallada>();
 
   protected readonly etiquetaEstado = ETIQUETA_ESTADO_RESERVA;
+  protected readonly etiquetaModalidad = ETIQUETA_MODALIDAD;
   protected readonly activa = computed(() => reservaEnJuego(this.reserva()));
   protected readonly tonoEstado = computed(() => TONO_ESTADO[this.reserva().estado]);
 

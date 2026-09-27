@@ -1,0 +1,36 @@
+<div class="flex flex-col gap-1.5">
+  <span class="label-campo">
+    Foto del estacionamiento <span class="font-normal text-plomo">(opcional)</span>
+  </span>
+
+  <div class="flex flex-wrap items-center gap-4">
+    <ui-miniatura [src]="fuente()" [optimizada]="false" icono="estacionamiento" tamano="lg" />
+
+    <div class="flex flex-col items-start gap-2">
+      <!-- El input queda fuera del orden de foco: quien maneja el teclado usa
+           los botones de al lado, que si tienen el anillo de foco de la app. -->
+      <input
+        #selector
+        class="hidden"
+        type="file"
+        [accept]="tiposAceptados"
+        (change)="elegir($event)"
+      />
+
+      <div class="flex flex-wrap items-center gap-2">
+        <ui-boton tamano="sm" (presionado)="selector.click()">
+          {{ fuente() ? 'Cambiar foto' : 'Elegir foto' }}
+        </ui-boton>
+        @if (fuente()) {
+          <ui-boton tamano="sm" variante="fantasma" (presionado)="quitar()">Quitar</ui-boton>
+        }
+      </div>
+
+      <span class="text-[12px] text-plomo">JPG, PNG o WEBP. Hasta 2 MB.</span>
+    </div>
+  </div>
+
+  @if (error(); as mensaje) {
+    <p class="campo-error" role="alert">{{ mensaje }}</p>
+  }
+</div>

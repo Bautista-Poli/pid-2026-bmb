@@ -9,6 +9,13 @@
         {{ fecha() | date: 'EEE d MMM' }} ·
       }
       {{ reserva().horaDesde }} – {{ reserva().horaHasta }}
+      @if (reserva().fechaHasta !== reserva().fecha) {
+        (día siguiente)
+      }
+      @if (reserva().modalidad !== 'HORA') {
+        · {{ etiquetaModalidad[reserva().modalidad] }}
+      }
+      · $ {{ reserva().precioTotal.toLocaleString('es-AR') }}
     </p>
   </div>
 

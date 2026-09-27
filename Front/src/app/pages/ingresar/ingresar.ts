@@ -4,7 +4,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { Boton } from '@app/components/ui';
 import { inicioSegunRol } from '@app/guards/rol.guard';
-import { Credenciales, RolUsuario } from '@app/models';
+import { Credenciales } from '@app/models';
 import { AuthService } from '@app/services/auth.service';
 
 /**
@@ -31,15 +31,6 @@ export class Ingresar {
   protected readonly enviando = signal(false);
   protected readonly error = signal<string | null>(null);
 
-  /**
-   * Accesos de demostracion: existen en los mocks y, contra la API, los carga
-   * `npm run db:demo` en el backend.
-   */
-  protected readonly demos: { rol: RolUsuario; etiqueta: string; email: string }[] = [
-    { rol: 'CONDUCTOR', etiqueta: 'Entrar como conductor', email: 'conductor@test.com' },
-    { rol: 'PROPIETARIO', etiqueta: 'Entrar como propietario', email: 'propietario@test.com' },
-  ];
-
   protected enviar(): void {
     if (this.formulario.invalid) {
       this.formulario.markAllAsTouched();
@@ -49,18 +40,14 @@ export class Ingresar {
     this.ingresar(this.formulario.getRawValue());
   }
 
-  protected ingresarComo(email: string): void {
-    this.ingresar({ email, password: 'demo1234' });
-  }
-
   private ingresar(credenciales: Credenciales): void {
     this.enviando.set(true);
     this.error.set(null);
 
     this.auth.login(credenciales).subscribe({
-      next: (sesion) => {
+      next: (usuario) => {
         this.enviando.set(false);
-        void this.router.navigateByUrl(this.destino() ?? inicioSegunRol(sesion.usuario.rol));
+        void this.router.navigateByUrl(this.destino() ?? inicioSegunRol(usuario.rol));
       },
       error: (e: Error) => {
         this.enviando.set(false);

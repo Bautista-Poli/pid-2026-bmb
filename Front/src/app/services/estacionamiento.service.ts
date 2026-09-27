@@ -1,7 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
-import { environment } from '@env/environment';
 import {
   Estacionamiento,
   FiltrosEstacionamiento,
@@ -11,8 +10,6 @@ import {
 } from '@app/models';
 import { EstacionamientoDto } from './api/api.dto';
 import { ID_TIPO_VEHICULO, aEstacionamiento, aPayloadEstacionamiento } from './api/api.mapeo';
-import { ESTACIONAMIENTOS_MOCK, ID_PROPIETARIO } from './mocks/datos-mock';
-import { clonar, simular, simularError } from './mocks/mock.util';
 
 /** La API acepta hasta 100 resultados por pagina. */
 const LIMITE_BUSQUEDA = 100;
@@ -25,12 +22,6 @@ export class EstacionamientoService {
 
   /** `GET /api/estacionamientos` */
   listar(filtros: FiltrosEstacionamiento = {}): Observable<Estacionamiento[]> {
-    if (environment.usarMocks) {
-      return simular(clonar(ESTACIONAMIENTOS_MOCK)).pipe(
-        map((items) => aplicarFiltros(items, filtros)),
-      );
-    }
-
     return this.http
       .get<{ estacionamientos: EstacionamientoDto[] }>(this.ruta, { params: aParams(filtros) })
       .pipe(
@@ -41,27 +32,13 @@ export class EstacionamientoService {
 
   /** `GET /api/estacionamientos/:id` */
   obtener(id: Id): Observable<Estacionamiento> {
-    if (environment.usarMocks) {
-      const encontrado = ESTACIONAMIENTOS_MOCK.find((e) => e.id === id);
-      return encontrado
-        ? simular(clonar(encontrado))
-        : simularError<Estacionamiento>('Estacionamiento no encontrado');
-    }
-
     return this.http
       .get<{ estacionamiento: EstacionamientoDto }>(`${this.ruta}/${id}`)
       .pipe(map(({ estacionamiento }) => aEstacionamiento(estacionamiento)));
   }
 
-  /**
-   * `GET /api/estacionamientos/mios`. La API toma el propietario del token;
-   * el id solo filtra los mocks.
-   */
-  listarDelPropietario(propietarioId: Id): Observable<Estacionamiento[]> {
-    if (environment.usarMocks) {
-      return simular(clonar(ESTACIONAMIENTOS_MOCK.filter((e) => e.propietarioId === propietarioId)));
-    }
-
+  /** `GET /api/estacionamientos/mios`. La API toma el propietario del token. */
+  listarDelPropietario(): Observable<Estacionamiento[]> {
     return this.http
       .get<{ estacionamientos: EstacionamientoDto[] }>(`${this.ruta}/mios`)
       .pipe(map(({ estacionamientos }) => estacionamientos.map(aEstacionamiento)));
@@ -69,27 +46,6 @@ export class EstacionamientoService {
 
   /** `POST /api/estacionamientos` */
   crear(datos: NuevoEstacionamiento): Observable<Estacionamiento> {
-    if (environment.usarMocks) {
-      return simular<Estacionamiento>({
-        id: `est-${crypto.randomUUID()}`,
-        propietarioId: ID_PROPIETARIO,
-        nombre: datos.nombre,
-        descripcion: datos.descripcion ?? '',
-        direccion: datos.direccion,
-        barrioZona: datos.barrioZona ?? null,
-        telefonoContacto: datos.telefonoContacto ?? null,
-        emailContacto: datos.emailContacto ?? null,
-        horarios: datos.horarios,
-        precioPorHora: datos.precioPorHora,
-        cocherasTotales: 0,
-        cocherasDisponibles: 0,
-        tiposAdmitidos: [],
-        cubierto: datos.cubierto ?? false,
-        publicado: datos.publicado,
-        activo: true,
-      });
-    }
-
     return this.http
       .post<{ estacionamiento: EstacionamientoDto }>(this.ruta, aPayloadEstacionamiento(datos))
       .pipe(map(({ estacionamiento }) => aEstacionamiento(estacionamiento)));
@@ -118,6 +74,21 @@ export class EstacionamientoService {
       .delete<{ estacionamiento: EstacionamientoDto }>(`${this.ruta}/${id}`)
       .pipe(map(({ estacionamiento }) => aEstacionamiento(estacionamiento)));
   }
+
+  /**
+   * `PUT /api/estacionamientos/:id/foto`
+   *
+   * El body es el archivo crudo: `HttpClient` manda el `File` tal cual y usa su
+   * `type` como Content-Type, que es lo que espera el `express.raw()` de la API.
+   */
+  subirFoto(id: Id, archivo: File): Observable<void> {
+    return this.http.put<void>(`${this.ruta}/${id}/foto`, archivo);
+  }
+
+  /** `DELETE /api/estacionamientos/:id/foto` */
+  borrarFoto(id: Id): Observable<void> {
+    return this.http.delete<void>(`${this.ruta}/${id}/foto`);
+  }
 }
 
 /* --------------------------- helpers de filtrado --------------------------- */
@@ -128,31 +99,9 @@ const distancia = (estacionamiento: Estacionamiento) =>
 const COMPARADORES: Record<OrdenEstacionamiento, (a: Estacionamiento, b: Estacionamiento) => number> =
   {
     DISTANCIA: (a, b) => distancia(a) - distancia(b),
-    PRECIO: (a, b) => a.precioPorHora - b.precioPorHora,
+    PRECIO: (a, b) =>
+      (a.tarifas.hora ?? Number.MAX_VALUE) - (b.tarifas.hora ?? Number.MAX_VALUE),
   };
-
-/** Con mocks, el front replica todos los filtros que hace la API. */
-export function aplicarFiltros(
-  items: Estacionamiento[],
-  filtros: FiltrosEstacionamiento,
-): Estacionamiento[] {
-  const texto = filtros.busqueda?.trim().toLowerCase() ?? '';
-
-  const filtrados = items.filter((est) => {
-    if (texto) {
-      const { calle, ciudad } = est.direccion;
-      const objetivo =
-        `${est.nombre} ${calle} ${ciudad} ${est.barrioZona ?? ''} ${est.descripcion}`.toLowerCase();
-      if (!objetivo.includes(texto)) return false;
-    }
-    if (filtros.tipoVehiculo && !est.tiposAdmitidos.includes(filtros.tipoVehiculo)) return false;
-    if (filtros.precioMaximo != null && est.precioPorHora > filtros.precioMaximo) return false;
-    if (filtros.soloCubiertos && !est.cubierto) return false;
-    return est.activo && est.publicado;
-  });
-
-  return aplicarFiltrosLocales(filtrados, filtros);
-}
 
 /** Lo que la API no resuelve: solo con lugar libre, y el orden elegido. */
 function aplicarFiltrosLocales(

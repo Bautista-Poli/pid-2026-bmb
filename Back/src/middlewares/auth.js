@@ -1,9 +1,10 @@
 import { query } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
 import { verificarToken } from '../utils/jwt.js';
+import { COOKIE_SESION } from '../utils/cookies.js';
 
 /**
- * Valida el header `Authorization: Bearer <token>` y deja el usuario
+ * Valida la cookie httpOnly que dejo `/auth/login` y deja el usuario
  * autenticado en `req.usuario` ({ id, rol }).
  *
  * Ademas confirma contra la base que la cuenta siga activa y que el perfil del
@@ -11,11 +12,10 @@ import { verificarToken } from '../utils/jwt.js';
  * o de un cambio de perfiles.
  */
 export async function authenticate(req, _res, next) {
-  const header = req.headers.authorization || '';
-  const [esquema, token] = header.split(' ');
+  const token = req.cookies?.[COOKIE_SESION];
 
-  if (esquema !== 'Bearer' || !token) {
-    return next(ApiError.unauthorized('Falta el header Authorization: Bearer <token>'));
+  if (!token) {
+    return next(ApiError.unauthorized('Falta iniciar sesion'));
   }
 
   let payload;

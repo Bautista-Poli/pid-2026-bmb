@@ -21,7 +21,7 @@ export class Chip {
       'shrink-0 rounded-boton border px-3.5 py-[9px] text-[12.5px] font-medium whitespace-nowrap',
       'transition-[background-color,border-color,box-shadow,color] duration-160 ease-out',
       this.activo()
-        ? 'border-acento bg-acento text-white shadow-elevada'
+        ? 'border-acento bg-acento text-sobre-acento shadow-elevada'
         : 'border-borde bg-papel text-plomo shadow-tarjeta hover:border-acento-borde hover:bg-acento-suave hover:text-acento-fuerte',
     ].join(' '),
   );

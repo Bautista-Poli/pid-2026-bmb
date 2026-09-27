@@ -1,5 +1,11 @@
 import { HttpInterceptorFn } from '@angular/common/http';
-import { environment } from '@env/environment';
+
+/**
+ * Prefijo de la API de Express (Back/src/config/env.js -> apiPrefix). En
+ * desarrollo lo redirige el proxy (proxy.conf.json) hacia localhost:3000; en
+ * produccion el front se sirve desde el mismo origen que la API.
+ */
+const PREFIJO_API = '/api';
 
 /**
  * Antepone la URL base de la API a todo request relativo, para que los
@@ -11,5 +17,5 @@ export const apiInterceptor: HttpInterceptorFn = (req, next) => {
   }
 
   const path = req.url.startsWith('/') ? req.url : `/${req.url}`;
-  return next(req.clone({ url: `${environment.apiUrl}${path}` }));
+  return next(req.clone({ url: `${PREFIJO_API}${path}` }));
 };

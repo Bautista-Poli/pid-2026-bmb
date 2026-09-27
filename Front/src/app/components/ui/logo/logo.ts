@@ -23,7 +23,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
         <path
           d="M11.6 23.5V8.5h5a4.1 4.1 0 0 1 0 8.2h-5"
           fill="none"
-          stroke="#ffffff"
+          stroke="var(--color-sobre-acento)"
           stroke-width="2.4"
           stroke-linecap="round"
           stroke-linejoin="round"
@@ -33,7 +33,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
         <path
           d="M21.4 24.1l1.7 1.7 3.3-3.5"
           fill="none"
-          stroke="#ffffff"
+          stroke="var(--color-sobre-acento)"
           stroke-width="1.8"
           stroke-linecap="round"
           stroke-linejoin="round"

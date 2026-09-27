@@ -6,7 +6,8 @@ import {
   textoDisponibilidad,
   tonoDisponibilidad,
 } from '@app/utils/disponibilidad.util';
-import { Boton, PuntoEstado, Tarjeta } from '@app/components/ui';
+import { resumenTarifas } from '@app/utils/tarifa.util';
+import { Boton, Miniatura, PuntoEstado, Tarjeta } from '@app/components/ui';
 
 /**
  * Ficha de estacionamiento del listado.
@@ -16,7 +17,7 @@ import { Boton, PuntoEstado, Tarjeta } from '@app/components/ui';
 @Component({
   selector: 'app-tarjeta-estacionamiento',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Tarjeta, Boton, PuntoEstado],
+  imports: [Tarjeta, Boton, Miniatura, PuntoEstado],
   templateUrl: './tarjeta-estacionamiento.html',
   host: { class: 'block' },
 })
@@ -38,7 +39,6 @@ export class TarjetaEstacionamiento {
     return distancia ? `${base} · ${distancia}` : base;
   });
 
-  protected readonly tarifa = computed(() =>
-    this.estacionamiento().precioPorHora.toLocaleString('es-AR'),
-  );
+  /** "$900/h · $5.000 estadía (12 h) · $8.000 jornada (24 h)" */
+  protected readonly tarifas = computed(() => resumenTarifas(this.estacionamiento().tarifas));
 }

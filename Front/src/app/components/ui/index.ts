@@ -1,5 +1,6 @@
 /* Piezas de interfaz sin dominio: no saben nada de Parkit. */
 export * from './boton/boton';
+export * from './boton-tema/boton-tema';
 export * from './tarjeta/tarjeta';
 export * from './etiqueta/etiqueta';
 export * from './chip/chip';
@@ -10,3 +11,5 @@ export * from './cargando/cargando';
 export * from './kpi/kpi';
 export * from './icono/icono';
 export * from './logo/logo';
+export * from './miniatura/miniatura';
+export * from './modal/modal';

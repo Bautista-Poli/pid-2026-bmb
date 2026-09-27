@@ -23,6 +23,12 @@ export interface Vehiculo {
   activo: boolean;
 }
 
+/** "Toyota Corolla · Gris · Auto": los datos que completo el conductor. */
+export function descripcionVehiculo(vehiculo: Vehiculo): string {
+  const nombre = [vehiculo.marca, vehiculo.modelo].filter(Boolean).join(' ');
+  return [nombre, vehiculo.color, ETIQUETA_TIPO_VEHICULO[vehiculo.tipo]].filter(Boolean).join(' · ');
+}
+
 /** Payload de `POST /api/vehiculos`. */
 export interface NuevoVehiculo {
   patente: string;

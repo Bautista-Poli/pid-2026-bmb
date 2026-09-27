@@ -231,6 +231,47 @@
     animation: surgir var(--duracion-entrada) var(--ease-suave) both;
   }
 
+  /* Modal (<dialog>): el navegador lo sube al top layer, asi que no hace falta
+     z-index ni bloquear el scroll a mano. El panel entra con la misma animacion
+     que las confirmaciones. */
+  .modal {
+    /* `margin: auto` centra el dialogo en el top layer; explicito para no
+       depender de que el preflight de Tailwind respete el default del UA. */
+    margin: auto;
+    width: 100%;
+    max-width: min(440px, calc(100vw - 32px));
+    max-height: calc(100dvh - 32px);
+    overflow: auto;
+    padding: 0;
+    border: 1px solid var(--color-borde);
+    border-radius: var(--radius-tarjeta);
+    background: var(--color-papel);
+    box-shadow: var(--shadow-flotante);
+    color: var(--color-tinta);
+  }
+
+  .modal::backdrop {
+    background: rgb(15 23 42 / 0.45);
+    backdrop-filter: blur(2px);
+  }
+
+  .modal[open] {
+    animation: surgir var(--duracion-entrada) var(--ease-suave) both;
+  }
+
+  .modal-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 20px;
+  }
+
+  @media (min-width: 1024px) {
+    .modal-panel {
+      padding: 24px;
+    }
+  }
+
   /* Barrido de los skeletons de carga. */
   .esqueleto {
     background: linear-gradient(

@@ -18,26 +18,19 @@
              bg-lienzo/85 px-6 py-3 backdrop-blur-md lg:hidden"
     >
       <ui-logo [tamano]="24" />
-      <span class="flex items-center gap-1">
-        @if (rolAlternativo()) {
-          <button
-            type="button"
-            class="rounded-boton px-2 py-1 text-[12px] font-medium text-acento-fuerte transition-colors
-                   duration-160 ease-out hover:bg-acento-suave disabled:opacity-60"
-            [disabled]="cambiandoRol()"
-            (click)="cambiarRol()"
-          >
-            Perfil {{ etiquetaRolAlternativo() }}
-          </button>
+      <span class="flex items-center gap-1.5">
+        <ui-boton-tema />
+        @if (usuario(); as datos) {
+          <app-menu-usuario
+            [compacto]="true"
+            direccion="abajo"
+            [usuario]="datos"
+            [rolAlternativo]="rolAlternativo()"
+            [cambiandoRol]="cambiandoRol()"
+            (cambiarRol)="cambiarRol()"
+            (salir)="salir()"
+          />
         }
-        <button
-          type="button"
-          class="rounded-boton px-2 py-1 text-[12px] font-medium text-plomo transition-colors
-                 duration-160 ease-out hover:bg-borde-sutil hover:text-tinta"
-          (click)="salir()"
-        >
-          Salir
-        </button>
       </span>
     </div>
 

@@ -26,13 +26,20 @@ export interface LugarGeoref {
   detalle?: string;
 }
 
-/** Una direccion concreta (calle y altura) con su ubicacion: el destino del conductor. */
+/** Que clase de lugar es: decide el icono de la sugerencia. */
+export type TipoLugar = 'direccion' | 'esquina' | 'calle' | 'zona' | 'ciudad' | 'plaza' | 'lugar';
+
+/**
+ * Un lugar con su ubicacion: el destino del conductor. Puede ser una direccion
+ * ("Av Pueyrredon 2409"), una esquina, una zona ("Palermo") o un lugar conocido.
+ */
 export interface DireccionGeoref {
   /** "Av Pueyrredon 2409" */
   nombre: string;
   /** "Comuna 2, CABA" o "Rosario, Santa Fe" */
   detalle: string;
   coordenadas: Coordenadas;
+  tipo?: TipoLugar;
 }
 
 /** Donde buscar un destino: una ciudad (localidad censal) y su provincia. */
@@ -43,6 +50,7 @@ export interface ZonaBusqueda {
 
 interface DireccionDto {
   calle: { nombre: string };
+  calle_cruce_1?: { nombre: string | null } | null;
   altura: { valor: number | null };
   departamento: { nombre: string | null };
   localidad_censal: { nombre: string | null };
@@ -121,15 +129,17 @@ export class GeorefService {
   }
 
   /**
-   * Direcciones que coinciden con `texto` ("pueyrredon 2409"). Sin ciudad,
+   * Direcciones ("pueyrredon 2409") o esquinas ("corrientes y callao") que
+   * coinciden con `texto`. Sin ciudad,
    * Georef devuelve la misma altura en decenas de ciudades del pais, asi que se
    * busca solo en las `zonas` indicadas (donde hay estacionamientos), todas en
    * un unico pedido. Sin zonas, busca en todo el pais.
-   * Solo devuelve direcciones con altura y ubicacion: sin ellas no hay distancia.
+   * Solo devuelve resultados con ubicacion: sin ella no hay distancia. Una calle
+   * sin altura ni esquina tampoco sirve (Georef la ubica en cualquier punto).
    */
   buscarDestinos(texto: string, zonas: ZonaBusqueda[]): Observable<DireccionGeoref[]> {
     const campos =
-      'calle.nombre,altura.valor,departamento.nombre,localidad_censal.nombre,provincia.nombre,ubicacion';
+      'calle.nombre,calle_cruce_1.nombre,altura.valor,departamento.nombre,localidad_censal.nombre,provincia.nombre,ubicacion';
     const consultas = zonas.slice(0, MAX_ZONAS).map(({ ciudad, provincia }) => ({
       direccion: texto,
       localidad_censal: ciudad,
@@ -156,13 +166,21 @@ export class GeorefService {
         const vistas = new Set<string>();
         const destinos: DireccionGeoref[] = [];
         for (const d of direcciones) {
-          if (d.altura.valor == null || d.ubicacion?.lat == null || d.ubicacion.lon == null) continue;
-          const destino = {
-            nombre: `${nombrePropio(d.calle.nombre)} ${d.altura.valor}`,
+          if (d.ubicacion?.lat == null || d.ubicacion.lon == null) continue;
+          const cruce = d.calle_cruce_1?.nombre;
+          if (d.altura.valor == null && !cruce) continue;
+
+          const esquina = d.altura.valor == null;
+          const destino: DireccionGeoref = {
+            nombre: esquina
+              ? `${nombrePropio(d.calle.nombre)} y ${nombrePropio(cruce ?? '')}`
+              : `${nombrePropio(d.calle.nombre)} ${d.altura.valor}`,
             detalle: detalleDeDireccion(d),
             coordenadas: { latitud: d.ubicacion.lat, longitud: d.ubicacion.lon },
+            tipo: esquina ? 'esquina' : 'direccion',
           };
-          const clave = `${destino.nombre}|${destino.detalle}`;
+          // Una esquina entre dos comunas viene repetida: se compara por lugar, no por texto.
+          const clave = `${destino.nombre}|${d.ubicacion.lat.toFixed(4)}|${d.ubicacion.lon.toFixed(4)}`;
           if (vistas.has(clave)) continue;
           vistas.add(clave);
           destinos.push(destino);
@@ -192,6 +210,7 @@ export class GeorefService {
                     nombre: l.nombre,
                     detalle: detalleDeZona(l),
                     coordenadas: { latitud: l.centroide.lat, longitud: l.centroide.lon },
+                    tipo: 'zona' as const,
                   },
                 ],
           ),

@@ -11,6 +11,7 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Observable, Subject, catchError, debounceTime, of, switchMap } from 'rxjs';
 import { Sugerencia } from '../campo-autocompletar/campo-autocompletar';
+import { Icono } from '../icono/icono';
 
 let siguienteId = 0;
 
@@ -18,12 +19,14 @@ let siguienteId = 0;
  * Buscador: fila blanca, borde 1px, radio 10px, icono de lupa a la izquierda.
  *
  * Lo que se escribe sale por `valor` (filtra al instante). Si ademas recibe
- * `buscar`, muestra debajo una lista de sugerencias; elegir una emite
- * `elegida` y no toca `valor` (quien lo usa decide que mostrar en el campo).
+ * `buscar`, muestra debajo una lista de sugerencias (desde `minimo` letras,
+ * como Google Maps); elegir una emite `elegida` y no toca `valor` (quien lo usa
+ * decide que mostrar en el campo).
  */
 @Component({
   selector: 'ui-campo-busqueda',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [Icono],
   template: `
     <label
       class="group flex items-center gap-2.5 rounded-control border border-borde bg-papel px-3.5 py-3
@@ -74,8 +77,7 @@ let siguienteId = 0;
         @for (sugerencia of sugerencias(); track $index; let i = $index) {
           <li
             role="option"
-            class="flex cursor-pointer items-baseline justify-between gap-3 px-3.5 py-2.5 text-[14px]
-                   text-tinta"
+            class="flex cursor-pointer items-center gap-3 px-3.5 py-2.5 text-tinta"
             [class.bg-acento-suave]="i === activa()"
             [id]="idLista + '-' + i"
             [attr.aria-selected]="i === activa()"
@@ -83,10 +85,20 @@ let siguienteId = 0;
             (click)="elegir(sugerencia)"
             (mouseenter)="activa.set(i)"
           >
-            <span>{{ sugerencia.nombre }}</span>
-            @if (sugerencia.detalle) {
-              <span class="shrink-0 text-[12px] text-plomo">{{ sugerencia.detalle }}</span>
+            @if (sugerencia.icono; as icono) {
+              <span
+                class="grid size-8 shrink-0 place-items-center rounded-full bg-borde-sutil text-plomo"
+                aria-hidden="true"
+              >
+                <ui-icono [nombre]="icono" [tamano]="17" />
+              </span>
             }
+            <span class="min-w-0">
+              <span class="block truncate text-[14px] font-medium">{{ sugerencia.nombre }}</span>
+              @if (sugerencia.detalle) {
+                <span class="block truncate text-[12px] text-plomo">{{ sugerencia.detalle }}</span>
+              }
+            </span>
           </li>
         }
       </ul>
@@ -98,6 +110,8 @@ export class CampoBusqueda {
   readonly valor = model<string>('');
   readonly marcador = input('Buscar por zona o dirección');
   readonly etiqueta = input('Buscar');
+  /** Cuantas letras hay que escribir antes de pedir sugerencias. */
+  readonly minimo = input(1);
   /** Opcional: sugerencias para lo escrito. Si devuelve `[]`, la lista no se muestra. */
   readonly buscar = input<((texto: string) => Observable<Sugerencia[]>) | null>(null);
 
@@ -116,7 +130,7 @@ export class CampoBusqueda {
         debounceTime(300),
         switchMap((texto) => {
           const buscar = this.buscar();
-          if (!buscar || !texto.trim()) return of([]);
+          if (!buscar || texto.trim().length < this.minimo()) return of([]);
           return buscar(texto.trim()).pipe(catchError(() => of([])));
         }),
         takeUntilDestroyed(inject(DestroyRef)),

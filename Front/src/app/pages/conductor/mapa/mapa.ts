@@ -12,8 +12,8 @@ import {
 } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
-import { Observable, forkJoin, map, of } from 'rxjs';
-import { MapaEstacionamientos } from '@app/components/estacionamiento';
+import { Observable, catchError, forkJoin, map, of } from 'rxjs';
+import { DetalleEstacionamiento, MapaEstacionamientos } from '@app/components/estacionamiento';
 import {
   CampoBusqueda,
   Cargando,
@@ -42,7 +42,14 @@ import {
   LIMITE_BUSQUEDA,
   ordenarEstacionamientos,
 } from '@app/services/estacionamiento.service';
-import { DireccionGeoref, GeorefService, ZonaBusqueda } from '@app/services/georef.service';
+import {
+  DireccionGeoref,
+  GeorefService,
+  TipoLugar,
+  ZonaBusqueda,
+  normalizar,
+} from '@app/services/georef.service';
+import { LugaresService } from '@app/services/lugares.service';
 import { UbicacionService } from '@app/services/ubicacion.service';
 import { VehiculoService } from '@app/services/vehiculo.service';
 import {
@@ -53,11 +60,28 @@ import {
   resumenHorario,
 } from '@app/utils/disponibilidad.util';
 import { minutosAPie } from '@app/utils/distancia.util';
-import { aFechaISO } from '@app/utils/fecha.util';
+import { aFechaISO, desdeFechaISO } from '@app/utils/fecha.util';
 
 /** Tope del rango de precios (por hora). En el tope, el maximo no filtra. */
 const PRECIO_TOPE = 5000;
 const PRECIO_PASO = 100;
+
+/** Icono de cada sugerencia del buscador, segun que clase de lugar es. */
+const ICONO_LUGAR: Record<TipoLugar, NombreIcono> = {
+  direccion: 'explorar',
+  esquina: 'esquina',
+  calle: 'calle',
+  zona: 'explorar',
+  ciudad: 'ciudad',
+  plaza: 'arbol',
+  lugar: 'estacionamiento',
+};
+
+/** Sugerencias que muestra el buscador como maximo. */
+const MAX_SUGERENCIAS = 8;
+
+/** "corrientes y callao", "santa fe esquina pueyrredon": el conductor busca una esquina. */
+const PARECE_ESQUINA = /\s(y|e|esq\.?|esquina)\s+\S/i;
 
 /** Tope de horas a reservar en el filtro. */
 const HORAS_MAXIMAS = 12;
@@ -123,7 +147,17 @@ interface Panel {
 @Component({
   selector: 'app-mapa',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, MapaEstacionamientos, CampoBusqueda, Cargando, Chip, EstadoVacio, Icono, Modal],
+  imports: [
+    RouterLink,
+    MapaEstacionamientos,
+    DetalleEstacionamiento,
+    CampoBusqueda,
+    Cargando,
+    Chip,
+    EstadoVacio,
+    Icono,
+    Modal,
+  ],
   templateUrl: './mapa.html',
   host: { class: 'flex min-h-0 flex-1 flex-col' },
 })
@@ -131,6 +165,7 @@ export class Mapa {
   private readonly estacionamientos = inject(EstacionamientoService);
   private readonly vehiculos = inject(VehiculoService);
   private readonly georef = inject(GeorefService);
+  private readonly lugares = inject(LugaresService);
   private readonly ubicacion = inject(UbicacionService);
   private readonly router = inject(Router);
   private readonly injector = inject(Injector);
@@ -338,18 +373,47 @@ export class Mapa {
   });
 
   /**
-   * Sugerencias del buscador: zonas ("Palermo") y, si lo escrito tiene altura,
-   * direcciones ("Pueyrredon 2409"). Las dos traen coordenadas para centrar el
-   * mapa. Se busca solo donde hay estacionamientos.
+   * Sugerencias del buscador (desde la 3ra letra), de tres fuentes a la vez:
+   *   1. Georef: direcciones con altura ("Pueyrredon 2409") y esquinas
+   *      ("Corrientes y Callao"), en las ciudades donde hay estacionamientos.
+   *   2. Georef: barrios y localidades ("Palermo", "Rosario").
+   *   3. Photon (OpenStreetMap): plazas, lugares conocidos, estaciones, calles
+   *      y ciudades, primero los cercanos.
+   * Van en ese orden (de lo mas preciso a lo mas general), sin repetidos. Si
+   * una fuente falla, se muestran las otras.
    */
   protected readonly buscarDirecciones = (texto: string): Observable<Sugerencia[]> => {
     const zonas = this.zonas();
     const provincias = [...new Set(zonas.map((zona) => zona.provincia))];
-    const direcciones$ = /\d/.test(texto) ? this.georef.buscarDestinos(texto, zonas) : of([]);
-    return forkJoin([direcciones$, this.georef.buscarZonas(texto, provincias)]).pipe(
-      map(([direcciones, barrios]) =>
-        [...direcciones, ...barrios].map((d) => ({ nombre: d.nombre, detalle: d.detalle, dato: d })),
-      ),
+    const sinFallar = (fuente: Observable<DireccionGeoref[]>) =>
+      fuente.pipe(catchError(() => of([] as DireccionGeoref[])));
+
+    const buscaDireccion = /\d/.test(texto) || PARECE_ESQUINA.test(texto);
+    return forkJoin([
+      buscaDireccion ? sinFallar(this.georef.buscarDestinos(texto, zonas)) : of([]),
+      sinFallar(this.georef.buscarZonas(texto, provincias)),
+      sinFallar(this.lugares.buscar(texto, this.origen())),
+    ]).pipe(
+      map(([direcciones, barrios, lugares]) => {
+        const vistos = new Set<string>();
+        return [...direcciones, ...barrios.slice(0, 3), ...lugares]
+          .filter((lugar) => {
+            // Mismo nombre en la misma provincia/ciudad ("Palermo, CABA" de Georef y
+            // de Photon) es el mismo lugar; "Corrientes" en otra ciudad no.
+            const region = lugar.detalle.split(',').at(-1) ?? '';
+            const clave = `${normalizar(lugar.nombre)}|${normalizar(region)}`;
+            if (vistos.has(clave)) return false;
+            vistos.add(clave);
+            return true;
+          })
+          .slice(0, MAX_SUGERENCIAS)
+          .map((lugar) => ({
+            nombre: lugar.nombre,
+            detalle: lugar.detalle,
+            dato: lugar,
+            icono: ICONO_LUGAR[lugar.tipo ?? 'lugar'],
+          }));
+      }),
     );
   };
 
@@ -444,9 +508,42 @@ export class Mapa {
   /** El que se toco en el mapa o sobre el que esta el mouse en la lista. */
   protected readonly seleccionadoId = signal<Id | null>(null);
 
-  /** Si el pin tocado esta en otra pagina de la lista, va a esa pagina. */
+  /** El que tiene abierta la ficha con el boton de reservar. */
+  private readonly abiertoId = signal<Id | null>(null);
+  protected readonly abierto = computed(
+    () => this.resultados().find((e) => e.id === this.abiertoId()) ?? null,
+  );
+
+  /** "Ahora" o "Sáb 3 oct · 10:00 – 14:00": para cuando se busco. */
+  protected readonly cuando = computed(() => {
+    const { fecha, desde, horas } = this.aplicado();
+    const hasta = desde ? horaFin(desde, horas) : null;
+    if (!desde || !hasta) return 'Ahora';
+    const dia = desdeFechaISO(fecha).toLocaleDateString('es-AR', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+    });
+    return `${dia.charAt(0).toUpperCase()}${dia.slice(1).replace(/,/g, '')} · ${desde} – ${hasta}`;
+  });
+
+  /** Tocar una tarjeta de la lista abre su ficha. */
+  protected abrir(estacionamiento: Estacionamiento): void {
+    this.seleccionadoId.set(estacionamiento.id);
+    this.abiertoId.set(estacionamiento.id);
+  }
+
+  protected cerrarDetalle(): void {
+    this.abiertoId.set(null);
+  }
+
+  /**
+   * Tocar un pin abre su ficha. Si en la lista esta en otra pagina, va a esa
+   * pagina y la tarjeta queda a la vista.
+   */
   protected seleccionarDesdeMapa(id: Id): void {
     this.seleccionadoId.set(id);
+    this.abiertoId.set(id);
     const posicion = this.resultados().findIndex((e) => e.id === id);
     if (posicion >= 0) this.pagina.set(Math.floor(posicion / POR_PAGINA));
     afterNextRender(

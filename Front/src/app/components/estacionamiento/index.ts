@@ -5,3 +5,4 @@ export * from './formulario-estacionamiento/formulario-estacionamiento';
 export * from './foto-estacionamiento/foto-estacionamiento';
 export * from './elegir-momento/elegir-momento';
 export * from './mapa-estacionamientos/mapa-estacionamientos';
+export * from './detalle-estacionamiento/detalle-estacionamiento';

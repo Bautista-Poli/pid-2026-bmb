@@ -26,7 +26,8 @@ export type NombreIcono =
   | 'navegar'
   | 'techo'
   | 'moneda'
-  | 'buscar';
+  | 'buscar'
+  | 'filtros';
 
 /**
  * Icono de linea sobre un lienzo de 24x24. Todos comparten estilo (trazo de
@@ -159,6 +160,11 @@ export type NombreIcono =
         @case ('buscar') {
           <circle cx="10.8" cy="10.8" r="6.3" />
           <path d="m15.5 15.5 4.4 4.4" />
+        }
+        @case ('filtros') {
+          <path d="M4 7h9.5M17.5 7H20M4 17h2.5M10.5 17H20" />
+          <circle cx="15.5" cy="7" r="2" />
+          <circle cx="8.5" cy="17" r="2" />
         }
       }
     </svg>

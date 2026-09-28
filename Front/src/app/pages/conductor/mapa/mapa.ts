@@ -1,6 +1,6 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, linkedSignal, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { Observable, forkJoin, map, of } from 'rxjs';
 import { MapaEstacionamientos } from '@app/components/estacionamiento';
 import {
@@ -9,11 +9,12 @@ import {
   Chip,
   EstadoVacio,
   Icono,
+  Modal,
   NombreIcono,
   Sugerencia,
 } from '@app/components/ui';
 import {
-  ETIQUETA_TIPO_VEHICULO,
+  descripcionVehiculo,
   Estacionamiento,
   FechaISO,
   FiltrosEstacionamiento,
@@ -42,11 +43,22 @@ import { aFechaISO } from '@app/utils/fecha.util';
 const PRECIO_TOPE = 5000;
 const PRECIO_PASO = 100;
 
-const TIPOS: { tipo: TipoVehiculo; icono: NombreIcono }[] = [
-  { tipo: 'AUTO', icono: 'auto' },
-  { tipo: 'CAMIONETA', icono: 'camioneta' },
-  { tipo: 'MOTO', icono: 'moto' },
-];
+const ICONO_TIPO: Record<TipoVehiculo, NombreIcono> = {
+  AUTO: 'auto',
+  CAMIONETA: 'camioneta',
+  MOTO: 'moto',
+};
+
+/** Sin filtros: ahora, cualquier precio, ordenado por cercania. */
+const PANEL_INICIAL: Panel = {
+  fecha: aFechaISO(new Date()),
+  desde: '',
+  hasta: '',
+  precioMinimo: 0,
+  precioMaximo: PRECIO_TOPE,
+  orden: 'DISTANCIA',
+  soloCubiertos: false,
+};
 
 const CLASE_ESTADO: Record<EstadoDisponibilidad, string> = {
   DISPONIBLE: 'bg-exito-suave text-exito',
@@ -54,9 +66,8 @@ const CLASE_ESTADO: Record<EstadoDisponibilidad, string> = {
   AGOTADO: 'bg-ocupada/12 text-ocupada',
 };
 
-/** Lo que se edita en el panel. Se aplica recien con "Buscar". */
+/** Lo que se edita en el panel de filtros. Se aplica recien con "Aplicar". */
 interface Panel {
-  tipo: TipoVehiculo;
   fecha: FechaISO;
   /** Vacios: "ahora". */
   desde: HoraHHmm;
@@ -70,10 +81,11 @@ interface Panel {
 /**
  * Pantalla `/conductor/explorar` · rol CONDUCTOR. Es el inicio del conductor.
  *
- * Panel de busqueda y filtros, resultados y un mapa con los estacionamientos
- * (color segun disponibilidad). En desktop el
- * panel va a la izquierda y el mapa a la derecha; en mobile los filtros se
- * pliegan debajo del buscador, y abajo del mapa va la lista.
+ * Buscador, selector de vehiculo, resultados y un mapa con los estacionamientos
+ * (color segun disponibilidad). Se muestran los estacionamientos aptos para el
+ * tipo del vehiculo elegido; el resto de los filtros va en un modal. Ocupa justo
+ * la pantalla: en desktop la columna izquierda scrollea sola y el mapa ocupa el
+ * resto; en mobile el mapa va en el medio y la lista abajo, con scroll propio.
  *
  * Las distancias se miden desde la ubicacion del conductor o desde el lugar
  * que elija en el buscador: una zona ("Palermo") o una direccion ("Pueyrredon
@@ -83,9 +95,9 @@ interface Panel {
 @Component({
   selector: 'app-mapa',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MapaEstacionamientos, CampoBusqueda, Cargando, Chip, EstadoVacio, Icono],
+  imports: [RouterLink, MapaEstacionamientos, CampoBusqueda, Cargando, Chip, EstadoVacio, Icono, Modal],
   templateUrl: './mapa.html',
-  host: { class: 'flex flex-1 flex-col' },
+  host: { class: 'flex min-h-0 flex-1 flex-col' },
 })
 export class Mapa {
   private readonly estacionamientos = inject(EstacionamientoService);
@@ -94,32 +106,60 @@ export class Mapa {
   private readonly ubicacion = inject(UbicacionService);
   private readonly router = inject(Router);
 
-  protected readonly tipos = TIPOS;
-  protected readonly etiquetaTipo = ETIQUETA_TIPO_VEHICULO;
+  protected readonly descripcion = descripcionVehiculo;
+  protected readonly iconoTipo = ICONO_TIPO;
   protected readonly etiquetaEstado = ETIQUETA_ESTADO;
   protected readonly claseEstado = CLASE_ESTADO;
   protected readonly precioTope = PRECIO_TOPE;
   protected readonly precioPaso = PRECIO_PASO;
   protected readonly hoy = aFechaISO(new Date());
 
-  /* --------------------------------- Panel --------------------------------- */
+  /* -------------------------------- Vehiculo ------------------------------- */
 
-  protected readonly panel = signal<Panel>({
-    tipo: 'AUTO',
-    fecha: this.hoy,
-    desde: '',
-    hasta: '',
-    precioMinimo: 0,
-    precioMaximo: PRECIO_TOPE,
-    orden: 'DISTANCIA',
-    soloCubiertos: false,
+  protected readonly vehiculosDelConductor = rxResource({
+    stream: () => this.vehiculos.listarMisVehiculos(),
+    defaultValue: [] as Vehiculo[],
   });
-  /** Lo ultimo que se busco. */
-  private readonly aplicado = signal<Panel>(this.panel());
 
-  /** En mobile los filtros se pliegan debajo del buscador. En desktop siempre se ven. */
+  /** Posicion del vehiculo elegido. Arranca en el predeterminado cuando llega la lista. */
+  protected readonly indiceVehiculo = linkedSignal<number>(() => {
+    const indice = this.vehiculosDelConductor.value().findIndex((v) => v.predeterminado);
+    return indice >= 0 ? indice : 0;
+  });
+
+  protected readonly vehiculoActual = computed<Vehiculo | null>(
+    () => this.vehiculosDelConductor.value()[this.indiceVehiculo()] ?? null,
+  );
+
+  /** Anterior/siguiente vehiculo, ciclico. Sin efecto con 0 o 1 vehiculo. */
+  protected vehiculoAnterior(): void {
+    const total = this.vehiculosDelConductor.value().length;
+    if (total < 2) return;
+    this.indiceVehiculo.update((i) => (i - 1 + total) % total);
+  }
+
+  protected vehiculoSiguiente(): void {
+    const total = this.vehiculosDelConductor.value().length;
+    if (total < 2) return;
+    this.indiceVehiculo.update((i) => (i + 1) % total);
+  }
+
+  /* --------------------------------- Filtros -------------------------------- */
+
+  /** Borrador del modal de filtros. */
+  protected readonly panel = signal<Panel>(PANEL_INICIAL);
+  /** Los filtros en uso. */
+  private readonly aplicado = signal<Panel>(PANEL_INICIAL);
+
   protected readonly filtrosAbiertos = signal(false);
   protected readonly intentoBuscar = signal(false);
+
+  /** Cuantos filtros del modal estan en uso (el orden no cuenta: tiene su propio selector). */
+  protected readonly filtrosActivos = computed(() => {
+    const { desde, hasta, precioMinimo, precioMaximo, soloCubiertos } = this.aplicado();
+    return [desde && hasta, precioMinimo > 0 || precioMaximo < PRECIO_TOPE, soloCubiertos].filter(Boolean)
+      .length;
+  });
 
   protected readonly errorHorario = computed(() => {
     const { fecha, desde, hasta } = this.panel();
@@ -149,15 +189,29 @@ export class Mapa {
     this.cambiar({ precioMaximo: Math.max(Number(valor), this.panel().precioMinimo + PRECIO_PASO) });
   }
 
-  protected buscar(): void {
+  /** El modal arranca con lo que esta en uso: si se cierra sin aplicar, no cambia nada. */
+  protected abrirFiltros(): void {
+    this.panel.set(this.aplicado());
+    this.intentoBuscar.set(false);
+    this.filtrosAbiertos.set(true);
+  }
+
+  protected aplicarFiltros(): void {
     this.intentoBuscar.set(true);
     if (this.errorHorario()) return;
     this.aplicado.set(this.panel());
-    this.textoAplicado.set(this.destino() ? '' : this.texto().trim());
     this.filtrosAbiertos.set(false);
   }
 
-  /** "Ordenar por" de los resultados: se aplica al toque, sin pasar por "Buscar". */
+  protected limpiarFiltros(): void {
+    const limpio = { ...PANEL_INICIAL, orden: this.aplicado().orden };
+    this.panel.set(limpio);
+    this.aplicado.set(limpio);
+    this.intentoBuscar.set(false);
+    this.filtrosAbiertos.set(false);
+  }
+
+  /** "Ordenar por" de los resultados: se aplica al toque. */
   protected ordenar(orden: string): void {
     const valor = orden as OrdenEstacionamiento;
     this.cambiar({ orden: valor });
@@ -175,13 +229,19 @@ export class Mapa {
   protected escribir(texto: string): void {
     this.texto.set(texto);
     this.destino.set(null);
+    if (!texto.trim()) this.textoAplicado.set('');
+  }
+
+  /** Enter sin elegir una sugerencia: filtra por nombre o zona. */
+  protected buscarTexto(): void {
+    this.textoAplicado.set(this.destino() ? '' : this.texto().trim());
   }
 
   protected elegirDestino(sugerencia: Sugerencia): void {
     const destino = sugerencia.dato as DireccionGeoref;
     this.destino.set(destino);
     this.texto.set(destino.nombre);
-    this.buscar();
+    this.textoAplicado.set('');
   }
 
   protected usarMiUbicacion(): void {
@@ -253,7 +313,8 @@ export class Mapa {
     const panel = this.aplicado();
     return {
       busqueda: this.textoAplicado(),
-      tipoVehiculo: panel.tipo,
+      // Sin vehiculos cargados se muestran los aptos para auto.
+      tipoVehiculo: this.vehiculoActual()?.tipo ?? 'AUTO',
       precioMinimo: panel.precioMinimo > 0 ? panel.precioMinimo : null,
       precioMaximo: panel.precioMaximo < PRECIO_TOPE ? panel.precioMaximo : null,
       soloCubiertos: panel.soloCubiertos,
@@ -314,25 +375,7 @@ export class Mapa {
 
   constructor() {
     this.ubicacion.solicitar();
-
-    // El tipo arranca en el del vehiculo predeterminado del conductor (una sola vez).
-    let tipoInicialPuesto = false;
-    effect(() => {
-      const vehiculos = this.vehiculosDelConductor.value();
-      if (tipoInicialPuesto || vehiculos.length === 0) return;
-      tipoInicialPuesto = true;
-      const tipo = (vehiculos.find((v) => v.predeterminado) ?? vehiculos[0]).tipo;
-      untracked(() => {
-        this.cambiar({ tipo });
-        this.aplicado.update((actual) => ({ ...actual, tipo }));
-      });
-    });
   }
-
-  private readonly vehiculosDelConductor = rxResource({
-    stream: () => this.vehiculos.listarMisVehiculos(),
-    defaultValue: [] as Vehiculo[],
-  });
 }
 
 function momentoDe(panel: Panel): Momento {

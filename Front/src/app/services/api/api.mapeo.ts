@@ -93,6 +93,7 @@ export function aEstacionamiento(dto: EstacionamientoDto): Estacionamiento {
     tarifas: { hora: dto.tarifa_hora, estadia: dto.tarifa_estadia, jornada: dto.tarifa_jornada },
     cocherasTotales: dto.cocheras_activas ?? 0,
     cocherasDisponibles: dto.cocheras_libres ?? 0,
+    disponible: dto.disponible,
     tiposAdmitidos: (dto.tipos_vehiculo ?? []).map((id) => TIPO_POR_ID[id]),
     cubierto: dto.cubierto,
     fotoUrl: urlDeFoto(dto),

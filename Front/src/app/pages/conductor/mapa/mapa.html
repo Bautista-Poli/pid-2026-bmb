@@ -1,36 +1,32 @@
 <!--
-  Mobile: buscador (con filtros plegables) -> mapa -> lista, uno debajo del otro.
-  Desktop: la pantalla ocupa exactamente el alto de la ventana (menos la barra de
-  arriba). La columna izquierda (buscador, filtros y resultados) scrollea sola y
-  el mapa queda fijo. Para eso:
-    - `lg:flex-none`: con `flex-1` el alto fijo se ignora y la grilla crece;
-    - `lg:grid-rows-[minmax(0,1fr)]`: sin esto la fila crece con los resultados;
-    - `lg:overflow-hidden`: nada se sale de la ventana.
-  El wrapper de la izquierda es `contents` en mobile para que sus dos partes
-  puedan ubicarse arriba y abajo del mapa.
+  Ocupa justo la pantalla, sin scroll de pagina.
+  Mobile: buscador y vehiculo arriba, el mapa en el medio y la lista abajo (con
+  scroll propio). Desktop: columna izquierda con buscador, vehiculo y resultados
+  (scrollea sola) y el mapa ocupando el resto. El wrapper de la izquierda es
+  `contents` en mobile para que sus dos partes puedan ubicarse arriba y abajo del mapa.
 -->
 <div
-  class="flex flex-1 flex-col lg:grid lg:h-[calc(100dvh-4rem)] lg:flex-none lg:grid-cols-[minmax(380px,460px)_1fr]
-         lg:grid-rows-[minmax(0,1fr)] lg:overflow-hidden"
+  class="flex min-h-0 flex-1 flex-col lg:grid lg:grid-cols-[minmax(380px,460px)_1fr]
+         lg:grid-rows-[minmax(0,1fr)]"
 >
-  <div
-    class="contents lg:flex lg:min-h-0 lg:flex-col lg:overflow-y-auto lg:border-r lg:border-borde lg:bg-papel"
-  >
-    <!-- ============================ Buscador y filtros ============================ -->
+  <div class="contents lg:flex lg:min-h-0 lg:flex-col lg:border-r lg:border-borde lg:bg-papel">
+    <!-- ============================ Buscador y vehiculo ============================ -->
     <!-- z-[900]: las sugerencias del buscador tienen que quedar sobre el mapa
          (Leaflet usa z-index de 400 a 800). -->
-    <section class="relative z-[900] order-1 flex flex-col gap-5 px-5 pt-4 pb-5 lg:px-6 lg:pt-6">
+    <section class="relative z-[900] order-1 flex shrink-0 flex-col gap-3 px-5 pt-4 pb-4 lg:px-6 lg:pt-6">
       <div class="flex items-center gap-2">
-        <ui-campo-busqueda
-          class="min-w-0 flex-1"
-          etiqueta="Buscar por dirección, lugar o zona"
-          marcador="Buscar por dirección, lugar o zona..."
-          [valor]="texto()"
-          [minimo]="3"
-          [buscar]="buscarDirecciones"
-          (valorChange)="escribir($event)"
-          (elegida)="elegirDestino($event)"
-        />
+        <!-- Enter sin elegir sugerencia filtra por nombre o zona (un solo campo: el form se envia solo). -->
+        <form class="min-w-0 flex-1" role="search" (submit)="$event.preventDefault(); buscarTexto()">
+          <ui-campo-busqueda
+            etiqueta="Buscar por dirección, lugar o zona"
+            marcador="Buscar por dirección, lugar o zona..."
+            [valor]="texto()"
+            [minimo]="3"
+            [buscar]="buscarDirecciones"
+            (valorChange)="escribir($event)"
+            (elegida)="elegirDestino($event)"
+          />
+        </form>
         <button
           type="button"
           class="grid size-[46px] shrink-0 place-items-center rounded-control border border-borde bg-papel
@@ -41,162 +37,82 @@
         >
           <ui-icono nombre="navegar" [tamano]="19" />
         </button>
-        <button
-          type="button"
-          class="grid size-[46px] shrink-0 place-items-center rounded-control border border-borde bg-papel
-                 text-grafito shadow-tarjeta hover:border-acento-borde lg:hidden"
-          [attr.aria-expanded]="filtrosAbiertos()"
-          aria-controls="filtros-mapa"
-          [attr.aria-label]="filtrosAbiertos() ? 'Ocultar filtros' : 'Mostrar filtros'"
-          (click)="filtrosAbiertos.set(!filtrosAbiertos())"
-        >
-          <ui-icono
-            nombre="cheuron"
-            [tamano]="20"
-            class="transition-transform duration-160"
-            [class.rotate-180]="filtrosAbiertos()"
-          />
-        </button>
       </div>
 
-      <form
-        id="filtros-mapa"
-        class="aparece flex-col gap-5 lg:flex"
-        [class.flex]="filtrosAbiertos()"
-        [class.hidden]="!filtrosAbiertos()"
-        (submit)="$event.preventDefault(); buscar()"
-        novalidate
-      >
-        <!-- Tipo de vehiculo -->
-        <div class="grid grid-cols-3 gap-2" role="group" aria-label="Tipo de vehículo">
-          @for (opcion of tipos; track opcion.tipo) {
+      <div class="flex items-center gap-2">
+        <!-- Vehiculo: se muestran los estacionamientos aptos para su tipo. -->
+        @if (vehiculoActual(); as vehiculo) {
+          <div
+            class="flex h-[46px] min-w-0 flex-1 items-center justify-between gap-1 rounded-control border
+                   border-borde bg-papel px-1.5 shadow-tarjeta"
+            role="group"
+            aria-label="Vehículo"
+          >
             <button
               type="button"
-              class="flex items-center justify-center gap-2 rounded-control border px-2 py-3 text-[13.5px]
-                     font-semibold transition-colors duration-160"
-              [class]="
-                panel().tipo === opcion.tipo
-                  ? 'border-acento bg-acento text-sobre-acento shadow-elevada'
-                  : 'border-borde bg-papel text-grafito hover:border-acento-borde'
-              "
-              [attr.aria-pressed]="panel().tipo === opcion.tipo"
-              (click)="cambiar({ tipo: opcion.tipo })"
+              class="rounded-full p-1 text-plomo transition-colors duration-160 ease-out
+                     enabled:hover:bg-acento-suave enabled:hover:text-acento-fuerte
+                     disabled:pointer-events-none disabled:opacity-35"
+              [disabled]="vehiculosDelConductor.value().length < 2"
+              aria-label="Vehículo anterior"
+              (click)="vehiculoAnterior()"
             >
-              <ui-icono [nombre]="opcion.icono" [tamano]="20" />
-              {{ etiquetaTipo[opcion.tipo] }}
+              <ui-icono nombre="cheuron" [tamano]="18" class="rotate-90" />
             </button>
-          }
-        </div>
 
-        <!-- Fecha y horario -->
-        <div class="grid grid-cols-2 gap-2">
-          <label
-            class="flex items-center gap-3 rounded-control border border-borde bg-papel px-3.5 py-2.5
-                   focus-within:border-acento"
-          >
-            <ui-icono nombre="calendario" [tamano]="19" class="text-plomo" />
-            <span class="flex min-w-0 flex-col">
-              <span class="text-[11.5px] text-plomo">Fecha</span>
-              <input
-                type="date"
-                class="num-tabular w-full border-0 bg-transparent p-0 text-[13px] font-medium text-tinta
-                       focus:outline-none"
-                [min]="hoy"
-                [value]="panel().fecha"
-                (input)="cambiar({ fecha: $any($event.target).value })"
-              />
-            </span>
-          </label>
-          <div
-            class="flex items-center gap-3 rounded-control border border-borde bg-papel px-3.5 py-2.5
-                   focus-within:border-acento"
-          >
-            <ui-icono nombre="reloj" [tamano]="19" class="text-plomo" />
-            <span class="flex min-w-0 flex-col">
-              <span class="text-[11.5px] text-plomo">Horario <span class="text-humo">(vacío: ahora)</span></span>
-              <span class="flex items-center gap-1 text-[13px] font-medium text-tinta">
-                <input
-                  type="time"
-                  aria-label="Desde"
-                  class="num-tabular w-full min-w-0 border-0 bg-transparent p-0 focus:outline-none"
-                  [value]="panel().desde"
-                  (input)="cambiar({ desde: $any($event.target).value })"
-                />
-                <span class="text-plomo">–</span>
-                <input
-                  type="time"
-                  aria-label="Hasta"
-                  class="num-tabular w-full min-w-0 border-0 bg-transparent p-0 focus:outline-none"
-                  [value]="panel().hasta"
-                  (input)="cambiar({ hasta: $any($event.target).value })"
-                />
+            <span class="flex min-w-0 items-center gap-2 px-1" aria-live="polite">
+              <ui-icono [nombre]="iconoTipo[vehiculo.tipo]" [tamano]="18" class="shrink-0 text-acento" />
+              <span class="flex min-w-0 flex-col leading-tight">
+                <span class="num-tabular truncate text-[13.5px] font-semibold text-tinta">{{ vehiculo.patente }}</span>
+                <span class="truncate text-[11.5px] text-plomo">{{ descripcion(vehiculo) }}</span>
               </span>
             </span>
+
+            <button
+              type="button"
+              class="rounded-full p-1 text-plomo transition-colors duration-160 ease-out
+                     enabled:hover:bg-acento-suave enabled:hover:text-acento-fuerte
+                     disabled:pointer-events-none disabled:opacity-35"
+              [disabled]="vehiculosDelConductor.value().length < 2"
+              aria-label="Vehículo siguiente"
+              (click)="vehiculoSiguiente()"
+            >
+              <ui-icono nombre="cheuron" [tamano]="18" class="-rotate-90" />
+            </button>
           </div>
-        </div>
-        @if (intentoBuscar() && errorHorario(); as mensaje) {
-          <p class="campo-error -mt-3" role="alert">{{ mensaje }}</p>
+        } @else {
+          <a
+            routerLink="/conductor/vehiculos/nuevo"
+            class="flex h-[46px] min-w-0 flex-1 items-center justify-center gap-2 rounded-control border
+                   border-dashed border-borde bg-papel px-3 text-[13px] font-medium text-plomo
+                   hover:border-acento-borde hover:text-acento-fuerte"
+          >
+            <ui-icono nombre="auto" [tamano]="18" />
+            <span class="truncate">Agregá tu vehículo</span>
+          </a>
         }
 
-        <!-- Rango de precios -->
-        <div class="flex flex-col gap-3">
-          <div class="flex items-baseline justify-between">
-            <span class="text-[13.5px] font-semibold text-tinta">Rango de precios <span class="font-normal text-plomo">(por hora)</span></span>
-            <span class="num-tabular text-[12.5px] text-plomo">{{ textoPrecio() }}</span>
-          </div>
-          <div class="rango-doble">
-            <span
-              class="rango-doble__relleno"
-              [style.left.%]="(panel().precioMinimo / precioTope) * 100"
-              [style.right.%]="100 - (panel().precioMaximo / precioTope) * 100"
-            ></span>
-            <input
-              type="range"
-              min="0"
-              [max]="precioTope"
-              [step]="precioPaso"
-              aria-label="Precio mínimo"
-              [value]="panel().precioMinimo"
-              (input)="moverMinimo($any($event.target).value)"
-            />
-            <input
-              type="range"
-              min="0"
-              [max]="precioTope"
-              [step]="precioPaso"
-              aria-label="Precio máximo"
-              [value]="panel().precioMaximo"
-              (input)="moverMaximo($any($event.target).value)"
-            />
-          </div>
-        </div>
-
-        <!-- Filtros adicionales -->
-        <div class="flex flex-col gap-2.5">
-          <span class="text-[13.5px] font-semibold text-tinta">Filtros adicionales</span>
-          <div class="flex flex-wrap gap-2">
-            <ui-chip [activo]="panel().orden === 'DISTANCIA'" (alternar)="cambiar({ orden: 'DISTANCIA' })">
-              <span class="flex items-center gap-1.5"><ui-icono nombre="explorar" [tamano]="15" />Más cercano</span>
-            </ui-chip>
-            <ui-chip [activo]="panel().orden === 'PRECIO'" (alternar)="cambiar({ orden: 'PRECIO' })">
-              <span class="flex items-center gap-1.5"><ui-icono nombre="moneda" [tamano]="15" />Más barato</span>
-            </ui-chip>
-            <ui-chip [activo]="panel().soloCubiertos" (alternar)="cambiar({ soloCubiertos: !panel().soloCubiertos })">
-              <span class="flex items-center gap-1.5"><ui-icono nombre="techo" [tamano]="15" />Cubierto</span>
-            </ui-chip>
-          </div>
-        </div>
-
         <button
-          type="submit"
-          class="flex items-center justify-center gap-2 rounded-control bg-acento px-4 py-3 text-[14px]
-                 font-semibold text-sobre-acento shadow-elevada transition-colors duration-160
-                 hover:bg-acento-fuerte"
+          type="button"
+          class="flex h-[46px] shrink-0 items-center gap-2 rounded-control border px-4 text-[13.5px]
+                 font-semibold transition-colors duration-160"
+          [class]="
+            filtrosActivos() > 0
+              ? 'border-acento bg-acento text-sobre-acento shadow-elevada'
+              : 'border-borde bg-papel text-grafito shadow-tarjeta hover:border-acento-borde'
+          "
+          aria-haspopup="dialog"
+          (click)="abrirFiltros()"
         >
-          <ui-icono nombre="buscar" [tamano]="18" />
-          Buscar estacionamientos
+          <ui-icono nombre="filtros" [tamano]="18" />
+          Filtrar
+          @if (filtrosActivos() > 0) {
+            <span class="num-tabular grid size-5 place-items-center rounded-full bg-sobre-acento text-[11px] text-acento">
+              {{ filtrosActivos() }}
+            </span>
+          }
         </button>
-      </form>
+      </div>
 
       @if (sinOrigen()) {
         <p class="text-[12.5px] leading-normal text-plomo">
@@ -208,8 +124,10 @@
 
     <!-- ================================ Resultados ================================ -->
     <section
-      class="order-3 flex flex-col gap-4 rounded-t-[20px] bg-papel px-5 pt-3 pb-8 shadow-flotante
-             lg:rounded-none lg:border-t lg:border-borde-sutil lg:px-6 lg:pt-5 lg:shadow-none"
+      #lista
+      class="order-3 flex max-h-[40%] shrink-0 flex-col gap-4 overflow-y-auto rounded-t-[20px] bg-papel
+             px-5 pt-3 pb-6 shadow-flotante lg:max-h-none lg:min-h-0 lg:flex-1 lg:rounded-none lg:border-t
+             lg:border-borde-sutil lg:px-6 lg:pt-5 lg:shadow-none"
       aria-labelledby="titulo-resultados"
     >
       <span class="mx-auto h-1 w-10 rounded-full bg-borde lg:hidden" aria-hidden="true"></span>
@@ -220,7 +138,8 @@
             {{ destino() ? 'Cerca de tu destino' : 'Estacionamientos cercanos' }}
           </h2>
           <p class="mt-0.5 text-[12.5px] text-plomo">
-            {{ resultados().length }} {{ resultados().length === 1 ? 'estacionamiento encontrado' : 'estacionamientos encontrados' }}
+            {{ resultados().length }} {{ resultados().length === 1 ? 'estacionamiento' : 'estacionamientos' }}
+            {{ buscandoPorNombre() ? (resultados().length === 1 ? 'encontrado' : 'encontrados') : 'en esta zona del mapa' }}
           </p>
         </div>
         <label class="flex flex-col gap-1 text-[11.5px] text-plomo">
@@ -236,7 +155,7 @@
         </label>
       </div>
 
-      @if (recurso.isLoading()) {
+      @if (cargandoPrimeraVez()) {
         <ui-cargando [cantidad]="3" />
       } @else if (recurso.error(); as error) {
         <ui-estado-vacio titulo="No pudimos cargar los estacionamientos" [descripcion]="error.message">
@@ -247,11 +166,15 @@
       } @else if (resultados().length === 0) {
         <ui-estado-vacio
           titulo="Sin resultados"
-          descripcion="No hay estacionamientos con lugar para esos filtros. Probá con otro horario, otro precio o menos filtros."
+          [descripcion]="
+            buscandoPorNombre()
+              ? 'No hay estacionamientos con ese nombre para esos filtros. Probá con otro nombre o menos filtros.'
+              : 'No hay estacionamientos en esta zona del mapa para esos filtros. Alejá o mové el mapa, o probá con menos filtros.'
+          "
         />
       } @else {
         <ul class="aparece-en-cadena flex flex-col gap-2.5">
-          @for (estacionamiento of resultados(); track estacionamiento.id) {
+          @for (estacionamiento of resultadosPagina(); track estacionamiento.id) {
             <li [id]="'estacionamiento-' + estacionamiento.id">
               <button
                 type="button"
@@ -259,6 +182,7 @@
                        shadow-tarjeta transition-[border-color,box-shadow] duration-160 hover:shadow-elevada"
                 [class.border-acento]="seleccionadoId() === estacionamiento.id"
                 [class.border-borde]="seleccionadoId() !== estacionamiento.id"
+                [class.opacity-60]="estado(estacionamiento) === 'NO_DISPONIBLE'"
                 (mouseenter)="seleccionadoId.set(estacionamiento.id)"
                 (focus)="seleccionadoId.set(estacionamiento.id)"
                 (click)="abrir(estacionamiento)"
@@ -302,13 +226,47 @@
             </li>
           }
         </ul>
+
+        @if (hayMasEnLaZona()) {
+          <p class="text-center text-[12.5px] text-plomo">
+            Hay muchos estacionamientos en esta zona: acercá el mapa para ver todos.
+          </p>
+        }
+
+        @if (totalPaginas() > 1) {
+          <nav class="flex items-center justify-between gap-3" aria-label="Páginas de resultados">
+            <button
+              type="button"
+              class="flex items-center gap-1 rounded-boton border border-borde px-3 py-1.5 text-[12.5px]
+                     font-semibold text-tinta disabled:opacity-40"
+              [disabled]="pagina() === 0"
+              (click)="irAPagina(pagina() - 1)"
+            >
+              <ui-icono nombre="cheuron" [tamano]="16" class="rotate-90" />
+              Anterior
+            </button>
+            <span class="num-tabular text-[12.5px] text-plomo">
+              Página {{ pagina() + 1 }} de {{ totalPaginas() }}
+            </span>
+            <button
+              type="button"
+              class="flex items-center gap-1 rounded-boton border border-borde px-3 py-1.5 text-[12.5px]
+                     font-semibold text-tinta disabled:opacity-40"
+              [disabled]="pagina() === totalPaginas() - 1"
+              (click)="irAPagina(pagina() + 1)"
+            >
+              Siguiente
+              <ui-icono nombre="cheuron" [tamano]="16" class="-rotate-90" />
+            </button>
+          </nav>
+        }
       }
 
     </section>
   </div>
 
   <!-- =================================== Mapa =================================== -->
-  <div class="relative order-2 h-[52vh] min-h-[320px] lg:h-full lg:min-h-0">
+  <div class="relative order-2 min-h-[200px] flex-1 lg:h-full">
     <app-mapa-estacionamientos
       class="size-full"
       [estacionamientos]="resultados()"
@@ -317,6 +275,8 @@
       [tituloOrigen]="tituloOrigen()"
       [detalleOrigen]="detalleOrigen()"
       [seleccionadoId]="seleccionadoId()"
+      [encuadrarResultados]="buscandoPorNombre()"
+      (moverMapa)="moverMapa($event)"
       (seleccionar)="seleccionarDesdeMapa($event)"
       (pedirUbicacion)="usarMiUbicacion()"
     />
@@ -340,3 +300,150 @@
     }
   </div>
 </div>
+
+<!-- ================================== Filtros ================================== -->
+<ui-modal titulo="Filtrar" [abierto]="filtrosAbiertos()" (cerrado)="filtrosAbiertos.set(false)">
+  <form class="flex flex-col gap-5" (submit)="$event.preventDefault(); aplicarFiltros()" novalidate>
+    <!-- Fecha y horario -->
+    <div class="grid grid-cols-2 gap-2">
+      <label
+        class="flex items-center gap-3 rounded-control border border-borde bg-papel px-3.5 py-2.5
+               focus-within:border-acento"
+      >
+        <ui-icono nombre="calendario" [tamano]="19" class="text-plomo" />
+        <span class="flex min-w-0 flex-col">
+          <span class="text-[11.5px] text-plomo">Fecha</span>
+          <input
+            type="date"
+            class="num-tabular w-full border-0 bg-transparent p-0 text-[13px] font-medium text-tinta
+                   focus:outline-none"
+            [min]="hoy"
+            [value]="panel().fecha"
+            (input)="cambiar({ fecha: $any($event.target).value })"
+          />
+        </span>
+      </label>
+      <label
+        class="flex items-center gap-3 rounded-control border border-borde bg-papel px-3.5 py-2.5
+               focus-within:border-acento"
+      >
+        <ui-icono nombre="reloj" [tamano]="19" class="text-plomo" />
+        <span class="flex min-w-0 flex-col">
+          <span class="text-[11.5px] text-plomo">Inicio <span class="text-humo">(vacío: ahora)</span></span>
+          <input
+            type="time"
+            class="num-tabular w-full border-0 bg-transparent p-0 text-[13px] font-medium text-tinta
+                   focus:outline-none"
+            [value]="panel().desde"
+            (input)="cambiar({ desde: $any($event.target).value })"
+          />
+        </span>
+      </label>
+    </div>
+
+    <!-- Horas a reservar: solo con hora de inicio -->
+    @if (panel().desde) {
+      <div class="-mt-2 flex items-center justify-between gap-3">
+        <span class="flex flex-col">
+          <span class="text-[13.5px] font-semibold text-tinta">Horas a reservar</span>
+          @if (textoFin(); as fin) {
+            <span class="num-tabular text-[12px] text-plomo">{{ fin }}</span>
+          }
+        </span>
+        <div class="flex items-center gap-3">
+          <button
+            type="button"
+            class="grid size-9 place-items-center rounded-full border border-borde text-tinta disabled:opacity-40"
+            aria-label="Menos horas"
+            [disabled]="panel().horas <= 1"
+            (click)="cambiarHoras(-1)"
+          >
+            <ui-icono nombre="menos" [tamano]="16" />
+          </button>
+          <span class="num-tabular min-w-10 text-center text-[14px] font-semibold text-tinta" aria-live="polite">
+            {{ panel().horas }} h
+          </span>
+          <button
+            type="button"
+            class="grid size-9 place-items-center rounded-full border border-borde text-tinta disabled:opacity-40"
+            aria-label="Más horas"
+            [disabled]="panel().horas >= horasMaximas"
+            (click)="cambiarHoras(1)"
+          >
+            <ui-icono nombre="mas" [tamano]="16" />
+          </button>
+        </div>
+      </div>
+    }
+    @if (intentoBuscar() && errorHorario(); as mensaje) {
+      <p class="campo-error -mt-3" role="alert">{{ mensaje }}</p>
+    }
+
+    <!-- Rango de precios -->
+    <div class="flex flex-col gap-3">
+      <div class="flex items-baseline justify-between">
+        <span class="text-[13.5px] font-semibold text-tinta">Rango de precios <span class="font-normal text-plomo">(por hora)</span></span>
+        <span class="num-tabular text-[12.5px] text-plomo">{{ textoPrecio() }}</span>
+      </div>
+      <div class="rango-doble">
+        <span
+          class="rango-doble__relleno"
+          [style.left.%]="(panel().precioMinimo / precioTope) * 100"
+          [style.right.%]="100 - (panel().precioMaximo / precioTope) * 100"
+        ></span>
+        <input
+          type="range"
+          min="0"
+          [max]="precioTope"
+          [step]="precioPaso"
+          aria-label="Precio mínimo"
+          [value]="panel().precioMinimo"
+          (input)="moverMinimo($any($event.target).value)"
+        />
+        <input
+          type="range"
+          min="0"
+          [max]="precioTope"
+          [step]="precioPaso"
+          aria-label="Precio máximo"
+          [value]="panel().precioMaximo"
+          (input)="moverMaximo($any($event.target).value)"
+        />
+      </div>
+    </div>
+
+    <!-- Filtros adicionales -->
+    <div class="flex flex-col gap-2.5">
+      <span class="text-[13.5px] font-semibold text-tinta">Filtros adicionales</span>
+      <div class="flex flex-wrap gap-2">
+        <ui-chip [activo]="panel().orden === 'DISTANCIA'" (alternar)="cambiar({ orden: 'DISTANCIA' })">
+          <span class="flex items-center gap-1.5"><ui-icono nombre="explorar" [tamano]="15" />Más cercano</span>
+        </ui-chip>
+        <ui-chip [activo]="panel().orden === 'PRECIO'" (alternar)="cambiar({ orden: 'PRECIO' })">
+          <span class="flex items-center gap-1.5"><ui-icono nombre="moneda" [tamano]="15" />Más barato</span>
+        </ui-chip>
+        <ui-chip [activo]="panel().soloCubiertos" (alternar)="cambiar({ soloCubiertos: !panel().soloCubiertos })">
+          <span class="flex items-center gap-1.5"><ui-icono nombre="techo" [tamano]="15" />Cubierto</span>
+        </ui-chip>
+      </div>
+    </div>
+
+    <div class="flex gap-2.5">
+      <button
+        type="button"
+        class="flex-1 rounded-control border border-borde bg-papel px-4 py-3 text-[14px] font-semibold
+               text-grafito transition-colors duration-160 hover:border-acento-borde"
+        (click)="limpiarFiltros()"
+      >
+        Limpiar
+      </button>
+      <button
+        type="submit"
+        class="flex-1 rounded-control bg-acento px-4 py-3 text-[14px] font-semibold text-sobre-acento
+               shadow-elevada transition-colors duration-160 hover:bg-acento-fuerte"
+      >
+        Aplicar
+      </button>
+    </div>
+  </form>
+</ui-modal>

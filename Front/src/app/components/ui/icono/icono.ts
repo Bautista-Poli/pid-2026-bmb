@@ -30,7 +30,8 @@ export type NombreIcono =
   | 'calle'
   | 'arbol'
   | 'ciudad'
-  | 'esquina';
+  | 'esquina'
+  | 'filtros';
 
 /**
  * Icono de linea sobre un lienzo de 24x24. Todos comparten estilo (trazo de
@@ -182,6 +183,11 @@ export type NombreIcono =
         @case ('esquina') {
           <path d="M9 3.5v17M15 3.5v17M3.5 9h17M3.5 15h17" />
           <circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none" />
+        }
+        @case ('filtros') {
+          <path d="M4 7h9.5M17.5 7H20M4 17h2.5M10.5 17H20" />
+          <circle cx="15.5" cy="7" r="2" />
+          <circle cx="8.5" cy="17" r="2" />
         }
       }
     </svg>

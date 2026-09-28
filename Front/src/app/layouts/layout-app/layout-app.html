@@ -1,4 +1,5 @@
-<div class="flex min-h-dvh flex-col bg-lienzo">
+<!-- Explorar (el mapa) ocupa justo la pantalla: sin scroll de pagina, cada panel scrollea solo. -->
+<div class="flex min-h-dvh flex-col bg-lienzo has-[app-mapa]:h-dvh">
   <!-- Desktop: nav superior fija -->
   <div class="sticky top-0 z-[1000] hidden lg:block">
     <app-barra-superior
@@ -33,7 +34,7 @@
     </span>
   </div>
 
-  <main class="flex min-w-0 flex-1 flex-col">
+  <main class="flex min-h-0 min-w-0 flex-1 flex-col">
     <router-outlet />
   </main>
 

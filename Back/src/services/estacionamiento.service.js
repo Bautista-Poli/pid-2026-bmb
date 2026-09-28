@@ -75,6 +75,30 @@ const AGREGADOS = `
     WHERE f.id_estacionamiento = e.id_estacionamiento) AS foto_actualizada
 `;
 
+/** Zona horaria del negocio (ver utils/horario.js: UTC-3 todo el anio). */
+const ZONA_LOCAL = `'America/Argentina/Buenos_Aires'`;
+
+/**
+ * Condicion SQL "el estacionamiento `e` atiende durante [inicio, fin)", en hora
+ * argentina y el mismo dia. Sin horarios cargados no se restringe (igual que al
+ * reservar, ver `motivoFueraDeHorario`).
+ */
+function abiertoEntre(inicio, fin) {
+  const desde = `(${inicio} AT TIME ZONE ${ZONA_LOCAL})`;
+  const hasta = `(${fin} AT TIME ZONE ${ZONA_LOCAL})`;
+  return `(
+    NOT EXISTS (SELECT 1 FROM horario h WHERE h.id_estacionamiento = e.id_estacionamiento)
+    OR EXISTS (
+      SELECT 1 FROM horario h
+       WHERE h.id_estacionamiento = e.id_estacionamiento
+         AND h.dia_semana = EXTRACT(DOW FROM ${desde})
+         AND ${desde}::date = ${hasta}::date
+         AND h.hora_apertura <= ${desde}::time
+         AND h.hora_cierre >= ${hasta}::time
+    )
+  )`;
+}
+
 /**
  * Crea el estacionamiento y sus horarios en una sola transaccion.
  * Antes verifica la direccion y obtiene sus coordenadas (fuera de la
@@ -179,6 +203,15 @@ export async function buscar(filtros) {
     condiciones.push(`e.cubierto = $${parametros.length}`);
   }
 
+  // La parte del mapa que se esta viendo: sin coordenadas no se puede ubicar.
+  if (filtros.lat_min !== undefined) {
+    parametros.push(filtros.lat_min, filtros.lat_max, filtros.lng_min, filtros.lng_max);
+    const n = parametros.length;
+    condiciones.push(
+      `e.latitud BETWEEN $${n - 3} AND $${n - 2} AND e.longitud BETWEEN $${n - 1} AND $${n}`,
+    );
+  }
+
   // Una cochera "sirve" si esta activa, es del tipo pedido (si se pidio) y, si se
   // pidio disponibilidad, no tiene una reserva vigente que se pise.
   const compatibles = ['ct.id_estacionamiento = e.id_estacionamiento', 'ct.activo = TRUE'];
@@ -197,14 +230,38 @@ export async function buscar(filtros) {
     compatibles.push(sinSolapamiento(`$${parametros.length}`, 'now()', 'now()', 'ct.id_cochera'));
   }
 
-  if (compatibles.length > 2) {
+  // Con `incluir_no_disponibles` la disponibilidad no descarta: se informa en
+  // `disponible` (hay una cochera del tipo libre en ese momento y esta abierto).
+  // El tipo de vehiculo si sigue filtrando: un lugar sin cocheras para el
+  // vehiculo no sirve aunque este libre.
+  let columnaDisponible = '';
+  const hayDisponibilidad = (filtros.inicio && filtros.fin) || filtros.disponible_ahora;
+
+  if (filtros.incluir_no_disponibles && hayDisponibilidad) {
+    const soloTipo = compatibles.slice(0, filtros.id_tipo_vehiculo !== undefined ? 3 : 2);
+    const libre = [...compatibles];
+    let abierto;
+    if (filtros.inicio && filtros.fin) {
+      const n = parametros.length;
+      abierto = abiertoEntre(`$${n - 1}::timestamptz`, `$${n}::timestamptz`);
+    } else {
+      // Ahora tambien cuenta el estado fisico: una cochera OCUPADA no sirve.
+      libre.push(`ct.estado_actual = 'LIBRE'`);
+      abierto = abiertoEntre('now()', 'now()');
+    }
+    if (soloTipo.length > 2) {
+      condiciones.push(`EXISTS (SELECT 1 FROM cochera ct WHERE ${soloTipo.join(' AND ')})`);
+    }
+    columnaDisponible = `,
+      (EXISTS (SELECT 1 FROM cochera ct WHERE ${libre.join(' AND ')}) AND ${abierto}) AS disponible`;
+  } else if (compatibles.length > 2) {
     condiciones.push(`EXISTS (SELECT 1 FROM cochera ct WHERE ${compatibles.join(' AND ')})`);
   }
 
   parametros.push(filtros.limit, filtros.offset);
 
   const { rows } = await query(
-    `SELECT ${CAMPOS_E}, ${AGREGADOS}
+    `SELECT ${CAMPOS_E}, ${AGREGADOS}${columnaDisponible}
        FROM estacionamiento e
       WHERE ${condiciones.join(' AND ')}
       ORDER BY e.nombre

@@ -1,5 +1,5 @@
 import { TonoPunto } from '@app/components/ui';
-import { DiaSemana, EstadoCochera, FranjaAtencion, HoraHHmm } from '@app/models';
+import { DiaSemana, Estacionamiento, EstadoCochera, FranjaAtencion, HoraHHmm } from '@app/models';
 import { aFechaISO, diaSemanaDe } from './fecha.util';
 
 /**
@@ -50,15 +50,23 @@ export function formatearDistancia(km: number | undefined): string | null {
 }
 
 /** Estado para el mapa y su leyenda: mismos cortes que `tonoDisponibilidad`. */
-export type EstadoDisponibilidad = 'DISPONIBLE' | 'POCA' | 'AGOTADO';
+export type EstadoDisponibilidad = 'DISPONIBLE' | 'POCA' | 'NO_DISPONIBLE';
 
 export const ETIQUETA_ESTADO: Record<EstadoDisponibilidad, string> = {
   DISPONIBLE: 'Disponible',
   POCA: 'Poca disponibilidad',
-  AGOTADO: 'Agotado',
+  NO_DISPONIBLE: 'No disponible',
 };
 
-export function estadoDisponibilidad(libres: number): EstadoDisponibilidad {
-  if (libres === 0) return 'AGOTADO';
+/**
+ * No disponible: sin lugar ahora o, si la busqueda lo informa, sin lugar para
+ * el vehiculo o cerrado en el momento buscado. Si `disponible` vino en true
+ * (p. ej. una franja futura), cuenta como disponible aunque hoy este lleno.
+ */
+export function estadoDisponibilidad(
+  estacionamiento: Pick<Estacionamiento, 'cocherasDisponibles' | 'disponible'>,
+): EstadoDisponibilidad {
+  const { cocherasDisponibles: libres, disponible } = estacionamiento;
+  if (disponible === false || (disponible === undefined && libres === 0)) return 'NO_DISPONIBLE';
   return libres < 5 ? 'POCA' : 'DISPONIBLE';
 }

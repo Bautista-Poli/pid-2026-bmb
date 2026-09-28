@@ -13,7 +13,7 @@ import { estadoApertura, resumenSemana } from '@app/utils/horario-semana.util';
 const CLASE_ESTADO: Record<EstadoDisponibilidad, string> = {
   DISPONIBLE: 'bg-exito-suave text-exito',
   POCA: 'bg-baja/15 text-baja',
-  AGOTADO: 'bg-ocupada/12 text-ocupada',
+  NO_DISPONIBLE: 'bg-humo/15 text-[color-mix(in_srgb,var(--color-ocupada)_55%,var(--color-plomo))]',
 };
 
 const pesos = (monto: number) => `$${monto.toLocaleString('es-AR')}`;
@@ -150,7 +150,7 @@ const pesos = (monto: number) => `$${monto.toLocaleString('es-AR')}`;
           [disabled]="agotado()"
           (click)="reservar.emit(estacionamiento())"
         >
-          {{ agotado() ? 'Sin lugares para ese momento' : 'Reservar' }}
+          {{ agotado() ? 'No disponible para ese momento' : 'Reservar' }}
         </button>
       </div>
     </article>
@@ -173,12 +173,10 @@ export class DetalleEstacionamiento {
   protected readonly apertura = computed(() => estadoApertura(this.estacionamiento().horarios));
   protected readonly semana = computed(() => resumenSemana(this.estacionamiento().horarios));
 
-  private readonly estado = computed(() =>
-    estadoDisponibilidad(this.estacionamiento().cocherasDisponibles),
-  );
+  private readonly estado = computed(() => estadoDisponibilidad(this.estacionamiento()));
   protected readonly etiquetaEstado = computed(() => ETIQUETA_ESTADO[this.estado()]);
   protected readonly claseEstado = computed(() => CLASE_ESTADO[this.estado()]);
-  protected readonly agotado = computed(() => this.estado() === 'AGOTADO');
+  protected readonly agotado = computed(() => this.estado() === 'NO_DISPONIBLE');
 
   /** "350 m · 5 min a pie" */
   protected readonly distancia = computed(() => {

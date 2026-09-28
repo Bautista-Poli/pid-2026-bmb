@@ -9,12 +9,13 @@ import {
   OrdenEstacionamiento,
 } from '@app/models';
 import { EstacionamientoDto } from './api/api.dto';
+import { estadoDisponibilidad } from '@app/utils/disponibilidad.util';
 import { distanciaKm } from '@app/utils/distancia.util';
 import { aInstante } from '@app/utils/fecha.util';
 import { ID_TIPO_VEHICULO, aEstacionamiento, aPayloadEstacionamiento } from './api/api.mapeo';
 
 /** La API acepta hasta 100 resultados por pagina. */
-const LIMITE_BUSQUEDA = 100;
+export const LIMITE_BUSQUEDA = 100;
 
 /** Acceso a `/api/estacionamientos`. */
 @Injectable({ providedIn: 'root' })
@@ -127,7 +128,10 @@ export function ordenarEstacionamientos(
   items: Estacionamiento[],
   orden: OrdenEstacionamiento | null | undefined,
 ): Estacionamiento[] {
-  return [...items].sort(COMPARADORES[orden ?? 'DISTANCIA']);
+  const comparar = COMPARADORES[orden ?? 'DISTANCIA'];
+  // Los que no se pueden usar van siempre al final, sea cual sea el orden.
+  const alFinal = (e: Estacionamiento) => (estadoDisponibilidad(e) === 'NO_DISPONIBLE' ? 1 : 0);
+  return [...items].sort((a, b) => alFinal(a) - alFinal(b) || comparar(a, b));
 }
 
 function aParams(filtros: FiltrosEstacionamiento): HttpParams {
@@ -142,8 +146,16 @@ function aParams(filtros: FiltrosEstacionamiento): HttpParams {
   if (filtros.precioMinimo != null) params = params.set('tarifa_min', filtros.precioMinimo);
   if (filtros.precioMaximo != null) params = params.set('tarifa_max', filtros.precioMaximo);
   if (filtros.soloCubiertos) params = params.set('cubierto', true);
+  if (filtros.area) {
+    params = params
+      .set('lat_min', filtros.area.latitudMinima)
+      .set('lat_max', filtros.area.latitudMaxima)
+      .set('lng_min', filtros.area.longitudMinima)
+      .set('lng_max', filtros.area.longitudMaxima);
+  }
 
   const momento = filtros.momento;
+  if (momento && filtros.incluirNoDisponibles) params = params.set('incluir_no_disponibles', true);
   if (momento?.tipo === 'AHORA') {
     params = params.set('disponible_ahora', true);
   } else if (momento?.tipo === 'FRANJA') {

@@ -71,6 +71,8 @@ export interface EstacionamientoDto {
   activo: boolean;
   cocheras_activas?: number;
   cocheras_libres?: number;
+  /** Solo con `incluir_no_disponibles`: si tiene lugar para el tipo y esta abierto en ese momento. */
+  disponible?: boolean;
   tipos_vehiculo?: number[];
   horarios?: HorarioDto[];
   /** Cuando se subio la foto. `null` o ausente si el estacionamiento no tiene. */

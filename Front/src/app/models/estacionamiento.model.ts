@@ -45,6 +45,11 @@ export interface Estacionamiento {
   cocherasTotales: number;
   /** Cocheras libres en este momento. */
   cocherasDisponibles: number;
+  /**
+   * Si tiene lugar para el tipo pedido y esta abierto en el momento buscado.
+   * Solo viene al buscar con `incluirNoDisponibles`.
+   */
+  disponible?: boolean;
   tiposAdmitidos: TipoVehiculo[];
   cubierto: boolean;
   /** URL publica de la foto que subio el propietario, o `null` si no cargo ninguna. */
@@ -84,9 +89,21 @@ export interface FiltrosEstacionamiento {
   precioMaximo?: number | null;
   soloCubiertos?: boolean;
   momento?: Momento | null;
+  /** Con un momento: trae tambien los que no tienen lugar o estan cerrados, marcados con `disponible`. */
+  incluirNoDisponibles?: boolean;
+  /** Solo los que caen en este rectangulo: la parte del mapa que se esta viendo. */
+  area?: AreaMapa | null;
   /** Coordenadas del conductor, para calcular `distanciaKm` en el front. No se manda a la API. */
   origen?: { latitud: number; longitud: number } | null;
   orden?: OrdenEstacionamiento;
+}
+
+/** Rectangulo del mapa, en grados. */
+export interface AreaMapa {
+  latitudMinima: number;
+  latitudMaxima: number;
+  longitudMinima: number;
+  longitudMaxima: number;
 }
 
 export type OrdenEstacionamiento = 'DISTANCIA' | 'PRECIO';

@@ -241,7 +241,11 @@ export function validarActualizacionCochera(body) {
 /**
  * Filtros de GET /api/estacionamientos. Todo opcional. La disponibilidad se pide
  * de una de dos formas, excluyentes: `disponible_ahora=true` o una franja
- * `inicio` + `fin`.
+ * `inicio` + `fin`. Con `incluir_no_disponibles=true` no se descartan los que
+ * no tienen lugar (o estan cerrados) en ese momento: vienen marcados con
+ * `disponible = false`.
+ * `lat_min`, `lat_max`, `lng_min` y `lng_max` (juntos) limitan la busqueda a
+ * un rectangulo: la parte del mapa que se esta viendo.
  */
 export function validarBusqueda(query) {
   const { valores, errores } = campos(query)
@@ -252,8 +256,13 @@ export function validarBusqueda(query) {
     .numero('tarifa_max', query.tarifa_max, { requerido: false, min: 0 })
     .booleano('cubierto', query.cubierto, { requerido: false })
     .booleano('disponible_ahora', query.disponible_ahora, { requerido: false })
+    .booleano('incluir_no_disponibles', query.incluir_no_disponibles, { requerido: false })
     .fechaHora('inicio', query.inicio, { requerido: false })
     .fechaHora('fin', query.fin, { requerido: false })
+    .numero('lat_min', query.lat_min, { requerido: false, min: -90, max: 90 })
+    .numero('lat_max', query.lat_max, { requerido: false, min: -90, max: 90 })
+    .numero('lng_min', query.lng_min, { requerido: false, min: -180, max: 180 })
+    .numero('lng_max', query.lng_max, { requerido: false, min: -180, max: 180 })
     .entero('limit', query.limit, { requerido: false, min: 1, max: 100, default: 20 })
     .entero('offset', query.offset, { requerido: false, min: 0, default: 0 })
     .resultado();
@@ -271,6 +280,19 @@ export function validarBusqueda(query) {
   }
   if (hayFranja && valores.disponible_ahora) {
     errores.push({ campo: 'disponible_ahora', mensaje: 'no se combina con inicio y fin' });
+  }
+
+  const LIMITES = ['lat_min', 'lat_max', 'lng_min', 'lng_max'];
+  const hayArea = LIMITES.some((campo) => vino(query[campo]));
+  const areaConError = errores.some((e) => LIMITES.includes(e.campo));
+  if (hayArea && !areaConError) {
+    if (!LIMITES.every((campo) => valores[campo] !== undefined)) {
+      errores.push({ campo: 'lat_min', mensaje: 'lat_min, lat_max, lng_min y lng_max se envian juntos' });
+    } else if (valores.lat_max < valores.lat_min) {
+      errores.push({ campo: 'lat_max', mensaje: 'debe ser mayor o igual a lat_min' });
+    } else if (valores.lng_max < valores.lng_min) {
+      errores.push({ campo: 'lng_max', mensaje: 'debe ser mayor o igual a lng_min' });
+    }
   }
 
   return { valores, errores };

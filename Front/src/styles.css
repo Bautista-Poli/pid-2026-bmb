@@ -370,8 +370,10 @@
     --pin-color: var(--color-baja);
   }
 
-  .pin--agotado {
-    --pin-color: var(--color-ocupada);
+  /* No disponible: rojo apagado hacia el gris, para que se note que no se puede usar. */
+  .pin--no-disponible {
+    --pin-color: color-mix(in srgb, var(--color-ocupada) 45%, var(--color-humo));
+    opacity: 0.8;
   }
 
   .pin__cabeza {

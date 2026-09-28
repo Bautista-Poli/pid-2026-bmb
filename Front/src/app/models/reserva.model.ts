@@ -7,14 +7,14 @@ import { TipoVehiculo, Vehiculo } from './vehiculo.model';
 export type EstadoReserva =
   | 'PENDIENTE'
   | 'CONFIRMADA'
-  | 'EN_CURSO'
+  | 'ACTIVA'
   | 'FINALIZADA'
   | 'CANCELADA';
 
 export const ETIQUETA_ESTADO_RESERVA: Record<EstadoReserva, string> = {
   PENDIENTE: 'Pendiente',
   CONFIRMADA: 'Confirmada',
-  EN_CURSO: 'En curso',
+  ACTIVA: 'En curso',
   FINALIZADA: 'Finalizada',
   CANCELADA: 'Cancelada',
 };
@@ -113,7 +113,7 @@ export const BORRADOR_VACIO: BorradorReserva = {
 };
 
 /** Estados sobre los que el conductor todavia puede accionar. */
-export const ESTADOS_ACTIVOS: EstadoReserva[] = ['PENDIENTE', 'CONFIRMADA', 'EN_CURSO'];
+export const ESTADOS_ACTIVOS: EstadoReserva[] = ['PENDIENTE', 'CONFIRMADA', 'ACTIVA'];
 
 export function esReservaActiva(reserva: Reserva): boolean {
   return ESTADOS_ACTIVOS.includes(reserva.estado);

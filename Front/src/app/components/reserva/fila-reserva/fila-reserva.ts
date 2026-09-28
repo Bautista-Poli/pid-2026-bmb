@@ -9,7 +9,7 @@ import { Boton, Etiqueta, TonoEtiqueta } from '@app/components/ui';
 const TONO_ESTADO: Record<EstadoReserva, TonoEtiqueta> = {
   PENDIENTE: 'aviso',
   CONFIRMADA: 'acento',
-  EN_CURSO: 'exito',
+  ACTIVA: 'exito',
   FINALIZADA: 'neutro',
   CANCELADA: 'peligro',
 };
@@ -18,7 +18,7 @@ const TONO_ESTADO: Record<EstadoReserva, TonoEtiqueta> = {
 const PASOS: Partial<Record<EstadoReserva, string>> = {
   PENDIENTE: 'Confirmar',
   CONFIRMADA: 'Registrar ingreso',
-  EN_CURSO: 'Registrar egreso',
+  ACTIVA: 'Registrar egreso',
 };
 
 /**
@@ -67,6 +67,6 @@ export class FilaReserva {
 
   /** El conductor no puede cancelar una reserva que ya arranco. */
   protected readonly cancelable = computed(
-    () => this.activa() && this.reserva().estado !== 'EN_CURSO',
+    () => this.activa() && this.reserva().estado !== 'ACTIVA',
   );
 }

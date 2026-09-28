@@ -6,6 +6,7 @@ export const ROLES = Object.freeze({
 export const ESTADOS_RESERVA = Object.freeze({
   PENDIENTE: 'PENDIENTE',
   CONFIRMADA: 'CONFIRMADA',
+  ACTIVA: 'ACTIVA',
   CANCELADA: 'CANCELADA',
   FINALIZADA: 'FINALIZADA',
 });
@@ -14,6 +15,7 @@ export const ESTADOS_RESERVA = Object.freeze({
 export const ESTADOS_VIGENTES = Object.freeze([
   ESTADOS_RESERVA.PENDIENTE,
   ESTADOS_RESERVA.CONFIRMADA,
+  ESTADOS_RESERVA.ACTIVA,
 ]);
 
 export const ESTADOS_COCHERA = Object.freeze({

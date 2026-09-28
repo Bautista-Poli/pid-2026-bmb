@@ -308,3 +308,38 @@ UPDATE reserva r
 -- Desde que el servicio guarda el precio al crear la reserva, siempre esta cargado.
 -- El UPDATE de arriba rellena las filas que quedaran en NULL antes de este paso.
 ALTER TABLE reserva ALTER COLUMN precio_total SET NOT NULL;
+
+-- Ciclo completo de la reserva (Sprint 2): ACTIVA es un estado real, no una
+-- reserva CONFIRMADA con ingreso_real cargado como antes. Las transiciones
+-- viven todas en reserva.service.js (cambiarEstado / TRANSICIONES).
+ALTER TYPE estado_reserva ADD VALUE IF NOT EXISTS 'ACTIVA';
+
+-- Una reserva ACTIVA sigue ocupando la cochera (el auto esta adentro), asi que
+-- las dos protecciones anti-solapamiento tienen que cubrirla igual que a
+-- PENDIENTE y CONFIRMADA. Como el predicado del EXCLUDE cambia, hay que
+-- recrear el constraint: no alcanza con el IF NOT EXISTS original.
+DO $$
+BEGIN
+  ALTER TABLE reserva DROP CONSTRAINT IF EXISTS reserva_sin_solapamiento;
+  ALTER TABLE reserva ADD CONSTRAINT reserva_sin_solapamiento
+    EXCLUDE USING gist (
+      id_cochera WITH =,
+      tstzrange(inicio, fin, '[)') WITH &&
+    ) WHERE (estado IN ('PENDIENTE', 'CONFIRMADA', 'ACTIVA'));
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE 'No se pudo recrear el EXCLUDE constraint reserva_sin_solapamiento: %', SQLERRM;
+END
+$$;
+
+DO $$
+BEGIN
+  ALTER TABLE reserva DROP CONSTRAINT IF EXISTS reserva_vehiculo_sin_solapamiento;
+  ALTER TABLE reserva ADD CONSTRAINT reserva_vehiculo_sin_solapamiento
+    EXCLUDE USING gist (
+      id_vehiculo WITH =,
+      tstzrange(inicio, fin, '[)') WITH &&
+    ) WHERE (estado IN ('PENDIENTE', 'CONFIRMADA', 'ACTIVA'));
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE 'No se pudo recrear el EXCLUDE constraint reserva_vehiculo_sin_solapamiento: %', SQLERRM;
+END
+$$;

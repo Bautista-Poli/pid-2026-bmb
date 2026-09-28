@@ -6,11 +6,10 @@ import { EstadoCochera, ModalidadReserva, RolUsuario } from '@app/models';
  * la app trabaja con los modelos de `models/`.
  */
 
-// EN_CURSO lo arma el backend: es una reserva CONFIRMADA con ingreso registrado.
 export type EstadoReservaDto =
   | 'PENDIENTE'
   | 'CONFIRMADA'
-  | 'EN_CURSO'
+  | 'ACTIVA'
   | 'CANCELADA'
   | 'FINALIZADA';
 

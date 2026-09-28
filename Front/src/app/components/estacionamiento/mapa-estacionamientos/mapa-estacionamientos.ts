@@ -14,7 +14,7 @@ import {
 } from '@angular/core';
 import * as L from 'leaflet';
 import { Icono } from '@app/components/ui';
-import { Estacionamiento, Id } from '@app/models';
+import { AreaMapa, Estacionamiento, Id } from '@app/models';
 import { TemaService } from '@app/services/tema.service';
 import { EstadoDisponibilidad, estadoDisponibilidad } from '@app/utils/disponibilidad.util';
 import { Coordenadas } from '@app/utils/distancia.util';
@@ -25,6 +25,9 @@ const CENTRO_INICIAL: L.LatLngTuple = [-34.6037, -58.3816];
 
 /** Zoom al centrarse en un lugar buscado: unas 10 cuadras a la redonda. */
 const ZOOM_DESTINO = 15;
+
+/** Zoom al centrarse en el conductor: un poco mas abierto, para ver opciones alrededor. */
+const ZOOM_UBICACION = 14;
 
 const CLAVE_CARTO = environment.mapa.claveCarto;
 const OSM = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
@@ -50,7 +53,7 @@ const ATRIBUCION = CLAVE_CARTO
 const CLASE_ESTADO: Record<EstadoDisponibilidad, string> = {
   DISPONIBLE: 'pin--disponible',
   POCA: 'pin--poca',
-  AGOTADO: 'pin--agotado',
+  NO_DISPONIBLE: 'pin--no-disponible',
 };
 
 /**
@@ -63,6 +66,11 @@ const CLASE_ESTADO: Record<EstadoDisponibilidad, string> = {
  * La ubicacion del conductor es el punto azul. El lugar que busco (una
  * direccion o una zona) es un pin propio, solo visual: al buscarlo el mapa se
  * centra ahi, para que se vea que estacionamientos le quedan cerca.
+ *
+ * Cada vez que se termina de mover o hacer zoom emite `moverMapa` con el area
+ * visible, para que quien lo usa pida solo los estacionamientos de esa zona.
+ * El mapa no se reencuadra solo cuando cambian los resultados (respeta donde lo
+ * dejo el conductor), salvo con `encuadrarResultados`.
  */
 @Component({
   selector: 'app-mapa-estacionamientos',
@@ -79,7 +87,7 @@ const CLASE_ESTADO: Record<EstadoDisponibilidad, string> = {
     >
       <li class="flex items-center gap-1.5"><span class="size-2.5 rounded-full bg-exito"></span>Disponible</li>
       <li class="flex items-center gap-1.5"><span class="size-2.5 rounded-full bg-baja"></span>Poca disponibilidad</li>
-      <li class="flex items-center gap-1.5"><span class="size-2.5 rounded-full bg-ocupada"></span>Agotado</li>
+      <li class="flex items-center gap-1.5"><span class="size-2.5 rounded-full bg-[color-mix(in_srgb,var(--color-ocupada)_45%,var(--color-humo))]"></span>No disponible</li>
     </ul>
 
     <!-- Zoom y volver al origen -->
@@ -144,10 +152,14 @@ export class MapaEstacionamientos {
   readonly tituloOrigen = input('Tu ubicación');
   readonly detalleOrigen = input<string | null>(null);
   readonly seleccionadoId = input<Id | null>(null);
+  /** Encuadra los resultados cada vez que cambian (p. ej. al buscar por nombre en todo el mapa). */
+  readonly encuadrarResultados = input(false);
 
   readonly seleccionar = output<Id>();
   /** Se toca "centrar" sin ubicacion ni destino: quien usa el mapa puede pedir la ubicacion. */
   readonly pedirUbicacion = output<void>();
+  /** El area visible, al crearse el mapa y cada vez que se termina de mover o hacer zoom. */
+  readonly moverMapa = output<AreaMapa>();
 
   private readonly contenedor = viewChild.required<ElementRef<HTMLDivElement>>('contenedor');
   private readonly listo = signal(false);
@@ -158,7 +170,7 @@ export class MapaEstacionamientos {
   private marcadorUbicacion?: L.Marker;
   private marcadorDestino?: L.Marker;
   private observador?: ResizeObserver;
-  /** Para encuadrar solo cuando cambian los resultados, no al seleccionar uno. */
+  /** Para mover el mapa solo cuando cambian, no al seleccionar un pin. */
   private ultimosResultados?: Estacionamiento[];
   private ultimaUbicacion?: Coordenadas | null;
   private ultimoDestino?: Coordenadas | null;
@@ -222,6 +234,10 @@ export class MapaEstacionamientos {
     }).addTo(this.mapa);
     this.capaPines.addTo(this.mapa);
 
+    const mapa = this.mapa;
+    mapa.on('moveend', () => this.moverMapa.emit(areaDe(mapa)));
+    this.moverMapa.emit(areaDe(mapa));
+
     // El contenedor cambia de alto (panel plegable en mobile, ventana): Leaflet
     // tiene que enterarse para no dejar franjas grises.
     this.observador = new ResizeObserver(() => this.mapa?.invalidateSize());
@@ -249,7 +265,8 @@ export class MapaEstacionamientos {
         icon: iconoPin(estacionamiento, activo),
         title: estacionamiento.nombre,
         riseOnHover: true,
-        zIndexOffset: activo ? 1000 : 0,
+        // Los no disponibles quedan debajo: si se pisan, se ve el que sirve.
+        zIndexOffset: activo ? 1000 : estadoDisponibilidad(estacionamiento) === 'NO_DISPONIBLE' ? -500 : 0,
       });
       pin.on('click', () => this.seleccionar.emit(estacionamiento.id));
       this.capaPines.addLayer(pin);
@@ -272,24 +289,25 @@ export class MapaEstacionamientos {
     );
 
     const cambioDestino = !mismoPunto(destino, this.ultimoDestino);
-    const cambiaronResultados =
-      estacionamientos !== this.ultimosResultados || !mismoPunto(ubicacion, this.ultimaUbicacion);
+    const cambioUbicacion = !mismoPunto(ubicacion, this.ultimaUbicacion);
+    const cambiaronResultados = estacionamientos !== this.ultimosResultados;
     this.ultimosResultados = estacionamientos;
     this.ultimaUbicacion = ubicacion;
     this.ultimoDestino = destino;
 
-    if (destino) {
-      // Con un lugar buscado, el mapa se queda centrado ahi: los estacionamientos
-      // cercanos quedan alrededor del pin, que es lo que se quiere comparar.
-      if (cambioDestino) {
-        mapa.flyTo([destino.latitud, destino.longitud], ZOOM_DESTINO, { duration: 0.8 });
+    if (this.encuadrarResultados()) {
+      if (cambiaronResultados && puntos.length > 0) {
+        mapa.fitBounds(L.latLngBounds(puntos), { padding: [60, 60], maxZoom: 16 });
       }
       return;
     }
 
-    if (ubicacion) puntos.push([ubicacion.latitud, ubicacion.longitud]);
-    if ((cambiaronResultados || cambioDestino) && puntos.length > 0) {
-      mapa.fitBounds(L.latLngBounds(puntos), { padding: [60, 60], maxZoom: 16 });
+    // Fuera de eso, el mapa solo se mueve si el conductor elige un lugar o
+    // aparece su ubicacion: los estacionamientos de esa zona se piden al moverse.
+    if (destino && cambioDestino) {
+      mapa.flyTo([destino.latitud, destino.longitud], ZOOM_DESTINO, { duration: 0.8 });
+    } else if (!destino && ubicacion && cambioUbicacion) {
+      mapa.flyTo([ubicacion.latitud, ubicacion.longitud], ZOOM_UBICACION, { duration: 0.8 });
     }
   }
 }
@@ -316,16 +334,15 @@ function moverMarcador(
   );
 }
 
-/** "$1.200" (por hora; si no cobra por hora, la estadia). "AGOTADO" si no hay lugar. */
+/** "$1.200" (por hora; si no cobra por hora, la estadia). El color dice si esta disponible. */
 function etiquetaPin(estacionamiento: Estacionamiento): string {
-  if (estacionamiento.cocherasDisponibles === 0) return 'AGOTADO';
   const { hora, estadia, jornada } = estacionamiento.tarifas;
   const precio = hora ?? estadia ?? jornada;
   return precio == null ? 'P' : `$${precio.toLocaleString('es-AR')}`;
 }
 
 function iconoPin(estacionamiento: Estacionamiento, activo: boolean): L.DivIcon {
-  const estado = estadoDisponibilidad(estacionamiento.cocherasDisponibles);
+  const estado = estadoDisponibilidad(estacionamiento);
   const clases = ['pin', CLASE_ESTADO[estado], activo ? 'pin--activo' : ''].join(' ');
   return L.divIcon({
     className: '',
@@ -334,6 +351,16 @@ function iconoPin(estacionamiento: Estacionamiento, activo: boolean): L.DivIcon 
     iconSize: [96, 64],
     iconAnchor: [48, 36],
   });
+}
+
+function areaDe(mapa: L.Map): AreaMapa {
+  const limites = mapa.getBounds();
+  return {
+    latitudMinima: limites.getSouth(),
+    latitudMaxima: limites.getNorth(),
+    longitudMinima: limites.getWest(),
+    longitudMaxima: limites.getEast(),
+  };
 }
 
 function mismoPunto(a: Coordenadas | null | undefined, b: Coordenadas | null | undefined): boolean {

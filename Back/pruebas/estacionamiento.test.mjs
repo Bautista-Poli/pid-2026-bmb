@@ -407,6 +407,24 @@ describe('busqueda con filtros', () => {
     assert.deepEqual(ids(await buscar(estacionamiento, { id_tipo_vehiculo: 2 })), []);
   });
 
+  test('filtra por el area del mapa y exige los cuatro limites', async () => {
+    const propietario = await nuevoPropietario();
+    const estacionamiento = await crearEstacionamiento(propietario.token);
+    await api('PATCH', `/estacionamientos/${estacionamiento.id_estacionamiento}`, {
+      token: propietario.token,
+      body: { latitud: -34.6, longitud: -58.4 },
+    });
+    const id = estacionamiento.id_estacionamiento;
+    const area = (lat_min, lat_max, lng_min, lng_max) => ({ lat_min, lat_max, lng_min, lng_max });
+
+    assert.deepEqual(ids(await buscar(estacionamiento, area(-34.61, -34.59, -58.41, -58.39))), [id]);
+    assert.deepEqual(ids(await buscar(estacionamiento, area(-34.58, -34.57, -58.41, -58.39))), []);
+    assert.deepEqual(ids(await buscar(estacionamiento, area(-34.61, -34.59, -58.38, -58.37))), []);
+
+    assert.equal((await buscar(estacionamiento, { lat_min: -34.61, lat_max: -34.59 })).estado, 400);
+    assert.equal((await buscar(estacionamiento, area(-34.59, -34.61, -58.41, -58.39))).estado, 400);
+  });
+
   test('con franja: excluye si la unica cochera esta reservada, incluye si esta libre o cancelada', async () => {
     const { estacionamiento, conductor, reservar } = await conConductor();
     const id = estacionamiento.id_estacionamiento;

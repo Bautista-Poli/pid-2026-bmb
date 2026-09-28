@@ -1,4 +1,15 @@
-import { ChangeDetectionStrategy, Component, computed, inject, linkedSignal, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  inject,
+  linkedSignal,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
 import { Observable, forkJoin, map, of } from 'rxjs';
@@ -14,6 +25,7 @@ import {
   Sugerencia,
 } from '@app/components/ui';
 import {
+  AreaMapa,
   descripcionVehiculo,
   Estacionamiento,
   FechaISO,
@@ -25,7 +37,11 @@ import {
   TipoVehiculo,
   Vehiculo,
 } from '@app/models';
-import { EstacionamientoService } from '@app/services/estacionamiento.service';
+import {
+  EstacionamientoService,
+  LIMITE_BUSQUEDA,
+  ordenarEstacionamientos,
+} from '@app/services/estacionamiento.service';
 import { DireccionGeoref, GeorefService, ZonaBusqueda } from '@app/services/georef.service';
 import { UbicacionService } from '@app/services/ubicacion.service';
 import { VehiculoService } from '@app/services/vehiculo.service';
@@ -43,6 +59,12 @@ import { aFechaISO } from '@app/utils/fecha.util';
 const PRECIO_TOPE = 5000;
 const PRECIO_PASO = 100;
 
+/** Tope de horas a reservar en el filtro. */
+const HORAS_MAXIMAS = 12;
+
+/** Estacionamientos por pagina en la lista (en el mapa van todos los de la zona). */
+const POR_PAGINA = 10;
+
 const ICONO_TIPO: Record<TipoVehiculo, NombreIcono> = {
   AUTO: 'auto',
   CAMIONETA: 'camioneta',
@@ -53,7 +75,7 @@ const ICONO_TIPO: Record<TipoVehiculo, NombreIcono> = {
 const PANEL_INICIAL: Panel = {
   fecha: aFechaISO(new Date()),
   desde: '',
-  hasta: '',
+  horas: 1,
   precioMinimo: 0,
   precioMaximo: PRECIO_TOPE,
   orden: 'DISTANCIA',
@@ -63,7 +85,7 @@ const PANEL_INICIAL: Panel = {
 const CLASE_ESTADO: Record<EstadoDisponibilidad, string> = {
   DISPONIBLE: 'bg-exito-suave text-exito',
   POCA: 'bg-baja/15 text-baja',
-  AGOTADO: 'bg-ocupada/12 text-ocupada',
+  NO_DISPONIBLE: 'bg-humo/15 text-[color-mix(in_srgb,var(--color-ocupada)_55%,var(--color-plomo))]',
 };
 
 /** Lo que se edita en el panel de filtros. Se aplica recien con "Aplicar". */
@@ -71,7 +93,8 @@ interface Panel {
   fecha: FechaISO;
   /** Vacios: "ahora". */
   desde: HoraHHmm;
-  hasta: HoraHHmm;
+  /** Cuantas horas se quiere reservar desde `desde`. */
+  horas: number;
   precioMinimo: number;
   precioMaximo: number;
   orden: OrdenEstacionamiento;
@@ -91,6 +114,11 @@ interface Panel {
  * que elija en el buscador: una zona ("Palermo") o una direccion ("Pueyrredon
  * 2409"). Ese lugar aparece en el mapa como un pin propio y el mapa se centra
  * ahi, para ver que estacionamientos le quedan cerca.
+ *
+ * Como en Airbnb, se piden solo los estacionamientos de la parte del mapa que
+ * se esta viendo: al mover o hacer zoom se vuelven a pedir. La excepcion es la
+ * busqueda por nombre (Enter sin elegir sugerencia), que busca en todos lados y
+ * encuadra el mapa en lo que encuentra. La lista se muestra de a paginas.
  */
 @Component({
   selector: 'app-mapa',
@@ -105,6 +133,7 @@ export class Mapa {
   private readonly georef = inject(GeorefService);
   private readonly ubicacion = inject(UbicacionService);
   private readonly router = inject(Router);
+  private readonly injector = inject(Injector);
 
   protected readonly descripcion = descripcionVehiculo;
   protected readonly iconoTipo = ICONO_TIPO;
@@ -112,6 +141,7 @@ export class Mapa {
   protected readonly claseEstado = CLASE_ESTADO;
   protected readonly precioTope = PRECIO_TOPE;
   protected readonly precioPaso = PRECIO_PASO;
+  protected readonly horasMaximas = HORAS_MAXIMAS;
   protected readonly hoy = aFechaISO(new Date());
 
   /* -------------------------------- Vehiculo ------------------------------- */
@@ -156,17 +186,16 @@ export class Mapa {
 
   /** Cuantos filtros del modal estan en uso (el orden no cuenta: tiene su propio selector). */
   protected readonly filtrosActivos = computed(() => {
-    const { desde, hasta, precioMinimo, precioMaximo, soloCubiertos } = this.aplicado();
-    return [desde && hasta, precioMinimo > 0 || precioMaximo < PRECIO_TOPE, soloCubiertos].filter(Boolean)
+    const { desde, precioMinimo, precioMaximo, soloCubiertos } = this.aplicado();
+    return [desde, precioMinimo > 0 || precioMaximo < PRECIO_TOPE, soloCubiertos].filter(Boolean)
       .length;
   });
 
   protected readonly errorHorario = computed(() => {
-    const { fecha, desde, hasta } = this.panel();
-    if (!desde && !hasta) return null;
+    const { fecha, desde, horas } = this.panel();
+    if (!desde) return null;
     if (!fecha || fecha < this.hoy) return 'Elegí una fecha desde hoy.';
-    if (!desde || !hasta) return 'Completá la hora de inicio y de fin, o dejá las dos vacías para buscar ahora.';
-    if (hasta <= desde) return 'La hora de fin tiene que ser posterior a la de inicio.';
+    if (!horaFin(desde, horas)) return 'La reserva tiene que terminar antes de la medianoche. Probá con menos horas.';
     return null;
   });
 
@@ -180,6 +209,19 @@ export class Mapa {
     this.panel.update((actual) => ({ ...actual, ...cambios }));
   }
 
+  /** Horas a reservar: entre 1 y `HORAS_MAXIMAS`. */
+  protected cambiarHoras(delta: number): void {
+    const horas = Math.min(Math.max(this.panel().horas + delta, 1), HORAS_MAXIMAS);
+    this.cambiar({ horas });
+  }
+
+  /** "Hasta las 14:30", para que se vea cuando termina la reserva. */
+  protected readonly textoFin = computed(() => {
+    const { desde, horas } = this.panel();
+    const fin = desde ? horaFin(desde, horas) : null;
+    return fin ? `Hasta las ${fin}` : null;
+  });
+
   /** Los dos extremos del rango no se cruzan: el que se mueve empuja hasta el otro. */
   protected moverMinimo(valor: string): void {
     this.cambiar({ precioMinimo: Math.min(Number(valor), this.panel().precioMaximo - PRECIO_PASO) });
@@ -191,7 +233,7 @@ export class Mapa {
 
   /** El modal arranca con lo que esta en uso: si se cierra sin aplicar, no cambia nada. */
   protected abrirFiltros(): void {
-    this.panel.set(this.aplicado());
+    this.panel.set({ ...this.aplicado(), orden: this.orden() });
     this.intentoBuscar.set(false);
     this.filtrosAbiertos.set(true);
   }
@@ -200,22 +242,26 @@ export class Mapa {
     this.intentoBuscar.set(true);
     if (this.errorHorario()) return;
     this.aplicado.set(this.panel());
+    this.orden.set(this.panel().orden);
     this.filtrosAbiertos.set(false);
   }
 
   protected limpiarFiltros(): void {
-    const limpio = { ...PANEL_INICIAL, orden: this.aplicado().orden };
+    const limpio = { ...PANEL_INICIAL, orden: this.orden() };
     this.panel.set(limpio);
     this.aplicado.set(limpio);
     this.intentoBuscar.set(false);
     this.filtrosAbiertos.set(false);
   }
 
-  /** "Ordenar por" de los resultados: se aplica al toque. */
+  /**
+   * "Ordenar por" de los resultados: se aplica al toque. No toca `aplicado`, asi
+   * que no vuelve a pedir al backend: solo reordena lo que ya llego.
+   */
   protected ordenar(orden: string): void {
     const valor = orden as OrdenEstacionamiento;
     this.cambiar({ orden: valor });
-    this.aplicado.update((actual) => ({ ...actual, orden: valor }));
+    this.orden.set(valor);
   }
 
   /* -------------------------- Buscador y ubicacion ------------------------- */
@@ -309,17 +355,33 @@ export class Mapa {
 
   /* ------------------------------- Resultados ------------------------------ */
 
-  private readonly consulta = computed<FiltrosEstacionamiento>(() => {
+  /** La parte del mapa que se esta viendo. `null` hasta que el mapa se crea. */
+  private readonly area = signal<AreaMapa | null>(null);
+
+  /** Buscando por nombre: en todo el mapa, sin importar la zona visible. */
+  protected readonly buscandoPorNombre = computed(() => this.textoAplicado() !== '');
+
+  protected moverMapa(area: AreaMapa): void {
+    this.area.set(area);
+  }
+
+  /** `undefined` (no pide nada) hasta saber que zona se ve. */
+  private readonly consulta = computed<FiltrosEstacionamiento | undefined>(() => {
     const panel = this.aplicado();
+    const porNombre = this.buscandoPorNombre();
+    const area = this.area();
+    if (!porNombre && !area) return undefined;
     return {
       busqueda: this.textoAplicado(),
+      area: porNombre ? null : area,
       // Sin vehiculos cargados se muestran los aptos para auto.
       tipoVehiculo: this.vehiculoActual()?.tipo ?? 'AUTO',
       precioMinimo: panel.precioMinimo > 0 ? panel.precioMinimo : null,
       precioMaximo: panel.precioMaximo < PRECIO_TOPE ? panel.precioMaximo : null,
       soloCubiertos: panel.soloCubiertos,
-      orden: panel.orden,
       momento: momentoDe(panel),
+      // Los que no sirven tambien se muestran (en gris y al final), no desaparecen.
+      incluirNoDisponibles: true,
       origen: this.origen(),
     };
   });
@@ -330,17 +392,70 @@ export class Mapa {
     defaultValue: [] as Estacionamiento[],
   });
 
-  protected readonly resultados = computed(() => this.recurso.value());
-  protected readonly orden = computed(() => this.aplicado().orden);
+  /**
+   * Lo ultimo que llego. Mientras se piden los de otra zona se siguen mostrando
+   * los anteriores, para que los pines y la lista no parpadeen al mover el mapa.
+   */
+  private readonly ultimosRecibidos = linkedSignal<Estacionamiento[] | undefined, Estacionamiento[]>({
+    source: () => (this.recurso.hasValue() && !this.recurso.isLoading() ? this.recurso.value() : undefined),
+    computation: (recibidos, anterior) => recibidos ?? anterior?.value ?? [],
+  });
+
+  /** Hasta que llega la primera respuesta se muestra el esqueleto de carga. */
+  protected readonly cargandoPrimeraVez = computed(
+    () => this.ultimosRecibidos().length === 0 && (this.recurso.isLoading() || !this.area()),
+  );
+
+  /** Llego el tope de la API: puede haber mas en la zona, hay que acercar el mapa. */
+  protected readonly hayMasEnLaZona = computed(
+    () => !this.buscandoPorNombre() && this.ultimosRecibidos().length >= LIMITE_BUSQUEDA,
+  );
+
+  /** El orden se resuelve en el front: cambiarlo no pide nada al backend. */
+  protected readonly orden = signal<OrdenEstacionamiento>(PANEL_INICIAL.orden);
+  protected readonly resultados = computed(() =>
+    ordenarEstacionamientos(this.ultimosRecibidos(), this.orden()),
+  );
+
+  /* -------------------------------- Paginas -------------------------------- */
+
+  /** Pagina de la lista (desde 0). Vuelve a la primera cuando cambian los resultados. */
+  protected readonly pagina = linkedSignal<Estacionamiento[], number>({
+    source: this.resultados,
+    computation: () => 0,
+  });
+
+  protected readonly totalPaginas = computed(() =>
+    Math.max(1, Math.ceil(this.resultados().length / POR_PAGINA)),
+  );
+
+  protected readonly resultadosPagina = computed(() => {
+    const desde = this.pagina() * POR_PAGINA;
+    return this.resultados().slice(desde, desde + POR_PAGINA);
+  });
+
+  protected irAPagina(pagina: number): void {
+    this.pagina.set(Math.min(Math.max(pagina, 0), this.totalPaginas() - 1));
+    this.lista()?.nativeElement.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  private readonly lista = viewChild<ElementRef<HTMLElement>>('lista');
 
   /** El que se toco en el mapa o sobre el que esta el mouse en la lista. */
   protected readonly seleccionadoId = signal<Id | null>(null);
 
+  /** Si el pin tocado esta en otra pagina de la lista, va a esa pagina. */
   protected seleccionarDesdeMapa(id: Id): void {
     this.seleccionadoId.set(id);
-    document
-      .getElementById(`estacionamiento-${id}`)
-      ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    const posicion = this.resultados().findIndex((e) => e.id === id);
+    if (posicion >= 0) this.pagina.set(Math.floor(posicion / POR_PAGINA));
+    afterNextRender(
+      () =>
+        document
+          .getElementById(`estacionamiento-${id}`)
+          ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }),
+      { injector: this.injector },
+    );
   }
 
   protected irAReservar(estacionamiento: Estacionamiento): void {
@@ -350,7 +465,7 @@ export class Mapa {
   /* ---------------------------- Datos de la tarjeta ------------------------ */
 
   protected estado(estacionamiento: Estacionamiento): EstadoDisponibilidad {
-    return estadoDisponibilidad(estacionamiento.cocherasDisponibles);
+    return estadoDisponibilidad(estacionamiento);
   }
 
   /** "350 m · 5 min a pie" */
@@ -379,8 +494,20 @@ export class Mapa {
 }
 
 function momentoDe(panel: Panel): Momento {
-  if (!panel.desde || !panel.hasta) return { tipo: 'AHORA' };
-  return { tipo: 'FRANJA', fecha: panel.fecha, horaDesde: panel.desde, horaHasta: panel.hasta };
+  const hasta = panel.desde ? horaFin(panel.desde, panel.horas) : null;
+  if (!panel.desde || !hasta) return { tipo: 'AHORA' };
+  return { tipo: 'FRANJA', fecha: panel.fecha, horaDesde: panel.desde, horaHasta: hasta };
+}
+
+/**
+ * "HH:mm" de fin sumando `horas` al inicio. `null` si pasa de la medianoche:
+ * la reserva tiene que empezar y terminar el mismo dia.
+ */
+function horaFin(desde: HoraHHmm, horas: number): HoraHHmm | null {
+  const [h, m] = desde.split(':').map(Number);
+  const minutos = h * 60 + m + horas * 60;
+  if (minutos > 24 * 60 - 1) return null;
+  return `${String(Math.floor(minutos / 60)).padStart(2, '0')}:${String(minutos % 60).padStart(2, '0')}`;
 }
 
 function pesos(monto: number): string {

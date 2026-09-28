@@ -123,6 +123,7 @@
 
     <!-- ================================ Resultados ================================ -->
     <section
+      #lista
       class="order-3 flex max-h-[40%] shrink-0 flex-col gap-4 overflow-y-auto rounded-t-[20px] bg-papel
              px-5 pt-3 pb-6 shadow-flotante lg:max-h-none lg:min-h-0 lg:flex-1 lg:rounded-none lg:border-t
              lg:border-borde-sutil lg:px-6 lg:pt-5 lg:shadow-none"
@@ -136,7 +137,8 @@
             {{ destino() ? 'Cerca de tu destino' : 'Estacionamientos cercanos' }}
           </h2>
           <p class="mt-0.5 text-[12.5px] text-plomo">
-            {{ resultados().length }} {{ resultados().length === 1 ? 'estacionamiento encontrado' : 'estacionamientos encontrados' }}
+            {{ resultados().length }} {{ resultados().length === 1 ? 'estacionamiento' : 'estacionamientos' }}
+            {{ buscandoPorNombre() ? (resultados().length === 1 ? 'encontrado' : 'encontrados') : 'en esta zona del mapa' }}
           </p>
         </div>
         <label class="flex flex-col gap-1 text-[11.5px] text-plomo">
@@ -152,7 +154,7 @@
         </label>
       </div>
 
-      @if (recurso.isLoading()) {
+      @if (cargandoPrimeraVez()) {
         <ui-cargando [cantidad]="3" />
       } @else if (recurso.error(); as error) {
         <ui-estado-vacio titulo="No pudimos cargar los estacionamientos" [descripcion]="error.message">
@@ -163,11 +165,15 @@
       } @else if (resultados().length === 0) {
         <ui-estado-vacio
           titulo="Sin resultados"
-          descripcion="No hay estacionamientos con lugar para esos filtros. Probá con otro horario, otro precio o menos filtros."
+          [descripcion]="
+            buscandoPorNombre()
+              ? 'No hay estacionamientos con ese nombre para esos filtros. Probá con otro nombre o menos filtros.'
+              : 'No hay estacionamientos en esta zona del mapa para esos filtros. Alejá o mové el mapa, o probá con menos filtros.'
+          "
         />
       } @else {
         <ul class="aparece-en-cadena flex flex-col gap-2.5">
-          @for (estacionamiento of resultados(); track estacionamiento.id) {
+          @for (estacionamiento of resultadosPagina(); track estacionamiento.id) {
             <li [id]="'estacionamiento-' + estacionamiento.id">
               <button
                 type="button"
@@ -175,6 +181,7 @@
                        shadow-tarjeta transition-[border-color,box-shadow] duration-160 hover:shadow-elevada"
                 [class.border-acento]="seleccionadoId() === estacionamiento.id"
                 [class.border-borde]="seleccionadoId() !== estacionamiento.id"
+                [class.opacity-60]="estado(estacionamiento) === 'NO_DISPONIBLE'"
                 (mouseenter)="seleccionadoId.set(estacionamiento.id)"
                 (focus)="seleccionadoId.set(estacionamiento.id)"
                 (click)="irAReservar(estacionamiento)"
@@ -218,6 +225,40 @@
             </li>
           }
         </ul>
+
+        @if (hayMasEnLaZona()) {
+          <p class="text-center text-[12.5px] text-plomo">
+            Hay muchos estacionamientos en esta zona: acercá el mapa para ver todos.
+          </p>
+        }
+
+        @if (totalPaginas() > 1) {
+          <nav class="flex items-center justify-between gap-3" aria-label="Páginas de resultados">
+            <button
+              type="button"
+              class="flex items-center gap-1 rounded-boton border border-borde px-3 py-1.5 text-[12.5px]
+                     font-semibold text-tinta disabled:opacity-40"
+              [disabled]="pagina() === 0"
+              (click)="irAPagina(pagina() - 1)"
+            >
+              <ui-icono nombre="cheuron" [tamano]="16" class="rotate-90" />
+              Anterior
+            </button>
+            <span class="num-tabular text-[12.5px] text-plomo">
+              Página {{ pagina() + 1 }} de {{ totalPaginas() }}
+            </span>
+            <button
+              type="button"
+              class="flex items-center gap-1 rounded-boton border border-borde px-3 py-1.5 text-[12.5px]
+                     font-semibold text-tinta disabled:opacity-40"
+              [disabled]="pagina() === totalPaginas() - 1"
+              (click)="irAPagina(pagina() + 1)"
+            >
+              Siguiente
+              <ui-icono nombre="cheuron" [tamano]="16" class="-rotate-90" />
+            </button>
+          </nav>
+        }
       }
 
     </section>
@@ -232,6 +273,8 @@
     [tituloOrigen]="tituloOrigen()"
     [detalleOrigen]="detalleOrigen()"
     [seleccionadoId]="seleccionadoId()"
+    [encuadrarResultados]="buscandoPorNombre()"
+    (moverMapa)="moverMapa($event)"
     (seleccionar)="seleccionarDesdeMapa($event)"
     (pedirUbicacion)="usarMiUbicacion()"
   />
@@ -259,33 +302,58 @@
           />
         </span>
       </label>
-      <div
+      <label
         class="flex items-center gap-3 rounded-control border border-borde bg-papel px-3.5 py-2.5
                focus-within:border-acento"
       >
         <ui-icono nombre="reloj" [tamano]="19" class="text-plomo" />
         <span class="flex min-w-0 flex-col">
-          <span class="text-[11.5px] text-plomo">Horario <span class="text-humo">(vacío: ahora)</span></span>
-          <span class="flex items-center gap-1 text-[13px] font-medium text-tinta">
-            <input
-              type="time"
-              aria-label="Desde"
-              class="num-tabular w-full min-w-0 border-0 bg-transparent p-0 focus:outline-none"
-              [value]="panel().desde"
-              (input)="cambiar({ desde: $any($event.target).value })"
-            />
-            <span class="text-plomo">–</span>
-            <input
-              type="time"
-              aria-label="Hasta"
-              class="num-tabular w-full min-w-0 border-0 bg-transparent p-0 focus:outline-none"
-              [value]="panel().hasta"
-              (input)="cambiar({ hasta: $any($event.target).value })"
-            />
-          </span>
+          <span class="text-[11.5px] text-plomo">Inicio <span class="text-humo">(vacío: ahora)</span></span>
+          <input
+            type="time"
+            class="num-tabular w-full border-0 bg-transparent p-0 text-[13px] font-medium text-tinta
+                   focus:outline-none"
+            [value]="panel().desde"
+            (input)="cambiar({ desde: $any($event.target).value })"
+          />
         </span>
-      </div>
+      </label>
     </div>
+
+    <!-- Horas a reservar: solo con hora de inicio -->
+    @if (panel().desde) {
+      <div class="-mt-2 flex items-center justify-between gap-3">
+        <span class="flex flex-col">
+          <span class="text-[13.5px] font-semibold text-tinta">Horas a reservar</span>
+          @if (textoFin(); as fin) {
+            <span class="num-tabular text-[12px] text-plomo">{{ fin }}</span>
+          }
+        </span>
+        <div class="flex items-center gap-3">
+          <button
+            type="button"
+            class="grid size-9 place-items-center rounded-full border border-borde text-tinta disabled:opacity-40"
+            aria-label="Menos horas"
+            [disabled]="panel().horas <= 1"
+            (click)="cambiarHoras(-1)"
+          >
+            <ui-icono nombre="menos" [tamano]="16" />
+          </button>
+          <span class="num-tabular min-w-10 text-center text-[14px] font-semibold text-tinta" aria-live="polite">
+            {{ panel().horas }} h
+          </span>
+          <button
+            type="button"
+            class="grid size-9 place-items-center rounded-full border border-borde text-tinta disabled:opacity-40"
+            aria-label="Más horas"
+            [disabled]="panel().horas >= horasMaximas"
+            (click)="cambiarHoras(1)"
+          >
+            <ui-icono nombre="mas" [tamano]="16" />
+          </button>
+        </div>
+      </div>
+    }
     @if (intentoBuscar() && errorHorario(); as mensaje) {
       <p class="campo-error -mt-3" role="alert">{{ mensaje }}</p>
     }

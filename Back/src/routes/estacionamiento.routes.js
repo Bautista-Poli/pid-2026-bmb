@@ -6,6 +6,7 @@ import { validate } from '../middlewares/validate.js';
 import { ROLES } from '../utils/roles.js';
 import {
   validarActualizacionCochera,
+  validarBloqueoCochera,
   validarBusqueda,
   validarCambiosEstacionamiento,
   validarCochera,
@@ -105,6 +106,19 @@ router.delete(
   '/:id/cocheras/:idCochera/definitiva',
   ...soloPropietario,
   estacionamientoController.eliminarCochera,
+);
+
+router.post(
+  '/:id/cocheras/:idCochera/bloquear',
+  ...soloPropietario,
+  validate(validarBloqueoCochera),
+  estacionamientoController.bloquearCochera,
+);
+
+router.post(
+  '/:id/cocheras/:idCochera/desbloquear',
+  ...soloPropietario,
+  estacionamientoController.desbloquearCochera,
 );
 
 export default router;

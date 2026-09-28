@@ -224,6 +224,15 @@ export function validarLoteCocheras(body) {
   return { valores, errores };
 }
 
+/** POST bloqueo de cochera: todo opcional, se puede bloquear sin motivo ni fecha. */
+export function validarBloqueoCochera(body) {
+  return campos(body)
+    .texto('motivo', body.motivo, { requerido: false, max: 300 })
+    .fechaHora('hasta', body.hasta, { requerido: false })
+    .booleano('forzar', body.forzar, { requerido: false, default: false })
+    .resultado();
+}
+
 /** PATCH de cochera: todo opcional, pero tiene que venir al menos un campo. */
 export function validarActualizacionCochera(body) {
   return campos(body)

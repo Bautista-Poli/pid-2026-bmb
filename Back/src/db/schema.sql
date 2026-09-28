@@ -361,3 +361,17 @@ BEGIN
   END IF;
 END
 $$;
+
+-- Bloqueo de cocheras por mantenimiento o uso interno. Separado de
+-- `estado_actual` a proposito: ese lo pisa solo el ciclo de la reserva
+-- (ingreso/egreso) y no tiene que poder tapar un bloqueo por accidente.
+-- `bloqueada_hasta` NULL = bloqueo indefinido, hasta que lo saquen a mano.
+ALTER TABLE cochera
+  ADD COLUMN IF NOT EXISTS bloqueada BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS motivo_bloqueo VARCHAR(300),
+  ADD COLUMN IF NOT EXISTS bloqueada_hasta TIMESTAMPTZ;
+
+-- Aviso para el conductor cuando el bloqueo de su cochera lo reasigna a otra
+-- o, sin alternativa, cancela su reserva (cochera.service.js: bloquear()).
+ALTER TABLE reserva
+  ADD COLUMN IF NOT EXISTS motivo_reasignacion VARCHAR(300);

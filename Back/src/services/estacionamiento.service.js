@@ -54,6 +54,7 @@ const AGREGADOS = `
      FROM cochera c
     WHERE c.id_estacionamiento = e.id_estacionamiento
       AND c.activo
+      AND NOT c.bloqueada
       AND c.estado_actual = 'LIBRE'
       AND NOT EXISTS (
         SELECT 1 FROM reserva r
@@ -214,9 +215,13 @@ export async function buscar(filtros) {
     );
   }
 
-  // Una cochera "sirve" si esta activa, es del tipo pedido (si se pidio) y, si se
-  // pidio disponibilidad, no tiene una reserva vigente que se pise.
-  const compatibles = ['ct.id_estacionamiento = e.id_estacionamiento', 'ct.activo = TRUE'];
+  // Una cochera "sirve" si esta activa, no esta bloqueada por mantenimiento,
+  // es del tipo pedido (si se pidio) y, si se pidio disponibilidad, no tiene
+  // una reserva vigente que se pise.
+  const compatibles = [
+    'ct.id_estacionamiento = e.id_estacionamiento', 'ct.activo = TRUE', 'NOT ct.bloqueada',
+  ];
+  const BASE_COMPATIBLES = compatibles.length;
 
   if (filtros.id_tipo_vehiculo !== undefined) {
     parametros.push(filtros.id_tipo_vehiculo);
@@ -240,7 +245,7 @@ export async function buscar(filtros) {
   const hayDisponibilidad = (filtros.inicio && filtros.fin) || filtros.disponible_ahora;
 
   if (filtros.incluir_no_disponibles && hayDisponibilidad) {
-    const soloTipo = compatibles.slice(0, filtros.id_tipo_vehiculo !== undefined ? 3 : 2);
+    const soloTipo = compatibles.slice(0, BASE_COMPATIBLES + (filtros.id_tipo_vehiculo !== undefined ? 1 : 0));
     const libre = [...compatibles];
     let abierto;
     if (filtros.inicio && filtros.fin) {
@@ -251,12 +256,12 @@ export async function buscar(filtros) {
       libre.push(`ct.estado_actual = 'LIBRE'`);
       abierto = abiertoEntre('now()', 'now()');
     }
-    if (soloTipo.length > 2) {
+    if (soloTipo.length > BASE_COMPATIBLES) {
       condiciones.push(`EXISTS (SELECT 1 FROM cochera ct WHERE ${soloTipo.join(' AND ')})`);
     }
     columnaDisponible = `,
       (EXISTS (SELECT 1 FROM cochera ct WHERE ${libre.join(' AND ')}) AND ${abierto}) AS disponible`;
-  } else if (compatibles.length > 2) {
+  } else if (compatibles.length > BASE_COMPATIBLES) {
     condiciones.push(`EXISTS (SELECT 1 FROM cochera ct WHERE ${compatibles.join(' AND ')})`);
   }
 

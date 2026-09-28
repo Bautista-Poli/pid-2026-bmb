@@ -78,7 +78,7 @@ const SELECT_DETALLE = `
          r.id_cochera, c.identificador AS cochera,
          c.sector AS cochera_sector, c.cubierta AS cochera_cubierta,
          e.id_estacionamiento, e.nombre AS estacionamiento, e.direccion,
-         r.modalidad, r.precio_total,
+         r.modalidad, r.precio_total, r.motivo_reasignacion,
          u.nombre AS conductor_nombre, u.apellido AS conductor_apellido
     FROM reserva r
     JOIN vehiculo v        ON v.id_vehiculo = r.id_vehiculo
@@ -205,7 +205,7 @@ async function asegurarVehiculoLibre(client, idVehiculo, inicio, fin) {
 /** Reserva de una cochera puntual: lock sobre esa fila y validaciones. */
 async function bloquearCochera(client, idCochera, vehiculo, inicio, fin) {
   const { rows: cocheras } = await client.query(
-    `SELECT c.id_cochera, c.identificador, c.estado_actual, c.activo,
+    `SELECT c.id_cochera, c.identificador, c.estado_actual, c.activo, c.bloqueada,
             c.id_tipo_vehiculo, c.id_estacionamiento,
             e.publicado, e.activo AS estacionamiento_activo
        FROM cochera c
@@ -218,7 +218,7 @@ async function bloquearCochera(client, idCochera, vehiculo, inicio, fin) {
   const cochera = cocheras[0];
   if (!cochera) throw ApiError.notFound('La cochera no existe');
 
-  if (!cochera.activo || cochera.estado_actual === ESTADOS_COCHERA.INACTIVA) {
+  if (!cochera.activo || cochera.estado_actual === ESTADOS_COCHERA.INACTIVA || cochera.bloqueada) {
     throw ApiError.conflict('La cochera no esta disponible para reservar');
   }
   if (!cochera.estacionamiento_activo || !cochera.publicado) {
@@ -278,6 +278,7 @@ async function asignarCochera(client, idEstacionamiento, vehiculo, inicio, fin) 
        FROM cochera c
       WHERE c.id_estacionamiento = $1
         AND c.activo
+        AND NOT c.bloqueada
         AND c.estado_actual <> $2
         AND c.id_tipo_vehiculo = $3
       ORDER BY c.id_cochera
@@ -560,6 +561,7 @@ export async function disponibilidad(idEstacionamiento, { fecha, id_tipo_vehicul
            FROM cochera c
           WHERE c.id_estacionamiento = $1
             AND c.activo
+            AND NOT c.bloqueada
             AND c.estado_actual <> $2
             AND ($3::smallint IS NULL OR c.id_tipo_vehiculo = $3)
             AND ${sinSolapamiento('$4', '$5', '$6')}`,
@@ -599,6 +601,7 @@ async function ingresosDelDia(idEstacionamiento, horarios, { fecha, id_tipo_vehi
                FROM cochera c
               WHERE c.id_estacionamiento = $1
                 AND c.activo
+                AND NOT c.bloqueada
                 AND c.estado_actual <> $2
                 AND ($3::smallint IS NULL OR c.id_tipo_vehiculo = $3)
                 AND ${sinSolapamiento('$4', 'i.inicio', 'i.inicio + make_interval(hours => $6::int)')}

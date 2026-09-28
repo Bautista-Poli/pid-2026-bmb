@@ -25,7 +25,7 @@ import {
   TipoVehiculo,
   Vehiculo,
 } from '@app/models';
-import { EstacionamientoService } from '@app/services/estacionamiento.service';
+import { EstacionamientoService, ordenarEstacionamientos } from '@app/services/estacionamiento.service';
 import { DireccionGeoref, GeorefService, ZonaBusqueda } from '@app/services/georef.service';
 import { UbicacionService } from '@app/services/ubicacion.service';
 import { VehiculoService } from '@app/services/vehiculo.service';
@@ -191,7 +191,7 @@ export class Mapa {
 
   /** El modal arranca con lo que esta en uso: si se cierra sin aplicar, no cambia nada. */
   protected abrirFiltros(): void {
-    this.panel.set(this.aplicado());
+    this.panel.set({ ...this.aplicado(), orden: this.orden() });
     this.intentoBuscar.set(false);
     this.filtrosAbiertos.set(true);
   }
@@ -200,22 +200,26 @@ export class Mapa {
     this.intentoBuscar.set(true);
     if (this.errorHorario()) return;
     this.aplicado.set(this.panel());
+    this.orden.set(this.panel().orden);
     this.filtrosAbiertos.set(false);
   }
 
   protected limpiarFiltros(): void {
-    const limpio = { ...PANEL_INICIAL, orden: this.aplicado().orden };
+    const limpio = { ...PANEL_INICIAL, orden: this.orden() };
     this.panel.set(limpio);
     this.aplicado.set(limpio);
     this.intentoBuscar.set(false);
     this.filtrosAbiertos.set(false);
   }
 
-  /** "Ordenar por" de los resultados: se aplica al toque. */
+  /**
+   * "Ordenar por" de los resultados: se aplica al toque. No toca `aplicado`, asi
+   * que no vuelve a pedir al backend: solo reordena lo que ya llego.
+   */
   protected ordenar(orden: string): void {
     const valor = orden as OrdenEstacionamiento;
     this.cambiar({ orden: valor });
-    this.aplicado.update((actual) => ({ ...actual, orden: valor }));
+    this.orden.set(valor);
   }
 
   /* -------------------------- Buscador y ubicacion ------------------------- */
@@ -318,7 +322,6 @@ export class Mapa {
       precioMinimo: panel.precioMinimo > 0 ? panel.precioMinimo : null,
       precioMaximo: panel.precioMaximo < PRECIO_TOPE ? panel.precioMaximo : null,
       soloCubiertos: panel.soloCubiertos,
-      orden: panel.orden,
       momento: momentoDe(panel),
       origen: this.origen(),
     };
@@ -330,8 +333,11 @@ export class Mapa {
     defaultValue: [] as Estacionamiento[],
   });
 
-  protected readonly resultados = computed(() => this.recurso.value());
-  protected readonly orden = computed(() => this.aplicado().orden);
+  /** El orden se resuelve en el front: cambiarlo no pide nada al backend. */
+  protected readonly orden = signal<OrdenEstacionamiento>(PANEL_INICIAL.orden);
+  protected readonly resultados = computed(() =>
+    ordenarEstacionamientos(this.recurso.value(), this.orden()),
+  );
 
   /** El que se toco en el mapa o sobre el que esta el mouse en la lista. */
   protected readonly seleccionadoId = signal<Id | null>(null);

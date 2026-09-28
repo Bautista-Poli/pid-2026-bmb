@@ -29,7 +29,7 @@ export class EstacionamientoService {
       .pipe(
         map(({ estacionamientos }) => estacionamientos.map(aEstacionamiento)),
         map((items) => conDistancia(items, filtros.origen)),
-        map((items) => ordenar(items, filtros)),
+        map((items) => ordenarEstacionamientos(items, filtros.orden)),
       );
   }
 
@@ -119,9 +119,15 @@ function conDistancia(
   });
 }
 
-/** Lo unico que no resuelve la API: el orden elegido. */
-function ordenar(items: Estacionamiento[], filtros: FiltrosEstacionamiento): Estacionamiento[] {
-  return [...items].sort(COMPARADORES[filtros.orden ?? 'DISTANCIA']);
+/**
+ * Lo unico que no resuelve la API: el orden elegido. Exportado para reordenar lo
+ * que ya llego sin volver a pedirlo.
+ */
+export function ordenarEstacionamientos(
+  items: Estacionamiento[],
+  orden: OrdenEstacionamiento | null | undefined,
+): Estacionamiento[] {
+  return [...items].sort(COMPARADORES[orden ?? 'DISTANCIA']);
 }
 
 function aParams(filtros: FiltrosEstacionamiento): HttpParams {

@@ -23,6 +23,11 @@ export interface Cochera {
   cubierta: boolean;
   /** Estado fisico, o RESERVADA mientras transcurre una reserva vigente. */
   estado: EstadoCochera;
+  /** Bloqueada por mantenimiento o uso interno: no se ofrece para reservar, sea cual sea `estado`. */
+  bloqueada: boolean;
+  motivoBloqueo: string | null;
+  /** Fin del bloqueo. `null` = indefinido, hasta que el propietario la desbloquee a mano. */
+  bloqueadaHasta: string | null;
 }
 
 /** Payload de `POST /api/estacionamientos/:id/cocheras`. */

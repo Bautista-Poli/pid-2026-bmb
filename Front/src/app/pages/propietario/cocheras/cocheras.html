@@ -65,14 +65,26 @@
                         <p class="mt-0.5 text-[12px] text-plomo">{{ detalle(cochera) }}</p>
                       </div>
 
-                      <div class="flex items-center gap-2">
+                      <div class="flex flex-wrap items-center gap-2">
                         <ui-etiqueta [tono]="tonoEstado[cochera.estado]">
                           {{ etiquetaEstado[cochera.estado] }}
                         </ui-etiqueta>
+                        @if (cochera.bloqueada) {
+                          <ui-etiqueta tono="aviso">Bloqueada</ui-etiqueta>
+                        }
                         @if (cochera.estado !== 'INACTIVA') {
                           <ui-boton tamano="sm" variante="fantasma" (presionado)="editar(cochera)">
                             Editar
                           </ui-boton>
+                          @if (cochera.bloqueada) {
+                            <ui-boton tamano="sm" variante="fantasma" (presionado)="desbloquear(cochera)">
+                              Desbloquear
+                            </ui-boton>
+                          } @else {
+                            <ui-boton tamano="sm" variante="fantasma" (presionado)="abrirBloqueo(cochera)">
+                              Bloquear
+                            </ui-boton>
+                          }
                           <ui-boton tamano="sm" variante="peligro" (presionado)="darDeBaja(cochera)">
                             Dar de baja
                           </ui-boton>
@@ -96,7 +108,58 @@
 
       <section class="order-first lg:order-last" aria-labelledby="titulo-formulario">
         <ui-tarjeta relleno="lg">
-          @if (editando(); as cochera) {
+          @if (bloqueando(); as cochera) {
+            <form class="flex flex-col gap-4" [formGroup]="formularioBloqueo" (ngSubmit)="confirmarBloqueo(false)" novalidate>
+              <div>
+                <h2 id="titulo-formulario" class="text-[15px] font-semibold text-tinta">
+                  Bloquear cochera {{ cochera.identificador }}
+                </h2>
+                <p class="mt-1 text-[12.5px] text-plomo">
+                  Sale de circulación: no se va a poder reservar. Si tiene reservas por delante las
+                  reasignamos solas a otra cochera compatible; si alguna no tiene dónde ir, te avisamos
+                  antes de bloquear nada.
+                </p>
+              </div>
+
+              <label class="campo">
+                <span class="label-campo">Motivo <span class="font-normal text-plomo">(opcional)</span></span>
+                <input type="text" formControlName="motivo" placeholder="Pintura, arreglo del portón…" />
+              </label>
+
+              <label class="campo">
+                <span class="label-campo">Bloqueada hasta <span class="font-normal text-plomo">(opcional)</span></span>
+                <input type="date" formControlName="hasta" />
+              </label>
+              <p class="text-[12px] text-plomo">Vacío = bloqueada hasta que la desbloquees vos.</p>
+
+              @if (error(); as mensaje) {
+                <p
+                  class="rounded-control border border-ocupada/25 bg-ocupada/5 px-4 py-3 text-[13px] text-ocupada"
+                  role="alert"
+                >
+                  {{ mensaje }}
+                </p>
+              }
+
+              <div class="flex flex-col gap-2">
+                @if (necesitaForzar()) {
+                  <ui-boton
+                    variante="peligro"
+                    [bloque]="true"
+                    [cargando]="enviando()"
+                    (presionado)="confirmarBloqueo(true)"
+                  >
+                    Bloquear igual y cancelar esas reservas
+                  </ui-boton>
+                } @else {
+                  <ui-boton variante="primario" tipo="submit" [bloque]="true" [cargando]="enviando()">
+                    Bloquear
+                  </ui-boton>
+                }
+                <ui-boton [bloque]="true" (presionado)="cancelarBloqueo()">Cancelar</ui-boton>
+              </div>
+            </form>
+          } @else if (editando(); as cochera) {
             <form class="flex flex-col gap-4" [formGroup]="formulario" (ngSubmit)="guardar()" novalidate>
               <h2 id="titulo-formulario" class="text-[15px] font-semibold text-tinta">
                 Editar cochera {{ cochera.identificador }}

@@ -164,6 +164,9 @@ export function aCochera(dto: CocheraDto): Cochera {
     tipoVehiculo: TIPO_POR_ID[dto.id_tipo_vehiculo],
     cubierta: dto.cubierta,
     estado: estadoDeCochera(dto),
+    bloqueada: dto.bloqueada,
+    motivoBloqueo: dto.motivo_bloqueo,
+    bloqueadaHasta: dto.bloqueada_hasta,
   };
 }
 
@@ -261,6 +264,7 @@ export function aReserva(dto: ReservaDto): ReservaDetallada {
     creadaEn: dto.created_at,
     ingresoEn: dto.ingreso_real,
     egresoEn: dto.egreso_real,
+    motivoReasignacion: dto.motivo_reasignacion,
     estacionamiento: {
       id: dto.id_estacionamiento,
       nombre: dto.estacionamiento,

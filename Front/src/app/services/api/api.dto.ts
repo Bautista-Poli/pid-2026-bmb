@@ -43,6 +43,9 @@ export interface CocheraDto {
   activo: boolean;
   id_tipo_vehiculo: number;
   reservada_ahora?: boolean;
+  bloqueada: boolean;
+  motivo_bloqueo: string | null;
+  bloqueada_hasta: string | null;
 }
 
 export interface EstacionamientoDto {
@@ -115,6 +118,7 @@ export interface ReservaDto {
   direccion: string;
   precio_total: number;
   modalidad: ModalidadReserva;
+  motivo_reasignacion: string | null;
 }
 
 export interface FranjaDto {

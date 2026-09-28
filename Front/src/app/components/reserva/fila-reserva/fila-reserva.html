@@ -1,45 +1,58 @@
-<div
-  class="flex items-center justify-between gap-4 border-t border-borde-sutil px-5 py-[15px]
-         transition-colors duration-160 ease-out hover:bg-lienzo lg:px-6"
->
-  <div class="min-w-0">
-    <p class="num-tabular truncate text-[13.5px] font-semibold text-tinta">{{ titulo() }}</p>
-    <p class="num-tabular mt-0.5 text-[12px] text-plomo">
-      @if (vista() === 'CONDUCTOR') {
-        {{ fecha() | date: 'EEE d MMM' }} ·
+<div class="border-t border-borde-sutil transition-colors duration-160 ease-out hover:bg-lienzo">
+  <div class="flex items-center justify-between gap-4 px-5 py-[15px] lg:px-6">
+    <div class="min-w-0">
+      <p class="num-tabular truncate text-[13.5px] font-semibold text-tinta">{{ titulo() }}</p>
+      <p class="num-tabular mt-0.5 text-[12px] text-plomo">
+        @if (vista() === 'CONDUCTOR') {
+          {{ fecha() | date: 'EEE d MMM' }} ·
+        }
+        {{ reserva().horaDesde }} – {{ reserva().horaHasta }}
+        @if (reserva().fechaHasta !== reserva().fecha) {
+          (día siguiente)
+        }
+        @if (reserva().modalidad !== 'HORA') {
+          · {{ etiquetaModalidad[reserva().modalidad] }}
+        }
+        · $ {{ reserva().precioTotal.toLocaleString('es-AR') }}
+      </p>
+    </div>
+
+    <div class="flex shrink-0 items-center gap-2">
+      <ui-etiqueta [tono]="tonoEstado()">{{ etiquetaEstado[reserva().estado] }}</ui-etiqueta>
+      @if (permiteGestionar() && paso(); as etiqueta) {
+        <ui-boton
+          variante="primario"
+          tamano="sm"
+          [cargando]="procesando()"
+          (presionado)="avanzar.emit(reserva())"
+        >
+          {{ etiqueta }}
+        </ui-boton>
       }
-      {{ reserva().horaDesde }} – {{ reserva().horaHasta }}
-      @if (reserva().fechaHasta !== reserva().fecha) {
-        (día siguiente)
+      @if (permiteCancelar() && cancelable()) {
+        <ui-boton
+          variante="peligro"
+          tamano="sm"
+          [cargando]="cancelando()"
+          (presionado)="cancelar.emit(reserva())"
+        >
+          Cancelar
+        </ui-boton>
       }
-      @if (reserva().modalidad !== 'HORA') {
-        · {{ etiquetaModalidad[reserva().modalidad] }}
-      }
-      · $ {{ reserva().precioTotal.toLocaleString('es-AR') }}
-    </p>
+    </div>
   </div>
 
-  <div class="flex shrink-0 items-center gap-2">
-    <ui-etiqueta [tono]="tonoEstado()">{{ etiquetaEstado[reserva().estado] }}</ui-etiqueta>
-    @if (permiteGestionar() && paso(); as etiqueta) {
-      <ui-boton
-        variante="primario"
-        tamano="sm"
-        [cargando]="procesando()"
-        (presionado)="avanzar.emit(reserva())"
-      >
-        {{ etiqueta }}
-      </ui-boton>
-    }
-    @if (permiteCancelar() && cancelable()) {
-      <ui-boton
-        variante="peligro"
-        tamano="sm"
-        [cargando]="cancelando()"
-        (presionado)="cancelar.emit(reserva())"
-      >
-        Cancelar
-      </ui-boton>
-    }
-  </div>
+  @if (reserva().motivoReasignacion; as motivo) {
+    <p
+      class="mx-5 mb-3 rounded-control px-3 py-2 text-[12px] lg:mx-6"
+      [class]="
+        reserva().estado === 'CANCELADA'
+          ? 'border border-ocupada/25 bg-ocupada/5 text-ocupada'
+          : 'border border-aviso/25 bg-aviso/5 text-aviso'
+      "
+      role="status"
+    >
+      {{ motivo }}
+    </p>
+  }
 </div>

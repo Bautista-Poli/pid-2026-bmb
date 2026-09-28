@@ -60,6 +60,37 @@ export class CocheraService {
       .delete<{ cochera: CocheraDto }>(rutaCochera(cochera))
       .pipe(map((respuesta) => aCochera(respuesta.cochera)));
   }
+
+  /**
+   * `POST /api/estacionamientos/:id/cocheras/:idCochera/bloquear`
+   * Sin `forzar`, si alguna reserva no tiene otra cochera para reasignar el
+   * backend responde 409 explicando cuales. Con `forzar: true` esas puntuales
+   * se cancelan en vez de trabar el bloqueo.
+   */
+  bloquear(
+    cochera: Cochera,
+    datos: { motivo?: string; hasta?: string | null; forzar?: boolean },
+  ): Observable<{ cochera: Cochera; reasignadas: number; canceladas: number }> {
+    return this.http
+      .post<{ cochera: CocheraDto; reasignadas: number; canceladas: number }>(
+        `${rutaCochera(cochera)}/bloquear`,
+        { motivo: datos.motivo || undefined, hasta: datos.hasta || undefined, forzar: datos.forzar },
+      )
+      .pipe(
+        map((respuesta) => ({
+          cochera: aCochera(respuesta.cochera),
+          reasignadas: respuesta.reasignadas,
+          canceladas: respuesta.canceladas,
+        })),
+      );
+  }
+
+  /** `POST /api/estacionamientos/:id/cocheras/:idCochera/desbloquear` */
+  desbloquear(cochera: Cochera): Observable<Cochera> {
+    return this.http
+      .post<{ cochera: CocheraDto }>(`${rutaCochera(cochera)}/desbloquear`, {})
+      .pipe(map((respuesta) => aCochera(respuesta.cochera)));
+  }
 }
 
 function rutaCocheras(estacionamientoId: Id): string {

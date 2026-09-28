@@ -43,6 +43,8 @@ export interface Reserva {
   /** Horas reales que registra el propietario. */
   ingresoEn: FechaHoraISO | null;
   egresoEn: FechaHoraISO | null;
+  /** Aviso cuando el bloqueo de la cochera original la reasignó o, sin alternativa, la canceló. */
+  motivoReasignacion: string | null;
 }
 
 /**

@@ -306,7 +306,9 @@ export function aFranja(dto: FranjaDto): FranjaDisponible {
   return {
     horaDesde: dto.hora_desde,
     horaHasta: dto.hora_hasta,
+    fechaHasta: dto.fecha_hasta ?? null,
     disponible: dto.disponible,
     cocherasLibres: dto.cocheras_libres,
+    causa: dto.causa ?? null,
   };
 }

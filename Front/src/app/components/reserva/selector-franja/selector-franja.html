@@ -1,5 +1,5 @@
-<div class="grid grid-cols-2 gap-2.5 lg:grid-cols-4" role="radiogroup" aria-label="Franja horaria">
-  @for (franja of franjas(); track franja.horaDesde) {
+<div class="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-5" role="radiogroup" aria-label="Hora de ingreso">
+  @for (franja of visibles(); track franja.horaDesde) {
     <button
       type="button"
       class="franja"
@@ -7,10 +7,13 @@
       [class.franja--activa]="esActiva(franja)"
       [disabled]="!franja.disponible"
       [attr.aria-checked]="esActiva(franja)"
-      [attr.title]="franja.disponible ? null : 'Sin cocheras libres en esta franja'"
+      [attr.title]="franja.disponible ? null : 'Sin cocheras libres en ese horario'"
       (click)="rangoElegido.emit({ horaDesde: franja.horaDesde, horaHasta: franja.horaHasta })"
     >
-      <span class="num-tabular">{{ franja.horaDesde }} – {{ franja.horaHasta }}</span>
+      <span class="num-tabular text-[14px] font-semibold">{{ franja.horaDesde }}</span>
+      <span class="num-tabular franja__salida">
+        hasta {{ franja.horaHasta }}@if (diaSiguiente(franja)) {<sup>+1</sup>}
+      </span>
     </button>
   }
 </div>

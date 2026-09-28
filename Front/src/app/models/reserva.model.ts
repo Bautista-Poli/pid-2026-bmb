@@ -71,14 +71,23 @@ export interface ConsultaDisponibilidad {
   estacionamientoId: Id;
   fecha: FechaISO;
   tipoVehiculo?: TipoVehiculo | null;
+  /** Con modalidad (y `horas` si es por hora) devuelve un ingreso por cada hora del dia. */
+  modalidad?: ModalidadReserva;
+  horas?: number;
 }
+
+/** Por que no se puede reservar una franja. */
+export type CausaNoDisponible = 'HORARIO' | 'PASADO' | 'SIN_LUGAR';
 
 /** Franja ofrecida por el backend para una fecha dada. */
 export interface FranjaDisponible {
   horaDesde: HoraHHmm;
   horaHasta: HoraHHmm;
+  /** Dia en que termina: distinto de la fecha pedida si pasa de la medianoche. */
+  fechaHasta: FechaISO | null;
   disponible: boolean;
   cocherasLibres: number;
+  causa: CausaNoDisponible | null;
 }
 
 /** Estado del formulario de reserva mientras el usuario lo completa. */
@@ -89,6 +98,8 @@ export interface BorradorReserva {
   fecha: FechaISO | null;
   horaDesde: HoraHHmm | null;
   horaHasta: HoraHHmm | null;
+  /** Horas a reservar. 12 y 24 pueden ser estadia y jornada (ver `modalidadPorHoras`). */
+  horas: number;
 }
 
 export const BORRADOR_VACIO: BorradorReserva = {
@@ -98,6 +109,7 @@ export const BORRADOR_VACIO: BorradorReserva = {
   fecha: null,
   horaDesde: null,
   horaHasta: null,
+  horas: 2,
 };
 
 /** Estados sobre los que el conductor todavia puede accionar. */

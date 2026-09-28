@@ -195,6 +195,42 @@ describe('nada se reserva dos veces', () => {
     assert.equal(franjaDespues.cocheras_libres, 0);
     assert.equal(franjaDespues.disponible, false);
   });
+
+  test('disponibilidad por ingreso: una franja por hora con la duracion pedida', async () => {
+    const horarios = [0, 1, 2, 3, 4, 5, 6].map((dia_semana) => ({
+      dia_semana,
+      hora_apertura: '08:00',
+      hora_cierre: '20:00',
+    }));
+    const { conductor, estacionamiento, vehiculo } = await escenario({
+      horarios,
+      tarifas: { tarifa_hora: 1000, tarifa_estadia: 8000 },
+    });
+    const cuando = franja('10:00', '13:00');
+    await reservar(conductor, estacionamiento, vehiculo, cuando);
+    const fecha = cuando.inicio.slice(0, 10);
+    const ruta = `/estacionamientos/${estacionamiento.id_estacionamiento}/disponibilidad?fecha=${fecha}`;
+    const ingreso = (franjas, hora) => franjas.find((f) => f.hora_desde === hora);
+
+    const porHora = (await api('GET', `${ruta}&modalidad=HORA&horas=2`)).datos.franjas;
+    assert.equal(porHora.length, 24);
+    assert.equal(ingreso(porHora, '08:00').disponible, true);
+    assert.equal(ingreso(porHora, '08:00').hora_hasta, '10:00');
+    assert.equal(ingreso(porHora, '09:00').causa, 'SIN_LUGAR');
+    assert.equal(ingreso(porHora, '12:00').causa, 'SIN_LUGAR');
+    assert.equal(ingreso(porHora, '13:00').disponible, true);
+    assert.equal(ingreso(porHora, '19:00').causa, 'HORARIO');
+    assert.equal(ingreso(porHora, '06:00').causa, 'HORARIO');
+
+    // La estadia puede seguir despues del cierre: alcanza con entrar abierto.
+    const estadia = (await api('GET', `${ruta}&modalidad=ESTADIA`)).datos.franjas;
+    assert.equal(ingreso(estadia, '19:00').disponible, true);
+    assert.equal(ingreso(estadia, '19:00').hora_hasta, '07:00');
+    assert.notEqual(ingreso(estadia, '19:00').fecha_hasta, fecha);
+    assert.equal(ingreso(estadia, '08:00').causa, 'SIN_LUGAR');
+
+    assert.equal((await api('GET', `${ruta}&modalidad=HORA`)).estado, 400);
+  });
 });
 
 describe('cancelacion', () => {

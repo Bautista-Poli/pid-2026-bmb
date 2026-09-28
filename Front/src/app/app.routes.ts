@@ -36,10 +36,13 @@ export const routes: Routes = [
     loadComponent: () => import('./layouts/layout-app/layout-app').then((m) => m.LayoutApp),
     children: [
       {
+        // Explorar es el mapa: busqueda, filtros y resultados sobre el mapa.
         path: 'explorar',
         title: 'Parkit · Explorar',
-        loadComponent: () => import('./pages/conductor/explorar/explorar').then((m) => m.Explorar),
+        loadComponent: () => import('./pages/conductor/mapa/mapa').then((m) => m.Mapa),
       },
+      // Direccion vieja de la vista de mapa, por si quedo en algun enlace o favorito.
+      { path: 'mapa', pathMatch: 'full', redirectTo: 'explorar' },
       {
         path: 'reservar/:estacionamientoId',
         title: 'Parkit · Reservar',

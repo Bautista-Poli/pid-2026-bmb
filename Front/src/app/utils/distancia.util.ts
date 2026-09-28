@@ -45,3 +45,11 @@ export function porCercania(
 ): number {
   return (a.distanciaKm ?? Number.POSITIVE_INFINITY) - (b.distanciaKm ?? Number.POSITIVE_INFINITY) || 0;
 }
+
+/** Paso de una persona caminando: ~4,8 km/h. */
+const METROS_POR_MINUTO_A_PIE = 80;
+
+/** Minutos caminando en linea recta (al menos 1). Es una estimacion, no una ruta. */
+export function minutosAPie(km: number): number {
+  return Math.max(1, Math.round((km * 1000) / METROS_POR_MINUTO_A_PIE));
+}

@@ -1,4 +1,4 @@
-import { distanciaHasta, distanciaKm, porCercania } from './distancia.util';
+import { distanciaHasta, distanciaKm, minutosAPie, porCercania } from './distancia.util';
 
 const OBELISCO = { latitud: -34.603722, longitud: -58.381592 };
 const CONGRESO = { latitud: -34.609722, longitud: -58.392222 };
@@ -47,5 +47,13 @@ describe('porCercania', () => {
       'sin-dato',
       'sin-dato-2',
     ]);
+  });
+});
+
+describe('minutosAPie', () => {
+  it('estima a ~80 m por minuto y nunca da 0', () => {
+    expect(minutosAPie(0.4)).toBe(5);
+    expect(minutosAPie(1.2)).toBe(15);
+    expect(minutosAPie(0.01)).toBe(1);
   });
 });

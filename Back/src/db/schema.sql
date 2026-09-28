@@ -343,3 +343,21 @@ EXCEPTION WHEN OTHERS THEN
   RAISE NOTICE 'No se pudo recrear el EXCLUDE constraint reserva_vehiculo_sin_solapamiento: %', SQLERRM;
 END
 $$;
+
+-- Politica de cancelacion configurable por estacionamiento: horas minimas de
+-- anticipacion para cancelar una reserva ya CONFIRMADA. NULL = sin
+-- restriccion (comportamiento de antes, solo se bloquea si ya termino).
+ALTER TABLE estacionamiento
+  ADD COLUMN IF NOT EXISTS politica_cancelacion_horas DECIMAL(5, 2);
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'estacionamiento_politica_cancelacion_no_negativa'
+  ) THEN
+    ALTER TABLE estacionamiento
+      ADD CONSTRAINT estacionamiento_politica_cancelacion_no_negativa
+        CHECK (politica_cancelacion_horas IS NULL OR politica_cancelacion_horas >= 0);
+  END IF;
+END
+$$;

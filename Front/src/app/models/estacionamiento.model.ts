@@ -41,6 +41,8 @@ export interface Estacionamiento {
   emailContacto: string | null;
   horarios: FranjaAtencion[];
   tarifas: Tarifas;
+  /** Horas minimas de anticipacion para cancelar una reserva confirmada. `null` = sin restriccion. */
+  politicaCancelacionHoras: number | null;
   /** Derivados del agregado de Cochera, los calcula el backend. */
   cocherasTotales: number;
   /** Cocheras libres en este momento. */
@@ -117,6 +119,7 @@ export interface NuevoEstacionamiento {
   telefonoContacto?: string | null;
   emailContacto?: string | null;
   tarifas: Tarifas;
+  politicaCancelacionHoras?: number | null;
   cubierto?: boolean;
   publicado: boolean;
   horarios: FranjaAtencion[];

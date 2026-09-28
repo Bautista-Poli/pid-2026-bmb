@@ -91,6 +91,7 @@ export function aEstacionamiento(dto: EstacionamientoDto): Estacionamiento {
     emailContacto: dto.email_contacto,
     horarios: (dto.horarios ?? []).map(aFranjaAtencion),
     tarifas: { hora: dto.tarifa_hora, estadia: dto.tarifa_estadia, jornada: dto.tarifa_jornada },
+    politicaCancelacionHoras: dto.politica_cancelacion_horas,
     cocherasTotales: dto.cocheras_activas ?? 0,
     cocherasDisponibles: dto.cocheras_libres ?? 0,
     disponible: dto.disponible,
@@ -131,6 +132,7 @@ export function aPayloadEstacionamiento(datos: NuevoEstacionamiento) {
     tarifa_hora: datos.tarifas.hora,
     tarifa_estadia: datos.tarifas.estadia,
     tarifa_jornada: datos.tarifas.jornada,
+    politica_cancelacion_horas: datos.politicaCancelacionHoras,
     cubierto: datos.cubierto,
     publicado: datos.publicado,
     horarios: datos.horarios.map((franja) => ({

@@ -370,11 +370,22 @@ export async function listarPorEstacionamiento(idEstacionamiento, idPropietario,
   return rows;
 }
 
-/** El conductor cancela una reserva propia que todavia no arranco (PENDIENTE o CONFIRMADA). */
+/**
+ * El conductor cancela una reserva propia que todavia no arranco (PENDIENTE o
+ * CONFIRMADA). La politica de cancelacion del estacionamiento (horas minimas
+ * de anticipacion) solo aplica una vez CONFIRMADA: mientras esta PENDIENTE el
+ * dueño todavia no la acepto, asi que el conductor se puede arrepentir libre.
+ */
 export async function cancelar(idReserva, idConductor) {
   return withTransaction(async (client) => {
     const { rows } = await client.query(
-      `SELECT id_reserva, id_conductor, estado, fin FROM reserva WHERE id_reserva = $1 FOR UPDATE`,
+      `SELECT r.id_reserva, r.id_conductor, r.estado, r.inicio, r.fin,
+              e.politica_cancelacion_horas
+         FROM reserva r
+         JOIN cochera c         ON c.id_cochera = r.id_cochera
+         JOIN estacionamiento e ON e.id_estacionamiento = c.id_estacionamiento
+        WHERE r.id_reserva = $1
+        FOR UPDATE OF r`,
       [idReserva],
     );
 
@@ -391,6 +402,14 @@ export async function cancelar(idReserva, idConductor) {
     }
     if (reserva.fin <= new Date()) {
       throw ApiError.conflict('La reserva ya termino');
+    }
+    if (reserva.estado === ESTADOS_RESERVA.CONFIRMADA && reserva.politica_cancelacion_horas != null) {
+      const margenMs = reserva.politica_cancelacion_horas * 60 * 60 * 1000;
+      if (reserva.inicio.getTime() - Date.now() < margenMs) {
+        throw ApiError.conflict(
+          `Este estacionamiento exige cancelar con ${reserva.politica_cancelacion_horas} hora(s) de anticipacion`,
+        );
+      }
     }
 
     await cambiarEstado(client, reserva, ESTADOS_RESERVA.CANCELADA);

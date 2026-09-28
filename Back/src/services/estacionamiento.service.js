@@ -27,14 +27,15 @@ const COLUMNAS = [
   'id_estacionamiento', 'id_propietario', 'nombre', 'descripcion', 'direccion',
   'calle', 'numero', 'ciudad', 'provincia', 'codigo_postal', 'barrio_zona',
   'latitud', 'longitud', 'telefono_contacto', 'email_contacto',
-  'tarifa_hora', 'tarifa_estadia', 'tarifa_jornada',
+  'tarifa_hora', 'tarifa_estadia', 'tarifa_jornada', 'politica_cancelacion_horas',
   'cubierto', 'publicado', 'activo',
 ];
 
 const CAMPOS_EDITABLES = [
   'nombre', 'descripcion', 'calle', 'numero', 'ciudad', 'provincia', 'codigo_postal',
   'barrio_zona', 'latitud', 'longitud', 'telefono_contacto', 'email_contacto',
-  'tarifa_hora', 'tarifa_estadia', 'tarifa_jornada', 'cubierto', 'publicado',
+  'tarifa_hora', 'tarifa_estadia', 'tarifa_jornada', 'politica_cancelacion_horas',
+  'cubierto', 'publicado',
 ];
 
 const CAMPOS = COLUMNAS.join(', ');
@@ -113,8 +114,8 @@ export async function crear(idPropietario, entrada) {
       `INSERT INTO estacionamiento
          (id_propietario, nombre, descripcion, direccion, calle, numero, ciudad, provincia,
           codigo_postal, barrio_zona, latitud, longitud, telefono_contacto, email_contacto,
-          tarifa_hora, tarifa_estadia, tarifa_jornada, cubierto, publicado)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+          tarifa_hora, tarifa_estadia, tarifa_jornada, politica_cancelacion_horas, cubierto, publicado)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
        RETURNING ${CAMPOS}`,
       [
         idPropietario,
@@ -134,6 +135,7 @@ export async function crear(idPropietario, entrada) {
         datos.tarifa_hora ?? null,
         datos.tarifa_estadia ?? null,
         datos.tarifa_jornada ?? null,
+        datos.politica_cancelacion_horas ?? null,
         datos.cubierto ?? false,
         datos.publicado ?? false,
       ],

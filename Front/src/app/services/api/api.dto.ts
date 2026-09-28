@@ -65,6 +65,8 @@ export interface EstacionamientoDto {
   tarifa_hora: number | null;
   tarifa_estadia: number | null;
   tarifa_jornada: number | null;
+  /** Horas minimas de anticipacion para cancelar una reserva ya confirmada. `null` = sin restriccion. */
+  politica_cancelacion_horas: number | null;
   cubierto: boolean;
   publicado: boolean;
   activo: boolean;

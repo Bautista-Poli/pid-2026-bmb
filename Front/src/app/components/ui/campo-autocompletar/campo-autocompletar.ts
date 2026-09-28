@@ -11,6 +11,7 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { Observable, Subject, catchError, debounceTime, of, switchMap, tap } from 'rxjs';
+import type { NombreIcono } from '../icono/icono';
 
 export interface Sugerencia<T = unknown> {
   /** Lo que se escribe en el campo y queda como valor del control. */
@@ -19,6 +20,8 @@ export interface Sugerencia<T = unknown> {
   detalle?: string;
   /** Lo que quiera guardar quien usa el campo (por ejemplo, un id). */
   dato?: T;
+  /** Icono que dice que tipo de lugar es (calle, plaza, barrio...). */
+  icono?: NombreIcono;
 }
 
 let siguienteId = 0;

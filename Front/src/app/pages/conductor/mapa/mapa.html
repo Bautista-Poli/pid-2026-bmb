@@ -1,10 +1,18 @@
 <!--
   Mobile: buscador (con filtros plegables) -> mapa -> lista, uno debajo del otro.
-  Desktop: columna izquierda con buscador, filtros y resultados (scrollea sola)
-  y el mapa ocupando el resto. El wrapper de la izquierda es `contents` en
-  mobile para que sus dos partes puedan ubicarse arriba y abajo del mapa.
+  Desktop: la pantalla ocupa exactamente el alto de la ventana (menos la barra de
+  arriba). La columna izquierda (buscador, filtros y resultados) scrollea sola y
+  el mapa queda fijo. Para eso:
+    - `lg:flex-none`: con `flex-1` el alto fijo se ignora y la grilla crece;
+    - `lg:grid-rows-[minmax(0,1fr)]`: sin esto la fila crece con los resultados;
+    - `lg:overflow-hidden`: nada se sale de la ventana.
+  El wrapper de la izquierda es `contents` en mobile para que sus dos partes
+  puedan ubicarse arriba y abajo del mapa.
 -->
-<div class="flex flex-1 flex-col lg:grid lg:h-[calc(100dvh-4rem)] lg:grid-cols-[minmax(380px,460px)_1fr]">
+<div
+  class="flex flex-1 flex-col lg:grid lg:h-[calc(100dvh-4rem)] lg:flex-none lg:grid-cols-[minmax(380px,460px)_1fr]
+         lg:grid-rows-[minmax(0,1fr)] lg:overflow-hidden"
+>
   <div
     class="contents lg:flex lg:min-h-0 lg:flex-col lg:overflow-y-auto lg:border-r lg:border-borde lg:bg-papel"
   >
@@ -18,6 +26,7 @@
           etiqueta="Buscar por dirección, lugar o zona"
           marcador="Buscar por dirección, lugar o zona..."
           [valor]="texto()"
+          [minimo]="3"
           [buscar]="buscarDirecciones"
           (valorChange)="escribir($event)"
           (elegida)="elegirDestino($event)"
@@ -252,7 +261,7 @@
                 [class.border-borde]="seleccionadoId() !== estacionamiento.id"
                 (mouseenter)="seleccionadoId.set(estacionamiento.id)"
                 (focus)="seleccionadoId.set(estacionamiento.id)"
-                (click)="irAReservar(estacionamiento)"
+                (click)="abrir(estacionamiento)"
               >
                 @if (estacionamiento.fotoUrl; as foto) {
                   <img [src]="foto" alt="" loading="lazy" class="size-12 shrink-0 rounded-full object-cover" />
@@ -299,15 +308,35 @@
   </div>
 
   <!-- =================================== Mapa =================================== -->
-  <app-mapa-estacionamientos
-    class="order-2 h-[52vh] min-h-[320px] lg:h-full"
-    [estacionamientos]="resultados()"
-    [ubicacion]="ubicacionActual()"
-    [destino]="destino()?.coordenadas ?? null"
-    [tituloOrigen]="tituloOrigen()"
-    [detalleOrigen]="detalleOrigen()"
-    [seleccionadoId]="seleccionadoId()"
-    (seleccionar)="seleccionarDesdeMapa($event)"
-    (pedirUbicacion)="usarMiUbicacion()"
-  />
+  <div class="relative order-2 h-[52vh] min-h-[320px] lg:h-full lg:min-h-0">
+    <app-mapa-estacionamientos
+      class="size-full"
+      [estacionamientos]="resultados()"
+      [ubicacion]="ubicacionActual()"
+      [destino]="destino()?.coordenadas ?? null"
+      [tituloOrigen]="tituloOrigen()"
+      [detalleOrigen]="detalleOrigen()"
+      [seleccionadoId]="seleccionadoId()"
+      (seleccionar)="seleccionarDesdeMapa($event)"
+      (pedirUbicacion)="usarMiUbicacion()"
+    />
+
+    <!-- Ficha del elegido: tarjeta sobre el mapa en desktop, hoja desde abajo en mobile -->
+    @if (abierto(); as elegido) {
+      <button
+        type="button"
+        class="fixed inset-0 z-[1050] bg-tinta/30 lg:hidden"
+        aria-label="Cerrar"
+        (click)="cerrarDetalle()"
+      ></button>
+      <app-detalle-estacionamiento
+        class="fixed inset-x-0 bottom-0 z-[1100] max-h-[85dvh]
+               lg:absolute lg:inset-x-auto lg:top-4 lg:right-4 lg:bottom-4 lg:max-h-none lg:w-[360px]"
+        [estacionamiento]="elegido"
+        [cuando]="cuando()"
+        (cerrar)="cerrarDetalle()"
+        (reservar)="irAReservar($event)"
+      />
+    }
+  </div>
 </div>

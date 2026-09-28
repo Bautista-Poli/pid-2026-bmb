@@ -26,7 +26,11 @@ export type NombreIcono =
   | 'navegar'
   | 'techo'
   | 'moneda'
-  | 'buscar';
+  | 'buscar'
+  | 'calle'
+  | 'arbol'
+  | 'ciudad'
+  | 'esquina';
 
 /**
  * Icono de linea sobre un lienzo de 24x24. Todos comparten estilo (trazo de
@@ -159,6 +163,25 @@ export type NombreIcono =
         @case ('buscar') {
           <circle cx="10.8" cy="10.8" r="6.3" />
           <path d="m15.5 15.5 4.4 4.4" />
+        }
+        @case ('calle') {
+          <path d="M8.2 3.5 5.4 20.5M15.8 3.5l2.8 17" />
+          <path d="M12 4.5v2.6M12 10.7v2.6M12 16.9v2.6" />
+        }
+        @case ('arbol') {
+          <path d="M12 21v-6.2" />
+          <path d="M12 14.8c3.9 0 6.4-2.1 6.4-5.1 0-2.6-2-4.6-4.3-5-.6-1-1.3-1.2-2.1-1.2s-1.5.2-2.1 1.2c-2.3.4-4.3 2.4-4.3 5 0 3 2.5 5.1 6.4 5.1Z" />
+          <path d="M9.4 21h5.2" />
+        }
+        @case ('ciudad') {
+          <path d="M3.5 20.5h17" />
+          <path d="M5.5 20.5V9.4l5-2.4v13.5" />
+          <path d="M10.5 20.5V4.2l8 3.3v13" />
+          <path d="M13.4 9.2h2.2M13.4 12.4h2.2M13.4 15.6h2.2M7.5 12.4h1M7.5 15.6h1" />
+        }
+        @case ('esquina') {
+          <path d="M9 3.5v17M15 3.5v17M3.5 9h17M3.5 15h17" />
+          <circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none" />
         }
       }
     </svg>

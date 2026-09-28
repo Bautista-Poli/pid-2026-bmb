@@ -14,7 +14,6 @@ import {
   ReservaDetallada,
   Tarifas,
 } from '@app/models';
-import { duracionEnHoras } from '@app/utils/fecha.util';
 import { calcularPrecio } from '@app/utils/tarifa.util';
 import { FranjaDto, ReservaDto } from './api/api.dto';
 import { ID_TIPO_VEHICULO, aFranja, aPayloadReserva, aReserva } from './api/api.mapeo';
@@ -35,9 +34,8 @@ export class ReservaService {
 
   /** Horas del borrador: las elegidas por hora, o el bloque fijo de estadia / jornada. */
   readonly duracionHoras = computed(() => {
-    const { modalidad, horaDesde, horaHasta } = this.borradorInterno();
-    if (modalidad !== 'HORA') return HORAS_POR_MODALIDAD[modalidad];
-    return horaDesde && horaHasta ? duracionEnHoras(horaDesde, horaHasta) : 0;
+    const { modalidad, horas } = this.borradorInterno();
+    return modalidad === 'HORA' ? horas : HORAS_POR_MODALIDAD[modalidad];
   });
 
   readonly borradorCompleto = computed(() => {
@@ -84,6 +82,8 @@ export class ReservaService {
     if (consulta.tipoVehiculo) {
       params = params.set('id_tipo_vehiculo', ID_TIPO_VEHICULO[consulta.tipoVehiculo]);
     }
+    if (consulta.modalidad) params = params.set('modalidad', consulta.modalidad);
+    if (consulta.horas) params = params.set('horas', consulta.horas);
 
     return this.http
       .get<{ franjas: FranjaDto[] }>(

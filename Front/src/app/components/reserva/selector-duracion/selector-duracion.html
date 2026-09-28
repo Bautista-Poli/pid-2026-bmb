@@ -1,0 +1,50 @@
+<div class="flex flex-col gap-3.5">
+  <div class="flex items-center gap-4">
+    <button
+      type="button"
+      class="grid size-10 place-items-center rounded-full border border-borde bg-papel text-tinta
+             transition-colors duration-160 hover:border-acento-borde disabled:opacity-40"
+      aria-label="Menos horas"
+      [disabled]="anterior() === undefined"
+      (click)="horasChange.emit(anterior()!)"
+    >
+      <ui-icono nombre="menos" [tamano]="18" />
+    </button>
+    <div class="flex min-w-24 flex-col items-center" aria-live="polite">
+      <span class="num-tabular text-[24px] leading-none font-semibold tracking-[-0.02em] text-tinta">
+        {{ horas() }} h
+      </span>
+      @if (tarifaEspecial(); as etiqueta) {
+        <span class="mt-1.5 rounded-full bg-acento-suave px-2 py-0.5 text-[11px] font-semibold text-acento-fuerte">
+          {{ etiqueta }}
+        </span>
+      }
+    </div>
+    <button
+      type="button"
+      class="grid size-10 place-items-center rounded-full border border-borde bg-papel text-tinta
+             transition-colors duration-160 hover:border-acento-borde disabled:opacity-40"
+      aria-label="Más horas"
+      [disabled]="siguiente() === undefined"
+      (click)="horasChange.emit(siguiente()!)"
+    >
+      <ui-icono nombre="mas" [tamano]="18" />
+    </button>
+  </div>
+
+  <div class="flex flex-wrap gap-2" role="radiogroup" aria-label="Duración">
+    @for (atajo of atajos(); track atajo.horas) {
+      <button
+        type="button"
+        class="atajo"
+        role="radio"
+        [class.atajo--activo]="atajo.horas === horas()"
+        [attr.aria-checked]="atajo.horas === horas()"
+        (click)="horasChange.emit(atajo.horas)"
+      >
+        <span class="font-semibold">{{ atajo.etiqueta }}</span>
+        <span class="num-tabular atajo__precio">{{ atajo.precio }}</span>
+      </button>
+    }
+  </div>
+</div>

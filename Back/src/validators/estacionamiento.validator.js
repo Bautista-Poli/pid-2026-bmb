@@ -1,5 +1,5 @@
 import { ESTADOS_COCHERA } from '../utils/roles.js';
-import { CAMPOS_TARIFA } from '../utils/tarifas.js';
+import { CAMPOS_TARIFA, MODALIDADES } from '../utils/tarifas.js';
 import { campos } from './helpers.js';
 
 const REGEX_FECHA = /^\d{4}-\d{2}-\d{2}$/;
@@ -298,12 +298,22 @@ export function validarBusqueda(query) {
   return { valores, errores };
 }
 
-/** GET /api/estacionamientos/:id/disponibilidad?fecha=YYYY-MM-DD[&id_tipo_vehiculo=1] */
+/**
+ * GET /api/estacionamientos/:id/disponibilidad?fecha=YYYY-MM-DD[&id_tipo_vehiculo=1]
+ * [&modalidad=HORA&horas=3]. Con `horas` o `modalidad` devuelve un ingreso por
+ * cada hora del dia; sin ninguno, las franjas estandar.
+ */
 export function validarDisponibilidad(query) {
   const { valores, errores } = campos(query)
     .texto('fecha', query.fecha, { min: 10, max: 10 })
     .entero('id_tipo_vehiculo', query.id_tipo_vehiculo, { requerido: false, min: 1 })
+    .enumerado('modalidad', query.modalidad, Object.values(MODALIDADES), { requerido: false })
+    .entero('horas', query.horas, { requerido: false, min: 1, max: 24 })
     .resultado();
+
+  if (valores.modalidad === MODALIDADES.HORA && valores.horas === undefined) {
+    errores.push({ campo: 'horas', mensaje: 'requerido con la modalidad HORA' });
+  }
 
   validarFecha(valores, errores);
   return { valores, errores };

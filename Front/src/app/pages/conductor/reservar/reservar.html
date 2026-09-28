@@ -77,6 +77,31 @@
           <p class="num-tabular mt-1.5 text-[13.5px] text-plomo">{{ contexto() }}</p>
         </header>
 
+        <!-- Foto del estacionamiento -->
+        @if (estacionamiento.fotoUrl; as foto) {
+          <img
+            [src]="foto"
+            [alt]="'Foto de ' + estacionamiento.nombre"
+            class="aspect-[16/9] w-full rounded-tarjeta border border-borde object-cover shadow-tarjeta
+                   sm:aspect-[21/9]"
+          />
+        } @else {
+          <div
+            class="grid h-32 w-full place-items-center rounded-tarjeta border border-dashed
+                   border-borde bg-lienzo text-center"
+          >
+            <span class="flex flex-col items-center gap-2 text-plomo">
+              <span
+                class="grid size-12 place-items-center rounded-full bg-acento text-[22px] font-bold
+                       text-sobre-acento"
+                aria-hidden="true"
+                >P</span
+              >
+              <span class="text-[12.5px]">Este estacionamiento todavía no cargó fotos</span>
+            </span>
+          </div>
+        }
+
         <div class="grid gap-6 lg:grid-cols-[1.35fr_0.85fr] lg:items-start">
           <!-- Campos: sueltos en mobile, dentro de una tarjeta en desktop -->
           <div
@@ -107,22 +132,6 @@
                 }
               </div>
 
-              @if (modalidades().length > 1) {
-                <div class="flex flex-col gap-3">
-                  <p class="label-campo">Modalidad</p>
-                  <div class="flex flex-wrap gap-2">
-                    @for (modalidad of modalidades(); track modalidad) {
-                      <ui-chip
-                        [activo]="borrador().modalidad === modalidad"
-                        (alternar)="elegirModalidad(modalidad)"
-                      >
-                        {{ etiquetaModalidad[modalidad] }}
-                      </ui-chip>
-                    }
-                  </div>
-                </div>
-              }
-
               <div class="flex flex-col gap-3">
                 <p class="label-campo">Fecha</p>
                 <app-selector-fecha
@@ -131,35 +140,47 @@
                 />
               </div>
 
-              @if (borrador().modalidad === 'HORA') {
-                <div class="flex flex-col gap-3">
-                  <p class="label-campo">Franja horaria</p>
-                  @if (recursoDisponibilidad.isLoading()) {
-                    <ui-cargando [cantidad]="1" />
-                  } @else {
-                    <app-selector-franja
-                      [franjas]="recursoDisponibilidad.value()"
-                      [horaDesde]="borrador().horaDesde"
-                      (rangoElegido)="elegirRango($event)"
-                    />
+              <div class="flex flex-col gap-3">
+                <p class="label-campo">¿Cuántas horas?</p>
+                <app-selector-duracion
+                  [tarifas]="estacionamiento.tarifas"
+                  [horas]="borrador().horas"
+                  (horasChange)="elegirHoras($event)"
+                />
+              </div>
+
+              <div class="flex flex-col gap-3">
+                <div class="flex items-baseline justify-between gap-3">
+                  <p class="label-campo">Hora de ingreso</p>
+                  @if (horarioAtencion(); as horario) {
+                    <span class="num-tabular text-[12px] text-plomo">{{ horario }}</span>
                   }
                 </div>
-              } @else {
-                <div class="flex flex-col gap-3">
-                  <label class="campo">
-                    <span class="label-campo">Hora de ingreso</span>
-                    <input
-                      class="num-tabular"
-                      type="time"
-                      [value]="borrador().horaDesde ?? ''"
-                      (change)="elegirIngreso($event)"
-                    />
-                  </label>
-                  <p class="text-[12px] text-plomo">
-                    La reserva dura {{ horas() }} horas desde el ingreso.
+                @if (recursoDisponibilidad.isLoading()) {
+                  <ui-cargando [cantidad]="1" />
+                } @else if (!hayIngresos()) {
+                  <p class="rounded-control bg-lienzo px-4 py-3 text-[13px] text-plomo">
+                    No hay horarios para reservar {{ horas() }} h ese día. Probá con menos horas u otra fecha.
                   </p>
-                </div>
-              }
+                } @else {
+                  <app-selector-franja
+                    [franjas]="recursoDisponibilidad.value()"
+                    [horaDesde]="borrador().horaDesde"
+                    [fecha]="borrador().fecha"
+                    (rangoElegido)="elegirRango($event)"
+                  />
+                  @if (borrador().modalidad === 'HORA') {
+                    <p class="text-[12px] text-plomo">
+                      Por hora tenés que entrar y salir dentro del horario de atención.
+                    </p>
+                  } @else {
+                    <p class="text-[12px] text-plomo">
+                      La {{ borrador().modalidad === 'ESTADIA' ? 'estadía' : 'jornada' }} puede seguir después
+                      del cierre: solo tenés que entrar con el estacionamiento abierto.
+                    </p>
+                  }
+                }
+              </div>
           </div>
 
           <!-- Resumen + confirmacion -->
@@ -170,6 +191,8 @@
                 [horaDesde]="borrador().horaDesde"
                 [horaHasta]="borrador().horaHasta"
                 [horas]="horas()"
+                [tarifa]="textoTarifa()"
+                [nota]="textoAhorro()"
                 [total]="total()"
               />
             </ui-tarjeta>

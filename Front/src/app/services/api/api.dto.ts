@@ -122,4 +122,6 @@ export interface FranjaDto {
   disponible: boolean;
   cocheras_libres: number;
   motivo: string | null;
+  fecha_hasta?: string;
+  causa?: 'HORARIO' | 'PASADO' | 'SIN_LUGAR' | null;
 }

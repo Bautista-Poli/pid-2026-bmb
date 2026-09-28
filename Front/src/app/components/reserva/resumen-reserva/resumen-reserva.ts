@@ -17,16 +17,19 @@ export class ResumenReserva {
   readonly total = input(0);
   /** Identificador de la cochera, cuando ya esta asignada. */
   readonly cochera = input<string | null>(null);
+  /** Como se cobra: "$900 por hora", "Estadía · 12 h". */
+  readonly tarifa = input<string | null>(null);
+  /** Aclaracion bajo el total (p. ej. el ahorro de una estadia). */
+  readonly nota = input<string | null>(null);
 
-  /** "3 h · 10:00 – 13:00", o "12 h desde las 18:00" en estadia y jornada. */
+  /** "3 h · 10:00 – 13:00"; si termina al otro dia, "12 h · 19:00 – 07:00 (+1 día)". */
   protected readonly duracion = computed(() => {
     const desde = this.horaDesde();
-    if (this.modalidad() !== 'HORA') {
-      return desde ? `${this.horas()} h desde las ${desde}` : 'Elegí la hora de ingreso';
-    }
     const hasta = this.horaHasta();
-    if (!desde || !hasta) return 'Elegi una franja';
-    return `${this.horas()} h · ${desde} – ${hasta}`;
+    if (!desde) return `${this.horas()} h · elegí la hora de ingreso`;
+    if (!hasta) return `${this.horas()} h desde las ${desde}`;
+    const otroDia = hasta <= desde ? ' (+1 día)' : '';
+    return `${this.horas()} h · ${desde} – ${hasta}${otroDia}`;
   });
 
   /** La cochera la asigna el backend al confirmar. */

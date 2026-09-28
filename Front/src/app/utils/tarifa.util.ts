@@ -15,6 +15,22 @@ export function modalidadesOfrecidas(tarifas: Tarifas): ModalidadReserva[] {
   return ORDEN.filter((modalidad) => tarifas[CLAVE[modalidad]] !== null);
 }
 
+/**
+ * La modalidad que corresponde a `horas`: 12 h es estadia y 24 h es jornada si
+ * el estacionamiento las ofrece; si no, por hora. `null` si no se puede
+ * reservar esa cantidad (p. ej. 3 h donde no se cobra por hora).
+ */
+export function modalidadPorHoras(horas: number, tarifas: Tarifas): ModalidadReserva | null {
+  if (horas === HORAS_POR_MODALIDAD.ESTADIA && tarifas.estadia !== null) return 'ESTADIA';
+  if (horas === HORAS_POR_MODALIDAD.JORNADA && tarifas.jornada !== null) return 'JORNADA';
+  return tarifas.hora !== null ? 'HORA' : null;
+}
+
+/** Las cantidades de horas que se pueden reservar: de 1 a 24 si cobra por hora, mas 12 y 24 si tiene esas tarifas. */
+export function horasReservables(tarifas: Tarifas): number[] {
+  return Array.from({ length: 24 }, (_, i) => i + 1).filter((h) => modalidadPorHoras(h, tarifas) !== null);
+}
+
 /** Precio estimado (el definitivo lo calcula el backend). `horas` solo cuenta por hora. */
 export function calcularPrecio(modalidad: ModalidadReserva, tarifas: Tarifas, horas: number): number {
   const tarifa = tarifas[CLAVE[modalidad]];

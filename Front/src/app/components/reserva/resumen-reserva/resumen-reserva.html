@@ -1,8 +1,15 @@
 <dl class="flex flex-col gap-4">
   <div class="flex items-center justify-between gap-4">
     <dt class="text-[13px] text-plomo">Duración</dt>
-    <dd class="num-tabular text-[13px] font-medium text-tinta">{{ duracion() }}</dd>
+    <dd class="num-tabular text-right text-[13px] font-medium text-tinta">{{ duracion() }}</dd>
   </div>
+
+  @if (tarifa(); as texto) {
+    <div class="flex items-center justify-between gap-4">
+      <dt class="text-[13px] text-plomo">Tarifa</dt>
+      <dd class="num-tabular text-right text-[13px] font-medium text-tinta">{{ texto }}</dd>
+    </div>
+  }
 
   <div class="flex items-center justify-between gap-4">
     <dt class="text-[13px] text-plomo">Cochera asignada</dt>
@@ -17,4 +24,8 @@
       $ {{ totalFormateado() }}
     </dd>
   </div>
+
+  @if (nota(); as texto) {
+    <p class="-mt-2 text-right text-[12px] font-medium text-exito">{{ texto }}</p>
+  }
 </dl>

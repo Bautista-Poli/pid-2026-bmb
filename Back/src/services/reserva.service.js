@@ -5,11 +5,12 @@ import {
   instanteLocal,
   motivoFueraDeHorario,
   motivoIngresoFueraDeHorario,
+  partesLocales,
   sumarDias,
 } from '../utils/horario.js';
 import { ESTADOS_COCHERA, ESTADOS_RESERVA, ESTADOS_VIGENTES } from '../utils/roles.js';
 import { sinSolapamiento } from '../utils/solapamiento.js';
-import { CAMPOS_TARIFA, MODALIDADES, precioDeReserva } from '../utils/tarifas.js';
+import { CAMPOS_TARIFA, HORAS_POR_MODALIDAD, MODALIDADES, precioDeReserva } from '../utils/tarifas.js';
 import { ORDEN_NATURAL } from './cochera.service.js';
 import { asegurarPropiedad } from './estacionamiento.service.js';
 
@@ -454,9 +455,13 @@ export async function registrarEgreso(idReserva, idPropietario) {
 
 /**
  * Franjas del dia con la cantidad de cocheras libres. `motivo` explica por
- * que una franja no se puede reservar (fuera de horario, ya empezo o sin lugar).
+ * que una franja no se puede reservar (fuera de horario, ya empezo o sin lugar)
+ * y `causa` lo resume: HORARIO, PASADO o SIN_LUGAR.
+ *
+ * Con `modalidad` y/o `horas` cada franja es un ingreso posible: una por cada
+ * hora del dia, de `horas` de largo (12 y 24 en estadia y jornada).
  */
-export async function disponibilidad(idEstacionamiento, { fecha, id_tipo_vehiculo }) {
+export async function disponibilidad(idEstacionamiento, { fecha, id_tipo_vehiculo, modalidad, horas }) {
   const { rows } = await query(
     'SELECT publicado, activo FROM estacionamiento WHERE id_estacionamiento = $1',
     [idEstacionamiento],
@@ -472,15 +477,30 @@ export async function disponibilidad(idEstacionamiento, { fecha, id_tipo_vehicul
     [idEstacionamiento],
   );
 
+  if (modalidad || horas) {
+    const bloque = HORAS_POR_MODALIDAD[modalidad];
+    return {
+      fecha,
+      franjas: await ingresosDelDia(idEstacionamiento, horarios, {
+        fecha,
+        id_tipo_vehiculo,
+        horas: bloque ?? horas,
+        porBloque: bloque !== undefined,
+      }),
+    };
+  }
+
   const franjas = [];
   for (const franja of FRANJAS_ESTANDAR) {
     const inicio = instanteLocal(fecha, franja.hora_desde);
     const fin = instanteLocal(fecha, franja.hora_hasta);
 
     let motivo = motivoFueraDeHorario(horarios, inicio, fin);
+    let causa = motivo ? 'HORARIO' : null;
     // Mismo margen que el validador de reservas: no se reserva lo que ya empezo.
     if (!motivo && inicio.getTime() < Date.now() - 60_000) {
       motivo = 'La franja ya empezo';
+      causa = 'PASADO';
     }
 
     let libres = 0;
@@ -503,11 +523,67 @@ export async function disponibilidad(idEstacionamiento, { fecha, id_tipo_vehicul
         ],
       );
       libres = conteo[0].libres;
-      if (libres === 0) motivo = 'No quedan cocheras libres en esta franja';
+      if (libres === 0) {
+        motivo = 'No quedan cocheras libres en esta franja';
+        causa = 'SIN_LUGAR';
+      }
     }
 
-    franjas.push({ ...franja, inicio, fin, disponible: !motivo, cocheras_libres: libres, motivo });
+    franjas.push({ ...franja, inicio, fin, disponible: !motivo, cocheras_libres: libres, motivo, causa });
   }
 
   return { fecha, franjas };
+}
+
+/**
+ * Un ingreso por cada hora del dia (00:00 a 23:00), de `horas` de largo, con
+ * las cocheras libres en todo ese rango. Se cuentan en una sola consulta.
+ * Por hora el rango entero tiene que caer en el horario de atencion; por
+ * bloque (estadia, jornada) alcanza con entrar abierto, igual que al reservar.
+ */
+async function ingresosDelDia(idEstacionamiento, horarios, { fecha, id_tipo_vehiculo, horas, porBloque }) {
+  const primero = instanteLocal(fecha, '00:00');
+  const { rows } = await query(
+    `SELECT i.inicio,
+            (SELECT COUNT(*)::int
+               FROM cochera c
+              WHERE c.id_estacionamiento = $1
+                AND c.activo
+                AND c.estado_actual <> $2
+                AND ($3::smallint IS NULL OR c.id_tipo_vehiculo = $3)
+                AND ${sinSolapamiento('$4', 'i.inicio', 'i.inicio + make_interval(hours => $6::int)')}
+            ) AS libres
+       FROM generate_series($5::timestamptz, $5::timestamptz + interval '23 hours', interval '1 hour')
+            AS i(inicio)
+      ORDER BY i.inicio`,
+    [idEstacionamiento, ESTADOS_COCHERA.INACTIVA, id_tipo_vehiculo ?? null, ESTADOS_VIGENTES, primero, horas],
+  );
+
+  return rows.map(({ inicio, libres }) => {
+    const fin = new Date(inicio.getTime() + horas * 3_600_000);
+    let motivo = porBloque
+      ? motivoIngresoFueraDeHorario(horarios, inicio)
+      : motivoFueraDeHorario(horarios, inicio, fin);
+    let causa = motivo ? 'HORARIO' : null;
+    if (!motivo && inicio.getTime() < Date.now() - 60_000) {
+      motivo = 'Ese horario ya empezo';
+      causa = 'PASADO';
+    }
+    if (!motivo && libres === 0) {
+      motivo = 'No quedan cocheras libres en ese horario';
+      causa = 'SIN_LUGAR';
+    }
+    const hasta = partesLocales(fin);
+    return {
+      hora_desde: partesLocales(inicio).hora,
+      hora_hasta: hasta.hora,
+      fecha_hasta: hasta.fecha,
+      inicio,
+      fin,
+      disponible: !motivo,
+      cocheras_libres: motivo ? 0 : libres,
+      motivo,
+      causa,
+    };
+  });
 }

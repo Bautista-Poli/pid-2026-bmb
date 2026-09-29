@@ -1,6 +1,7 @@
 import app from './app.js';
 import { config } from './config/env.js';
 import { connectDatabase, disconnectDatabase } from './config/database.js';
+import { detenerVencimientosAutomaticos, iniciarVencimientosAutomaticos } from './jobs/vencimientos.job.js';
 
 async function main() {
   await connectDatabase();
@@ -10,8 +11,11 @@ async function main() {
     console.log(`[api] Parkit escuchando en :${config.port}${config.apiPrefix}`);
   });
 
+  iniciarVencimientosAutomaticos();
+
   const shutdown = (senal) => {
     console.log(`\n[api] ${senal} recibido, cerrando...`);
+    detenerVencimientosAutomaticos();
     server.close(async () => {
       await disconnectDatabase();
       process.exit(0);

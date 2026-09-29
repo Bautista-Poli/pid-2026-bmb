@@ -110,6 +110,8 @@ export class FormularioEstacionamiento {
     tarifaHora: [null as number | null, [Validators.min(0)]],
     tarifaEstadia: [null as number | null, [Validators.min(0)]],
     tarifaJornada: [null as number | null, [Validators.min(0)]],
+    /** Horas minimas de anticipacion para cancelar. `null` = sin restriccion. */
+    politicaCancelacionHoras: [null as number | null, [Validators.min(0)]],
     cubierto: false,
     horarios: this.fb.nonNullable.array(
       DIAS.map(({ dia }) =>
@@ -235,6 +237,7 @@ export class FormularioEstacionamiento {
           tarifaHora: estacionamiento.tarifas.hora,
           tarifaEstadia: estacionamiento.tarifas.estadia,
           tarifaJornada: estacionamiento.tarifas.jornada,
+          politicaCancelacionHoras: estacionamiento.politicaCancelacionHoras,
           cubierto: estacionamiento.cubierto,
         });
 
@@ -362,6 +365,7 @@ export class FormularioEstacionamiento {
         estadia: valores.tarifaEstadia,
         jornada: valores.tarifaJornada,
       },
+      politicaCancelacionHoras: valores.politicaCancelacionHoras,
       cubierto: valores.cubierto,
       // La publicacion se maneja aparte, desde la pantalla de edicion.
       publicado: this.estacionamiento()?.publicado ?? true,

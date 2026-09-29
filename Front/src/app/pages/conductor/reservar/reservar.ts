@@ -134,6 +134,18 @@ export class Reservar {
     return ahorro > 0 ? `Ahorrás $${ahorro.toLocaleString('es-AR')} frente a pagar por hora` : null;
   });
 
+  /**
+   * Deja clara la politica de cancelacion antes de reservar: mientras esta
+   * pendiente se puede cancelar libre, la ventana de horas recien corre desde
+   * que el propietario confirma (ver reserva.service.js: cancelar()).
+   */
+  protected readonly textoPolitica = computed(() => {
+    const horas = this.recursoEstacionamiento.value()?.politicaCancelacionHoras;
+    if (!horas) return 'Podés cancelar cuando quieras, incluso ya confirmada.';
+    const texto = horas === 1 ? '1 hora' : `${horas} horas`;
+    return `Podés cancelar sin problema mientras esté pendiente. Una vez que el propietario la confirme, tenés que cancelar con al menos ${texto} de anticipación.`;
+  });
+
   /** Horario de atencion del dia elegido, para explicar por que no aparecen todas las horas. */
   protected readonly horarioAtencion = computed(() => {
     const estacionamiento = this.recursoEstacionamiento.value();

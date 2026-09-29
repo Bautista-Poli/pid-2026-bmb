@@ -308,3 +308,70 @@ UPDATE reserva r
 -- Desde que el servicio guarda el precio al crear la reserva, siempre esta cargado.
 -- El UPDATE de arriba rellena las filas que quedaran en NULL antes de este paso.
 ALTER TABLE reserva ALTER COLUMN precio_total SET NOT NULL;
+
+-- Ciclo completo de la reserva (Sprint 2): ACTIVA es un estado real, no una
+-- reserva CONFIRMADA con ingreso_real cargado como antes. Las transiciones
+-- viven todas en reserva.service.js (cambiarEstado / TRANSICIONES).
+ALTER TYPE estado_reserva ADD VALUE IF NOT EXISTS 'ACTIVA';
+
+-- Una reserva ACTIVA sigue ocupando la cochera (el auto esta adentro), asi que
+-- las dos protecciones anti-solapamiento tienen que cubrirla igual que a
+-- PENDIENTE y CONFIRMADA. Como el predicado del EXCLUDE cambia, hay que
+-- recrear el constraint: no alcanza con el IF NOT EXISTS original.
+DO $$
+BEGIN
+  ALTER TABLE reserva DROP CONSTRAINT IF EXISTS reserva_sin_solapamiento;
+  ALTER TABLE reserva ADD CONSTRAINT reserva_sin_solapamiento
+    EXCLUDE USING gist (
+      id_cochera WITH =,
+      tstzrange(inicio, fin, '[)') WITH &&
+    ) WHERE (estado IN ('PENDIENTE', 'CONFIRMADA', 'ACTIVA'));
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE 'No se pudo recrear el EXCLUDE constraint reserva_sin_solapamiento: %', SQLERRM;
+END
+$$;
+
+DO $$
+BEGIN
+  ALTER TABLE reserva DROP CONSTRAINT IF EXISTS reserva_vehiculo_sin_solapamiento;
+  ALTER TABLE reserva ADD CONSTRAINT reserva_vehiculo_sin_solapamiento
+    EXCLUDE USING gist (
+      id_vehiculo WITH =,
+      tstzrange(inicio, fin, '[)') WITH &&
+    ) WHERE (estado IN ('PENDIENTE', 'CONFIRMADA', 'ACTIVA'));
+EXCEPTION WHEN OTHERS THEN
+  RAISE NOTICE 'No se pudo recrear el EXCLUDE constraint reserva_vehiculo_sin_solapamiento: %', SQLERRM;
+END
+$$;
+
+-- Politica de cancelacion configurable por estacionamiento: horas minimas de
+-- anticipacion para cancelar una reserva ya CONFIRMADA. NULL = sin
+-- restriccion (comportamiento de antes, solo se bloquea si ya termino).
+ALTER TABLE estacionamiento
+  ADD COLUMN IF NOT EXISTS politica_cancelacion_horas DECIMAL(5, 2);
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'estacionamiento_politica_cancelacion_no_negativa'
+  ) THEN
+    ALTER TABLE estacionamiento
+      ADD CONSTRAINT estacionamiento_politica_cancelacion_no_negativa
+        CHECK (politica_cancelacion_horas IS NULL OR politica_cancelacion_horas >= 0);
+  END IF;
+END
+$$;
+
+-- Bloqueo de cocheras por mantenimiento o uso interno. Separado de
+-- `estado_actual` a proposito: ese lo pisa solo el ciclo de la reserva
+-- (ingreso/egreso) y no tiene que poder tapar un bloqueo por accidente.
+-- `bloqueada_hasta` NULL = bloqueo indefinido, hasta que lo saquen a mano.
+ALTER TABLE cochera
+  ADD COLUMN IF NOT EXISTS bloqueada BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS motivo_bloqueo VARCHAR(300),
+  ADD COLUMN IF NOT EXISTS bloqueada_hasta TIMESTAMPTZ;
+
+-- Aviso para el conductor cuando el bloqueo de su cochera lo reasigna a otra
+-- o, sin alternativa, cancela su reserva (cochera.service.js: bloquear()).
+ALTER TABLE reserva
+  ADD COLUMN IF NOT EXISTS motivo_reasignacion VARCHAR(300);

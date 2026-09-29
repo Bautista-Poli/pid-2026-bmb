@@ -6,11 +6,10 @@ import { EstadoCochera, ModalidadReserva, RolUsuario } from '@app/models';
  * la app trabaja con los modelos de `models/`.
  */
 
-// EN_CURSO lo arma el backend: es una reserva CONFIRMADA con ingreso registrado.
 export type EstadoReservaDto =
   | 'PENDIENTE'
   | 'CONFIRMADA'
-  | 'EN_CURSO'
+  | 'ACTIVA'
   | 'CANCELADA'
   | 'FINALIZADA';
 
@@ -44,6 +43,9 @@ export interface CocheraDto {
   activo: boolean;
   id_tipo_vehiculo: number;
   reservada_ahora?: boolean;
+  bloqueada: boolean;
+  motivo_bloqueo: string | null;
+  bloqueada_hasta: string | null;
 }
 
 export interface EstacionamientoDto {
@@ -66,6 +68,8 @@ export interface EstacionamientoDto {
   tarifa_hora: number | null;
   tarifa_estadia: number | null;
   tarifa_jornada: number | null;
+  /** Horas minimas de anticipacion para cancelar una reserva ya confirmada. `null` = sin restriccion. */
+  politica_cancelacion_horas: number | null;
   cubierto: boolean;
   publicado: boolean;
   activo: boolean;
@@ -114,6 +118,7 @@ export interface ReservaDto {
   direccion: string;
   precio_total: number;
   modalidad: ModalidadReserva;
+  motivo_reasignacion: string | null;
 }
 
 export interface FranjaDto {

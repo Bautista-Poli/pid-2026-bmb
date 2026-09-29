@@ -132,6 +132,16 @@ export class Cocheras {
   protected readonly error = signal<string | null>(null);
   protected readonly aviso = signal<string | null>(null);
 
+  /** Cochera para la que esta abierto el formulario de bloqueo, o null si esta cerrado. */
+  protected readonly bloqueando = signal<Cochera | null>(null);
+  /** Se prendio con el 409 de "sin alternativa": habilita el boton de bloquear igual. */
+  protected readonly necesitaForzar = signal(false);
+
+  protected readonly formularioBloqueo = this.fb.nonNullable.group({
+    motivo: ['', [Validators.maxLength(300)]],
+    hasta: [''],
+  });
+
   protected detalle(cochera: Cochera): string {
     return [cochera.cubierta ? 'Cubierta' : 'Descubierta', this.etiquetaTipo[cochera.tipoVehiculo]].join(
       ' · ',
@@ -149,6 +159,7 @@ export class Cocheras {
 
   protected editar(cochera: Cochera): void {
     this.editando.set(cochera);
+    this.bloqueando.set(null);
     this.error.set(null);
     this.aviso.set(null);
     this.formulario.setValue({
@@ -292,6 +303,77 @@ export class Cocheras {
     this.cocheras.reactivar(cochera).subscribe({
       next: () => {
         this.aviso.set(`La cochera ${cochera.identificador} volvió a estar activa.`);
+        this.recursoCocheras.reload();
+      },
+      error: (e: Error) => this.error.set(e.message),
+    });
+  }
+
+  protected abrirBloqueo(cochera: Cochera): void {
+    this.bloqueando.set(cochera);
+    this.editando.set(null);
+    this.necesitaForzar.set(false);
+    this.error.set(null);
+    this.aviso.set(null);
+    this.formularioBloqueo.reset({ motivo: '', hasta: '' });
+  }
+
+  protected cancelarBloqueo(): void {
+    this.bloqueando.set(null);
+    this.necesitaForzar.set(false);
+    this.error.set(null);
+  }
+
+  /**
+   * Sin `forzar`: si el backend responde que alguna reserva no tiene otra
+   * cochera para reasignar (409), no se bloquea nada y se ofrece "bloquear
+   * igual" (`forzar: true`), que cancela esas puntuales en vez de trabar todo.
+   */
+  protected confirmarBloqueo(forzar: boolean): void {
+    const cochera = this.bloqueando();
+    if (!cochera) return;
+
+    const { motivo, hasta } = this.formularioBloqueo.getRawValue();
+    this.enviando.set(true);
+    this.error.set(null);
+
+    this.cocheras
+      .bloquear(cochera, {
+        motivo: motivo.trim() || undefined,
+        hasta: hasta ? new Date(hasta).toISOString() : null,
+        forzar,
+      })
+      .subscribe({
+        next: ({ reasignadas, canceladas }) => {
+          this.enviando.set(false);
+          this.bloqueando.set(null);
+          this.necesitaForzar.set(false);
+          const partes = [
+            reasignadas > 0 ? `reasignamos ${reasignadas} reserva(s)` : null,
+            canceladas > 0 ? `cancelamos ${canceladas} reserva(s) sin alternativa` : null,
+          ].filter(Boolean);
+          this.aviso.set(
+            `La cochera ${cochera.identificador} quedó bloqueada` +
+              (partes.length ? `: ${partes.join(' y ')}.` : '.'),
+          );
+          this.recursoCocheras.reload();
+        },
+        error: (e: Error) => {
+          this.enviando.set(false);
+          this.error.set(e.message);
+          // El mensaje viene armado en cochera.service.js: bloquear().
+          this.necesitaForzar.set(e.message.includes('no tienen otra cochera para reasignar'));
+        },
+      });
+  }
+
+  protected desbloquear(cochera: Cochera): void {
+    this.error.set(null);
+    this.aviso.set(null);
+
+    this.cocheras.desbloquear(cochera).subscribe({
+      next: () => {
+        this.aviso.set(`La cochera ${cochera.identificador} quedó desbloqueada.`);
         this.recursoCocheras.reload();
       },
       error: (e: Error) => this.error.set(e.message),

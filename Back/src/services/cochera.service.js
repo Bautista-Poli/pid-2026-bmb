@@ -1,15 +1,17 @@
 import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
-import { ESTADOS_COCHERA, ESTADOS_VIGENTES } from '../utils/roles.js';
+import { ESTADOS_COCHERA, ESTADOS_RESERVA, ESTADOS_VIGENTES } from '../utils/roles.js';
+import { sinSolapamiento } from '../utils/solapamiento.js';
 import { asegurarPropiedad } from './estacionamiento.service.js';
 
 const VIOLACION_UNIQUE = '23505';
 const VIOLACION_FK = '23503';
-// ON DELETE RESTRICT falla con este codigo (NO ACTION usa el de arriba).
-const VIOLACION_RESTRICT = '23001';
+// ON DELETE RESTRICT falla con este codigo (NO ACTION usa el de arriba, 23001).
+const VIOLACION_RESTRICT = '23503';
 
 const CAMPOS =
-  'id_cochera, id_estacionamiento, id_tipo_vehiculo, identificador, sector, cubierta, estado_actual, activo';
+  'id_cochera, id_estacionamiento, id_tipo_vehiculo, identificador, sector, cubierta, estado_actual, ' +
+  'activo, bloqueada, motivo_bloqueo, bloqueada_hasta';
 
 const CAMPOS_EDITABLES = ['identificador', 'id_tipo_vehiculo', 'sector', 'cubierta', 'estado_actual'];
 
@@ -117,6 +119,7 @@ export async function listarPorEstacionamiento(idEstacionamiento) {
   const { rows } = await query(
     `SELECT c.id_cochera, c.id_estacionamiento, c.identificador, c.sector, c.cubierta,
             c.estado_actual, c.activo, c.id_tipo_vehiculo, t.nombre AS tipo_vehiculo,
+            c.bloqueada, c.motivo_bloqueo, c.bloqueada_hasta,
             EXISTS (
               SELECT 1 FROM reserva r
                WHERE r.id_cochera = c.id_cochera
@@ -218,6 +221,145 @@ export async function reactivar(idEstacionamiento, idPropietario, idCochera) {
     [ESTADOS_COCHERA.LIBRE, idCochera],
   );
   return rows[0];
+}
+
+/** Otra cochera libre del mismo estacionamiento, mismo tipo de vehiculo, para esa franja exacta. */
+async function buscarAlternativa(client, idEstacionamiento, idCocheraOriginal, idTipoVehiculo, inicio, fin) {
+  const { rows: candidatas } = await client.query(
+    `SELECT c.id_cochera
+       FROM cochera c
+      WHERE c.id_estacionamiento = $1
+        AND c.id_cochera <> $2
+        AND c.activo
+        AND NOT c.bloqueada
+        AND c.estado_actual <> $3
+        AND c.id_tipo_vehiculo = $4
+      ORDER BY c.id_cochera
+      FOR UPDATE`,
+    [idEstacionamiento, idCocheraOriginal, ESTADOS_COCHERA.INACTIVA, idTipoVehiculo],
+  );
+  if (candidatas.length === 0) return null;
+
+  const { rows: libres } = await client.query(
+    `SELECT c.id_cochera
+       FROM cochera c
+      WHERE c.id_cochera = ANY($1::uuid[])
+        AND ${sinSolapamiento('$2', '$3', '$4')}
+      ORDER BY ${ORDEN_NATURAL}
+      LIMIT 1`,
+    [candidatas.map((c) => c.id_cochera), ESTADOS_VIGENTES, inicio, fin],
+  );
+  return libres[0]?.id_cochera ?? null;
+}
+
+const AVISO_REASIGNADA =
+  'Te reasignamos a otra cochera del mismo estacionamiento: la tuya entro en mantenimiento.';
+const AVISO_CANCELADA_SIN_ALTERNATIVA =
+  'Cancelamos tu reserva: la cochera entro en mantenimiento y no habia otra disponible en tu horario.';
+
+/**
+ * Bloquea una cochera por mantenimiento o uso interno. Cada reserva propia
+ * PENDIENTE/CONFIRMADA vigente se reasigna a otra cochera compatible del
+ * mismo estacionamiento (mismo tipo de vehiculo, misma franja horaria): el
+ * precio no se toca, ya quedo fijo en la reserva al crearla.
+ *
+ * Todo o nada: si alguna reserva no tiene alternativa, no se bloquea nada
+ * (409, listando cuales) salvo que venga `forzar: true` -- ahi esas puntuales
+ * se cancelan en vez de trabar el bloqueo. Una reserva ACTIVA (el auto ya
+ * adentro) siempre impide bloquear, con o sin `forzar`.
+ */
+export async function bloquear(idEstacionamiento, idPropietario, idCochera, { motivo, hasta, forzar = false } = {}) {
+  await asegurarPropiedad(idEstacionamiento, idPropietario);
+
+  return withTransaction(async (client) => {
+    const { rows: existentes } = await client.query(
+      'SELECT activo, bloqueada FROM cochera WHERE id_cochera = $1 AND id_estacionamiento = $2 FOR UPDATE',
+      [idCochera, idEstacionamiento],
+    );
+    if (!existentes[0]) throw ApiError.notFound('La cochera no existe en este estacionamiento');
+    if (!existentes[0].activo) throw ApiError.conflict('La cochera esta dada de baja');
+    if (existentes[0].bloqueada) throw ApiError.conflict('La cochera ya esta bloqueada');
+
+    const { rows: afectadas } = await client.query(
+      `SELECT r.id_reserva, r.estado, r.inicio, r.fin, v.id_tipo_vehiculo
+         FROM reserva r
+         JOIN vehiculo v ON v.id_vehiculo = r.id_vehiculo
+        WHERE r.id_cochera = $1 AND r.estado = ANY($2::estado_reserva[]) AND r.fin > now()
+        FOR UPDATE OF r`,
+      [idCochera, ESTADOS_VIGENTES],
+    );
+
+    if (afectadas.some((r) => r.estado === ESTADOS_RESERVA.ACTIVA)) {
+      throw ApiError.conflict('No se puede bloquear: hay un vehiculo adentro en este momento');
+    }
+
+    const reasignadas = [];
+    const sinAlternativa = [];
+    for (const reserva of afectadas) {
+      const alternativa = await buscarAlternativa(
+        client, idEstacionamiento, idCochera, reserva.id_tipo_vehiculo, reserva.inicio, reserva.fin,
+      );
+      if (alternativa) reasignadas.push({ reserva, idCocheraNueva: alternativa });
+      else sinAlternativa.push(reserva);
+    }
+
+    if (sinAlternativa.length > 0 && !forzar) {
+      const franjas = sinAlternativa
+        .map((r) => `${r.inicio.toLocaleString('es-AR')} a ${r.fin.toLocaleString('es-AR')}`)
+        .join('; ');
+      throw ApiError.conflict(
+        `${sinAlternativa.length} reserva(s) no tienen otra cochera para reasignar en su horario (${franjas}). ` +
+          'Volve a intentar cancelandolas, o confirma el bloqueo igual para cancelarlas.',
+        { reservas_sin_alternativa: sinAlternativa.map((r) => r.id_reserva) },
+      );
+    }
+
+    for (const { reserva, idCocheraNueva } of reasignadas) {
+      await client.query(
+        'UPDATE reserva SET id_cochera = $1, motivo_reasignacion = $2 WHERE id_reserva = $3',
+        [idCocheraNueva, AVISO_REASIGNADA, reserva.id_reserva],
+      );
+    }
+    for (const reserva of sinAlternativa) {
+      await client.query(
+        "UPDATE reserva SET estado = 'CANCELADA', motivo_reasignacion = $1 WHERE id_reserva = $2",
+        [AVISO_CANCELADA_SIN_ALTERNATIVA, reserva.id_reserva],
+      );
+    }
+
+    const { rows } = await client.query(
+      `UPDATE cochera SET bloqueada = TRUE, motivo_bloqueo = $1, bloqueada_hasta = $2
+        WHERE id_cochera = $3
+        RETURNING ${CAMPOS}`,
+      [motivo ?? null, hasta ?? null, idCochera],
+    );
+
+    return { cochera: rows[0], reasignadas: reasignadas.length, canceladas: sinAlternativa.length };
+  });
+}
+
+/** Saca el bloqueo a mano. */
+export async function desbloquear(idEstacionamiento, idPropietario, idCochera) {
+  await asegurarPropiedad(idEstacionamiento, idPropietario);
+
+  const { rows } = await query(
+    `UPDATE cochera SET bloqueada = FALSE, motivo_bloqueo = NULL, bloqueada_hasta = NULL
+      WHERE id_cochera = $1 AND id_estacionamiento = $2
+      RETURNING ${CAMPOS}`,
+    [idCochera, idEstacionamiento],
+  );
+  if (!rows[0]) throw ApiError.notFound('La cochera no existe en este estacionamiento');
+  return rows[0];
+}
+
+/** Cocheras con `bloqueada_hasta` ya vencido: las llama el job de vencimientos. */
+export async function desbloquearVencidas() {
+  const { rows } = await query(
+    `UPDATE cochera SET bloqueada = FALSE, motivo_bloqueo = NULL, bloqueada_hasta = NULL
+      WHERE bloqueada AND bloqueada_hasta IS NOT NULL AND bloqueada_hasta <= now()
+      RETURNING id_cochera`,
+  );
+  return rows.length;
 }
 
 /**

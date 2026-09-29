@@ -309,7 +309,7 @@ describe('ciclo de la reserva', () => {
 
     const ingreso = await api('PATCH', `/reservas/${id}/ingreso`, { token: propietario.token });
     assert.equal(ingreso.estado, 200);
-    assert.equal(ingreso.datos.reserva.estado, 'EN_CURSO');
+    assert.equal(ingreso.datos.reserva.estado, 'ACTIVA');
     assert.ok(ingreso.datos.reserva.ingreso_real);
     assert.equal(await estadoCochera(), 'OCUPADA');
 

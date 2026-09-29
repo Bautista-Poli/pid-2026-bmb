@@ -40,7 +40,7 @@ export function avanzarReserva(
         llamada: servicio.registrarIngreso(reserva.id),
         aviso: `Registraste el ingreso de ${patente}.`,
       };
-    case 'EN_CURSO':
+    case 'ACTIVA':
       return {
         llamada: servicio.registrarEgreso(reserva.id),
         aviso: `Registraste el egreso de ${patente}. La reserva quedó finalizada.`,

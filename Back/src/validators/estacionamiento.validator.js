@@ -7,11 +7,13 @@ const vino = (valor) => valor !== undefined && valor !== null && valor !== '';
 const CAMPOS_EDITABLES = [
   'nombre', 'descripcion', 'calle', 'numero', 'ciudad', 'provincia', 'codigo_postal',
   'barrio_zona', 'latitud', 'longitud', 'telefono_contacto', 'email_contacto',
-  'tarifa_hora', 'tarifa_estadia', 'tarifa_jornada', 'cubierto', 'publicado', 'horarios',
+  'tarifa_hora', 'tarifa_estadia', 'tarifa_jornada', 'politica_cancelacion_horas',
+  'cubierto', 'publicado', 'horarios',
 ];
 const CAMPOS_BORRABLES = [
   'descripcion', 'codigo_postal', 'barrio_zona', 'latitud', 'longitud',
   'telefono_contacto', 'email_contacto', 'tarifa_hora', 'tarifa_estadia', 'tarifa_jornada',
+  'politica_cancelacion_horas',
 ];
 const CAMPOS_COCHERA_EDITABLES = [
   'identificador',
@@ -38,6 +40,7 @@ export function validarEstacionamiento(body) {
     .numero('tarifa_hora', body.tarifa_hora, { requerido: false, min: 0 })
     .numero('tarifa_estadia', body.tarifa_estadia, { requerido: false, min: 0 })
     .numero('tarifa_jornada', body.tarifa_jornada, { requerido: false, min: 0 })
+    .numero('politica_cancelacion_horas', body.politica_cancelacion_horas, { requerido: false, min: 0 })
     .booleano('cubierto', body.cubierto, { requerido: false, default: false })
     .booleano('publicado', body.publicado, { requerido: false, default: false });
 
@@ -130,6 +133,7 @@ export function validarCambiosEstacionamiento(body) {
     .numero('tarifa_hora', body.tarifa_hora, { requerido: false, min: 0 })
     .numero('tarifa_estadia', body.tarifa_estadia, { requerido: false, min: 0 })
     .numero('tarifa_jornada', body.tarifa_jornada, { requerido: false, min: 0 })
+    .numero('politica_cancelacion_horas', body.politica_cancelacion_horas, { requerido: false, min: 0 })
     .booleano('cubierto', body.cubierto, { requerido: false })
     .booleano('publicado', body.publicado, { requerido: false })
     .verificar(
@@ -218,6 +222,15 @@ export function validarLoteCocheras(body) {
   }
 
   return { valores, errores };
+}
+
+/** POST bloqueo de cochera: todo opcional, se puede bloquear sin motivo ni fecha. */
+export function validarBloqueoCochera(body) {
+  return campos(body)
+    .texto('motivo', body.motivo, { requerido: false, max: 300 })
+    .fechaHora('hasta', body.hasta, { requerido: false })
+    .booleano('forzar', body.forzar, { requerido: false, default: false })
+    .resultado();
 }
 
 /** PATCH de cochera: todo opcional, pero tiene que venir al menos un campo. */

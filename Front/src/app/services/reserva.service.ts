@@ -1,6 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { Observable, map } from 'rxjs';
+import { Observable, forkJoin, map, of } from 'rxjs';
 import {
   BORRADOR_VACIO,
   BorradorReserva,
@@ -117,6 +117,17 @@ export class ReservaService {
     return this.http
       .get<{ reservas: ReservaDto[] }>(`/estacionamientos/${estacionamientoId}/reservas`, { params })
       .pipe(map(({ reservas }) => reservas.map(aReserva)));
+  }
+
+  /**
+   * Todas las reservas de varios estacionamientos juntas (un pedido por cada
+   * uno). Es lo que usan el panel y la bandeja de reservas del propietario.
+   */
+  listarDeEstacionamientos(ids: Id[], fecha?: FechaISO): Observable<ReservaDetallada[]> {
+    if (ids.length === 0) return of([]);
+    return forkJoin(ids.map((id) => this.listarPorEstacionamiento(id, fecha))).pipe(
+      map((listas) => listas.flat()),
+    );
   }
 
   /** `PATCH /api/reservas/:id/cancelar` */

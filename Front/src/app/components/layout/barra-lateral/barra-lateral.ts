@@ -7,7 +7,10 @@ import type { ItemNavegacion } from '../navegacion.model';
 import { MenuUsuario } from '../menu-usuario/menu-usuario';
 import { BotonTema, Icono, Logo } from '@app/components/ui';
 
-/** Nav lateral de 238px que reemplaza a la tab bar en >= 1024px. */
+/**
+ * Barra lateral oscura del propietario (>= 1024px). Siempre oscura: pinta con
+ * `.superficie-oscura`, que redefine los tokens para lo que va adentro.
+ */
 @Component({
   selector: 'app-barra-lateral',
   changeDetection: ChangeDetectionStrategy.OnPush,

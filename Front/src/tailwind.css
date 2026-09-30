@@ -179,3 +179,77 @@
 :root[data-theme='claro'] {
   color-scheme: light;
 }
+
+/* ---------------------------------------------------------------------------
+   Tema del propietario.
+
+   El panel del propietario usa un azul mas vivo y una barra lateral oscura.
+   En vez de tocar los tokens globales (que comparte la app del conductor), se
+   redefinen dentro de `.tema-propietario`: el layout pone esa clase solo en la
+   rama /propietario, y todo lo que queda adentro -botones, chips, etiquetas,
+   tabs- se retinta solo.
+
+   `.superficie-oscura` es la barra lateral: siempre oscura, en claro y en
+   oscuro. Redefine tambien superficies y textos para que los componentes
+   comunes (menu del usuario, boton de tema) se lean encima.
+--------------------------------------------------------------------------- */
+.tema-propietario {
+  --color-acento: #2563eb;
+  --color-acento-fuerte: #1d4ed8;
+  --color-acento-suave: #edf3ff;
+  --color-acento-borde: #c8d8fb;
+  --color-sobre-acento: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='claro']) .tema-propietario {
+    --color-acento: #6e9bf5;
+    --color-acento-fuerte: #9dbcf9;
+    --color-acento-suave: #15223d;
+    --color-acento-borde: #2c4273;
+    --color-sobre-acento: #0b1220;
+  }
+}
+
+:root[data-theme='oscuro'] .tema-propietario {
+  --color-acento: #6e9bf5;
+  --color-acento-fuerte: #9dbcf9;
+  --color-acento-suave: #15223d;
+  --color-acento-borde: #2c4273;
+  --color-sobre-acento: #0b1220;
+}
+
+.superficie-oscura {
+  color-scheme: dark;
+
+  --color-lienzo: #0d1628;
+  --color-papel: #16223a;
+  --color-borde: #26365a;
+  --color-borde-sutil: rgb(255 255 255 / 0.08);
+
+  --color-tinta: #f1f5fb;
+  --color-grafito: #d3dbea;
+  --color-plomo: #a3b1cb;
+  --color-humo: #7d8daa;
+
+  --color-acento: #2f6bef;
+  --color-acento-fuerte: #ffffff;
+  --color-acento-suave: rgb(255 255 255 / 0.08);
+  --color-acento-borde: #33466e;
+  --color-sobre-acento: #ffffff;
+
+  --shadow-flotante: 0 10px 30px rgb(0 0 0 / 0.45), 0 4px 8px rgb(0 0 0 / 0.3);
+
+  background: #0f1b31;
+  color: var(--color-tinta);
+}
+
+:root[data-theme='oscuro'] .superficie-oscura {
+  background: #0b1322;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='claro']) .superficie-oscura {
+    background: #0b1322;
+  }
+}

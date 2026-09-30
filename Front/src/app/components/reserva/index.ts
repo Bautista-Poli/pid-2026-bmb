@@ -5,3 +5,5 @@ export * from './selector-franja/selector-franja';
 export * from './selector-duracion/selector-duracion';
 export * from './resumen-reserva/resumen-reserva';
 export * from './fila-reserva/fila-reserva';
+export * from './tarjeta-reserva/tarjeta-reserva';
+export * from './reserva-hecha/reserva-hecha';

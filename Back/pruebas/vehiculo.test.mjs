@@ -2,7 +2,14 @@
 import assert from 'node:assert/strict';
 import { after, before, describe, test } from 'node:test';
 
-import { api, cerrarApi, crearUsuario, crearVehiculo, levantarApi } from './ayuda.mjs';
+import {
+  api,
+  cerrarApi,
+  crearUsuario,
+  crearVehiculo,
+  levantarApi,
+  patenteAlAzar,
+} from './ayuda.mjs';
 
 before(() => levantarApi('vehiculo'));
 after(() => cerrarApi());
@@ -48,6 +55,67 @@ describe('vehiculos', () => {
       body: { patente: vehiculo.patente, id_tipo_vehiculo: 1 },
     });
     assert.equal(repetida.estado, 409);
+  });
+
+  test('acepta el formato viejo y el Mercosur de cada tipo', async () => {
+    const conductor = await crearUsuario();
+    // Formato viejo con numeros al azar para no chocar con otras corridas.
+    const n = String(Math.floor(Math.random() * 1000)).padStart(3, '0');
+    const casos = [
+      { patente: `ZQX ${n}`, id_tipo_vehiculo: 1 },
+      { patente: patenteAlAzar(3), id_tipo_vehiculo: 3 },
+      { patente: `${n} zqx`, id_tipo_vehiculo: 2 },
+      { patente: patenteAlAzar(2), id_tipo_vehiculo: 2 },
+    ];
+
+    for (const body of casos) {
+      const { estado, datos } = await api('POST', '/vehiculos', { token: conductor.token, body });
+      assert.equal(estado, 201, `${body.patente} (tipo ${body.id_tipo_vehiculo}) respondio ${estado}`);
+      assert.equal(datos.vehiculo.patente, body.patente.toUpperCase().replace(/\s+/g, ''));
+    }
+  });
+
+  test('rechaza una patente que no corresponde al tipo', async () => {
+    const conductor = await crearUsuario();
+    const casos = [
+      { patente: patenteAlAzar(1), id_tipo_vehiculo: 2 },
+      { patente: patenteAlAzar(2), id_tipo_vehiculo: 1 },
+      { patente: '123ABC', id_tipo_vehiculo: 3 },
+      { patente: 'PR123456', id_tipo_vehiculo: 1 },
+    ];
+
+    for (const body of casos) {
+      const { estado, datos } = await api('POST', '/vehiculos', { token: conductor.token, body });
+      assert.equal(estado, 400, `${body.patente} (tipo ${body.id_tipo_vehiculo}) respondio ${estado}`);
+      assert.ok(JSON.stringify(datos).includes('patente'));
+    }
+  });
+
+  test('el PATCH cruza lo que cambia con lo guardado', async () => {
+    const conductor = await crearUsuario();
+    const auto = await crearVehiculo(conductor.token);
+
+    // Solo el tipo: la patente de auto guardada no sirve para moto.
+    const soloTipo = await api('PATCH', `/vehiculos/${auto.id_vehiculo}`, {
+      token: conductor.token,
+      body: { id_tipo_vehiculo: 2 },
+    });
+    assert.equal(soloTipo.estado, 400);
+
+    // Solo la patente: una de moto no sirve para el auto guardado.
+    const soloPatente = await api('PATCH', `/vehiculos/${auto.id_vehiculo}`, {
+      token: conductor.token,
+      body: { patente: patenteAlAzar(2) },
+    });
+    assert.equal(soloPatente.estado, 400);
+
+    // Las dos juntas y compatibles: pasa a ser moto.
+    const ambas = await api('PATCH', `/vehiculos/${auto.id_vehiculo}`, {
+      token: conductor.token,
+      body: { patente: patenteAlAzar(2), id_tipo_vehiculo: 2 },
+    });
+    assert.equal(ambas.estado, 200);
+    assert.equal(ambas.datos.vehiculo.id_tipo_vehiculo, 2);
   });
 
   test('edita marca y modelo', async () => {

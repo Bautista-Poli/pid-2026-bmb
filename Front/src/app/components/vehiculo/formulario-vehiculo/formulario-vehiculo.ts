@@ -1,10 +1,37 @@
 import { ChangeDetectionStrategy, Component, effect, inject, input, output } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  AbstractControl,
+  FormBuilder,
+  ReactiveFormsModule,
+  ValidationErrors,
+  Validators,
+} from '@angular/forms';
 import { Boton, Chip } from '@app/components/ui';
 import { ETIQUETA_TIPO_VEHICULO, NuevoVehiculo, TipoVehiculo, Vehiculo } from '@app/models';
 
 /** Orden de los chips, igual que en los filtros de explorar. */
 const TIPOS: TipoVehiculo[] = ['AUTO', 'MOTO', 'CAMIONETA'];
+
+/**
+ * Formatos de patente argentina por tipo, viejo y Mercosur. Mismas reglas que
+ * el backend (vehiculo.validator.js); la moto es la unica distinta.
+ */
+const FORMATOS_PATENTE = {
+  moto: { regex: /^(\d{3}[A-Z]{3}|[A-Z]\d{3}[A-Z]{3})$/, ejemplo: 'A 123 BCD', ejemplos: '123 ABC o A 123 BCD' },
+  auto: { regex: /^([A-Z]{3}\d{3}|[A-Z]{2}\d{3}[A-Z]{2})$/, ejemplo: 'AB 123 CD', ejemplos: 'ABC 123 o AB 123 CD' },
+};
+
+function formatoPatente(tipo: TipoVehiculo) {
+  return tipo === 'MOTO' ? FORMATOS_PATENTE.moto : FORMATOS_PATENTE.auto;
+}
+
+/** Cruza la patente con el tipo elegido: cambiar el chip revalida al instante. */
+function patenteSegunTipo(grupo: AbstractControl): ValidationErrors | null {
+  const patente = String(grupo.get('patente')?.value ?? '').toUpperCase().replace(/\s+/g, '');
+  const tipo = grupo.get('tipo')?.value as TipoVehiculo;
+  if (!patente) return null;
+  return formatoPatente(tipo).regex.test(patente) ? null : { patenteInvalida: true };
+}
 
 /**
  * Formulario de datos de un vehiculo, compartido por el alta y la edicion.
@@ -34,15 +61,15 @@ export class FormularioVehiculo {
   protected readonly tipos = TIPOS;
   protected readonly etiquetaTipo = ETIQUETA_TIPO_VEHICULO;
 
-  /** Mismos limites que valida el backend (vehiculo.validator.js). */
+  /** Mismas reglas que valida el backend (vehiculo.validator.js). */
   protected readonly formulario = this.fb.nonNullable.group({
-    patente: ['', [Validators.required, Validators.minLength(5), Validators.maxLength(12)]],
+    patente: ['', [Validators.required]],
     tipo: this.fb.nonNullable.control<TipoVehiculo>('AUTO'),
     marca: ['', [Validators.maxLength(60)]],
     modelo: ['', [Validators.maxLength(60)]],
     color: ['', [Validators.maxLength(30)]],
     predeterminado: false,
-  });
+  }, { validators: patenteSegunTipo });
 
   constructor() {
     // Al abrir el editor, el formulario se precarga con los datos del vehiculo.
@@ -60,9 +87,13 @@ export class FormularioVehiculo {
     });
   }
 
-  protected invalido(campo: string): boolean {
-    const control = this.formulario.get(campo);
-    return Boolean(control?.invalid && control.touched);
+  protected patenteConError(): boolean {
+    const patente = this.formulario.controls.patente;
+    return patente.touched && (patente.invalid || this.formulario.hasError('patenteInvalida'));
+  }
+
+  protected formato() {
+    return formatoPatente(this.formulario.controls.tipo.value);
   }
 
   protected elegirTipo(tipo: TipoVehiculo): void {

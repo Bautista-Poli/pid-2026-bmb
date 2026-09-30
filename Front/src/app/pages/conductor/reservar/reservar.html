@@ -10,15 +10,7 @@
       <!-- Confirmacion -->
       <div class="aparece flex flex-col gap-6">
         <header class="flex flex-col items-start gap-3">
-          <span
-            class="surge grid size-11 place-items-center rounded-full bg-exito-suave text-exito"
-            aria-hidden="true"
-          >
-            <svg class="size-5" viewBox="0 0 20 20" fill="none" stroke="currentColor"
-                 stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="m5 10.5 3.4 3.4L15 7.3" />
-            </svg>
-          </span>
+          <app-reserva-hecha />
           <div>
             <p class="eyebrow text-exito">Reserva enviada</p>
             <h1 class="titulo-vista mt-1.5">{{ estacionamiento.nombre }}</h1>
@@ -78,12 +70,11 @@
         </header>
 
         <!-- Foto del estacionamiento -->
-        @if (estacionamiento.fotoUrl; as foto) {
-          <img
-            [src]="foto"
-            [alt]="'Foto de ' + estacionamiento.nombre"
-            class="aspect-[16/9] w-full rounded-tarjeta border border-borde object-cover shadow-tarjeta
-                   sm:aspect-[21/9]"
+        @if (estacionamiento.fotos.length > 0) {
+          <app-galeria-fotos
+            class="aspect-[16/9] w-full rounded-tarjeta border border-borde shadow-tarjeta sm:aspect-[21/9]"
+            [fotos]="estacionamiento.fotos"
+            [nombre]="'Foto de ' + estacionamiento.nombre"
           />
         } @else {
           <div

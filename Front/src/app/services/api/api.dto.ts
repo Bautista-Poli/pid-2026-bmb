@@ -79,8 +79,10 @@ export interface EstacionamientoDto {
   disponible?: boolean;
   tipos_vehiculo?: number[];
   horarios?: HorarioDto[];
-  /** Cuando se subio la foto. `null` o ausente si el estacionamiento no tiene. */
+  /** Cuando se subio la portada. `null` o ausente si el estacionamiento no tiene. */
   foto_actualizada?: string | null;
+  /** La galeria en orden; la primera es la portada. */
+  fotos?: { id_foto: string; actualizada: string }[];
 }
 
 export interface VehiculoDto {

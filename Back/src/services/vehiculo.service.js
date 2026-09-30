@@ -1,5 +1,6 @@
 import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
+import { errorPatente } from '../validators/vehiculo.validator.js';
 
 const VIOLACION_UNIQUE = '23505';
 const VIOLACION_FK = '23503';
@@ -101,10 +102,20 @@ export async function obtenerDelConductor(idVehiculo, idConductor) {
 export async function actualizar(idVehiculo, idConductor, cambios) {
   return withTransaction(async (client) => {
     const { rows: propio } = await client.query(
-      'SELECT 1 FROM vehiculo WHERE id_vehiculo = $1 AND id_conductor = $2',
+      'SELECT patente, id_tipo_vehiculo FROM vehiculo WHERE id_vehiculo = $1 AND id_conductor = $2',
       [idVehiculo, idConductor],
     );
     if (!propio[0]) throw ApiError.notFound('Vehiculo no encontrado para este conductor');
+
+    // Si cambia solo la patente o solo el tipo, el validador no pudo cruzarlos:
+    // se verifica el par resultante contra lo guardado.
+    if ((cambios.patente === undefined) !== (cambios.id_tipo_vehiculo === undefined)) {
+      const error = errorPatente(
+        cambios.patente ?? propio[0].patente,
+        cambios.id_tipo_vehiculo ?? propio[0].id_tipo_vehiculo,
+      );
+      if (error) throw ApiError.badRequest('Datos invalidos', [{ campo: 'patente', mensaje: error }]);
+    }
 
     if (cambios.predeterminado === true) {
       await client.query(

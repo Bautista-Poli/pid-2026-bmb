@@ -1,0 +1,242 @@
+@let r = reserva();
+
+<ng-template #estado>
+  <ui-etiqueta [tono]="tono()">
+    @if (r.estado === 'ACTIVA') {
+      <span class="size-1.5 rounded-full bg-current" aria-hidden="true"></span>
+    }
+    {{ etiquetaEstado[r.estado] }}
+  </ui-etiqueta>
+</ng-template>
+
+<ng-template #aviso>
+  @if (r.motivoReasignacion; as motivo) {
+    <p
+      class="rounded-control border px-3 py-2 text-[12px]"
+      [class]="
+        r.estado === 'CANCELADA'
+          ? 'border-ocupada/25 bg-ocupada/5 text-ocupada'
+          : 'border-baja/25 bg-baja/8 text-baja'
+      "
+      role="status"
+    >
+      {{ motivo }}
+    </p>
+  }
+</ng-template>
+
+<ng-template #fecha>
+  <div
+    class="flex w-[58px] shrink-0 flex-col items-center rounded-control border border-borde
+           bg-lienzo py-2 leading-none"
+    aria-hidden="true"
+  >
+    <span class="text-[10.5px] font-semibold tracking-[0.08em] text-acento uppercase">
+      {{ bloqueFecha().semana }}
+    </span>
+    <span class="num-tabular mt-1 text-[22px] font-semibold text-tinta">
+      {{ bloqueFecha().numero }}
+    </span>
+    <span class="mt-1 text-[11px] text-plomo">{{ bloqueFecha().mes }}</span>
+  </div>
+</ng-template>
+
+@if (variante() === 'compacta') {
+  <!-- Historial: una linea por reserva. -->
+  <div class="flex flex-col gap-3 px-4 py-3.5 lg:px-5">
+    <div class="flex items-center gap-3.5">
+      <ng-container [ngTemplateOutlet]="fecha" />
+      <div class="min-w-0 flex-1">
+        <p class="truncate text-[13.5px] font-semibold text-tinta">{{ r.estacionamiento.nombre }}</p>
+        <p class="num-tabular mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-plomo">
+          <span>
+            {{ r.horaDesde }} – {{ r.horaHasta }}@if (cruzaMedianoche()) { (+1)}
+          </span>
+          <span aria-hidden="true">·</span>
+          <span>{{ r.vehiculo.patente }}</span>
+        </p>
+      </div>
+      <div class="flex shrink-0 flex-col items-end gap-1.5">
+        <ng-container [ngTemplateOutlet]="estado" />
+        <span
+          class="num-tabular text-[13px] font-semibold"
+          [class]="r.estado === 'CANCELADA' ? 'text-humo line-through' : 'text-tinta'"
+        >
+          $ {{ r.precioTotal.toLocaleString('es-AR') }}
+        </span>
+      </div>
+    </div>
+    <ng-container [ngTemplateOutlet]="aviso" />
+  </div>
+} @else {
+  <article
+    class="overflow-hidden rounded-tarjeta border bg-papel shadow-tarjeta"
+    [class]="enCurso() ? 'border-acento-borde' : 'border-borde'"
+  >
+    @if (enCurso()) {
+      <!-- Bloque "En curso": cuanto lleva, cuanto falta y la barra de la franja. -->
+      <div class="border-b border-acento-borde bg-acento-suave px-5 pt-4 pb-5 lg:px-6">
+        <div class="flex items-center justify-between gap-3">
+          <ng-container [ngTemplateOutlet]="estado" />
+          <span class="text-[12.5px] text-grafito">{{ fechaLarga() }}</span>
+        </div>
+
+        <div class="mt-4 flex flex-col gap-1 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p class="text-[12.5px] text-grafito">Lleva</p>
+            <p
+              class="num-tabular text-[34px] leading-tight font-semibold tracking-[-0.025em]
+                     text-tinta lg:text-[40px]"
+              aria-live="polite"
+            >
+              {{ lleva() }}
+            </p>
+          </div>
+          <p class="num-tabular text-[13px] text-grafito lg:pb-2">
+            Termina a las {{ r.horaHasta }} · {{ falta() }}
+          </p>
+        </div>
+
+        <div
+          class="mt-4 h-2 overflow-hidden rounded-full bg-borde"
+          role="progressbar"
+          aria-label="Avance de la reserva"
+          [attr.aria-valuenow]="progreso()"
+          aria-valuemin="0"
+          aria-valuemax="100"
+        >
+          <div
+            class="h-full rounded-full bg-exito transition-[width] duration-500 ease-out"
+            [style.width.%]="progreso()"
+          ></div>
+        </div>
+        <div class="num-tabular mt-2 flex justify-between text-[11.5px] text-plomo">
+          <span>{{ r.horaDesde }}</span>
+          <span>{{ r.horaHasta }}</span>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-1 pt-5" [class]="margen()">
+        <h3 class="text-[16px] font-semibold text-tinta">{{ r.estacionamiento.nombre }}</h3>
+        <p class="flex items-center gap-1.5 text-[12.5px] text-plomo">
+          <ui-icono nombre="explorar" [tamano]="15" />
+          {{ direccion() }}
+        </p>
+      </div>
+    } @else {
+      <div class="flex gap-3.5 pt-4" [class]="margen()">
+        <ng-container [ngTemplateOutlet]="fecha" />
+        <div class="min-w-0 flex-1">
+          <div class="flex items-start justify-between gap-3">
+            <h3 class="min-w-0 text-[15px] font-semibold text-tinta">
+              {{ r.estacionamiento.nombre }}
+            </h3>
+            <ng-container [ngTemplateOutlet]="estado" />
+          </div>
+          <p class="mt-0.5 truncate text-[12.5px] text-plomo">{{ direccion() }}</p>
+          <p class="num-tabular mt-2 flex items-center gap-1.5 text-[13.5px] font-medium text-tinta">
+            <ui-icono class="text-plomo" nombre="reloj" [tamano]="15" />
+            {{ r.horaDesde }} – {{ r.horaHasta }}
+            @if (cruzaMedianoche()) {
+              <span class="text-[12px] font-normal text-plomo">(día siguiente)</span>
+            }
+          </p>
+        </div>
+      </div>
+    }
+
+    <!-- Con que auto y en que cochera. -->
+    <div class="grid gap-2.5 pt-4 sm:grid-cols-2" [class]="margen()">
+      <div class="flex min-w-0 items-center gap-3 rounded-control border border-borde-sutil bg-lienzo px-3 py-2.5">
+        <ui-chapa-patente [patente]="r.vehiculo.patente" />
+        <span class="truncate text-[12.5px] text-grafito">{{ vehiculo() }}</span>
+      </div>
+
+      @if (r.cochera; as cochera) {
+        <div class="flex min-w-0 items-center gap-3 rounded-control border border-borde-sutil bg-lienzo px-3 py-2.5">
+          <span
+            class="grid size-7 shrink-0 place-items-center rounded-boton bg-acento text-[13px]
+                   font-bold text-sobre-acento"
+            aria-hidden="true"
+          >
+            P
+          </span>
+          <span class="truncate text-[12.5px] text-grafito">
+            <span class="font-semibold text-tinta">{{ cochera.identificador }}</span>
+            @if (cochera.sector) {
+              · {{ cochera.sector }}
+            }
+          </span>
+        </div>
+      } @else {
+        <div class="flex min-w-0 items-center gap-3 rounded-control border border-dashed border-borde px-3 py-2.5">
+          <span
+            class="grid size-7 shrink-0 place-items-center rounded-boton border border-dashed
+                   border-humo text-[13px] font-bold text-plomo"
+            aria-hidden="true"
+          >
+            P
+          </span>
+          <span class="text-[12.5px] text-plomo">Cochera a asignar</span>
+        </div>
+      }
+    </div>
+
+    <!-- Como llegar: abre la navegacion en la app que use el conductor. -->
+    <nav class="flex flex-wrap items-center gap-2 pt-3" [class]="margen()" aria-label="Cómo llegar">
+      <span class="flex items-center gap-1.5 text-[12.5px] text-plomo">
+        <ui-icono nombre="navegar" [tamano]="15" />
+        Cómo llegar
+      </span>
+      @for (link of comoLlegar(); track link.app) {
+        <a
+          class="inline-flex min-h-9 items-center rounded-full border border-borde px-3 text-[12.5px]
+                 font-medium text-tinta transition-colors duration-160 ease-out hover:border-acento-borde
+                 hover:bg-acento-suave"
+          [href]="link.url"
+          target="_blank"
+          rel="noopener"
+        >
+          {{ link.app }}
+        </a>
+      }
+    </nav>
+
+    @if (r.motivoReasignacion) {
+      <div class="pt-3" [class]="margen()">
+        <ng-container [ngTemplateOutlet]="aviso" />
+      </div>
+    }
+
+    <footer
+      class="mt-4 flex items-center justify-between gap-3 border-t border-borde-sutil py-3.5"
+      [class]="margen()"
+    >
+      <p class="flex items-baseline gap-2">
+        <span class="num-tabular text-[17px] font-semibold text-tinta">
+          $ {{ r.precioTotal.toLocaleString('es-AR') }}
+        </span>
+        <span class="text-[12.5px] text-plomo">{{ etiquetaModalidad[r.modalidad] }}</span>
+      </p>
+
+      @if (cancelable()) {
+        <button
+          type="button"
+          class="inline-flex min-h-11 items-center gap-2 rounded-boton px-3 text-[13px] font-semibold
+                 text-ocupada transition-colors duration-160 ease-out hover:bg-ocupada/8
+                 disabled:pointer-events-none disabled:opacity-50"
+          [disabled]="cancelando()"
+          (click)="cancelar.emit(r)"
+        >
+          @if (cancelando()) {
+            <span
+              class="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent"
+              aria-hidden="true"
+            ></span>
+          }
+          Cancelar
+        </button>
+      }
+    </footer>
+  </article>
+}

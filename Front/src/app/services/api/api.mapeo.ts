@@ -98,6 +98,7 @@ export function aEstacionamiento(dto: EstacionamientoDto): Estacionamiento {
     tiposAdmitidos: (dto.tipos_vehiculo ?? []).map((id) => TIPO_POR_ID[id]),
     cubierto: dto.cubierto,
     fotoUrl: urlDeFoto(dto),
+    fotos: urlsDeGaleria(dto),
     publicado: dto.publicado,
     activo: dto.activo,
   };
@@ -112,6 +113,13 @@ function urlDeFoto(dto: EstacionamientoDto): string | null {
   if (!dto.foto_actualizada) return null;
   const version = Date.parse(dto.foto_actualizada);
   return `/api/estacionamientos/${dto.id_estacionamiento}/foto?v=${version}`;
+}
+
+function urlsDeGaleria(dto: EstacionamientoDto): string[] {
+  return (dto.fotos ?? []).map(
+    ({ id_foto, actualizada }) =>
+      `/api/estacionamientos/${dto.id_estacionamiento}/fotos/${id_foto}?v=${Date.parse(actualizada)}`,
+  );
 }
 
 export function aPayloadEstacionamiento(datos: NuevoEstacionamiento) {

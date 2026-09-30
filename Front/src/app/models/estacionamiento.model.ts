@@ -54,8 +54,10 @@ export interface Estacionamiento {
   disponible?: boolean;
   tiposAdmitidos: TipoVehiculo[];
   cubierto: boolean;
-  /** URL publica de la foto que subio el propietario, o `null` si no cargo ninguna. */
+  /** URL publica de la portada (la primera foto), o `null` si no cargo ninguna. */
   fotoUrl: string | null;
+  /** URLs de todas las fotos, en orden; la primera es la portada. */
+  fotos: string[];
   /** Distancia al usuario en km. Solo viene en busquedas geolocalizadas. */
   distanciaKm?: number;
   publicado: boolean;

@@ -13,12 +13,14 @@ import { rxResource } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
 import {
   RangoHorario,
+  ReservaHecha,
   ResumenReserva,
   SelectorDuracion,
   SelectorFecha,
   SelectorFranja,
   SelectorVehiculo,
 } from '@app/components/reserva';
+import { GaleriaFotos } from '@app/components/estacionamiento';
 import { Boton, Cargando, EstadoVacio, Tarjeta } from '@app/components/ui';
 import { ETIQUETA_MODALIDAD, FranjaDisponible, Id, Reserva, Vehiculo } from '@app/models';
 import { EstacionamientoService } from '@app/services/estacionamiento.service';
@@ -49,6 +51,8 @@ import { aFechaISO, desdeFechaISO, diaSemanaDe } from '@app/utils/fecha.util';
     SelectorFranja,
     SelectorDuracion,
     ResumenReserva,
+    ReservaHecha,
+    GaleriaFotos,
     Tarjeta,
     Boton,
     Cargando,

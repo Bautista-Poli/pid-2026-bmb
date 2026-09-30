@@ -540,6 +540,72 @@ describe('foto del estacionamiento', () => {
   });
 });
 
+describe('galeria de fotos', () => {
+  const JPEG_MINIMO = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]);
+
+  test('suma fotos en orden, la primera es la portada y cada una se lee por su id', async () => {
+    const propietario = await nuevoPropietario();
+    const estacionamiento = await crearEstacionamiento(propietario.token, { cocheras: 0 });
+    const base = `/estacionamientos/${estacionamiento.id_estacionamiento}`;
+
+    const primera = await api('POST', `${base}/fotos`, {
+      token: propietario.token,
+      raw: PNG_MINIMO,
+      contentType: 'image/png',
+    });
+    assert.equal(primera.estado, 201);
+    const segunda = await api('POST', `${base}/fotos`, {
+      token: propietario.token,
+      raw: JPEG_MINIMO,
+      contentType: 'image/jpeg',
+    });
+    assert.equal(segunda.estado, 201);
+
+    const { datos } = await api('GET', base);
+    const ids = datos.estacionamiento.fotos.map((foto) => foto.id_foto);
+    assert.deepEqual(ids, [primera.datos.foto.id_imagen, segunda.datos.foto.id_imagen]);
+
+    const portada = await api('GET', `${base}/foto`);
+    assert.ok(portada.datos.equals(PNG_MINIMO));
+
+    const leida = await api('GET', `${base}/fotos/${ids[1]}`);
+    assert.equal(leida.headers.get('content-type'), 'image/jpeg');
+    assert.ok(leida.datos.equals(JPEG_MINIMO));
+  });
+
+  test('al borrar la portada, la siguiente pasa a serlo', async () => {
+    const propietario = await nuevoPropietario();
+    const estacionamiento = await crearEstacionamiento(propietario.token, { cocheras: 0 });
+    const base = `/estacionamientos/${estacionamiento.id_estacionamiento}`;
+    const subir = (raw, contentType) =>
+      api('POST', `${base}/fotos`, { token: propietario.token, raw, contentType });
+
+    const primera = await subir(PNG_MINIMO, 'image/png');
+    await subir(JPEG_MINIMO, 'image/jpeg');
+
+    const borrada = await api('DELETE', `${base}/fotos/${primera.datos.foto.id_imagen}`, {
+      token: propietario.token,
+    });
+    assert.equal(borrada.estado, 204);
+
+    const portada = await api('GET', `${base}/foto`);
+    assert.ok(portada.datos.equals(JPEG_MINIMO));
+  });
+
+  test('un propietario ajeno no puede sumar fotos', async () => {
+    const propietario = await nuevoPropietario();
+    const otro = await nuevoPropietario();
+    const estacionamiento = await crearEstacionamiento(propietario.token, { cocheras: 0 });
+
+    const { estado } = await api('POST', `/estacionamientos/${estacionamiento.id_estacionamiento}/fotos`, {
+      token: otro.token,
+      raw: PNG_MINIMO,
+      contentType: 'image/png',
+    });
+    assert.equal(estado, 403);
+  });
+});
+
 describe('tarifas por modalidad', () => {
   const rutaDe = (estacionamiento) => `/estacionamientos/${estacionamiento.id_estacionamiento}`;
 

@@ -7,9 +7,19 @@
       <div class="mt-4 flex gap-2">
         <ui-chip [activo]="pestania() === 'VIGENTES'" (alternar)="cambiarPestania('VIGENTES')">
           Vigentes
+          @if (!recurso.isLoading()) {
+            <span class="num-tabular ml-1.5 rounded-[5px] bg-current/12 px-1.5 py-px text-[11px]">
+              {{ cantidadVigentes() }}
+            </span>
+          }
         </ui-chip>
         <ui-chip [activo]="pestania() === 'HISTORIAL'" (alternar)="cambiarPestania('HISTORIAL')">
           Historial
+          @if (!recurso.isLoading()) {
+            <span class="num-tabular ml-1.5 rounded-[5px] bg-current/12 px-1.5 py-px text-[11px]">
+              {{ cantidadHistorial() }}
+            </span>
+          }
         </ui-chip>
       </div>
     </header>
@@ -23,40 +33,115 @@
       </p>
     }
 
-    @if (error(); as mensaje) {
-      <p
-        class="rounded-control border border-ocupada/25 bg-ocupada/5 px-4 py-3 text-[13px] text-ocupada"
-        role="alert"
-      >
-        No pudimos cancelar la reserva: {{ mensaje }}
-      </p>
-    }
-
     @if (recurso.isLoading()) {
       <ui-cargando [cantidad]="2" />
     } @else if (recurso.error(); as error) {
       <ui-estado-vacio titulo="No pudimos cargar tus reservas" [descripcion]="error.message">
         <ui-boton (presionado)="recurso.reload()">Reintentar</ui-boton>
       </ui-estado-vacio>
-    } @else if (visibles().length === 0) {
+    } @else if (vacia()) {
       <ui-estado-vacio
         [titulo]="pestania() === 'VIGENTES' ? 'No tenes reservas activas' : 'Todavia no hay historial'"
         descripcion="Cuando reserves un lugar lo vas a ver aca."
       >
         <ui-boton routerLink="/conductor/explorar">Explorar estacionamientos</ui-boton>
       </ui-estado-vacio>
+    } @else if (pestania() === 'VIGENTES') {
+      @for (reserva of enCurso(); track reserva.id) {
+        <app-tarjeta-reserva class="aparece" [reserva]="reserva" />
+      }
+
+      @if (proximas().length > 0) {
+        <section class="flex flex-col gap-3" aria-labelledby="titulo-proximas">
+          <h2 id="titulo-proximas" class="eyebrow eyebrow-neutro">Próximas</h2>
+          <div class="aparece-en-cadena flex flex-col gap-3">
+            @for (reserva of proximas(); track reserva.id) {
+              <app-tarjeta-reserva
+                [reserva]="reserva"
+                [cancelando]="cancelandoId() === reserva.id"
+                (cancelar)="pedirCancelacion($event)"
+              />
+            }
+          </div>
+        </section>
+      }
     } @else {
-      <ui-tarjeta relleno="ninguno" [recortar]="true">
-        @for (reserva of visibles(); track reserva.id) {
-          <app-fila-reserva class="aparece"
-            [reserva]="reserva"
-            vista="CONDUCTOR"
-            [permiteCancelar]="true"
-            [cancelando]="cancelandoId() === reserva.id"
-            (cancelar)="cancelar($event)"
-          />
-        }
-      </ui-tarjeta>
+      @for (mes of historial(); track mes.clave) {
+        <section class="flex flex-col gap-3" [attr.aria-label]="mes.titulo">
+          <h2 class="eyebrow eyebrow-neutro">{{ mes.titulo }}</h2>
+          <ui-tarjeta relleno="ninguno" [recortar]="true">
+            <ul class="aparece-en-cadena">
+              @for (reserva of mes.reservas; track reserva.id) {
+                <li class="border-t border-borde-sutil first:border-t-0">
+                  <app-tarjeta-reserva [reserva]="reserva" variante="compacta" />
+                </li>
+              }
+            </ul>
+          </ui-tarjeta>
+        </section>
+      }
     }
   </div>
+
+  <ui-modal
+    titulo="Cancelar reserva"
+    [abierto]="aCancelar() !== null"
+    (cerrado)="cerrarCancelacion()"
+  >
+    @if (aCancelar(); as r) {
+      <div class="flex flex-col gap-4">
+        <dl class="rounded-control border border-borde-sutil bg-lienzo px-4 py-1.5 text-[13px]">
+          <div class="flex justify-between gap-4 border-b border-borde-sutil py-2">
+            <dt class="text-plomo">Lugar</dt>
+            <dd class="text-right font-medium text-tinta">{{ r.estacionamiento.nombre }}</dd>
+          </div>
+          <div class="flex justify-between gap-4 border-b border-borde-sutil py-2">
+            <dt class="text-plomo">Día</dt>
+            <dd class="text-right text-tinta first-letter:uppercase">
+              {{ desdeFechaISO(r.fecha) | date: "EEEE d 'de' MMMM" }}
+            </dd>
+          </div>
+          <div class="flex justify-between gap-4 border-b border-borde-sutil py-2">
+            <dt class="text-plomo">Horario</dt>
+            <dd class="num-tabular text-right text-tinta">{{ r.horaDesde }} – {{ r.horaHasta }}</dd>
+          </div>
+          <div class="flex justify-between gap-4 py-2">
+            <dt class="text-plomo">Vehículo</dt>
+            <dd class="num-tabular text-right text-tinta">{{ r.vehiculo.patente }}</dd>
+          </div>
+        </dl>
+
+        <p class="text-[13px] leading-relaxed text-grafito">
+          La cochera queda libre para otro conductor y la reserva pasa al historial. Si después
+          querés ese lugar, vas a tener que reservarlo de nuevo.
+        </p>
+
+        @if (errorCancelar(); as mensaje) {
+          <p
+            class="rounded-control border border-ocupada/25 bg-ocupada/5 px-4 py-3 text-[13px] text-ocupada"
+            role="alert"
+          >
+            {{ mensaje }}
+          </p>
+        }
+
+        <div class="mt-1 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <ui-boton
+            variante="fantasma"
+            [deshabilitado]="cancelandoId() !== null"
+            (presionado)="cerrarCancelacion()"
+          >
+            Volver
+          </ui-boton>
+          <ui-boton
+            variante="peligro"
+            [cargando]="cancelandoId() === r.id"
+            (presionado)="confirmarCancelacion()"
+          >
+            Cancelar reserva
+          </ui-boton>
+        </div>
+      </div>
+    }
+  </ui-modal>
 </div>

@@ -5,11 +5,17 @@
       class="uppercase"
       type="text"
       formControlName="patente"
-      placeholder="AB 123 CD"
+      [placeholder]="formato().ejemplo"
       autocomplete="off"
     />
-    @if (invalido('patente')) {
-      <span class="campo-error">Tiene que tener entre 5 y 12 caracteres.</span>
+    @if (patenteConError()) {
+      <span class="campo-error">
+        @if (formulario.controls.patente.hasError('required')) {
+          Ingresá la patente.
+        } @else {
+          Formato inválido{{ formulario.controls.tipo.value === 'MOTO' ? ' para moto' : '' }}: {{ formato().ejemplos }}.
+        }
+      </span>
     }
   </label>
 

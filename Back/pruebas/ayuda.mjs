@@ -148,8 +148,19 @@ export async function crearEstacionamiento(
   return estacionamiento;
 }
 
+/**
+ * Patente Mercosur al azar con el formato del tipo (2 = moto: A123BCD; el
+ * resto: AB123CD). Hay cientos de millones de combinaciones, no se repiten.
+ */
+export function patenteAlAzar(tipo = 1) {
+  const letras = (n) =>
+    Array.from({ length: n }, () => String.fromCharCode(65 + Math.floor(Math.random() * 26))).join('');
+  const numeros = String(Math.floor(Math.random() * 1000)).padStart(3, '0');
+  return tipo === 2 ? `${letras(1)}${numeros}${letras(3)}` : `${letras(2)}${numeros}${letras(2)}`;
+}
+
 export async function crearVehiculo(token, { tipo = 1 } = {}) {
-  const patente = `PR${String(Math.random()).slice(2, 8)}`;
+  const patente = patenteAlAzar(tipo);
   const { datos } = await api('POST', '/vehiculos', {
     token,
     body: { patente, id_tipo_vehiculo: tipo },

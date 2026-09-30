@@ -10,6 +10,9 @@ function cochera(identificador: string): Cochera {
     tipoVehiculo: 'AUTO',
     cubierta: true,
     estado: 'LIBRE',
+    bloqueada: false,
+    motivoBloqueo: null,
+    bloqueadaHasta: null,
   };
 }
 

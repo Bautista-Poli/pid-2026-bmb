@@ -163,6 +163,7 @@
                          hover:-translate-y-0.5 hover:shadow-elevada"
                   [class]="
                     claseLugar[cochera.estado] +
+                    (cochera.bloqueada ? ' ' + claseBloqueada : '') +
                     (estaElegida(cochera) ? ' !border-acento ring-2 ring-acento shadow-elevada' : '')
                   "
                   [attr.aria-pressed]="estaElegida(cochera)"
@@ -172,10 +173,19 @@
                     ', ' +
                     (cochera.cubierta ? 'cubierta' : 'descubierta') +
                     ', ' +
-                    etiquetaEstado[cochera.estado]
+                    etiquetaEstado[cochera.estado] +
+                    (cochera.bloqueada ? ', bloqueada' : '')
                   "
                   (click)="tocar(cochera, $event)"
                 >
+                  @if (cochera.bloqueada) {
+                    <span
+                      class="absolute top-1.5 left-1.5 grid size-5 place-items-center rounded-full bg-aviso/15 text-aviso"
+                      title="Bloqueada"
+                    >
+                      <ui-icono nombre="candado" [tamano]="12" />
+                    </span>
+                  }
                   <!-- Techo: el techito si es cubierta, el sol si esta al aire libre -->
                   <span
                     class="absolute top-1.5 right-1.5 grid size-5 place-items-center rounded-full"
@@ -201,6 +211,10 @@
               <span class="flex items-center gap-2"><span class="size-[7px] rounded-full bg-ocupada"></span>Ocupada</span>
               <span class="flex items-center gap-2"><span class="size-[7px] rounded-full bg-baja"></span>Reservada</span>
               <span class="flex items-center gap-2"><span class="size-[7px] rounded-full bg-humo"></span>De baja</span>
+              <span class="flex items-center gap-1.5">
+                <ui-icono nombre="candado" [tamano]="12" class="text-aviso" />
+                Bloqueada
+              </span>
               <span class="hidden h-3.5 w-px bg-borde sm:block" aria-hidden="true"></span>
               <span class="flex items-center gap-1.5">
                 <span class="grid size-5 place-items-center rounded-full bg-acento-suave text-acento">
@@ -279,6 +293,18 @@
               } @else {
                 <form class="flex flex-1 flex-col" [formGroup]="formulario" (ngSubmit)="guardar()" novalidate>
                   <div class="flex flex-col gap-[18px] px-5 py-5">
+                    @if (cochera.bloqueada) {
+                      <div class="flex items-start gap-2.5 rounded-control border border-aviso/25 bg-aviso/5 px-3.5 py-3">
+                        <ui-icono nombre="candado" [tamano]="15" class="mt-0.5 shrink-0 text-aviso" />
+                        <div class="min-w-0 text-[12.5px] text-grafito">
+                          <p class="font-semibold text-tinta">Bloqueada</p>
+                          <p>{{ cochera.motivoBloqueo || 'Sin motivo cargado.' }}</p>
+                          <p class="mt-0.5 text-plomo">
+                            {{ cochera.bloqueadaHasta ? ('Hasta ' + (cochera.bloqueadaHasta | date: "d 'de' MMMM")) : 'Sin fecha de fin' }}
+                          </p>
+                        </div>
+                      </div>
+                    }
                     <div class="grid grid-cols-2 gap-3">
                       <label class="campo">
                         <span class="label-campo">Número</span>
@@ -371,6 +397,23 @@
                     >
                       Dar de baja
                     </button>
+                    @if (cochera.bloqueada) {
+                      <button
+                        type="button"
+                        class="rounded-boton px-1 py-2 text-[13px] font-semibold text-aviso hover:underline"
+                        (click)="desbloquear(cochera)"
+                      >
+                        Desbloquear
+                      </button>
+                    } @else {
+                      <button
+                        type="button"
+                        class="rounded-boton px-1 py-2 text-[13px] font-semibold text-aviso hover:underline"
+                        (click)="abrirBloqueo(cochera)"
+                      >
+                        Bloquear
+                      </button>
+                    }
                     <span class="ml-auto"></span>
                     @if (formulario.dirty) {
                       <ui-boton variante="fantasma" tamano="sm" (presionado)="descartar()">Descartar</ui-boton>
@@ -747,6 +790,51 @@
       <ui-boton variante="primario" tipo="submit" [cargando]="enviando()" [deshabilitado]="totalNuevas() === 0">
         {{ totalNuevas() === 1 ? 'Crear 1 cochera' : 'Crear ' + totalNuevas() + ' cocheras' }}
       </ui-boton>
+    </div>
+  </form>
+</ui-modal>
+
+<!-- Bloqueo por mantenimiento -->
+<ui-modal
+  [titulo]="bloqueando() ? 'Bloquear cochera ' + bloqueando()!.identificador : 'Bloquear cochera'"
+  [abierto]="bloqueando() !== null"
+  (cerrado)="cerrarBloqueo()"
+>
+  <form class="flex flex-col gap-4" [formGroup]="formularioBloqueo" (ngSubmit)="confirmarBloqueo(false)" novalidate>
+    <p class="-mt-2 text-[13px] text-plomo">
+      Sale de circulación: no se va a poder reservar. Si tiene reservas por delante las reasignamos
+      solas a otra cochera compatible; si alguna no tiene dónde ir, te avisamos antes de bloquear nada.
+    </p>
+
+    <label class="campo">
+      <span class="label-campo">Motivo <span class="font-normal text-plomo">(opcional)</span></span>
+      <input type="text" formControlName="motivo" placeholder="Pintura, arreglo del portón…" />
+    </label>
+
+    <label class="campo">
+      <span class="label-campo">Bloqueada hasta <span class="font-normal text-plomo">(opcional)</span></span>
+      <input type="date" formControlName="hasta" />
+    </label>
+    <p class="-mt-2 text-[12px] text-plomo">Vacío = bloqueada hasta que la desbloquees vos.</p>
+
+    @if (errorBloqueo(); as mensaje) {
+      <p
+        class="rounded-control border border-ocupada/25 bg-ocupada/5 px-4 py-3 text-[13px] text-ocupada"
+        role="alert"
+      >
+        {{ mensaje }}
+      </p>
+    }
+
+    <div class="flex justify-end gap-2 border-t border-borde-sutil pt-4">
+      <ui-boton (presionado)="cerrarBloqueo()">Cancelar</ui-boton>
+      @if (necesitaForzar()) {
+        <ui-boton variante="peligro" [cargando]="enviando()" (presionado)="confirmarBloqueo(true)">
+          Bloquear igual y cancelar esas reservas
+        </ui-boton>
+      } @else {
+        <ui-boton variante="primario" tipo="submit" [cargando]="enviando()">Bloquear</ui-boton>
+      }
     </div>
   </form>
 </ui-modal>

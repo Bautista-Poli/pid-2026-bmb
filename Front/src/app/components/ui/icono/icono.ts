@@ -37,7 +37,8 @@ export type NombreIcono =
   | 'subir'
   | 'bajar'
   | 'derecha'
-  | 'edificio';
+  | 'edificio'
+  | 'candado';
 
 /**
  * Icono de linea sobre un lienzo de 24x24. Todos comparten estilo (trazo de
@@ -218,6 +219,11 @@ export type NombreIcono =
           <path d="M4 7h9.5M17.5 7H20M4 17h2.5M10.5 17H20" />
           <circle cx="15.5" cy="7" r="2" />
           <circle cx="8.5" cy="17" r="2" />
+        }
+        @case ('candado') {
+          <rect x="5.3" y="10.8" width="13.4" height="9.7" rx="2" />
+          <path d="M8 10.8V7.9a4 4 0 0 1 8 0v2.9" />
+          <circle cx="12" cy="15" r="1.3" fill="currentColor" stroke="none" />
         }
       }
     </svg>

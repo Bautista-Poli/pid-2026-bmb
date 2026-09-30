@@ -29,7 +29,7 @@ type Pestana = 'TODAS' | 'ACTIVAS' | 'PENDIENTES' | 'FINALIZADAS';
 
 const ESTADOS_POR_PESTANA: Record<Pestana, EstadoReserva[] | null> = {
   TODAS: null,
-  ACTIVAS: ['CONFIRMADA', 'EN_CURSO'],
+  ACTIVAS: ['CONFIRMADA', 'ACTIVA'],
   PENDIENTES: ['PENDIENTE'],
   FINALIZADAS: ['FINALIZADA', 'CANCELADA'],
 };
@@ -44,7 +44,7 @@ const PESTANAS: { valor: Pestana; etiqueta: string }[] = [
 const TONO_ESTADO: Record<EstadoReserva, TonoEtiqueta> = {
   PENDIENTE: 'aviso',
   CONFIRMADA: 'acento',
-  EN_CURSO: 'exito',
+  ACTIVA: 'exito',
   FINALIZADA: 'neutro',
   CANCELADA: 'peligro',
 };
@@ -59,7 +59,7 @@ const ICONO_VEHICULO: Record<TipoVehiculo, NombreIcono> = {
 const PASOS: Partial<Record<EstadoReserva, string>> = {
   PENDIENTE: 'Confirmar',
   CONFIRMADA: 'Registrar ingreso',
-  EN_CURSO: 'Registrar egreso',
+  ACTIVA: 'Registrar egreso',
 };
 
 const sinAcentos = (texto: string) =>

@@ -70,7 +70,7 @@ interface DiaOcupacion {
 const TONO_ESTADO: Record<EstadoReserva, TonoEtiqueta> = {
   PENDIENTE: 'aviso',
   CONFIRMADA: 'acento',
-  EN_CURSO: 'exito',
+  ACTIVA: 'exito',
   FINALIZADA: 'neutro',
   CANCELADA: 'peligro',
 };
@@ -84,7 +84,7 @@ const ICONO_VEHICULO: Record<TipoVehiculo, NombreIcono> = {
 const PASOS: Partial<Record<EstadoReserva, string>> = {
   PENDIENTE: 'Confirmar',
   CONFIRMADA: 'Ingreso',
-  EN_CURSO: 'Egreso',
+  ACTIVA: 'Egreso',
 };
 
 const DIAS_CORTOS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];

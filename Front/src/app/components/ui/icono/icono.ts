@@ -31,7 +31,13 @@ export type NombreIcono =
   | 'arbol'
   | 'ciudad'
   | 'esquina'
-  | 'filtros';
+  | 'filtros'
+  | 'inicio'
+  | 'configuracion'
+  | 'subir'
+  | 'bajar'
+  | 'derecha'
+  | 'edificio';
 
 /**
  * Icono de linea sobre un lienzo de 24x24. Todos comparten estilo (trazo de
@@ -183,6 +189,30 @@ export type NombreIcono =
         @case ('esquina') {
           <path d="M9 3.5v17M15 3.5v17M3.5 9h17M3.5 15h17" />
           <circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none" />
+        }
+        @case ('inicio') {
+          <path d="M3.8 10.4 12 3.8l8.2 6.6" />
+          <path d="M5.8 8.9v10.3a1 1 0 0 0 1 1h3.4v-5.6h3.6v5.6h3.4a1 1 0 0 0 1-1V8.9" />
+        }
+        @case ('configuracion') {
+          <path
+            d="M12.22 2.5h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73v.18a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4.5a2 2 0 0 0-2-2Z"
+          />
+          <circle cx="12" cy="12" r="3" />
+        }
+        @case ('subir') {
+          <path d="M12 19V5.5M6.5 11 12 5.5l5.5 5.5" />
+        }
+        @case ('bajar') {
+          <path d="M12 5v13.5M6.5 13l5.5 5.5 5.5-5.5" />
+        }
+        @case ('derecha') {
+          <path d="M9.4 6.5 14.9 12l-5.5 5.5" />
+        }
+        @case ('edificio') {
+          <rect x="5" y="3.5" width="14" height="17" rx="1.6" />
+          <path d="M9 7.5h1.5M13.5 7.5H15M9 11h1.5M13.5 11H15M9 14.5h1.5M13.5 14.5H15" />
+          <path d="M10.5 20.5v-2.6h3v2.6" />
         }
         @case ('filtros') {
           <path d="M4 7h9.5M17.5 7H20M4 17h2.5M10.5 17H20" />

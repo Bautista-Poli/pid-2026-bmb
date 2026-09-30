@@ -1,24 +1,103 @@
-<div class="aparece mx-auto w-full max-w-[940px] px-6 pt-5 pb-8 lg:px-10 lg:pt-[34px] lg:pb-11">
-  <div class="flex flex-col gap-6">
-    <header>
-      <p class="eyebrow">Propietario</p>
-      <h1 class="titulo-vista mt-1.5">Reservas recibidas</h1>
+<div class="aparece mx-auto w-full max-w-[1240px] px-5 pt-5 pb-8 lg:px-9 lg:pt-8 lg:pb-11">
+  <div class="flex flex-col gap-5">
+    <!-- Titulo + filtros -->
+    <header class="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+      <div>
+        <h1 class="text-[24px] leading-tight font-semibold tracking-[-0.02em] text-tinta lg:text-[28px]">
+          Reservas
+        </h1>
+        <p class="mt-1 text-[13.5px] text-plomo">
+          Gestioná y consultá todas las reservas de tus estacionamientos.
+        </p>
+      </div>
 
-      @if (recursoEstacionamientos.value().length > 1) {
-        <div class="mt-4 flex gap-2 overflow-x-auto pb-1">
-          @for (lote of recursoEstacionamientos.value(); track lote.id) {
-            <ui-chip [activo]="activo()?.id === lote.id" (alternar)="seleccionadoId.set(lote.id)">
-              {{ lote.nombre }}
-            </ui-chip>
+      <div class="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center">
+        <label
+          class="flex min-w-0 items-center gap-2 rounded-control border border-borde bg-papel px-3.5
+                 shadow-tarjeta transition-[border-color,box-shadow] duration-160
+                 focus-within:border-acento focus-within:shadow-[0_0_0_3px_var(--color-acento-suave)]
+                 sm:w-[280px]"
+        >
+          <ui-icono nombre="buscar" [tamano]="17" class="text-humo" />
+          <input
+            type="search"
+            class="min-w-0 flex-1 bg-transparent py-2.5 text-[13px] text-tinta outline-none
+                   placeholder:text-humo focus-visible:outline-none"
+            placeholder="Buscar por patente, vehículo o estacionamiento…"
+            aria-label="Buscar reservas"
+            [value]="busqueda()"
+            (input)="busqueda.set(leer($event))"
+          />
+        </label>
+
+        @if (recursoEstacionamientos.value().length > 1) {
+          <select
+            class="rounded-control border border-borde bg-papel px-3.5 py-2.5 text-[13px] text-grafito
+                   shadow-tarjeta focus:border-acento focus:outline-none"
+            aria-label="Estacionamiento"
+            [value]="estacionamientoId()"
+            (change)="estacionamientoId.set(leer($event))"
+          >
+            <option value="">Todos los estacionamientos</option>
+            @for (lote of recursoEstacionamientos.value(); track lote.id) {
+              <option [value]="lote.id">{{ lote.nombre }}</option>
+            }
+          </select>
+        }
+
+        <div class="flex items-center gap-1.5">
+          <input
+            type="date"
+            class="rounded-control border border-borde bg-papel px-3.5 py-2 text-[13px] text-grafito
+                   shadow-tarjeta focus:border-acento focus:outline-none"
+            aria-label="Filtrar por fecha"
+            [value]="fecha()"
+            (change)="fecha.set(leer($event))"
+          />
+          @if (hayFiltros()) {
+            <button
+              type="button"
+              class="rounded-boton px-2.5 py-2 text-[12.5px] font-medium text-plomo
+                     hover:bg-borde-sutil hover:text-tinta"
+              (click)="limpiarFiltros()"
+            >
+              Limpiar
+            </button>
           }
         </div>
-      }
+      </div>
     </header>
+
+    <!-- Pestañas -->
+    <nav class="-mb-1 flex gap-1 overflow-x-auto border-b border-borde" aria-label="Estado de la reserva">
+      @for (item of pestanas; track item.valor) {
+        <button
+          type="button"
+          class="relative flex shrink-0 items-center gap-2 px-3.5 pt-1 pb-3 text-[13px] font-medium
+                 transition-colors duration-160
+                 after:absolute after:inset-x-2 after:-bottom-px after:h-[2px] after:rounded-full"
+          [class]="
+            pestana() === item.valor
+              ? 'text-acento font-semibold after:bg-acento'
+              : 'text-plomo hover:text-tinta after:bg-transparent'
+          "
+          [attr.aria-pressed]="pestana() === item.valor"
+          (click)="pestana.set(item.valor)"
+        >
+          {{ item.etiqueta }}
+          <span
+            class="num-tabular rounded-full px-1.5 py-px text-[11px]"
+            [class]="pestana() === item.valor ? 'bg-acento-suave text-acento' : 'bg-borde-sutil text-plomo'"
+          >
+            {{ conteos()[item.valor] }}
+          </span>
+        </button>
+      }
+    </nav>
 
     @if (aviso(); as mensaje) {
       <p
-        class="rounded-control border border-exito/25 bg-exito-suave px-4 py-3 text-[13px]
-               text-exito"
+        class="rounded-control border border-exito/25 bg-exito-suave px-4 py-3 text-[13px] text-exito"
         role="status"
       >
         {{ mensaje }}
@@ -27,33 +106,155 @@
 
     @if (error(); as mensaje) {
       <p
-        class="rounded-control border border-ocupada/25 bg-ocupada/5 px-4 py-3 text-[13px]
-               text-ocupada"
+        class="rounded-control border border-ocupada/25 bg-ocupada/5 px-4 py-3 text-[13px] text-ocupada"
         role="alert"
       >
         {{ mensaje }}
       </p>
     }
 
-    @if (recurso.isLoading()) {
-      <ui-cargando [cantidad]="2" />
+    @if (recursoEstacionamientos.isLoading() || recurso.isLoading()) {
+      <ui-cargando [cantidad]="3" />
     } @else if (recurso.value().length === 0) {
       <ui-estado-vacio
         titulo="Sin reservas por ahora"
-        descripcion="Las reservas que reciban tus cocheras aparecen aca."
+        descripcion="Las reservas que reciban tus cocheras aparecen acá."
+      />
+    } @else if (visibles().length === 0) {
+      <ui-estado-vacio
+        titulo="No hay reservas que coincidan"
+        descripcion="Probá con otra pestaña o cambiá los filtros."
       />
     } @else {
       <ui-tarjeta relleno="ninguno" [recortar]="true">
-        @for (reserva of recurso.value(); track reserva.id) {
-          <app-fila-reserva
-            class="aparece"
-            [reserva]="reserva"
-            vista="PROPIETARIO"
-            [permiteGestionar]="true"
-            [procesando]="procesandoId() === reserva.id"
-            (avanzar)="avanzar($event)"
-          />
-        }
+        <!-- Desktop: tabla -->
+        <div class="hidden overflow-x-auto lg:block">
+          <table class="w-full text-left">
+            <thead>
+              <tr class="border-b border-borde-sutil text-[11.5px] font-medium text-humo">
+                <th class="py-3 pr-3 pl-6 font-medium">Horario</th>
+                <th class="px-3 py-3 font-medium">Estacionamiento</th>
+                <th class="px-3 py-3 font-medium">Espacio</th>
+                <th class="px-3 py-3 font-medium">Vehículo</th>
+                <th class="px-3 py-3 text-right font-medium">Importe</th>
+                <th class="px-3 py-3 font-medium">Estado</th>
+                <th class="py-3 pr-6 pl-3 text-right font-medium">Acciones</th>
+              </tr>
+            </thead>
+            <tbody class="aparece-en-cadena">
+              @for (reserva of visibles(); track reserva.id) {
+                <tr
+                  class="border-t border-borde-sutil text-[12.5px] text-grafito transition-colors
+                         duration-160 first:border-t-0 hover:bg-lienzo"
+                >
+                  <td class="py-3.5 pr-3 pl-6">
+                    <div class="flex items-center gap-3">
+                      <ui-icono [nombre]="iconoVehiculo[reserva.vehiculo.tipo]" [tamano]="18" class="text-plomo" />
+                      <div>
+                        <p class="num-tabular font-medium whitespace-nowrap text-tinta">
+                          {{ reserva.horaDesde }} - {{ reserva.horaHasta }}
+                        </p>
+                        <p class="num-tabular text-[11.5px] text-plomo">
+                          {{ desdeFechaISO(reserva.fecha) | date: 'EEE d MMM' }}
+                        </p>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="px-3 py-3.5 font-medium text-tinta">{{ reserva.estacionamiento.nombre }}</td>
+                  <td class="num-tabular px-3 py-3.5">{{ reserva.cochera?.identificador ?? '—' }}</td>
+                  <td class="px-3 py-3.5">
+                    {{ vehiculo(reserva) }}
+                    <span class="num-tabular text-plomo">({{ reserva.vehiculo.patente }})</span>
+                  </td>
+                  <td class="num-tabular px-3 py-3.5 text-right whitespace-nowrap">
+                    $ {{ reserva.precioTotal.toLocaleString('es-AR') }}
+                  </td>
+                  <td class="px-3 py-3.5">
+                    <ui-etiqueta [tono]="tonoEstado[reserva.estado]">
+                      {{ etiquetaEstado[reserva.estado] }}
+                    </ui-etiqueta>
+                  </td>
+                  <td class="py-3.5 pr-6 pl-3 text-right">
+                    @if (pasos[reserva.estado]; as paso) {
+                      <button
+                        type="button"
+                        class="inline-flex items-center gap-1.5 rounded-boton bg-acento-suave px-3 py-1.5
+                               text-[12px] font-semibold whitespace-nowrap text-acento transition-colors
+                               duration-160 hover:bg-acento hover:text-sobre-acento disabled:opacity-60"
+                        [disabled]="procesandoId() === reserva.id"
+                        (click)="avanzar(reserva)"
+                      >
+                        @if (procesandoId() === reserva.id) {
+                          <span
+                            class="size-3 animate-spin rounded-full border-2 border-current border-t-transparent"
+                            aria-hidden="true"
+                          ></span>
+                        }
+                        {{ paso }}
+                      </button>
+                    } @else {
+                      <span class="text-humo">—</span>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Mobile: lista -->
+        <ul class="aparece-en-cadena lg:hidden">
+          @for (reserva of visibles(); track reserva.id) {
+            <li class="flex flex-col gap-3 border-t border-borde-sutil px-4 py-4 first:border-t-0">
+              <div class="flex items-start gap-3">
+                <span class="grid size-10 shrink-0 place-items-center rounded-full bg-acento-suave text-acento">
+                  <ui-icono [nombre]="iconoVehiculo[reserva.vehiculo.tipo]" [tamano]="19" />
+                </span>
+                <div class="min-w-0 flex-1">
+                  <p class="truncate text-[13.5px] font-semibold text-tinta">
+                    {{ reserva.estacionamiento.nombre }}
+                  </p>
+                  <p class="num-tabular mt-0.5 text-[12px] text-grafito">
+                    {{ desdeFechaISO(reserva.fecha) | date: 'EEE d MMM' }} ·
+                    {{ reserva.horaDesde }} - {{ reserva.horaHasta }}
+                  </p>
+                  <p class="num-tabular mt-0.5 truncate text-[12px] text-plomo">
+                    {{ vehiculo(reserva) }} ({{ reserva.vehiculo.patente }})
+                    @if (reserva.cochera) {
+                      · {{ reserva.cochera.identificador }}
+                    }
+                  </p>
+                </div>
+                <ui-etiqueta [tono]="tonoEstado[reserva.estado]">
+                  {{ etiquetaEstado[reserva.estado] }}
+                </ui-etiqueta>
+              </div>
+
+              <div class="flex items-center justify-between gap-3 pl-[52px]">
+                <span class="num-tabular text-[13px] font-semibold text-tinta">
+                  $ {{ reserva.precioTotal.toLocaleString('es-AR') }}
+                </span>
+                @if (pasos[reserva.estado]; as paso) {
+                  <button
+                    type="button"
+                    class="inline-flex items-center gap-1.5 rounded-boton bg-acento px-3 py-1.5 text-[12px]
+                           font-semibold text-sobre-acento disabled:opacity-60"
+                    [disabled]="procesandoId() === reserva.id"
+                    (click)="avanzar(reserva)"
+                  >
+                    @if (procesandoId() === reserva.id) {
+                      <span
+                        class="size-3 animate-spin rounded-full border-2 border-current border-t-transparent"
+                        aria-hidden="true"
+                      ></span>
+                    }
+                    {{ paso }}
+                  </button>
+                }
+              </div>
+            </li>
+          }
+        </ul>
       </ui-tarjeta>
     }
   </div>

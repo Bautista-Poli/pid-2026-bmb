@@ -1,19 +1,26 @@
-<aside class="flex h-full w-[238px] flex-col gap-7 border-r border-borde bg-papel px-[18px] py-[26px]">
-  <div class="px-2">
-    <ui-logo [tamano]="30" />
-    <p class="mt-2.5 text-[11.5px] leading-tight text-humo">Gestión de estacionamientos</p>
-  </div>
+<aside class="superficie-oscura flex h-full w-[248px] flex-col gap-8 px-4 py-6">
+  <a
+    class="flex items-center gap-2.5 px-2.5"
+    [routerLink]="items()[0]?.ruta ?? '/'"
+    aria-label="Inicio"
+  >
+    <ui-logo [tamano]="32" [mostrarTexto]="false" />
+    <span class="text-[18px] leading-none font-semibold tracking-[-0.02em]">
+      <span class="text-white">park</span><span class="text-exito">it</span>
+    </span>
+  </a>
 
-  <nav>
+  <nav aria-label="Secciones">
     <ul class="flex flex-col gap-1">
       @for (item of items(); track item.ruta) {
         <li>
           <a
-            class="flex items-center gap-3 rounded-boton px-3.5 py-[11px] text-left text-[13px]
+            class="flex items-center gap-3 rounded-control px-3.5 py-[11px] text-[13.5px]
                    font-medium text-plomo transition-[background-color,box-shadow,color]
-                   duration-160 ease-out hover:bg-acento-suave hover:text-acento-fuerte"
+                   duration-160 ease-out hover:bg-white/[0.06] hover:text-tinta"
             [routerLink]="item.ruta"
-            routerLinkActive="bg-acento text-sobre-acento font-semibold shadow-elevada hover:bg-acento hover:text-sobre-acento"
+            routerLinkActive="!bg-acento !text-white font-semibold shadow-[0_6px_16px_rgb(37_99_235/0.35)]"
+            ariaCurrentWhenActive="page"
           >
             <ui-icono [nombre]="item.icono" [tamano]="19" />
             {{ item.etiqueta }}
@@ -24,7 +31,7 @@
   </nav>
 
   @if (usuario(); as datos) {
-    <div class="mt-auto flex items-center gap-1.5 border-t border-borde-sutil pt-3">
+    <div class="mt-auto flex items-center gap-1.5 border-t border-borde-sutil pt-4">
       <app-menu-usuario
         class="min-w-0 flex-1"
         [usuario]="datos"

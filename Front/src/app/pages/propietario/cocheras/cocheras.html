@@ -1,284 +1,752 @@
-<div class="aparece mx-auto w-full max-w-[940px] px-6 pt-5 pb-8 lg:px-10 lg:pt-[34px] lg:pb-11">
-  <div class="flex flex-col gap-6">
-    <header class="flex flex-wrap items-start gap-4">
-      <ui-miniatura
-        [src]="recursoEstacionamiento.value()?.fotoUrl ?? null"
-        [optimizada]="false"
-        icono="estacionamiento"
-        tamano="lg"
-      />
-      <div class="min-w-0 flex-1">
-        <a
-        class="inline-flex items-center gap-1.5 rounded-boton text-[12px] font-medium text-plomo
-               transition-colors duration-160 ease-out hover:text-acento"
-        routerLink="/propietario/estacionamientos"
-      >
-          ← Mis estacionamientos
-        </a>
-        <p class="eyebrow mt-3">Cocheras</p>
-        <h1 class="titulo-vista mt-1.5">
-          {{ recursoEstacionamiento.value()?.nombre ?? 'Estacionamiento' }}
-        </h1>
-        @if (!recursoCocheras.isLoading()) {
-          <p class="num-tabular mt-1.5 text-[13.5px] text-plomo">{{ activas() }} cocheras activas</p>
-        }
+<div class="aparece mx-auto w-full max-w-[1240px] px-5 pt-5 pb-8 lg:px-9 lg:pt-8 lg:pb-11">
+  <div class="flex flex-col gap-5">
+    <!-- Encabezado -->
+    <header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div class="flex min-w-0 items-center gap-4">
+        <span class="hidden shrink-0 sm:block">
+          <ui-miniatura
+            [src]="recursoEstacionamiento.value()?.fotoUrl ?? null"
+            [optimizada]="false"
+            icono="estacionamiento"
+          />
+        </span>
+        <div class="min-w-0">
+          <a
+            class="inline-flex items-center gap-1.5 rounded-boton text-[12.5px] font-medium text-plomo
+                   transition-colors duration-160 ease-out hover:text-acento"
+            routerLink="/propietario/estacionamientos"
+          >
+            ← Estacionamientos
+          </a>
+          <h1 class="mt-1.5 truncate text-[24px] leading-tight font-semibold tracking-[-0.02em] text-tinta lg:text-[28px]">
+            {{ recursoEstacionamiento.value()?.nombre ?? 'Cocheras' }}
+          </h1>
+          @if (recursoEstacionamiento.value(); as estacionamiento) {
+            <p class="mt-1 truncate text-[13.5px] text-plomo">
+              {{ direccionCorta(estacionamiento.direccion) }}
+            </p>
+          }
+        </div>
       </div>
+      <ui-boton variante="primario" (presionado)="abrirAlta()">
+        <ui-icono nombre="mas" [tamano]="16" />
+        Agregar cocheras
+      </ui-boton>
     </header>
 
-    <div class="grid gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
-      <section class="flex flex-col gap-3" aria-labelledby="titulo-listado">
-        <h2 id="titulo-listado" class="label-campo">Cargadas</h2>
-
-        @if (recursoCocheras.isLoading()) {
-          <ui-cargando [cantidad]="2" />
-        } @else if (recursoCocheras.error(); as error) {
-          <ui-estado-vacio titulo="No pudimos cargar las cocheras" [descripcion]="error.message">
-            <ui-boton (presionado)="recursoCocheras.reload()">Reintentar</ui-boton>
-          </ui-estado-vacio>
-        } @else if (recursoCocheras.value().length === 0) {
-          <ui-estado-vacio
-            titulo="Este estacionamiento no tiene cocheras"
-            descripcion="Indicá cuántas querés y dónde están con el formulario."
-          />
-        } @else {
-          <ui-tarjeta relleno="ninguno" [recortar]="true">
-            @for (grupo of grupos(); track grupo.detalle) {
-              <div class="border-t border-borde-sutil first:border-t-0">
-                <h3
-                  class="flex items-center justify-between bg-fondo-suave px-5 py-2 text-[12px] font-semibold
-                         text-grafito lg:px-6"
-                >
-                  {{ grupo.detalle }}
-                  <span class="num-tabular font-normal text-plomo">{{ grupo.cocheras.length }}</span>
-                </h3>
-                <ul class="aparece-en-cadena">
-                  @for (cochera of grupo.cocheras; track cochera.id) {
-                    <li
-                      class="flex flex-wrap items-center justify-between gap-3 border-t border-borde-sutil
-                             px-5 py-[13px] first:border-t-0 lg:px-6"
-                      [class.bg-acento-suave]="editando()?.id === cochera.id"
-                    >
-                      <div class="min-w-0">
-                        <p class="num-tabular text-[14px] font-semibold text-tinta">
-                          {{ cochera.identificador }}
-                        </p>
-                        <p class="mt-0.5 text-[12px] text-plomo">{{ detalle(cochera) }}</p>
-                      </div>
-
-                      <div class="flex items-center gap-2">
-                        <ui-etiqueta [tono]="tonoEstado[cochera.estado]">
-                          {{ etiquetaEstado[cochera.estado] }}
-                        </ui-etiqueta>
-                        @if (cochera.estado !== 'INACTIVA') {
-                          <ui-boton tamano="sm" variante="fantasma" (presionado)="editar(cochera)">
-                            Editar
-                          </ui-boton>
-                          <ui-boton tamano="sm" variante="peligro" (presionado)="darDeBaja(cochera)">
-                            Dar de baja
-                          </ui-boton>
-                        } @else {
-                          <ui-boton tamano="sm" variante="fantasma" (presionado)="reactivar(cochera)">
-                            Reactivar
-                          </ui-boton>
-                          <ui-boton tamano="sm" variante="peligro" (presionado)="eliminar(cochera)">
-                            Eliminar
-                          </ui-boton>
-                        }
-                      </div>
-                    </li>
-                  }
-                </ul>
-              </div>
-            }
-          </ui-tarjeta>
+    <!-- Resumen -->
+    @if (!recursoCocheras.isLoading() && recursoCocheras.value().length > 0) {
+      <ul class="flex flex-wrap gap-2 text-[12.5px] text-grafito">
+        <li class="rounded-boton border border-borde bg-papel px-3 py-2">
+          <b class="num-tabular text-tinta">{{ resumen().total }}</b> cocheras
+        </li>
+        <li class="flex items-center gap-2 rounded-boton border border-borde bg-papel px-3 py-2">
+          <span class="size-[7px] rounded-full bg-exito"></span>
+          <b class="num-tabular text-tinta">{{ resumen().libres }}</b> libres
+        </li>
+        <li class="flex items-center gap-2 rounded-boton border border-borde bg-papel px-3 py-2">
+          <span class="size-[7px] rounded-full bg-ocupada"></span>
+          <b class="num-tabular text-tinta">{{ resumen().ocupadas }}</b> ocupadas
+        </li>
+        <li class="flex items-center gap-2 rounded-boton border border-borde bg-papel px-3 py-2">
+          <span class="size-[7px] rounded-full bg-baja"></span>
+          <b class="num-tabular text-tinta">{{ resumen().reservadas }}</b> reservadas
+        </li>
+        <li class="flex items-center gap-2 rounded-boton border border-borde bg-papel px-3 py-2">
+          <ui-icono nombre="techo" [tamano]="14" class="text-acento" />
+          <b class="num-tabular text-tinta">{{ resumen().cubiertas }}</b> cubiertas
+        </li>
+        <li class="flex items-center gap-2 rounded-boton border border-borde bg-papel px-3 py-2">
+          <ui-icono nombre="sol" [tamano]="14" class="text-baja" />
+          <b class="num-tabular text-tinta">{{ resumen().descubiertas }}</b> descubiertas
+        </li>
+        @if (resumen().inactivas > 0) {
+          <li class="flex items-center gap-2 rounded-boton border border-borde bg-papel px-3 py-2">
+            <span class="size-[7px] rounded-full bg-humo"></span>
+            <b class="num-tabular text-tinta">{{ resumen().inactivas }}</b> de baja
+          </li>
         }
-      </section>
+      </ul>
+    }
 
-      <section class="order-first lg:order-last" aria-labelledby="titulo-formulario">
-        <ui-tarjeta relleno="lg">
-          @if (editando(); as cochera) {
-            <form class="flex flex-col gap-4" [formGroup]="formulario" (ngSubmit)="guardar()" novalidate>
-              <h2 id="titulo-formulario" class="text-[15px] font-semibold text-tinta">
-                Editar cochera {{ cochera.identificador }}
-              </h2>
+    @if (aviso(); as mensaje) {
+      <p
+        class="rounded-control border border-exito/25 bg-exito-suave px-4 py-3 text-[13px] text-exito"
+        role="status"
+      >
+        {{ mensaje }}
+      </p>
+    }
 
-              <div class="grid grid-cols-2 gap-3">
-                <label class="campo">
-                  <span class="label-campo">Identificador</span>
-                  <input class="uppercase" type="text" formControlName="identificador" placeholder="PB-1" />
-                  @if (invalido('identificador')) {
-                    <span class="campo-error">Hasta 20 caracteres.</span>
-                  }
-                </label>
-                <label class="campo">
-                  <span class="label-campo">Detalle <span class="font-normal text-plomo">(opcional)</span></span>
-                  <input type="text" formControlName="sector" placeholder="Planta baja" />
-                </label>
-              </div>
+    @if (error(); as mensaje) {
+      <p
+        class="rounded-control border border-ocupada/25 bg-ocupada/5 px-4 py-3 text-[13px] text-ocupada"
+        role="alert"
+      >
+        {{ mensaje }}
+      </p>
+    }
 
-              <div class="flex flex-col gap-1.5" role="group" aria-labelledby="etiqueta-tipo">
-                <span id="etiqueta-tipo" class="label-campo">Tipo de vehículo</span>
-                <div class="flex flex-wrap gap-2">
-                  @for (tipo of tipos; track tipo) {
-                    <ui-chip
-                      [activo]="formulario.controls.tipo.value === tipo"
-                      (alternar)="elegirTipo(tipo)"
-                    >
-                      {{ etiquetaTipo[tipo] }}
-                    </ui-chip>
-                  }
-                </div>
-              </div>
-
-              <label class="flex items-center gap-2.5 text-[13px] text-grafito">
-                <input class="size-4 shrink-0 accent-acento" type="checkbox" formControlName="cubierta" />
-                Es cubierta
-              </label>
-
-              @if (error(); as mensaje) {
-                <p
-                  class="rounded-control border border-ocupada/25 bg-ocupada/5 px-4 py-3 text-[13px] text-ocupada"
-                  role="alert"
+    @if (recursoCocheras.isLoading()) {
+      <ui-cargando [cantidad]="2" />
+    } @else if (recursoCocheras.error(); as error) {
+      <ui-estado-vacio titulo="No pudimos cargar las cocheras" [descripcion]="error.message">
+        <ui-boton (presionado)="recursoCocheras.reload()">Reintentar</ui-boton>
+      </ui-estado-vacio>
+    } @else if (recursoCocheras.value().length === 0) {
+      <ui-estado-vacio
+        titulo="Este estacionamiento no tiene cocheras"
+        descripcion="Indicá cuántas hay y en qué planta. Las creamos todas juntas."
+      >
+        <ui-boton variante="primario" (presionado)="abrirAlta()">Agregar cocheras</ui-boton>
+      </ui-estado-vacio>
+    } @else {
+      <div
+        class="grid items-start gap-5"
+        [class]="elegidas().length > 0 ? 'lg:grid-cols-[minmax(0,1fr)_360px]' : ''"
+      >
+        <!-- Plano -->
+        <section
+          class="flex flex-col rounded-tarjeta border border-borde bg-papel shadow-tarjeta"
+          aria-label="Plano de cocheras"
+        >
+          <div class="flex items-center gap-1 overflow-x-auto border-b border-borde px-3 lg:px-5">
+            @for (planta of plantas(); track planta.nombre) {
+              <button
+                type="button"
+                class="relative flex shrink-0 items-center gap-2 px-3 pt-4 pb-3.5 text-[13px] font-medium
+                       whitespace-nowrap transition-colors duration-160
+                       after:absolute after:inset-x-2 after:-bottom-px after:h-[2px] after:rounded-full"
+                [class]="
+                  plantaActiva()?.nombre === planta.nombre
+                    ? 'font-semibold text-acento after:bg-acento'
+                    : 'text-plomo hover:text-tinta after:bg-transparent'
+                "
+                [attr.aria-pressed]="plantaActiva()?.nombre === planta.nombre"
+                (click)="verPlanta(planta.nombre)"
+              >
+                {{ planta.nombre }}
+                <span
+                  class="num-tabular rounded-full px-1.5 py-px text-[11px]"
+                  [class]="
+                    plantaActiva()?.nombre === planta.nombre
+                      ? 'bg-acento-suave text-acento'
+                      : 'bg-borde-sutil text-plomo'
+                  "
                 >
-                  {{ mensaje }}
-                </p>
-              }
-
-              @if (aviso(); as mensaje) {
-                <p
-                  class="rounded-control border border-exito/25 bg-exito-suave px-4 py-3 text-[13px] text-exito"
-                  role="status"
-                >
-                  {{ mensaje }}
-                </p>
-              }
-
-              <div class="flex flex-col gap-2">
-                <ui-boton variante="primario" tipo="submit" [bloque]="true" [cargando]="enviando()">
-                  Guardar cambios
-                </ui-boton>
-                <ui-boton [bloque]="true" (presionado)="cancelarEdicion()">Cancelar</ui-boton>
-              </div>
-            </form>
-          } @else {
-            <form
-              class="flex flex-col gap-5"
-              [formGroup]="formularioLotes"
-              (ngSubmit)="crearLotes()"
-              novalidate
+                  {{ planta.cocheras.length }}
+                </span>
+              </button>
+            }
+            <button
+              type="button"
+              class="shrink-0 px-3 pt-4 pb-3.5 text-[13px] font-medium whitespace-nowrap text-humo
+                     transition-colors duration-160 hover:text-acento"
+              (click)="abrirAlta('')"
             >
-              <div>
-                <h2 id="titulo-formulario" class="text-[15px] font-semibold text-tinta">Agregar cocheras</h2>
-                <p class="mt-1 text-[12.5px] text-plomo">
-                  Indicá cuántas hay y dónde están. Las creamos todas juntas.
-                </p>
+              + Nueva planta
+            </button>
+            <p class="ml-auto hidden shrink-0 pl-4 text-[12px] text-humo xl:block">
+              Tocá una cochera para editarla · Shift + clic elige varias
+            </p>
+          </div>
+
+          @if (plantaActiva(); as planta) {
+            <div
+              class="aparece-en-cadena grid grid-cols-[repeat(auto-fill,minmax(76px,1fr))] gap-2 p-4 lg:p-5"
+            >
+              @for (cochera of planta.cocheras; track cochera.id) {
+                <button
+                  type="button"
+                  class="relative flex h-[92px] flex-col items-center justify-center gap-2 rounded-control border
+                         text-tinta transition-[box-shadow,transform,border-color] duration-160 ease-out
+                         hover:-translate-y-0.5 hover:shadow-elevada"
+                  [class]="
+                    claseLugar[cochera.estado] +
+                    (estaElegida(cochera) ? ' !border-acento ring-2 ring-acento shadow-elevada' : '')
+                  "
+                  [attr.aria-pressed]="estaElegida(cochera)"
+                  [attr.aria-label]="
+                    'Cochera ' +
+                    cochera.identificador +
+                    ', ' +
+                    (cochera.cubierta ? 'cubierta' : 'descubierta') +
+                    ', ' +
+                    etiquetaEstado[cochera.estado]
+                  "
+                  (click)="tocar(cochera, $event)"
+                >
+                  <!-- Techo: el techito si es cubierta, el sol si esta al aire libre -->
+                  <span
+                    class="absolute top-1.5 right-1.5 grid size-5 place-items-center rounded-full"
+                    [class]="cochera.cubierta ? 'bg-acento-suave text-acento' : 'text-baja'"
+                    [attr.title]="cochera.cubierta ? 'Cubierta' : 'Descubierta'"
+                  >
+                    <ui-icono [nombre]="cochera.cubierta ? 'techo' : 'sol'" [tamano]="13" />
+                  </span>
+                  <span class="num-tabular text-[13.5px] font-semibold">{{ cochera.identificador }}</span>
+                  <span class="flex items-center gap-1.5 text-plomo">
+                    <ui-icono [nombre]="iconoTipo[cochera.tipoVehiculo]" [tamano]="15" />
+                    <span class="size-[7px] rounded-full" [class]="clasePunto[cochera.estado]"></span>
+                  </span>
+                </button>
+              }
+            </div>
+
+            <div
+              class="mt-auto flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-borde-sutil px-4 py-3.5
+                     text-[12px] text-plomo lg:px-5"
+            >
+              <span class="flex items-center gap-2"><span class="size-[7px] rounded-full bg-exito"></span>Libre</span>
+              <span class="flex items-center gap-2"><span class="size-[7px] rounded-full bg-ocupada"></span>Ocupada</span>
+              <span class="flex items-center gap-2"><span class="size-[7px] rounded-full bg-baja"></span>Reservada</span>
+              <span class="flex items-center gap-2"><span class="size-[7px] rounded-full bg-humo"></span>De baja</span>
+              <span class="hidden h-3.5 w-px bg-borde sm:block" aria-hidden="true"></span>
+              <span class="flex items-center gap-1.5">
+                <span class="grid size-5 place-items-center rounded-full bg-acento-suave text-acento">
+                  <ui-icono nombre="techo" [tamano]="13" />
+                </span>
+                Cubierta
+              </span>
+              <span class="flex items-center gap-1.5">
+                <span class="grid size-5 place-items-center text-baja"><ui-icono nombre="sol" [tamano]="13" /></span>
+                Descubierta
+              </span>
+              <button
+                type="button"
+                class="ml-auto font-medium text-acento hover:text-acento-fuerte"
+                (click)="elegirTodaLaPlanta()"
+              >
+                Elegir toda la planta
+              </button>
+            </div>
+          }
+        </section>
+
+        <!-- Panel de la seleccion -->
+        @if (elegidas().length > 0) {
+          <div
+            class="fixed inset-0 z-[1090] bg-[rgb(15_23_42/0.45)] lg:hidden"
+            aria-hidden="true"
+            (click)="cerrarPanel()"
+          ></div>
+
+          <aside
+            class="aparece fixed inset-x-0 bottom-0 z-[1100] flex max-h-[85dvh] flex-col overflow-y-auto
+                   rounded-t-[20px] border-t border-borde bg-papel shadow-flotante
+                   lg:sticky lg:top-6 lg:z-auto lg:max-h-[calc(100dvh-48px)] lg:rounded-tarjeta lg:border
+                   lg:shadow-tarjeta"
+            aria-label="Edición de cocheras"
+          >
+            @if (unica(); as cochera) {
+              <!-- Una cochera -->
+              <div class="flex items-start justify-between gap-3 border-b border-borde-sutil px-5 pt-5 pb-4">
+                <div class="min-w-0">
+                  <p class="text-[12px] font-medium text-plomo">{{ cochera.sector || 'Sin planta' }}</p>
+                  <div class="mt-1 flex flex-wrap items-center gap-2.5">
+                    <h2 class="num-tabular text-[20px] font-semibold tracking-[-0.02em] text-tinta">
+                      Cochera {{ cochera.identificador }}
+                    </h2>
+                    <ui-etiqueta [tono]="tonoEstado[cochera.estado]">
+                      {{ etiquetaEstado[cochera.estado] }}
+                    </ui-etiqueta>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  class="grid size-8 shrink-0 place-items-center rounded-boton bg-lienzo text-plomo
+                         hover:text-tinta"
+                  aria-label="Cerrar"
+                  (click)="cerrarPanel()"
+                >
+                  <ui-icono nombre="cerrar" [tamano]="16" />
+                </button>
               </div>
 
-              <div class="flex flex-col gap-5" formArrayName="lotes">
-                @for (lote of lotes.controls; track lote; let i = $index) {
-                  <fieldset
-                    class="flex flex-col gap-3.5 rounded-control border border-borde-sutil p-4"
-                    [formGroupName]="i"
-                  >
-                    <legend class="label-campo px-1">Lote {{ i + 1 }}</legend>
-
-                    <div class="flex flex-wrap gap-2" role="group" [attr.aria-label]="'Detalles sugeridos del lote ' + (i + 1)">
-                      @for (sugerencia of sugerencias; track sugerencia.detalle) {
-                        <ui-chip
-                          [activo]="lote.controls.sector.value === sugerencia.detalle"
-                          (alternar)="usarSugerencia(i, sugerencia)"
-                        >
-                          {{ sugerencia.detalle }}
-                        </ui-chip>
-                      }
-                    </div>
-
-                    <label class="campo">
-                      <span class="label-campo">Detalle de ubicación</span>
-                      <input type="text" formControlName="sector" placeholder="Planta baja" />
-                      @if (invalidoLote(i, 'sector')) {
-                        <span class="campo-error">Obligatorio, hasta 20 caracteres.</span>
-                      }
-                    </label>
-
+              @if (cochera.estado === 'INACTIVA') {
+                <div class="flex flex-col gap-4 px-5 py-5">
+                  <p class="text-[13px] leading-relaxed text-grafito">
+                    Esta cochera está dada de baja: no aparece para reservar. Podés reactivarla o,
+                    si nunca tuvo reservas, eliminarla del todo.
+                  </p>
+                  <div class="flex gap-2">
+                    <ui-boton variante="primario" [cargando]="enviando()" (presionado)="reactivar(cochera)">
+                      Reactivar
+                    </ui-boton>
+                    <ui-boton variante="peligro" (presionado)="pedirEliminacion(cochera)">Eliminar</ui-boton>
+                  </div>
+                </div>
+              } @else {
+                <form class="flex flex-1 flex-col" [formGroup]="formulario" (ngSubmit)="guardar()" novalidate>
+                  <div class="flex flex-col gap-[18px] px-5 py-5">
                     <div class="grid grid-cols-2 gap-3">
                       <label class="campo">
-                        <span class="label-campo">Cantidad</span>
-                        <input type="number" inputmode="numeric" min="1" max="200" formControlName="cantidad" />
-                        @if (invalidoLote(i, 'cantidad')) {
-                          <span class="campo-error">Entre 1 y 200.</span>
+                        <span class="label-campo">Número</span>
+                        <input class="uppercase" type="text" formControlName="identificador" />
+                        @if (invalido('identificador')) {
+                          <span class="campo-error">Hasta 20 caracteres.</span>
                         }
                       </label>
                       <label class="campo">
-                        <span class="label-campo">Prefijo</span>
-                        <input class="uppercase" type="text" formControlName="prefijo" placeholder="PB" />
-                        @if (invalidoLote(i, 'prefijo')) {
-                          <span class="campo-error">Letras y números, hasta 10.</span>
-                        }
+                        <span class="label-campo">Planta</span>
+                        <input type="text" formControlName="sector" list="plantas-cargadas" placeholder="Planta baja" />
                       </label>
                     </div>
 
-                    <div class="flex flex-col gap-1.5" role="group" [attr.aria-label]="'Tipo de vehículo del lote ' + (i + 1)">
-                      <span class="label-campo">Tipo de vehículo</span>
-                      <div class="flex flex-wrap gap-2">
+                    <div class="flex flex-col gap-2" role="group" aria-labelledby="etiqueta-tipo">
+                      <span id="etiqueta-tipo" class="label-campo">Tipo de vehículo</span>
+                      <div class="grid grid-cols-3 gap-1 rounded-control bg-borde-sutil p-1">
                         @for (tipo of tipos; track tipo) {
-                          <ui-chip
-                            [activo]="lote.controls.tipo.value === tipo"
-                            (alternar)="elegirTipoLote(i, tipo)"
+                          <button
+                            type="button"
+                            class="flex items-center justify-center gap-1.5 rounded-boton px-2 py-2 text-[12.5px]
+                                   transition-colors duration-160"
+                            [class]="
+                              formulario.controls.tipo.value === tipo
+                                ? 'bg-papel font-semibold text-acento shadow-tarjeta'
+                                : 'font-medium text-plomo hover:text-tinta'
+                            "
+                            [attr.aria-pressed]="formulario.controls.tipo.value === tipo"
+                            (click)="elegirTipo(tipo)"
                           >
+                            <ui-icono [nombre]="iconoTipo[tipo]" [tamano]="16" />
                             {{ etiquetaTipo[tipo] }}
-                          </ui-chip>
+                          </button>
                         }
                       </div>
                     </div>
 
-                    <label class="flex items-center gap-2.5 text-[13px] text-grafito">
-                      <input class="size-4 shrink-0 accent-acento" type="checkbox" formControlName="cubierta" />
-                      Es cubierta
-                    </label>
+                    <button
+                      type="button"
+                      role="switch"
+                      class="flex items-center justify-between rounded-control border border-borde px-3.5 py-3 text-left"
+                      [attr.aria-checked]="formulario.controls.cubierta.value"
+                      (click)="alternarCubierta()"
+                    >
+                      <span>
+                        <span class="block text-[13px] font-semibold text-tinta">Cubierta</span>
+                        <span class="block text-[12px] text-plomo">Tiene techo</span>
+                      </span>
+                      <span
+                        class="relative h-6 w-10 shrink-0 rounded-full transition-colors duration-160"
+                        [class]="formulario.controls.cubierta.value ? 'bg-acento' : 'bg-borde'"
+                      >
+                        <span
+                          class="absolute top-[3px] size-[18px] rounded-full bg-white shadow-tarjeta transition-[left] duration-160"
+                          [class]="formulario.controls.cubierta.value ? 'left-[19px]' : 'left-[3px]'"
+                        ></span>
+                      </span>
+                    </button>
 
-                    @if (vistaPrevia(i); as vista) {
-                      <p class="num-tabular text-[12.5px] text-plomo">Se crearán: {{ vista }}</p>
-                    }
+                    <div class="flex flex-col gap-2">
+                      <span class="label-campo">Próximas reservas</span>
+                      @if (proximas().length === 0) {
+                        <p class="rounded-control border border-dashed border-borde px-3.5 py-3 text-[12.5px] text-plomo">
+                          No tiene reservas por delante.
+                        </p>
+                      } @else {
+                        <ul class="rounded-control border border-borde">
+                          @for (reserva of proximas(); track reserva.id) {
+                            <li
+                              class="num-tabular flex items-center justify-between gap-3 border-t border-borde-sutil
+                                     px-3.5 py-2.5 text-[12.5px] first:border-t-0"
+                            >
+                              <span class="text-tinta">
+                                <b class="inline-block font-semibold first-letter:uppercase">{{ desdeFechaISO(reserva.fecha) | date: 'EEE d' }}</b>
+                                · {{ reserva.horaDesde }} – {{ reserva.horaHasta }}
+                              </span>
+                              <span class="text-plomo">{{ reserva.vehiculo.patente }}</span>
+                            </li>
+                          }
+                        </ul>
+                      }
+                    </div>
+                  </div>
 
-                    @if (lotes.length > 1) {
-                      <div>
-                        <ui-boton tamano="sm" variante="fantasma" (presionado)="quitarLote(i)">
-                          Quitar lote
-                        </ui-boton>
-                      </div>
+                  <div class="mt-auto flex items-center gap-2 border-t border-borde-sutil px-5 py-4">
+                    <button
+                      type="button"
+                      class="rounded-boton px-1 py-2 text-[13px] font-semibold text-ocupada hover:underline"
+                      (click)="pedirBaja()"
+                    >
+                      Dar de baja
+                    </button>
+                    <span class="ml-auto"></span>
+                    @if (formulario.dirty) {
+                      <ui-boton variante="fantasma" tamano="sm" (presionado)="descartar()">Descartar</ui-boton>
                     }
-                  </fieldset>
-                }
+                    <ui-boton
+                      variante="primario"
+                      tamano="sm"
+                      tipo="submit"
+                      [deshabilitado]="!formulario.dirty"
+                      [cargando]="enviando()"
+                    >
+                      Guardar
+                    </ui-boton>
+                  </div>
+                </form>
+              }
+            } @else {
+              <!-- Varias cocheras -->
+              <div class="flex items-start justify-between gap-3 border-b border-borde-sutil px-5 pt-5 pb-4">
+                <div class="min-w-0">
+                  <h2 class="text-[20px] font-semibold tracking-[-0.02em] text-tinta">
+                    {{ elegidas().length }} cocheras elegidas
+                  </h2>
+                  <p class="num-tabular mt-1 line-clamp-2 text-[12px] text-plomo">
+                    @for (cochera of elegidas().slice(0, 10); track cochera.id; let ultima = $last) {
+                      {{ cochera.identificador }}{{ ultima ? '' : ',' }}
+                    }
+                    @if (elegidas().length > 10) {
+                      y {{ elegidas().length - 10 }} más
+                    }
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  class="grid size-8 shrink-0 place-items-center rounded-boton bg-lienzo text-plomo hover:text-tinta"
+                  aria-label="Quitar selección"
+                  (click)="cerrarPanel()"
+                >
+                  <ui-icono nombre="cerrar" [tamano]="16" />
+                </button>
               </div>
 
-              <ui-boton (presionado)="agregarLote()">+ Agregar otro lote</ui-boton>
+              <div class="flex flex-col gap-[18px] px-5 py-5">
+                <p class="text-[12.5px] text-plomo">
+                  Elegí solo lo que quieras cambiar; lo demás queda como está.
+                </p>
 
-            @if (error(); as mensaje) {
-              <p
-                class="rounded-control border border-ocupada/25 bg-ocupada/5 px-4 py-3 text-[13px] text-ocupada"
-                role="alert"
-              >
-                {{ mensaje }}
-              </p>
+                <div class="flex flex-col gap-2" role="group" aria-labelledby="etiqueta-tipo-masivo">
+                  <span id="etiqueta-tipo-masivo" class="label-campo">Tipo de vehículo</span>
+                  <div class="grid grid-cols-3 gap-1 rounded-control bg-borde-sutil p-1">
+                    @for (tipo of tipos; track tipo) {
+                      <button
+                        type="button"
+                        class="flex items-center justify-center gap-1.5 rounded-boton px-2 py-2 text-[12.5px]
+                               transition-colors duration-160"
+                        [class]="
+                          masivoTipo() === tipo
+                            ? 'bg-papel font-semibold text-acento shadow-tarjeta'
+                            : 'font-medium text-plomo hover:text-tinta'
+                        "
+                        [attr.aria-pressed]="masivoTipo() === tipo"
+                        (click)="masivoTipo.set(masivoTipo() === tipo ? null : tipo)"
+                      >
+                        <ui-icono [nombre]="iconoTipo[tipo]" [tamano]="16" />
+                        {{ etiquetaTipo[tipo] }}
+                      </button>
+                    }
+                  </div>
+                </div>
+
+                <div class="flex flex-col gap-2" role="group" aria-labelledby="etiqueta-techo-masivo">
+                  <span id="etiqueta-techo-masivo" class="label-campo">Techo</span>
+                  <div class="grid grid-cols-2 gap-1 rounded-control bg-borde-sutil p-1">
+                    @for (opcion of [true, false]; track opcion) {
+                      <button
+                        type="button"
+                        class="rounded-boton px-2 py-2 text-[12.5px] transition-colors duration-160"
+                        [class]="
+                          masivoCubierta() === opcion
+                            ? 'bg-papel font-semibold text-acento shadow-tarjeta'
+                            : 'font-medium text-plomo hover:text-tinta'
+                        "
+                        [attr.aria-pressed]="masivoCubierta() === opcion"
+                        (click)="masivoCubierta.set(masivoCubierta() === opcion ? null : opcion)"
+                      >
+                        {{ opcion ? 'Cubiertas' : 'Descubiertas' }}
+                      </button>
+                    }
+                  </div>
+                </div>
+
+                <label class="campo">
+                  <span class="label-campo">Mover a planta</span>
+                  <input
+                    type="text"
+                    list="plantas-cargadas"
+                    placeholder="Sin cambios"
+                    [value]="masivoPlanta()"
+                    (input)="masivoPlanta.set(leer($event))"
+                  />
+                </label>
+              </div>
+
+              <div class="mt-auto flex items-center gap-2 border-t border-borde-sutil px-5 py-4">
+                <button
+                  type="button"
+                  class="rounded-boton px-1 py-2 text-[13px] font-semibold text-ocupada hover:underline"
+                  (click)="pedirBaja()"
+                >
+                  Dar de baja
+                </button>
+                <span class="ml-auto"></span>
+                <ui-boton
+                  variante="primario"
+                  tamano="sm"
+                  [deshabilitado]="!hayCambiosMasivos()"
+                  [cargando]="enviando()"
+                  (presionado)="aplicarMasivo()"
+                >
+                  Aplicar a {{ elegidas().length }}
+                </ui-boton>
+              </div>
             }
-
-            @if (aviso(); as mensaje) {
-              <p
-                class="rounded-control border border-exito/25 bg-exito-suave px-4 py-3 text-[13px] text-exito"
-                role="status"
-              >
-                {{ mensaje }}
-              </p>
-            }
-
-              <ui-boton variante="primario" tipo="submit" [bloque]="true" [cargando]="enviando()">
-                Crear cocheras
-              </ui-boton>
-            </form>
-          }
-        </ui-tarjeta>
-      </section>
-    </div>
+          </aside>
+        }
+      </div>
+    }
   </div>
 </div>
+
+<datalist id="plantas-cargadas">
+  @for (nombre of nombresPlantas(); track nombre) {
+    <option [value]="nombre"></option>
+  }
+</datalist>
+
+<!-- Confirmacion (baja / eliminacion) -->
+<ui-modal
+  [titulo]="confirmacion()?.titulo ?? ''"
+  [abierto]="confirmacion() !== null"
+  (cerrado)="confirmacion.set(null)"
+>
+  <p class="text-[13.5px] leading-relaxed text-grafito">{{ confirmacion()?.texto }}</p>
+  <div class="flex justify-end gap-2">
+    <ui-boton (presionado)="confirmacion.set(null)">Cancelar</ui-boton>
+    <ui-boton variante="peligro" (presionado)="confirmar()">{{ confirmacion()?.boton }}</ui-boton>
+  </div>
+</ui-modal>
+
+<!-- Alta por cantidad -->
+<ui-modal titulo="Agregar cocheras" ancho="amplio" [abierto]="agregando()" (cerrado)="cerrarAlta()">
+  <form class="flex flex-col gap-5" [formGroup]="formularioLotes" (ngSubmit)="crearLotes()" novalidate>
+    <p class="-mt-2 text-[13px] text-plomo">
+      Se numeran solas, a continuación de las que ya tenés.
+    </p>
+
+    <div class="grid gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">
+      <!-- Formulario -->
+      <div class="flex flex-col gap-5" formArrayName="lotes">
+        @for (lote of lotes.controls; track lote; let i = $index) {
+          <fieldset
+            class="flex flex-col gap-4"
+            [class]="lotes.length > 1 ? 'rounded-control border border-borde p-4' : ''"
+            [formGroupName]="i"
+          >
+            @if (lotes.length > 1) {
+              <div class="flex items-center justify-between">
+                <legend class="label-campo">Grupo {{ i + 1 }}</legend>
+                <button
+                  type="button"
+                  class="text-[12px] font-medium text-plomo hover:text-ocupada"
+                  (click)="quitarLote(i)"
+                >
+                  Quitar
+                </button>
+              </div>
+            }
+
+            <div class="flex flex-col gap-2">
+              <span class="label-campo">¿En qué planta están?</span>
+              <div class="flex flex-wrap gap-1.5">
+                @for (opcion of opcionesPlanta(); track opcion.detalle) {
+                  <button
+                    type="button"
+                    class="rounded-boton border px-3 py-[7px] text-[12.5px] transition-colors duration-160"
+                    [class]="
+                      lote.controls.sector.value === opcion.detalle
+                        ? 'border-acento bg-acento font-semibold text-sobre-acento'
+                        : 'border-borde bg-papel font-medium text-plomo hover:border-acento-borde hover:text-acento'
+                    "
+                    (click)="usarPlanta(i, opcion)"
+                  >
+                    {{ opcion.detalle }}
+                  </button>
+                }
+              </div>
+              <div class="campo">
+                <input type="text" formControlName="sector" placeholder="U otra: Terraza, Sector B…" aria-label="Planta" />
+                @if (invalidoLote(i, 'sector')) {
+                  <span class="campo-error">Elegí o escribí una planta (hasta 20 caracteres).</span>
+                }
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div class="flex flex-col gap-1.5">
+                <span class="label-campo">Cantidad</span>
+                <div class="flex items-stretch overflow-hidden rounded-control border border-borde bg-papel">
+                  <button
+                    type="button"
+                    class="w-10 shrink-0 bg-lienzo text-[18px] text-grafito hover:text-acento"
+                    aria-label="Una menos"
+                    (click)="cambiarCantidad(i, -1)"
+                  >
+                    −
+                  </button>
+                  <input
+                    class="num-tabular w-full min-w-0 bg-transparent py-2.5 text-center text-[15px] font-semibold
+                           text-tinta outline-none"
+                    type="number"
+                    inputmode="numeric"
+                    min="1"
+                    max="200"
+                    formControlName="cantidad"
+                    aria-label="Cantidad"
+                  />
+                  <button
+                    type="button"
+                    class="w-10 shrink-0 bg-lienzo text-[18px] text-grafito hover:text-acento"
+                    aria-label="Una más"
+                    (click)="cambiarCantidad(i, 1)"
+                  >
+                    +
+                  </button>
+                </div>
+                @if (invalidoLote(i, 'cantidad')) {
+                  <span class="campo-error">Entre 1 y 200.</span>
+                }
+              </div>
+              <label class="campo">
+                <span class="label-campo">Prefijo</span>
+                <input class="uppercase" type="text" formControlName="prefijo" placeholder="PB" />
+                @if (invalidoLote(i, 'prefijo')) {
+                  <span class="campo-error">Letras y números, hasta 10.</span>
+                }
+              </label>
+            </div>
+
+            <div class="flex flex-col gap-2">
+              <span class="label-campo">Tipo de vehículo</span>
+              <div class="grid grid-cols-3 gap-1 rounded-control bg-borde-sutil p-1">
+                @for (tipo of tipos; track tipo) {
+                  <button
+                    type="button"
+                    class="flex items-center justify-center gap-1.5 rounded-boton px-2 py-2 text-[12.5px]
+                           transition-colors duration-160"
+                    [class]="
+                      lote.controls.tipo.value === tipo
+                        ? 'bg-papel font-semibold text-acento shadow-tarjeta'
+                        : 'font-medium text-plomo hover:text-tinta'
+                    "
+                    [attr.aria-pressed]="lote.controls.tipo.value === tipo"
+                    (click)="elegirTipoLote(i, tipo)"
+                  >
+                    <ui-icono [nombre]="iconoTipo[tipo]" [tamano]="16" />
+                    {{ etiquetaTipo[tipo] }}
+                  </button>
+                }
+              </div>
+            </div>
+
+            <button
+              type="button"
+              role="switch"
+              class="flex items-center justify-between rounded-control border border-borde px-3.5 py-3 text-left"
+              [attr.aria-checked]="lote.controls.cubierta.value"
+              (click)="alternarCubiertaLote(i)"
+            >
+              <span>
+                <span class="block text-[13px] font-semibold text-tinta">Cubiertas</span>
+                <span class="block text-[12px] text-plomo">Tienen techo</span>
+              </span>
+              <span
+                class="relative h-6 w-10 shrink-0 rounded-full transition-colors duration-160"
+                [class]="lote.controls.cubierta.value ? 'bg-acento' : 'bg-borde'"
+              >
+                <span
+                  class="absolute top-[3px] size-[18px] rounded-full bg-white shadow-tarjeta transition-[left] duration-160"
+                  [class]="lote.controls.cubierta.value ? 'left-[19px]' : 'left-[3px]'"
+                ></span>
+              </span>
+            </button>
+          </fieldset>
+        }
+
+        <button
+          type="button"
+          class="self-start text-[12.5px] font-semibold text-acento hover:text-acento-fuerte"
+          (click)="agregarLote()"
+        >
+          + Sumar otro grupo (por ejemplo, 4 de moto)
+        </button>
+      </div>
+
+      <!-- Vista previa -->
+      <div class="flex min-w-0 flex-col gap-4 rounded-control bg-lienzo p-4 lg:p-5">
+        @for (grupo of previa(); track grupo.planta) {
+          <div class="flex flex-col gap-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <p class="text-[12.5px] font-semibold text-grafito">Vista previa · {{ grupo.planta }}</p>
+              <div class="flex gap-3 text-[11.5px] text-plomo">
+                <span class="flex items-center gap-1.5">
+                  <span class="size-2.5 rounded-[3px] bg-borde"></span>
+                  Existentes ({{ grupo.celdas.length - grupo.nuevas }})
+                </span>
+                <span class="flex items-center gap-1.5">
+                  <span class="size-2.5 rounded-[3px] bg-acento"></span>
+                  Nuevas ({{ grupo.nuevas }})
+                </span>
+              </div>
+            </div>
+            <div class="grid grid-cols-[repeat(auto-fill,minmax(58px,1fr))] gap-1.5">
+              @for (celda of grupo.celdas; track $index) {
+                <span
+                  class="num-tabular flex h-10 items-center justify-center rounded-boton text-[11px] font-semibold"
+                  [class]="
+                    celda.nueva
+                      ? 'border-[1.5px] border-dashed border-acento bg-acento-suave text-acento-fuerte'
+                      : 'bg-borde-sutil text-humo'
+                  "
+                >
+                  {{ celda.id }}
+                  @if (celda.cubierta !== null) {
+                    <ui-icono
+                      class="ml-1"
+                      [class]="celda.cubierta ? 'text-acento' : 'text-baja'"
+                      [nombre]="celda.cubierta ? 'techo' : 'sol'"
+                      [tamano]="11"
+                    />
+                  }
+                </span>
+              }
+            </div>
+          </div>
+        }
+
+        <div class="mt-auto flex flex-col gap-1 rounded-control bg-acento-suave px-3.5 py-3 text-[12.5px] text-acento-fuerte">
+          @for (lote of lotes.controls; track lote; let i = $index) {
+            @if (vistaPrevia(i); as rango) {
+              <p class="num-tabular">
+                Se crean <b>{{ rango }}</b>
+                · {{ etiquetaTipo[lote.controls.tipo.value] }}
+                · {{ lote.controls.cubierta.value ? 'cubiertas' : 'descubiertas' }}
+              </p>
+            } @else {
+              <p>Completá cantidad y prefijo para ver cómo quedan.</p>
+            }
+          }
+        </div>
+      </div>
+    </div>
+
+    @if (errorAlta(); as mensaje) {
+      <p
+        class="rounded-control border border-ocupada/25 bg-ocupada/5 px-4 py-3 text-[13px] text-ocupada"
+        role="alert"
+      >
+        {{ mensaje }}
+      </p>
+    }
+
+    <div class="flex justify-end gap-2 border-t border-borde-sutil pt-4">
+      <ui-boton (presionado)="cerrarAlta()">Cancelar</ui-boton>
+      <ui-boton variante="primario" tipo="submit" [cargando]="enviando()" [deshabilitado]="totalNuevas() === 0">
+        {{ totalNuevas() === 1 ? 'Crear 1 cochera' : 'Crear ' + totalNuevas() + ' cocheras' }}
+      </ui-boton>
+    </div>
+  </form>
+</ui-modal>

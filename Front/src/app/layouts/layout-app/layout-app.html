@@ -1,18 +1,58 @@
-<!-- Explorar (el mapa) ocupa justo la pantalla: sin scroll de pagina, cada panel scrollea solo. -->
-<div class="flex min-h-dvh flex-col bg-lienzo has-[app-mapa]:h-dvh">
-  <!-- Desktop: nav superior fija -->
-  <div class="sticky top-0 z-[1000] hidden lg:block">
-    <app-barra-superior
-      [items]="items()"
-      [usuario]="usuario()"
-      [rolAlternativo]="rolAlternativo()"
-      [cambiandoRol]="cambiandoRol()"
-      (salir)="salir()"
-      (cambiarRol)="cambiarRol()"
-    />
-  </div>
+@if (esPropietario()) {
+  <!-- Propietario: barra lateral oscura en desktop, tab bar abajo en mobile. -->
+  <div class="tema-propietario flex min-h-dvh bg-lienzo">
+    <div class="sticky top-0 z-[1000] hidden h-dvh shrink-0 lg:block">
+      <app-barra-lateral
+        [items]="items()"
+        [usuario]="usuario()"
+        [rolAlternativo]="rolAlternativo()"
+        [cambiandoRol]="cambiandoRol()"
+        (salir)="salir()"
+        (cambiarRol)="cambiarRol()"
+      />
+    </div>
 
-  <!-- Mobile: marca + salida, ocupa el lugar de la status bar del prototipo -->
+    <div class="flex min-w-0 flex-1 flex-col">
+      <ng-container *ngTemplateOutlet="barraMobile" />
+
+      <main class="flex min-h-0 min-w-0 flex-1 flex-col">
+        <router-outlet />
+      </main>
+
+      <div class="sticky bottom-0 z-[1000] lg:hidden">
+        <app-tabs-inferior [items]="items()" />
+      </div>
+    </div>
+  </div>
+} @else {
+  <!-- Explorar (el mapa) ocupa justo la pantalla: sin scroll de pagina, cada panel scrollea solo. -->
+  <div class="flex min-h-dvh flex-col bg-lienzo has-[app-mapa]:h-dvh">
+    <!-- Desktop: nav superior fija -->
+    <div class="sticky top-0 z-[1000] hidden lg:block">
+      <app-barra-superior
+        [items]="items()"
+        [usuario]="usuario()"
+        [rolAlternativo]="rolAlternativo()"
+        [cambiandoRol]="cambiandoRol()"
+        (salir)="salir()"
+        (cambiarRol)="cambiarRol()"
+      />
+    </div>
+
+    <ng-container *ngTemplateOutlet="barraMobile" />
+
+    <main class="flex min-h-0 min-w-0 flex-1 flex-col">
+      <router-outlet />
+    </main>
+
+    <div class="sticky bottom-0 z-[1000] lg:hidden">
+      <app-tabs-inferior [items]="items()" />
+    </div>
+  </div>
+}
+
+<!-- Mobile: marca + salida, ocupa el lugar de la status bar del prototipo -->
+<ng-template #barraMobile>
   <div
     class="sticky top-0 z-[1000] flex items-center justify-between border-b border-borde-sutil
            bg-lienzo/85 px-6 py-3 backdrop-blur-md lg:hidden"
@@ -33,12 +73,4 @@
       }
     </span>
   </div>
-
-  <main class="flex min-h-0 min-w-0 flex-1 flex-col">
-    <router-outlet />
-  </main>
-
-  <div class="sticky bottom-0 z-[1000] lg:hidden">
-    <app-tabs-inferior [items]="items()" />
-  </div>
-</div>
+</ng-template>

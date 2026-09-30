@@ -1,6 +1,13 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterOutlet } from '@angular/router';
-import { BarraSuperior, ItemNavegacion, MenuUsuario, TabsInferior } from '@app/components/layout';
+import {
+  BarraLateral,
+  BarraSuperior,
+  ItemNavegacion,
+  MenuUsuario,
+  TabsInferior,
+} from '@app/components/layout';
 import { BotonTema, Logo } from '@app/components/ui';
 import { inicioSegunRol } from '@app/guards/rol.guard';
 import { RolUsuario } from '@app/models';
@@ -14,21 +21,31 @@ const NAVEGACION: Record<RolUsuario, ItemNavegacion[]> = {
     { ruta: '/conductor/vehiculos', etiqueta: 'Vehículos', icono: 'auto' },
   ],
   PROPIETARIO: [
-    { ruta: '/propietario/tablero', etiqueta: 'Panel', icono: 'tablero' },
+    { ruta: '/propietario/tablero', etiqueta: 'Inicio', icono: 'inicio' },
     { ruta: '/propietario/reservas', etiqueta: 'Reservas', icono: 'reservas' },
     { ruta: '/propietario/estacionamientos', etiqueta: 'Estacionamientos', icono: 'estacionamiento' },
+    { ruta: '/propietario/perfil', etiqueta: 'Configuración', icono: 'configuracion' },
   ],
 };
 
 /**
- * Shell de la app: tab bar abajo en mobile y barra de navegacion arriba desde
- * 1024px. Cada pantalla decide su ancho (la mayoria limita a 940px; el mapa
- * ocupa todo).
+ * Shell de la app: tab bar abajo en mobile y, desde 1024px, barra de
+ * navegacion arriba (conductor) o barra lateral oscura (propietario). Cada
+ * pantalla decide su ancho (la mayoria limita a 940px; el mapa ocupa todo).
  */
 @Component({
   selector: 'app-layout-app',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterOutlet, TabsInferior, BarraSuperior, BotonTema, Logo, MenuUsuario],
+  imports: [
+    NgTemplateOutlet,
+    RouterOutlet,
+    TabsInferior,
+    BarraSuperior,
+    BarraLateral,
+    BotonTema,
+    Logo,
+    MenuUsuario,
+  ],
   templateUrl: './layout-app.html',
 })
 export class LayoutApp {
@@ -36,6 +53,8 @@ export class LayoutApp {
   private readonly router = inject(Router);
 
   protected readonly usuario = this.auth.usuario;
+  protected readonly esPropietario = computed(() => this.auth.rol() === 'PROPIETARIO');
+
   protected readonly items = computed(() => {
     const rol = this.auth.rol();
     return rol ? NAVEGACION[rol] : [];

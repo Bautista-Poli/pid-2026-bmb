@@ -265,6 +265,10 @@
     color: var(--color-tinta);
   }
 
+  .modal--amplio {
+    max-width: min(980px, calc(100vw - 32px));
+  }
+
   .modal::backdrop {
     background: rgb(15 23 42 / 0.45);
     backdrop-filter: blur(2px);

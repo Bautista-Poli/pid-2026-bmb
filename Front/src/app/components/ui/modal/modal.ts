@@ -26,7 +26,13 @@ let secuencia = 0;
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [Icono],
   template: `
-    <dialog #dialogo class="modal" [attr.aria-labelledby]="idTitulo" (close)="cerrado.emit()">
+    <dialog
+      #dialogo
+      class="modal"
+      [class.modal--amplio]="ancho() === 'amplio'"
+      [attr.aria-labelledby]="idTitulo"
+      (close)="cerrado.emit()"
+    >
       <div class="modal-panel">
         <div class="flex items-start justify-between gap-4">
           <h2 [id]="idTitulo" class="text-[16px] font-semibold text-tinta">{{ titulo() }}</h2>
@@ -51,6 +57,8 @@ let secuencia = 0;
 export class Modal {
   readonly titulo = input.required<string>();
   readonly abierto = input(false);
+  /** `amplio` para contenido en dos columnas (formulario + vista previa). */
+  readonly ancho = input<'normal' | 'amplio'>('normal');
 
   readonly cerrado = output<void>();
 

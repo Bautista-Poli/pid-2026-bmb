@@ -115,34 +115,59 @@ export const listarReservas = asyncHandler(async (req, res) => {
   res.json({ reservas });
 });
 
-/** La foto es publica: el detalle del estacionamiento se navega sin sesion. */
-export const obtenerFoto = asyncHandler(async (req, res) => {
-  const foto = await fotoService.obtener(req.params.id);
-  if (!foto) throw ApiError.notFound('El estacionamiento no tiene foto');
-
+/** Manda los bytes de una foto con cache corto y ETag por version. */
+function enviarFoto(res, foto) {
   res.type(foto.mime);
   res.set('Cache-Control', 'public, max-age=300');
   res.set('ETag', `W/"${foto.actualizada.getTime()}"`);
   res.send(foto.bytes);
-});
+}
 
 /**
  * El body es la imagen cruda (lo arma express.raw en la ruta). Se mira el
  * arranque del archivo y no solo el Content-Type, asi un header mentido no
  * termina guardando cualquier cosa en la base.
  */
-export const guardarFoto = asyncHandler(async (req, res) => {
+function imagenDelBody(req) {
   const bytes = req.body;
   // Con un Content-Type que no matchea, express.raw deja req.body en {}.
   const mime = Buffer.isBuffer(bytes) && bytes.length > 0 ? tipoDeImagen(bytes) : null;
   if (!mime) throw ApiError.badRequest('Subi una imagen JPG, PNG o WEBP de hasta 2 MB');
+  return { mime, bytes };
+}
 
-  const foto = await fotoService.guardar(req.params.id, req.usuario.id, mime, bytes);
+/** Las fotos son publicas: el detalle del estacionamiento se navega sin sesion. */
+export const obtenerFoto = asyncHandler(async (req, res) => {
+  const foto = await fotoService.obtenerPortada(req.params.id);
+  if (!foto) throw ApiError.notFound('El estacionamiento no tiene foto');
+  enviarFoto(res, foto);
+});
+
+export const guardarFoto = asyncHandler(async (req, res) => {
+  const { mime, bytes } = imagenDelBody(req);
+  const foto = await fotoService.guardarPortada(req.params.id, req.usuario.id, mime, bytes);
   res.json({ foto });
 });
 
 export const borrarFoto = asyncHandler(async (req, res) => {
-  await fotoService.borrar(req.params.id, req.usuario.id);
+  await fotoService.borrarPortada(req.params.id, req.usuario.id);
+  res.status(204).end();
+});
+
+export const obtenerFotoDeGaleria = asyncHandler(async (req, res) => {
+  const foto = await fotoService.obtener(req.params.id, req.params.idFoto);
+  if (!foto) throw ApiError.notFound('Foto no encontrada');
+  enviarFoto(res, foto);
+});
+
+export const agregarFoto = asyncHandler(async (req, res) => {
+  const { mime, bytes } = imagenDelBody(req);
+  const foto = await fotoService.agregar(req.params.id, req.usuario.id, mime, bytes);
+  res.status(201).json({ foto });
+});
+
+export const borrarFotoDeGaleria = asyncHandler(async (req, res) => {
+  await fotoService.borrar(req.params.id, req.usuario.id, req.params.idFoto);
   res.status(204).end();
 });
 

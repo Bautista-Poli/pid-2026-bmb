@@ -375,3 +375,29 @@ ALTER TABLE cochera
 -- o, sin alternativa, cancela su reserva (cochera.service.js: bloquear()).
 ALTER TABLE reserva
   ADD COLUMN IF NOT EXISTS motivo_reasignacion VARCHAR(300);
+
+-- Galeria del estacionamiento: varias fotos, la de menor `orden` es la
+-- portada. Reemplaza a `estacionamiento_foto` (una sola foto). La tabla vieja
+-- se deja un deploy mas para que la version anterior siga andando contra la
+-- misma base; sus fotos se copian aca como portada.
+CREATE TABLE IF NOT EXISTS estacionamiento_imagen (
+  id_imagen          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  id_estacionamiento UUID        NOT NULL,
+  orden              SMALLINT    NOT NULL DEFAULT 0,
+  mime               VARCHAR(30) NOT NULL,
+  bytes              BYTEA       NOT NULL,
+  actualizada        TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT estacionamiento_imagen_fk
+    FOREIGN KEY (id_estacionamiento) REFERENCES estacionamiento (id_estacionamiento)
+    ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_estacionamiento_imagen_orden
+  ON estacionamiento_imagen (id_estacionamiento, orden);
+
+INSERT INTO estacionamiento_imagen (id_estacionamiento, orden, mime, bytes, actualizada)
+SELECT f.id_estacionamiento, 0, f.mime, f.bytes, f.actualizada
+  FROM estacionamiento_foto f
+ WHERE NOT EXISTS (
+   SELECT 1 FROM estacionamiento_imagen i WHERE i.id_estacionamiento = f.id_estacionamiento
+ );

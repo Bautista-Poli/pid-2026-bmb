@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { Icono } from '@app/components/ui';
 import { Estacionamiento } from '@app/models';
+import { GaleriaFotos } from '../galeria-fotos/galeria-fotos';
 import {
   ETIQUETA_ESTADO,
   EstadoDisponibilidad,
@@ -29,7 +30,7 @@ const pesos = (monto: number) => `$${monto.toLocaleString('es-AR')}`;
 @Component({
   selector: 'app-detalle-estacionamiento',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Icono],
+  imports: [Icono, GaleriaFotos],
   template: `
     <article
       class="pointer-events-auto flex max-h-full min-h-0 flex-col overflow-hidden rounded-t-[20px] border border-borde bg-papel
@@ -39,8 +40,12 @@ const pesos = (monto: number) => `$${monto.toLocaleString('es-AR')}`;
     >
       <!-- Foto -->
       <div class="relative h-36 shrink-0 bg-acento-suave lg:h-40">
-        @if (estacionamiento().fotoUrl; as foto) {
-          <img [src]="foto" alt="" class="size-full object-cover" />
+        @if (estacionamiento().fotos.length > 0) {
+          <app-galeria-fotos
+            class="size-full"
+            [fotos]="estacionamiento().fotos"
+            [nombre]="'Foto de ' + estacionamiento().nombre"
+          />
         } @else {
           <span class="grid size-full place-items-center text-acento/60" aria-hidden="true">
             <ui-icono nombre="estacionamiento" [tamano]="56" />

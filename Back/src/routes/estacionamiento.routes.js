@@ -36,6 +36,7 @@ router.get('/mios', ...soloPropietario, estacionamientoController.listarMios);
 router.get('/:id', estacionamientoController.obtener);
 router.get('/:id/cocheras', estacionamientoController.listarCocheras);
 router.get('/:id/foto', estacionamientoController.obtenerFoto);
+router.get('/:id/fotos/:idFoto', estacionamientoController.obtenerFotoDeGaleria);
 router.get(
   '/:id/disponibilidad',
   validate(validarDisponibilidad, 'query'),
@@ -68,6 +69,10 @@ router.delete('/:id', ...soloPropietario, estacionamientoController.darDeBaja);
 
 router.put('/:id/foto', ...soloPropietario, imagen, estacionamientoController.guardarFoto);
 router.delete('/:id/foto', ...soloPropietario, estacionamientoController.borrarFoto);
+
+// Galeria: `/:id/foto` es la portada; estas suman y sacan el resto de las fotos.
+router.post('/:id/fotos', ...soloPropietario, imagen, estacionamientoController.agregarFoto);
+router.delete('/:id/fotos/:idFoto', ...soloPropietario, estacionamientoController.borrarFotoDeGaleria);
 
 router.post(
   '/:id/cocheras',

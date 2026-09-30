@@ -72,9 +72,17 @@ const AGREGADOS = `
           ) ORDER BY h.dia_semana), '[]'::json)
      FROM horario h
     WHERE h.id_estacionamiento = e.id_estacionamiento) AS horarios,
+  (SELECT COALESCE(json_agg(json_build_object(
+            'id_foto', f.id_imagen,
+            'actualizada', f.actualizada
+          ) ORDER BY f.orden, f.actualizada), '[]'::json)
+     FROM estacionamiento_imagen f
+    WHERE f.id_estacionamiento = e.id_estacionamiento) AS fotos,
   (SELECT f.actualizada
-     FROM estacionamiento_foto f
-    WHERE f.id_estacionamiento = e.id_estacionamiento) AS foto_actualizada
+     FROM estacionamiento_imagen f
+    WHERE f.id_estacionamiento = e.id_estacionamiento
+    ORDER BY f.orden, f.actualizada
+    LIMIT 1) AS foto_actualizada
 `;
 
 /** Zona horaria del negocio (ver utils/horario.js: UTC-3 todo el anio). */

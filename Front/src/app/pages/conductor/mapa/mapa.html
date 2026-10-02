@@ -116,8 +116,11 @@
 
       @if (sinOrigen()) {
         <p class="text-[12.5px] leading-normal text-plomo">
-          Activá la ubicación del navegador, o buscá la dirección a la que vas, para ver a qué distancia
-          está cada estacionamiento.
+          <span class="lg:hidden">Activá tu ubicación o buscá una dirección para ver distancias.</span>
+          <span class="hidden lg:inline">
+            Activá la ubicación del navegador, o buscá la dirección a la que vas, para ver a qué distancia
+            está cada estacionamiento.
+          </span>
         </p>
       }
     </section>
@@ -125,8 +128,8 @@
     <!-- ================================ Resultados ================================ -->
     <section
       #lista
-      class="order-3 flex max-h-[40%] shrink-0 flex-col gap-4 overflow-y-auto rounded-t-[20px] bg-papel
-             px-5 pt-3 pb-6 shadow-flotante lg:max-h-none lg:min-h-0 lg:flex-1 lg:rounded-none lg:border-t
+      class="order-3 flex max-h-[32%] shrink-0 flex-col gap-3 overflow-y-auto rounded-t-[20px] bg-papel
+             px-4 pt-2.5 pb-4 shadow-flotante lg:gap-4 lg:pb-6 lg:max-h-none lg:min-h-0 lg:flex-1 lg:rounded-none lg:border-t
              lg:border-borde-sutil lg:px-6 lg:pt-5 lg:shadow-none"
       aria-labelledby="titulo-resultados"
     >
@@ -173,12 +176,12 @@
           "
         />
       } @else {
-        <ul class="aparece-en-cadena flex flex-col gap-2.5">
+        <ul class="aparece-en-cadena flex flex-col gap-2 lg:gap-2.5">
           @for (estacionamiento of resultadosPagina(); track estacionamiento.id) {
             <li [id]="'estacionamiento-' + estacionamiento.id">
               <button
                 type="button"
-                class="flex w-full items-center gap-3.5 rounded-tarjeta border bg-papel p-3.5 text-left
+                class="flex w-full items-center gap-3 rounded-tarjeta border bg-papel p-2.5 text-left lg:gap-3.5 lg:p-3.5
                        shadow-tarjeta transition-[border-color,box-shadow] duration-160 hover:shadow-elevada"
                 [class.border-acento]="seleccionadoId() === estacionamiento.id"
                 [class.border-borde]="seleccionadoId() !== estacionamiento.id"
@@ -188,10 +191,10 @@
                 (click)="abrir(estacionamiento)"
               >
                 @if (estacionamiento.fotoUrl; as foto) {
-                  <img [src]="foto" alt="" loading="lazy" class="size-12 shrink-0 rounded-full object-cover" />
+                  <img [src]="foto" alt="" loading="lazy" class="size-10 shrink-0 rounded-full object-cover lg:size-12" />
                 } @else {
                   <span
-                    class="grid size-12 shrink-0 place-items-center rounded-full bg-acento text-[20px] font-bold
+                    class="grid size-10 shrink-0 place-items-center rounded-full bg-acento text-[17px] font-bold lg:size-12 lg:text-[20px]
                            text-sobre-acento"
                     aria-hidden="true"
                     >P</span
@@ -199,7 +202,7 @@
                 }
 
                 <span class="min-w-0 flex-1">
-                  <span class="block truncate text-[14.5px] font-semibold text-tinta">{{ estacionamiento.nombre }}</span>
+                  <span class="block truncate text-[14px] font-semibold text-tinta lg:text-[14.5px]">{{ estacionamiento.nombre }}</span>
                   <span class="mt-0.5 block truncate text-[12.5px] text-plomo">
                     {{ estacionamiento.direccion.calle }} {{ estacionamiento.direccion.numero }}
                   </span>

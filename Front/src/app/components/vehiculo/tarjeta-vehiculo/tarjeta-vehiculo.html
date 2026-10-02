@@ -1,0 +1,68 @@
+@let v = vehiculo();
+
+<article
+  class="flex h-full flex-col overflow-hidden rounded-tarjeta border bg-papel shadow-tarjeta"
+  [class.border-acento-borde]="v.predeterminado"
+  [class.border-borde]="!v.predeterminado"
+>
+  <!-- Foto del modelo (decoracion: el texto de abajo lo describe), o la silueta de su tipo. -->
+  <div class="relative aspect-[10/7] bg-lienzo">
+    @if (foto(); as ruta) {
+      <img [ngSrc]="ruta" width="400" height="280" alt="" class="size-full object-cover" />
+    } @else {
+      <span class="grid size-full place-items-center text-humo" aria-hidden="true">
+        <ui-icono [nombre]="icono()" [tamano]="56" />
+      </span>
+    }
+
+    @if (v.predeterminado) {
+      <ui-etiqueta tono="acento" class="absolute top-3 left-3 shadow-tarjeta">
+        <span class="size-1.5 rounded-full bg-current" aria-hidden="true"></span>
+        Predeterminado
+      </ui-etiqueta>
+    }
+  </div>
+
+  <div class="flex flex-1 flex-col gap-3 px-4 pt-3.5 pb-4">
+    <div class="flex items-start justify-between gap-3">
+      <div class="min-w-0">
+        <h2 class="truncate text-[15px] font-semibold text-tinta">{{ nombre() }}</h2>
+        @if (detalle()) {
+          <p class="mt-0.5 truncate text-[12.5px] text-plomo">{{ detalle() }}</p>
+        }
+      </div>
+      <ui-chapa-patente [patente]="v.patente" />
+    </div>
+
+    <div class="mt-auto flex flex-wrap items-center gap-2 border-t border-borde-sutil pt-3">
+      <ui-boton
+        tamano="sm"
+        [deshabilitado]="ocupada()"
+        [routerLink]="['/conductor/vehiculos', v.id, 'editar']"
+      >
+        <ui-icono nombre="editar" [tamano]="15" />
+        Editar
+      </ui-boton>
+      @if (!v.predeterminado) {
+        <ui-boton
+          variante="fantasma"
+          tamano="sm"
+          [deshabilitado]="ocupada()"
+          [cargando]="predeterminando()"
+          (presionado)="predeterminar.emit(v)"
+        >
+          Hacer predeterminado
+        </ui-boton>
+      }
+      <ui-boton
+        variante="fantasma"
+        tamano="sm"
+        class="ml-auto"
+        [deshabilitado]="ocupada()"
+        (presionado)="eliminar.emit(v)"
+      >
+        <span class="text-ocupada">Eliminar</span>
+      </ui-boton>
+    </div>
+  </div>
+</article>

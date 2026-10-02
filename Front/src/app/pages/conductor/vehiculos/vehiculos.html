@@ -1,4 +1,4 @@
-<div class="aparece mx-auto w-full max-w-[720px] px-6 pt-5 pb-8 lg:px-10 lg:pt-[34px] lg:pb-11">
+<div class="aparece mx-auto w-full max-w-[940px] px-6 pt-5 pb-8 lg:px-10 lg:pt-[34px] lg:pb-11">
   <div class="flex flex-col gap-6">
     <header>
       @if (rutaVolver(); as ruta) {
@@ -14,12 +14,31 @@
         <div>
           <p class="eyebrow">Conductor</p>
           <h1 class="titulo-vista mt-1.5">Mis vehículos</h1>
+          @if (!recurso.isLoading() && recurso.value().length > 1) {
+            <p class="mt-1.5 text-[13px] text-plomo">
+              El predeterminado se elige solo cuando reservás.
+            </p>
+          }
         </div>
         <ui-boton variante="primario" routerLink="/conductor/vehiculos/nuevo" [queryParams]="paramsAlta()">
           Agregar vehículo
         </ui-boton>
       </div>
     </header>
+
+    @if (aviso(); as a) {
+      <p
+        class="rounded-control border px-4 py-3 text-[13px]"
+        [class]="
+          a.tono === 'exito'
+            ? 'border-exito/25 bg-exito-suave text-exito'
+            : 'border-ocupada/25 bg-ocupada/5 text-ocupada'
+        "
+        [attr.role]="a.tono === 'exito' ? 'status' : 'alert'"
+      >
+        {{ a.texto }}
+      </p>
+    }
 
     @if (recurso.isLoading()) {
       <ui-cargando [cantidad]="2" />
@@ -37,36 +56,61 @@
         </ui-boton>
       </ui-estado-vacio>
     } @else {
-      <ui-tarjeta relleno="ninguno" [recortar]="true">
-        <ul class="aparece-en-cadena">
-          @for (vehiculo of recurso.value(); track vehiculo.id) {
-            <li
-              class="flex items-center gap-3.5 border-t border-borde-sutil px-5
-                     py-[15px] first:border-t-0 lg:px-6"
-            >
-              <app-foto-vehiculo [vehiculo]="vehiculo" />
-              <div class="min-w-0 flex-1">
-                <div class="flex items-center gap-2">
-                  <p class="num-tabular truncate text-[14px] font-semibold text-tinta">
-                    {{ vehiculo.patente }}
-                  </p>
-                  @if (vehiculo.predeterminado) {
-                    <ui-etiqueta tono="acento">Predeterminado</ui-etiqueta>
-                  }
-                </div>
-                <p class="mt-0.5 truncate text-[12px] text-plomo">{{ descripcion(vehiculo) }}</p>
-              </div>
-              <ui-boton
-                variante="fantasma"
-                tamano="sm"
-                [routerLink]="['/conductor/vehiculos', vehiculo.id, 'editar']"
-              >
-                Editar
-              </ui-boton>
-            </li>
-          }
-        </ul>
-      </ui-tarjeta>
+      <!-- El backend los manda con el predeterminado primero. -->
+      <ul class="aparece-en-cadena grid gap-4 sm:grid-cols-2">
+        @for (vehiculo of recurso.value(); track vehiculo.id) {
+          <li>
+            <app-tarjeta-vehiculo
+              class="h-full"
+              [vehiculo]="vehiculo"
+              [predeterminando]="predeterminandoId() === vehiculo.id"
+              [ocupada]="ocupado()"
+              (predeterminar)="predeterminar($event)"
+              (eliminar)="pedirEliminacion($event)"
+            />
+          </li>
+        }
+      </ul>
     }
   </div>
+
+  <ui-modal titulo="Eliminar vehículo" [abierto]="aEliminar() !== null" (cerrado)="cerrarEliminacion()">
+    @if (aEliminar(); as v) {
+      <div class="flex flex-col gap-4">
+        <div
+          class="flex items-center justify-between gap-4 rounded-control border border-borde-sutil
+                 bg-lienzo px-4 py-3"
+        >
+          <p class="min-w-0 truncate text-[13px] text-tinta">{{ descripcion(v) }}</p>
+          <ui-chapa-patente [patente]="v.patente" />
+        </div>
+
+        <p class="text-[13px] leading-relaxed text-grafito">
+          Deja de aparecer en tus vehículos y no vas a poder usarlo para reservar. Las reservas que ya
+          hiciste con él no cambian.
+          @if (v.predeterminado) {
+            Como es tu predeterminado, al reservar vas a tener que elegir otro.
+          }
+        </p>
+
+        @if (errorEliminar(); as mensaje) {
+          <p
+            class="rounded-control border border-ocupada/25 bg-ocupada/5 px-4 py-3 text-[13px] text-ocupada"
+            role="alert"
+          >
+            {{ mensaje }}
+          </p>
+        }
+
+        <div class="mt-1 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <ui-boton variante="fantasma" [deshabilitado]="eliminando()" (presionado)="cerrarEliminacion()">
+            Volver
+          </ui-boton>
+          <ui-boton variante="peligro" [cargando]="eliminando()" (presionado)="confirmarEliminacion()">
+            Eliminar vehículo
+          </ui-boton>
+        </div>
+      </div>
+    }
+  </ui-modal>
 </div>

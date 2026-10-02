@@ -50,3 +50,5 @@ Thumbs.db
 /FLUJO-PERFIL.pdf
 
 .claude
+.vercel
+.env*

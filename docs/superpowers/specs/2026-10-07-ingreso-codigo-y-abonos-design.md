@@ -165,9 +165,11 @@ pantalla del encargado.
 ### Objetivo
 
 El conductor paga por adelantado (de forma simulada) un mes de uso en un
-estacionamiento, dentro de unas franjas autorizadas: por ejemplo, de lunes a
-viernes de 8 a 18. No reserva día por día. Llega, escanea el QR (Parte A) y
-entra si está dentro de su franja.
+estacionamiento, dentro de unas franjas autorizadas que elige él, sin cubrir
+necesariamente todo el horario de atención. Por ejemplo, si el estacionamiento
+abre de 10 a 22, el abono puede ser solo los miércoles de 10 a 13, o de lunes
+a viernes de 8 a 18 en otro que abra antes. No reserva día por día. Llega,
+escanea el QR (Parte A) y entra si está dentro de su franja.
 
 ### B.1 Decisión central: el abono genera reservas diarias
 
@@ -194,10 +196,14 @@ bloqueo de cocheras que usa `crear`):
    libre en todas las franjas del período, en `ORDEN_NATURAL`. Si existe, todas
    las reservas hijas van ahí (**cochera fija**).
 2. Si ninguna está libre en todas, se asigna **por día** la primera cochera
-   libre de esa franja. El conductor ve un aviso: "Algunos días vas a usar otra
-   cochera".
-3. Si algún día no tiene ninguna cochera libre, el abono **no se contrata**:
-   409 con la lista de fechas sin lugar.
+   libre de esa franja. Igual cubre **todos** los días; solo cambia la
+   cochera. El conductor ve un aviso: "Algunos días vas a usar otra cochera".
+3. Si algún día no tiene ninguna cochera libre, el abono **no se contrata y no
+   se crea nada**. El cliente quiere el mes completo, no "lo que haya", así
+   que no se ofrece un abono parcial. 409 "Este estacionamiento no tiene lugar
+   para un abono en esas franjas. Probá con otros días u horarios." Las fechas
+   sin lugar van en `detalles` del error, por si el front las quiere mostrar,
+   pero no se ofrece contratar el resto.
 
 **De regalo** se obtiene todo lo que ya existe para reservas:
 
@@ -243,10 +249,11 @@ egreso siguen viviendo en `reserva`.
 
 ### B.3 Reglas
 
-- **Franjas:** un rango horario por abono, aplicado a un conjunto de días de la
-  semana. Tiene que caber en el horario de atención de cada día elegido (se
-  reusa `validarHorario`). Se omiten los días en que el estacionamiento cierra
-  según `horario`.
+- **Franjas:** un rango horario por abono (por ejemplo, de 10 a 13), aplicado
+  a uno o más días de la semana (por ejemplo, solo los miércoles). Puede ser
+  cualquier sub-rango del horario de atención, pero tiene que caber entero en
+  el horario de cada día elegido (se reusa `validarHorario`). Si un día elegido
+  está cerrado o el rango no entra: 400 indicando el día.
 - **Período:** 30 días corridos desde `desde`. `desde` no puede ser en el
   pasado.
 - **Precio:** `tarifa_abono_mensual`, fijo, sin prorrateo.
@@ -304,10 +311,11 @@ egreso siguen viviendo en `reserva`.
 - Contratar con una cochera libre todo el mes: N reservas en la misma cochera.
 - Contratar con una cochera ocupada un día: se usa otra cochera fija libre.
 - Contratar sin ninguna cochera libre todo el mes: asignación por día.
-- Contratar con un día sin ninguna cochera: 409 con la fecha y sin crear nada.
+- Contratar con un día sin ninguna cochera: 409 y no se crea ni el abono ni ninguna reserva hija.
+- Abono solo los miércoles de 10 a 13 en un estacionamiento de 10 a 22: 4 o 5 reservas hijas, todas miércoles.
+- Día elegido cerrado, o rango que excede el horario de ese día: 400.
 - Cupo agotado: 409.
 - Estacionamiento sin `tarifa_abono_mensual`: 409.
-- Franja fuera del horario de atención: 400/409.
 - Ingreso por QR con abono dentro de la franja: ACTIVA.
 - Ingreso por QR con abono fuera de la franja: 409 con la hora.
 - Cancelar el abono: las futuras quedan CANCELADAS y las pasadas o la ACTIVA

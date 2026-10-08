@@ -1,35 +1,36 @@
-# Ingreso y egreso por código o QR — Implementation Plan
+# Ingreso y egreso con el QR de la reserva — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** El conductor registra su ingreso y egreso escaneando el QR del estacionamiento (o tipeando su código), y el propietario ve, imprime y regenera ese QR.
+**Goal:** Cada reserva tiene un código y un QR propios. El conductor los muestra al entrar y al salir, y el operador (el propietario) los escanea o tipea para registrar el ingreso o el egreso.
 
-**Architecture:** Cada estacionamiento tiene un `codigo_acceso` de 6 caracteres que genera la base (función SQL `generar_codigo_acceso()` como `DEFAULT`). Las reglas de ingreso y egreso se extraen de `registrarIngreso` y `registrarEgreso` a `aplicarIngreso` y `aplicarEgreso`, que comparten la entrada del propietario (por id de reserva, sin cambios) y la nueva del conductor (por código). El QR codifica la URL `/conductor/acceso/<codigo>`, así que la cámara del celular abre la app directo y no hace falta un lector dentro de la app.
+**Architecture:** La base genera `reserva.codigo_acceso` (8 caracteres) con la función SQL `generar_codigo_acceso()` como `DEFAULT`. Las reglas de ingreso y egreso se extraen de `registrarIngreso` y `registrarEgreso` a `aplicarIngreso` y `aplicarEgreso`, que comparten la entrada por id (los botones actuales, sin cambios) y la nueva por código. El QR codifica la URL `/propietario/acceso/<codigo>`: el operador lo escanea con la cámara del celular y se abre la confirmación en la app, así no hace falta un lector dentro de la app.
 
 **Tech Stack:**
 - Back: Node + Express + PostgreSQL (`pg`), pruebas con `node --test` contra la base de `DATABASE_URL`.
-- Front: Angular 21 (standalone, signals, `rxResource`), Tailwind 4 y Vitest (`ng test`).
+- Front: Angular 21 (standalone, signals, `rxResource`/`resource`), Tailwind 4 y Vitest (`ng test`).
 - Librería nueva: `qrcode`.
 
 **Spec:** `docs/superpowers/specs/2026-10-07-ingreso-codigo-y-abonos-design.md` (Parte A)
 
 ## Global Constraints
 
-- Alfabeto del código: `ABCDEFGHJKMNPQRSTUVWXYZ23456789`, largo 6.
-- El código se muestra como `XXX-XXX`. Al validar se ignoran guiones, espacios y mayúsculas/minúsculas.
-- `codigo_acceso` **nunca** aparece en `GET /estacionamientos` ni en `GET /estacionamientos/:id` (son públicos).
-- La ventana de ingreso es la de hoy: desde `inicio - MARGEN_INGRESO_MS` (30 min) hasta `fin`.
-- Los endpoints del propietario `PATCH /reservas/:id/ingreso|egreso` no cambian su contrato.
+- Alfabeto del código: `ABCDEFGHJKMNPQRSTUVWXYZ23456789`, largo 8.
+- El código se muestra como `XXXX-XXXX`. Al validar se ignoran guiones, espacios y mayúsculas/minúsculas.
+- Solo ven el código el conductor de la reserva y el propietario del estacionamiento (`SELECT_DETALLE`, que no usa ningún endpoint público).
+- La ventana de ingreso: desde `inicio - MARGEN_INGRESO_MS` (30 min) hasta `fin`.
+- Los endpoints `PATCH /reservas/:id/ingreso|egreso` no cambian su contrato.
 - Mensajes al usuario en español rioplatense; en el back, sin tildes (como el resto de los mensajes de `ApiError`).
 - Commits sin trailer `Co-Authored-By`. Rama: `feat/ingreso-codigo-y-abonos`.
+- **Hay cambios sin commitear de otra persona** en `ciclo-reserva.ts`, `ciclo-reserva.spec.ts`, `fila-reserva.ts` y `pages/propietario/reservas/*` (habilitan el botón de ingreso solo dentro de la ventana). Antes de la Task 6, confirmá con el dueño de esos cambios si ya están commiteados. No los pises: la Task 6 solo agrega un botón al encabezado de `reservas.html`.
 
 ## Review Focus
 
-1. **Doble escaneo rápido** (el conductor toca dos veces o recarga la página): el segundo POST no tiene que registrar el egreso inmediatamente después del ingreso. Se cubre con un margen: un egreso por código dentro de los 60 s posteriores al ingreso responde 409 "Acabas de registrar el ingreso". Prueba en la Task 4.
-2. **Reserva ACTIVA cuyo `fin` ya pasó** (el auto se quedó de más y el job todavía no la cerró): el código tiene que permitir el egreso igual. Prueba en la Task 4.
-3. **Código de un estacionamiento dado de baja:** 404 con el mismo mensaje que un código inexistente, sin revelar que existió. Prueba en la Task 4.
-4. **Formato basura** (`"' OR 1=1"`, 50 caracteres, `null`): 400 o 404, nunca 500. Prueba en la Task 4.
-5. **Abrir el link sin sesión:** después del login tiene que volver a `/conductor/acceso/<codigo>`. `authGuard` ya agrega `?redirigir=`; la Task 7 verifica a mano que `ingresar.ts` lo respete.
+1. **Doble escaneo rápido** (el operador escanea dos veces o recarga la pantalla): el segundo POST no tiene que registrar el egreso enseguida. Un egreso por código dentro de los 60 s posteriores al ingreso responde 409. Prueba en la Task 3.
+2. **Reserva ACTIVA cuyo `fin` ya pasó** (el auto se quedó de más y el job todavía no la cerró): el código tiene que permitir el egreso. Prueba en la Task 3.
+3. **Código de una reserva de otro propietario:** 404 con el mismo mensaje que un código inexistente, sin revelar que la reserva existe. Prueba en la Task 3.
+4. **Formato basura** (`"' OR 1=1"`, 50 caracteres, ausente): 400 o 404, nunca 500. Prueba en la Task 3.
+5. **Abrir el link sin sesión:** después del login tiene que volver a `/propietario/acceso/<codigo>`. `authGuard` ya agrega `?redirigir=`; la Task 6 verifica a mano que `ingresar.ts` lo respete.
 
 ---
 
@@ -37,20 +38,18 @@
 
 | Archivo | Responsabilidad |
 |---|---|
-| `Back/src/db/schema.sql` | Función `generar_codigo_acceso()`, columna, relleno e índice único |
+| `Back/src/db/schema.sql` | Función `generar_codigo_acceso(largo)`, columna, relleno e índice único |
 | `Back/src/utils/codigoAcceso.js` (nuevo) | `normalizarCodigo`: reglas puras del formato |
-| `Back/src/services/estacionamiento.service.js` | `obtenerCodigoAcceso`, `regenerarCodigoAcceso` |
-| `Back/src/services/reserva.service.js` | `aplicarIngreso`/`aplicarEgreso`, `previaAcceso`, `registrarAcceso` |
-| `Back/src/controllers/*.controller.js`, `Back/src/routes/*.routes.js` | Endpoints |
-| `Back/src/validators/reserva.validator.js` | `validarAcceso` |
+| `Back/src/services/reserva.service.js` | `codigo_acceso` en el detalle, `aplicarIngreso`/`aplicarEgreso`, `previaAcceso`, `registrarAcceso` |
+| `Back/src/controllers/reserva.controller.js`, `Back/src/routes/reserva.routes.js`, `Back/src/validators/reserva.validator.js` | Endpoints y validación |
 | `Back/pruebas/codigo-acceso.test.mjs` (nuevo) | Pruebas puras de `normalizarCodigo` |
 | `Back/pruebas/acceso.test.mjs` (nuevo) | Integración de todo el flujo |
 | `Front/src/app/utils/codigo-acceso.util.ts` (+ spec) | `normalizarCodigo`, `formatearCodigo`, `urlDeAcceso` |
-| `Front/src/app/models/reserva.model.ts`, `services/api/*` | Tipos y mapeo de la vista previa |
-| `Front/src/app/services/reserva.service.ts`, `estacionamiento.service.ts` | Llamadas HTTP |
-| `Front/src/app/components/estacionamiento/qr-acceso/` (nuevo) | Tarjeta del QR del propietario |
-| `Front/src/app/pages/conductor/acceso/` (nuevo) | Pantalla de confirmación del conductor |
-| `Front/src/app/pages/conductor/mis-reservas/` | Botón "Tengo un código" |
+| `Front/src/app/models/reserva.model.ts`, `services/api/*`, `services/reserva.service.ts` | Tipos, mapeo y llamadas HTTP |
+| `Front/src/app/components/reserva/qr-reserva/` (nuevo) | QR + código de una reserva |
+| `Front/src/app/components/reserva/tarjeta-reserva/*`, `pages/conductor/mis-reservas/*` | Botón "Ver QR" y modal |
+| `Front/src/app/pages/propietario/acceso/` (nuevo) | Pantalla de confirmación del operador |
+| `Front/src/app/components/reserva/ingresar-codigo/` (nuevo) | Campo "Ingresar código" para el tablero y "Reservas recibidas" |
 
 ---
 
@@ -63,17 +62,16 @@
 
 **Interfaces:**
 - Produces:
-  - Columna `estacionamiento.codigo_acceso VARCHAR(6) NOT NULL UNIQUE`, con `DEFAULT generar_codigo_acceso()`.
-  - Función SQL `generar_codigo_acceso() RETURNS VARCHAR(6)`.
-  - `normalizarCodigo(bruto: unknown): string | null`.
-  - `ALFABETO_CODIGO: string`.
+  - Función SQL `generar_codigo_acceso(largo INT) RETURNS TEXT`.
+  - Columna `reserva.codigo_acceso VARCHAR(8) NOT NULL UNIQUE` con `DEFAULT generar_codigo_acceso(8)`.
+  - `normalizarCodigo(bruto: unknown): string | null`, `ALFABETO_CODIGO` y `LARGO_CODIGO = 8`.
 
 - [ ] **Step 1: Escribir la prueba que falla**
 
 `Back/pruebas/codigo-acceso.test.mjs`:
 
 ```js
-// Codigo de acceso del estacionamiento: reglas puras de formato. No usa la API ni la base.
+// Codigo de acceso de la reserva: reglas puras de formato. No usa la API ni la base.
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 
@@ -81,28 +79,26 @@ import { normalizarCodigo } from '../src/utils/codigoAcceso.js';
 
 describe('normalizarCodigo', () => {
   test('acepta el codigo tal cual', () => {
-    assert.equal(normalizarCodigo('K7M2QX'), 'K7M2QX');
+    assert.equal(normalizarCodigo('K7MQ2XTR'), 'K7MQ2XTR');
   });
 
   test('ignora guion, espacios y minusculas', () => {
-    assert.equal(normalizarCodigo(' k7m-2qx '), 'K7M2QX');
-    assert.equal(normalizarCodigo('k7m 2qx'), 'K7M2QX');
+    assert.equal(normalizarCodigo(' k7mq-2xtr '), 'K7MQ2XTR');
+    assert.equal(normalizarCodigo('k7mq 2xtr'), 'K7MQ2XTR');
   });
 
   test('rechaza caracteres ambiguos que no estan en el alfabeto', () => {
-    assert.equal(normalizarCodigo('K7M2Q0'), null); // cero
-    assert.equal(normalizarCodigo('K7M2QO'), null); // O
-    assert.equal(normalizarCodigo('K7M2Q1'), null); // uno
-    assert.equal(normalizarCodigo('K7M2QI'), null); // I
-    assert.equal(normalizarCodigo('K7M2QL'), null); // L
+    for (const ambiguo of ['0', 'O', '1', 'I', 'L']) {
+      assert.equal(normalizarCodigo(`K7MQ2XT${ambiguo}`), null, ambiguo);
+    }
   });
 
-  test('rechaza largos distintos de 6 y valores que no son texto', () => {
-    assert.equal(normalizarCodigo('K7M2Q'), null);
-    assert.equal(normalizarCodigo('K7M2QXX'), null);
+  test('rechaza largos distintos de 8 y valores que no son texto', () => {
+    assert.equal(normalizarCodigo('K7MQ2XT'), null);
+    assert.equal(normalizarCodigo('K7MQ2XTRR'), null);
     assert.equal(normalizarCodigo("' OR 1=1"), null);
     assert.equal(normalizarCodigo(null), null);
-    assert.equal(normalizarCodigo(123456), null);
+    assert.equal(normalizarCodigo(12345678), null);
   });
 });
 ```
@@ -117,14 +113,15 @@ Expected: FAIL con `Cannot find module '../src/utils/codigoAcceso.js'`
 `Back/src/utils/codigoAcceso.js`:
 
 ```js
-// Codigo de acceso del estacionamiento: el que figura debajo del QR de la
-// entrada. Lo genera la base (generar_codigo_acceso() en schema.sql); aca
-// solo se valida lo que tipea o escanea el conductor.
+// Codigo de acceso de la reserva: el que va en su QR y que el operador
+// escanea (o tipea) al entrar y al salir. Lo genera la base
+// (generar_codigo_acceso() en schema.sql); aca solo se valida lo que llega.
 
 /** Sin 0 O 1 I L, que se confunden al leerlos o dictarlos. Tiene que coincidir con schema.sql. */
 export const ALFABETO_CODIGO = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+export const LARGO_CODIGO = 8;
 
-const REGEX_CODIGO = new RegExp(`^[${ALFABETO_CODIGO}]{6}$`);
+const REGEX_CODIGO = new RegExp(`^[${ALFABETO_CODIGO}]{${LARGO_CODIGO}}$`);
 
 /** Saca guiones y espacios y pasa a mayusculas. `null` si no tiene forma de codigo. */
 export function normalizarCodigo(bruto) {
@@ -144,37 +141,36 @@ Expected: PASS (4 tests)
 Agregar al final de `Back/src/db/schema.sql`:
 
 ```sql
--- Codigo de acceso del estacionamiento: va debajo del QR que el propietario
--- pega en la entrada. El conductor lo escanea (o lo tipea) para registrar su
--- ingreso y su egreso. Sin 0 O 1 I L para que no se confundan; el alfabeto
--- tiene que coincidir con src/utils/codigoAcceso.js. Lo genera la base, asi
--- el INSERT de estacionamiento.service.js no cambia.
-CREATE OR REPLACE FUNCTION generar_codigo_acceso() RETURNS VARCHAR(6) AS $$
+-- Codigo de acceso de la reserva: va en su QR. El conductor lo muestra al
+-- entrar y al salir y el operador lo escanea (o lo tipea). Es unico por
+-- reserva. Sin 0 O 1 I L para que no se confundan; el alfabeto tiene que
+-- coincidir con src/utils/codigoAcceso.js. Lo genera la base, asi el INSERT
+-- de reserva.service.js no cambia.
+CREATE OR REPLACE FUNCTION generar_codigo_acceso(largo INT) RETURNS TEXT AS $$
 DECLARE
   alfabeto CONSTANT TEXT := 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
   codigo TEXT := '';
 BEGIN
-  FOR i IN 1..6 LOOP
+  FOR i IN 1..largo LOOP
     codigo := codigo || substr(alfabeto, 1 + floor(random() * length(alfabeto))::int, 1);
   END LOOP;
   RETURN codigo;
 END
 $$ LANGUAGE plpgsql VOLATILE;
 
-ALTER TABLE estacionamiento
-  ADD COLUMN IF NOT EXISTS codigo_acceso VARCHAR(6);
+ALTER TABLE reserva
+  ADD COLUMN IF NOT EXISTS codigo_acceso VARCHAR(8);
 
--- Relleno de los estacionamientos que ya existen. Con 31^6 combinaciones, una
--- colision entre unos cientos de filas es practicamente imposible; si pasara,
--- el CREATE UNIQUE INDEX de abajo falla y alcanza con volver a migrar.
-UPDATE estacionamiento SET codigo_acceso = generar_codigo_acceso() WHERE codigo_acceso IS NULL;
+-- Relleno de las reservas que ya existen. Con 31^8 combinaciones una colision
+-- es practicamente imposible; si pasara, el CREATE UNIQUE INDEX de abajo falla
+-- y alcanza con volver a migrar.
+UPDATE reserva SET codigo_acceso = generar_codigo_acceso(8) WHERE codigo_acceso IS NULL;
 
-ALTER TABLE estacionamiento
-  ALTER COLUMN codigo_acceso SET DEFAULT generar_codigo_acceso(),
+ALTER TABLE reserva
+  ALTER COLUMN codigo_acceso SET DEFAULT generar_codigo_acceso(8),
   ALTER COLUMN codigo_acceso SET NOT NULL;
 
-CREATE UNIQUE INDEX IF NOT EXISTS estacionamiento_codigo_acceso_unico
-  ON estacionamiento (codigo_acceso);
+CREATE UNIQUE INDEX IF NOT EXISTS reserva_codigo_acceso_unico ON reserva (codigo_acceso);
 ```
 
 - [ ] **Step 6: Aplicar la migración dos veces (es idempotente) y verificar**
@@ -182,7 +178,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS estacionamiento_codigo_acceso_unico
 Run: `cd Back && npm run db:migrate && npm run db:migrate`
 Expected: dos veces `[migrate] listo`, sin errores.
 
-Run: `cd Back && node --env-file=.env -e "import('./src/config/database.js').then(async ({query,pool})=>{const r=await query('SELECT count(*) FILTER (WHERE codigo_acceso IS NULL) AS nulos, count(DISTINCT codigo_acceso) = count(*) AS unicos FROM estacionamiento');console.log(r.rows[0]);await pool.end()})"`
+Run: `cd Back && node --env-file=.env -e "import('./src/config/database.js').then(async ({query,pool})=>{const r=await query('SELECT count(*) FILTER (WHERE codigo_acceso IS NULL) AS nulos, count(DISTINCT codigo_acceso) = count(*) AS unicos FROM reserva');console.log(r.rows[0]);await pool.end()})"`
 Expected: `{ nulos: '0', unicos: true }`
 
 - [ ] **Step 7: Correr toda la suite (nada debería romperse)**
@@ -194,32 +190,30 @@ Expected: PASS
 
 ```bash
 git add Back/src/db/schema.sql Back/src/utils/codigoAcceso.js Back/pruebas/codigo-acceso.test.mjs
-git commit -m "Codigo de acceso por estacionamiento generado en la base"
+git commit -m "Codigo de acceso unico por reserva generado en la base"
 ```
 
 ---
 
-### Task 2: El propietario ve y regenera el código
+### Task 2: El código en el detalle y reglas de ingreso y egreso reutilizables
 
 **Files:**
-- Modify: `Back/src/services/estacionamiento.service.js` (agregar después de `asegurarPropiedad`)
-- Modify: `Back/src/controllers/estacionamiento.controller.js`
-- Modify: `Back/src/routes/estacionamiento.routes.js` (antes de `router.get('/:id', ...)` no hace falta: las rutas nuevas tienen un segmento más)
+- Modify: `Back/src/services/reserva.service.js` (`SELECT_DETALLE` y líneas 469-505)
 - Test: `Back/pruebas/acceso.test.mjs` (nuevo)
 
 **Interfaces:**
-- Consumes: la columna `codigo_acceso` y `generar_codigo_acceso()` (Task 1), y `asegurarPropiedad(idEstacionamiento, idPropietario)` (existente).
+- Consumes: la columna `reserva.codigo_acceso` (Task 1).
 - Produces:
-  - `GET /api/estacionamientos/:id/codigo-acceso` → `200 { codigo_acceso: string }` (solo el propietario dueño).
-  - `POST /api/estacionamientos/:id/codigo-acceso/regenerar` → `200 { codigo_acceso: string }`.
-  - Servicio: `obtenerCodigoAcceso(id, idPropietario): Promise<string>` y `regenerarCodigoAcceso(id, idPropietario): Promise<string>`.
+  - `codigo_acceso` en toda respuesta que use `SELECT_DETALLE` (`GET /reservas`, `GET /estacionamientos/:id/reservas`, `POST /reservas`, transiciones).
+  - Funciones internas `aplicarIngreso(client, reserva): Promise<void>` y `aplicarEgreso(client, reserva): Promise<void>`, donde `reserva` es una fila bloqueada con al menos `id_reserva, estado, inicio, fin, ingreso_real, egreso_real, id_cochera`.
+  - Constante `MARGEN_EGRESO_TRAS_INGRESO_MS = 60_000`.
 
 - [ ] **Step 1: Escribir las pruebas que fallan**
 
 `Back/pruebas/acceso.test.mjs`:
 
 ```js
-// Ingreso y egreso por codigo de acceso del estacionamiento (QR de la entrada).
+// Ingreso y egreso con el codigo (QR) de la reserva.
 import assert from 'node:assert/strict';
 import { after, before, describe, test } from 'node:test';
 
@@ -239,211 +233,101 @@ import {
 before(() => levantarApi('acceso'));
 after(() => cerrarApi());
 
-const codigoDe = async (propietario, estacionamiento) => {
-  const { datos } = await api(
-    'GET',
-    `/estacionamientos/${estacionamiento.id_estacionamiento}/codigo-acceso`,
-    { token: propietario.token },
-  );
-  return datos.codigo_acceso;
-};
+const FORMATO_CODIGO = /^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{8}$/;
 
-describe('codigo de acceso del estacionamiento', () => {
-  test('el propietario lo ve y tiene el formato esperado', async () => {
-    const propietario = await crearUsuario({ rol: 'PROPIETARIO' });
-    const estacionamiento = await crearEstacionamiento(propietario.token);
+/** Reserva de manana (08:00 a 10:00), confirmada por el propietario. */
+async function escenario({ cocheras = 1 } = {}) {
+  const propietario = await crearUsuario({ rol: 'PROPIETARIO' });
+  const estacionamiento = await crearEstacionamiento(propietario.token, { cocheras });
+  const conductor = await crearUsuario();
+  const vehiculo = await crearVehiculo(conductor.token);
+  const reserva = await reservaConfirmada(propietario, conductor, estacionamiento, vehiculo);
+  return { propietario, estacionamiento, conductor, vehiculo, reserva };
+}
 
-    const { estado, datos } = await api(
+async function reservaConfirmada(propietario, conductor, estacionamiento, vehiculo, cuando = franja()) {
+  const { datos } = await api('POST', '/reservas', {
+    token: conductor.token,
+    body: {
+      id_estacionamiento: estacionamiento.id_estacionamiento,
+      id_vehiculo: vehiculo.id_vehiculo,
+      ...cuando,
+    },
+  });
+  const confirmada = await api('PATCH', `/reservas/${datos.reserva.id_reserva}/confirmar`, {
+    token: propietario.token,
+  });
+  return confirmada.datos.reserva;
+}
+
+describe('codigo de la reserva', () => {
+  test('cada reserva nace con su codigo, distinto del de las demas', async () => {
+    const { propietario, estacionamiento, conductor, reserva } = await escenario({ cocheras: 2 });
+    const otroVehiculo = await crearVehiculo(conductor.token);
+    const otra = await reservaConfirmada(propietario, conductor, estacionamiento, otroVehiculo);
+
+    assert.match(reserva.codigo_acceso, FORMATO_CODIGO);
+    assert.match(otra.codigo_acceso, FORMATO_CODIGO);
+    assert.notEqual(reserva.codigo_acceso, otra.codigo_acceso);
+  });
+
+  test('lo ven el conductor en sus reservas y el propietario en las recibidas', async () => {
+    const { propietario, estacionamiento, conductor, reserva } = await escenario();
+
+    const mias = await api('GET', '/reservas', { token: conductor.token });
+    assert.equal(mias.datos.reservas[0].codigo_acceso, reserva.codigo_acceso);
+
+    const recibidas = await api(
       'GET',
-      `/estacionamientos/${estacionamiento.id_estacionamiento}/codigo-acceso`,
+      `/estacionamientos/${estacionamiento.id_estacionamiento}/reservas`,
       { token: propietario.token },
     );
-
-    assert.equal(estado, 200);
-    assert.match(datos.codigo_acceso, /^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{6}$/);
-  });
-
-  test('no aparece en el detalle ni en la busqueda publicos', async () => {
-    const propietario = await crearUsuario({ rol: 'PROPIETARIO' });
-    const estacionamiento = await crearEstacionamiento(propietario.token);
-
-    const detalle = await api('GET', `/estacionamientos/${estacionamiento.id_estacionamiento}`);
-    assert.equal(detalle.datos.estacionamiento.codigo_acceso, undefined);
-
-    const busqueda = await api('GET', '/estacionamientos');
-    assert.ok(busqueda.datos.estacionamientos.every((e) => e.codigo_acceso === undefined));
-
-    const mios = await api('GET', '/estacionamientos/mios', { token: propietario.token });
-    assert.ok(mios.datos.estacionamientos.every((e) => e.codigo_acceso === undefined));
-  });
-
-  test('otro propietario no lo puede ver ni regenerar', async () => {
-    const duenio = await crearUsuario({ rol: 'PROPIETARIO' });
-    const otro = await crearUsuario({ rol: 'PROPIETARIO' });
-    const estacionamiento = await crearEstacionamiento(duenio.token);
-    const ruta = `/estacionamientos/${estacionamiento.id_estacionamiento}/codigo-acceso`;
-
-    assert.equal((await api('GET', ruta, { token: otro.token })).estado, 403);
-    assert.equal((await api('POST', `${ruta}/regenerar`, { token: otro.token })).estado, 403);
-  });
-
-  test('un conductor no lo puede ver', async () => {
-    const propietario = await crearUsuario({ rol: 'PROPIETARIO' });
-    const conductor = await crearUsuario();
-    const estacionamiento = await crearEstacionamiento(propietario.token);
-
-    const { estado } = await api(
-      'GET',
-      `/estacionamientos/${estacionamiento.id_estacionamiento}/codigo-acceso`,
-      { token: conductor.token },
-    );
-    assert.equal(estado, 403);
-  });
-
-  test('regenerar da un codigo distinto y deja guardado el nuevo', async () => {
-    const propietario = await crearUsuario({ rol: 'PROPIETARIO' });
-    const estacionamiento = await crearEstacionamiento(propietario.token);
-    const anterior = await codigoDe(propietario, estacionamiento);
-
-    const { estado, datos } = await api(
-      'POST',
-      `/estacionamientos/${estacionamiento.id_estacionamiento}/codigo-acceso/regenerar`,
-      { token: propietario.token },
-    );
-
-    assert.equal(estado, 200);
-    assert.notEqual(datos.codigo_acceso, anterior);
-    assert.equal(await codigoDe(propietario, estacionamiento), datos.codigo_acceso);
+    assert.equal(recibidas.datos.reservas[0].codigo_acceso, reserva.codigo_acceso);
   });
 });
 ```
 
-(`crearVehiculo`, `franja`, `motivo`, `ponerEnCurso` y `query` se usan en la Task 4. Si el linter se queja de imports sin usar, agregalos recién en la Task 4.)
+(`motivo`, `ponerEnCurso` y `query` se usan en la Task 3. Si el linter se queja de imports sin usar, agregalos recién en la Task 3.)
 
 - [ ] **Step 2: Correrlas y verificar que fallan**
 
 Run: `cd Back && node --test --env-file=.env pruebas/acceso.test.mjs`
-Expected: FAIL. Las rutas no existen y responden 404.
+Expected: FAIL. `codigo_acceso` llega `undefined` y no coincide con el formato.
 
-- [ ] **Step 3: Servicio**
+- [ ] **Step 3: Sumar el código al detalle**
 
-En `Back/src/services/estacionamiento.service.js`, debajo de `asegurarPropiedad`:
-
-```js
-const VIOLACION_UNIQUE = '23505';
-
-/** Codigo que va debajo del QR de la entrada. Solo lo ve el dueño: con el, se registra el ingreso. */
-export async function obtenerCodigoAcceso(idEstacionamiento, idPropietario) {
-  await asegurarPropiedad(idEstacionamiento, idPropietario);
-
-  const { rows } = await query(
-    'SELECT codigo_acceso FROM estacionamiento WHERE id_estacionamiento = $1',
-    [idEstacionamiento],
-  );
-  return rows[0].codigo_acceso;
-}
-
-/**
- * Cambia el codigo (por ejemplo, si se filtro una foto del cartel); el
- * anterior deja de funcionar. Una colision con otro estacionamiento es casi
- * imposible, pero si pasa se reintenta con otro codigo.
- */
-export async function regenerarCodigoAcceso(idEstacionamiento, idPropietario) {
-  await asegurarPropiedad(idEstacionamiento, idPropietario);
-
-  for (let intento = 0; ; intento++) {
-    try {
-      const { rows } = await query(
-        `UPDATE estacionamiento SET codigo_acceso = generar_codigo_acceso()
-          WHERE id_estacionamiento = $1
-          RETURNING codigo_acceso`,
-        [idEstacionamiento],
-      );
-      return rows[0].codigo_acceso;
-    } catch (error) {
-      if (error.code !== VIOLACION_UNIQUE || intento >= 2) throw error;
-    }
-  }
-}
-```
-
-(La prueba "regenerar da un codigo distinto" puede fallar 1 de cada 887 millones de veces. Es aceptable.)
-
-- [ ] **Step 4: Controlador y rutas**
-
-En `Back/src/controllers/estacionamiento.controller.js`, después de `listarMios`:
+En `Back/src/services/reserva.service.js`, dentro de `SELECT_DETALLE`, cambiar la línea
 
 ```js
-export const obtenerCodigoAcceso = asyncHandler(async (req, res) => {
-  const codigo_acceso = await estacionamientoService.obtenerCodigoAcceso(req.params.id, req.usuario.id);
-  res.json({ codigo_acceso });
-});
-
-export const regenerarCodigoAcceso = asyncHandler(async (req, res) => {
-  const codigo_acceso = await estacionamientoService.regenerarCodigoAcceso(req.params.id, req.usuario.id);
-  res.json({ codigo_acceso });
-});
+         r.modalidad, r.precio_total, r.motivo_reasignacion,
 ```
 
-En `Back/src/routes/estacionamiento.routes.js`, después del `router.get('/:id/reservas', ...)`:
+por
 
 ```js
-// Codigo del QR de la entrada: solo el dueño lo ve y lo puede cambiar.
-router.get('/:id/codigo-acceso', ...soloPropietario, estacionamientoController.obtenerCodigoAcceso);
-router.post(
-  '/:id/codigo-acceso/regenerar',
-  ...soloPropietario,
-  estacionamientoController.regenerarCodigoAcceso,
-);
+         r.modalidad, r.precio_total, r.motivo_reasignacion, r.codigo_acceso,
 ```
 
-- [ ] **Step 5: Correr las pruebas y verificar que pasan**
+- [ ] **Step 4: Correr las pruebas y verificar que pasan**
 
 Run: `cd Back && node --test --env-file=.env pruebas/acceso.test.mjs`
-Expected: PASS (5 tests). Si "otro propietario" devuelve 404 en vez de 403, revisá que el estacionamiento exista: `asegurarPropiedad` devuelve 403 para uno ajeno.
+Expected: PASS (2 tests)
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 5: Separar las reglas de ingreso y egreso (refactor sin cambio de comportamiento)**
 
-```bash
-git add Back/src/services/estacionamiento.service.js Back/src/controllers/estacionamiento.controller.js Back/src/routes/estacionamiento.routes.js Back/pruebas/acceso.test.mjs
-git commit -m "El propietario ve y regenera el codigo de acceso de su estacionamiento"
-```
-
----
-
-### Task 3: Separar las reglas de ingreso y egreso
-
-Es un refactor sin cambio de comportamiento: las pruebas existentes de "ciclo de la reserva" son la red de seguridad.
-
-**Files:**
-- Modify: `Back/src/services/reserva.service.js:469-505`
-
-**Interfaces:**
-- Produces (internas del módulo):
-  - `aplicarIngreso(client, reserva): Promise<void>`.
-  - `aplicarEgreso(client, reserva): Promise<void>`.
-  - `reserva` es una fila bloqueada con al menos `id_reserva, estado, inicio, fin, ingreso_real, egreso_real, id_cochera`.
-  - `MARGEN_EGRESO_TRAS_INGRESO_MS = 60_000`.
-
-- [ ] **Step 1: Verificar el punto de partida**
-
-Run: `cd Back && node --test --env-file=.env pruebas/reserva.test.mjs`
-Expected: PASS
-
-- [ ] **Step 2: Reemplazar `registrarIngreso` y `registrarEgreso`**
-
-En `Back/src/services/reserva.service.js`, reemplazar las dos funciones desde `/** Llego el vehiculo:` hasta el cierre de `registrarEgreso` por:
+Reemplazar desde `/** Llego el vehiculo:` hasta el cierre de `registrarEgreso` por:
 
 ```js
 /**
  * Un egreso pegado al ingreso es casi seguro un doble escaneo del QR (o una
- * recarga de la pagina), no un auto que entro y salio: se rechaza.
+ * recarga de la pantalla), no un auto que entro y salio: se rechaza. Solo
+ * aplica a la entrada por codigo; los botones del propietario no lo usan.
  */
 const MARGEN_EGRESO_TRAS_INGRESO_MS = 60 * 1000;
 
 /**
- * Reglas del ingreso sobre una reserva ya bloqueada. Las comparten el
- * propietario (registrarIngreso) y el conductor por codigo (registrarAcceso).
+ * Reglas del ingreso sobre una reserva ya bloqueada. Las comparten el boton
+ * del propietario (registrarIngreso) y el QR de la reserva (registrarAcceso).
  */
 async function aplicarIngreso(client, reserva) {
   if (reserva.estado === ESTADOS_RESERVA.PENDIENTE) {
@@ -489,23 +373,21 @@ export async function registrarEgreso(idReserva, idPropietario) {
 }
 ```
 
-`MARGEN_EGRESO_TRAS_INGRESO_MS` se usa recién en la Task 4, y solo en el camino del conductor: el propietario sigue pudiendo registrar el egreso enseguida, como hoy, y sus pruebas lo hacen.
+- [ ] **Step 6: Correr toda la suite (el refactor no cambia nada)**
 
-- [ ] **Step 3: Correr las pruebas y verificar que siguen pasando**
+Run: `cd Back && npm test`
+Expected: PASS, incluidas las pruebas de "ciclo de la reserva" de `reserva.test.mjs`.
 
-Run: `cd Back && node --test --env-file=.env pruebas/reserva.test.mjs`
-Expected: PASS, con los mismos tests que en el Step 1.
-
-- [ ] **Step 4: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add Back/src/services/reserva.service.js
-git commit -m "Separo las reglas de ingreso y egreso para reusarlas desde el codigo"
+git add Back/src/services/reserva.service.js Back/pruebas/acceso.test.mjs
+git commit -m "Codigo de acceso en el detalle de la reserva y reglas de ingreso/egreso reutilizables"
 ```
 
 ---
 
-### Task 4: Ingreso y egreso del conductor por código
+### Task 3: El operador registra ingreso y egreso con el código
 
 **Files:**
 - Modify: `Back/src/services/reserva.service.js` (debajo de `registrarEgreso`)
@@ -515,49 +397,19 @@ git commit -m "Separo las reglas de ingreso y egreso para reusarlas desde el cod
 - Test: `Back/pruebas/acceso.test.mjs`
 
 **Interfaces:**
-- Consumes:
-  - `aplicarIngreso`, `aplicarEgreso` y `MARGEN_EGRESO_TRAS_INGRESO_MS` (Task 3).
-  - `normalizarCodigo` (Task 1).
-  - `obtenerDetalle(ejecutor, idReserva)` (existente).
+- Consumes: `aplicarIngreso`, `aplicarEgreso`, `MARGEN_EGRESO_TRAS_INGRESO_MS` (Task 2), `normalizarCodigo` (Task 1), `obtenerDetalle` (existente).
 - Produces:
-  - `GET /api/reservas/acceso/:codigo` (CONDUCTOR) → `200 { estacionamiento: { id_estacionamiento, nombre }, candidatas: [{ accion: 'INGRESO'|'EGRESO', reserva: <ReservaDto> }] }`.
-  - `POST /api/reservas/acceso` (CONDUCTOR), body `{ codigo: string, id_reserva?: uuid }` → `200 { accion, reserva: <ReservaDto> }`.
-  - Errores:
-    - 404 para un código inexistente, mal formado o de un estacionamiento inactivo, y también si el conductor no tiene reservas vigentes ahí.
-    - 409 si la reserva no está confirmada, si es demasiado temprano, si hay varias candidatas sin `id_reserva` o si se intenta el egreso justo después del ingreso.
-    - 404 si `id_reserva` no está entre las candidatas.
+  - `GET /api/reservas/acceso/:codigo` (PROPIETARIO) → `200 { accion: 'INGRESO'|'EGRESO', reserva: <ReservaDto> }`, sin efectos.
+  - `POST /api/reservas/acceso` (PROPIETARIO), body `{ codigo: string }` → `200 { accion, reserva }`.
+  - Errores: 404 si el código es inexistente, está mal formado o es de un estacionamiento ajeno (mismo mensaje); 409 si la reserva está pendiente, cancelada o finalizada, si es demasiado temprano, si la franja terminó sin ingreso o si el egreso llega justo después del ingreso; 400 si falta `codigo`.
 
 - [ ] **Step 1: Escribir las pruebas que fallan**
 
 Agregar al final de `Back/pruebas/acceso.test.mjs`:
 
 ```js
-/** Reserva CONFIRMADA de manana en un estacionamiento nuevo, con su codigo. */
-async function escenario({ cocheras = 1 } = {}) {
-  const propietario = await crearUsuario({ rol: 'PROPIETARIO' });
-  const estacionamiento = await crearEstacionamiento(propietario.token, { cocheras });
-  const conductor = await crearUsuario();
-  const vehiculo = await crearVehiculo(conductor.token);
-  const codigo = await codigoDe(propietario, estacionamiento);
-
-  const reserva = await reservaConfirmada(propietario, conductor, estacionamiento, vehiculo);
-  return { propietario, estacionamiento, conductor, vehiculo, codigo, reserva };
-}
-
-async function reservaConfirmada(propietario, conductor, estacionamiento, vehiculo, cuando = franja()) {
-  const { datos } = await api('POST', '/reservas', {
-    token: conductor.token,
-    body: {
-      id_estacionamiento: estacionamiento.id_estacionamiento,
-      id_vehiculo: vehiculo.id_vehiculo,
-      ...cuando,
-    },
-  });
-  await api('PATCH', `/reservas/${datos.reserva.id_reserva}/confirmar`, { token: propietario.token });
-  return datos.reserva;
-}
-
-const acceder = (conductor, body) => api('POST', '/reservas/acceso', { token: conductor.token, body });
+const acceder = (propietario, codigo) =>
+  api('POST', '/reservas/acceso', { token: propietario.token, body: { codigo } });
 
 const estadoCochera = async (idCochera) =>
   (await query('SELECT estado_actual FROM cochera WHERE id_cochera = $1', [idCochera])).rows[0]
@@ -569,12 +421,12 @@ const ingresoHaceUnRato = (idReserva) =>
     idReserva,
   ]);
 
-describe('ingreso y egreso del conductor por codigo', () => {
-  test('ingreso en su franja: ACTIVA y cochera OCUPADA', async () => {
-    const { conductor, codigo, reserva } = await escenario();
+describe('ingreso y egreso con el codigo de la reserva', () => {
+  test('ingreso en la ventana: ACTIVA y cochera OCUPADA', async () => {
+    const { propietario, reserva } = await escenario();
     await ponerEnCurso(reserva.id_reserva);
 
-    const { estado, datos } = await acceder(conductor, { codigo });
+    const { estado, datos } = await acceder(propietario, reserva.codigo_acceso);
 
     assert.equal(estado, 200);
     assert.equal(datos.accion, 'INGRESO');
@@ -584,12 +436,12 @@ describe('ingreso y egreso del conductor por codigo', () => {
   });
 
   test('egreso con el mismo codigo: FINALIZADA y cochera LIBRE', async () => {
-    const { conductor, codigo, reserva } = await escenario();
+    const { propietario, reserva } = await escenario();
     await ponerEnCurso(reserva.id_reserva);
-    await acceder(conductor, { codigo });
+    await acceder(propietario, reserva.codigo_acceso);
     await ingresoHaceUnRato(reserva.id_reserva);
 
-    const { estado, datos } = await acceder(conductor, { codigo });
+    const { estado, datos } = await acceder(propietario, reserva.codigo_acceso);
 
     assert.equal(estado, 200);
     assert.equal(datos.accion, 'EGRESO');
@@ -598,20 +450,20 @@ describe('ingreso y egreso del conductor por codigo', () => {
   });
 
   test('doble escaneo: el segundo no registra el egreso enseguida', async () => {
-    const { conductor, codigo, reserva } = await escenario();
+    const { propietario, reserva } = await escenario();
     await ponerEnCurso(reserva.id_reserva);
-    await acceder(conductor, { codigo });
+    await acceder(propietario, reserva.codigo_acceso);
 
-    const segundo = await acceder(conductor, { codigo });
+    const segundo = await acceder(propietario, reserva.codigo_acceso);
 
     assert.equal(segundo.estado, 409);
     assert.match(motivo(segundo), /acabas de registrar el ingreso/i);
   });
 
   test('egreso aunque la franja ya haya terminado', async () => {
-    const { conductor, codigo, reserva } = await escenario();
+    const { propietario, reserva } = await escenario();
     await ponerEnCurso(reserva.id_reserva);
-    await acceder(conductor, { codigo });
+    await acceder(propietario, reserva.codigo_acceso);
     await query(
       `UPDATE reserva SET inicio = now() - interval '3 hours', fin = now() - interval '10 minutes',
               ingreso_real = now() - interval '3 hours'
@@ -619,73 +471,61 @@ describe('ingreso y egreso del conductor por codigo', () => {
       [reserva.id_reserva],
     );
 
-    const { estado, datos } = await acceder(conductor, { codigo });
+    const { estado, datos } = await acceder(propietario, reserva.codigo_acceso);
 
     assert.equal(estado, 200);
     assert.equal(datos.accion, 'EGRESO');
   });
 
   test('el codigo se acepta en minusculas y con guion', async () => {
-    const { conductor, codigo, reserva } = await escenario();
+    const { propietario, reserva } = await escenario();
     await ponerEnCurso(reserva.id_reserva);
+    const c = reserva.codigo_acceso;
 
-    const tipeado = `${codigo.slice(0, 3)}-${codigo.slice(3)}`.toLowerCase();
-    const { estado } = await acceder(conductor, { codigo: tipeado });
+    const { estado } = await acceder(propietario, `${c.slice(0, 4)}-${c.slice(4)}`.toLowerCase());
 
     assert.equal(estado, 200);
   });
 
-  test('vista previa: muestra la candidata sin registrar nada', async () => {
-    const { conductor, codigo, reserva, estacionamiento } = await escenario();
+  test('vista previa: dice que se va a registrar sin registrar nada', async () => {
+    const { propietario, reserva } = await escenario();
     await ponerEnCurso(reserva.id_reserva);
 
-    const { estado, datos } = await api('GET', `/reservas/acceso/${codigo}`, { token: conductor.token });
+    const { estado, datos } = await api('GET', `/reservas/acceso/${reserva.codigo_acceso}`, {
+      token: propietario.token,
+    });
 
     assert.equal(estado, 200);
-    assert.equal(datos.estacionamiento.id_estacionamiento, estacionamiento.id_estacionamiento);
-    assert.equal(datos.candidatas.length, 1);
-    assert.equal(datos.candidatas[0].accion, 'INGRESO');
-    assert.equal(datos.candidatas[0].reserva.id_reserva, reserva.id_reserva);
+    assert.equal(datos.accion, 'INGRESO');
+    assert.equal(datos.reserva.id_reserva, reserva.id_reserva);
     const { rows } = await query('SELECT estado FROM reserva WHERE id_reserva = $1', [reserva.id_reserva]);
     assert.equal(rows[0].estado, 'CONFIRMADA');
   });
 
-  test('codigo inexistente, mal formado o basura: 404, nunca 500', async () => {
-    const conductor = await crearUsuario();
+  test('codigo inexistente, mal formado o basura: 400 o 404, nunca 500', async () => {
+    const propietario = await crearUsuario({ rol: 'PROPIETARIO' });
 
-    for (const codigo of ['ZZZZZZ', 'K7M2Q0', "' OR 1=1", 'x'.repeat(50)]) {
-      const respuesta = await acceder(conductor, { codigo });
+    for (const codigo of ['ZZZZZZZZ', 'K7MQ2XT0', "' OR 1=1", 'x'.repeat(50)]) {
+      const respuesta = await acceder(propietario, codigo);
       assert.ok([400, 404].includes(respuesta.estado), `${codigo}: ${respuesta.estado}`);
     }
-    assert.equal((await acceder(conductor, {})).estado, 400);
+    const sinCodigo = await api('POST', '/reservas/acceso', { token: propietario.token, body: {} });
+    assert.equal(sinCodigo.estado, 400);
   });
 
-  test('codigo de un estacionamiento dado de baja: 404 igual que uno inexistente', async () => {
-    const { conductor, codigo, reserva, estacionamiento } = await escenario();
+  test('codigo de una reserva de otro propietario: 404 con el mismo mensaje', async () => {
+    const { reserva } = await escenario();
     await ponerEnCurso(reserva.id_reserva);
-    await query('UPDATE estacionamiento SET activo = FALSE WHERE id_estacionamiento = $1', [
-      estacionamiento.id_estacionamiento,
-    ]);
+    const otro = await crearUsuario({ rol: 'PROPIETARIO' });
 
-    const respuesta = await acceder(conductor, { codigo });
+    const ajena = await acceder(otro, reserva.codigo_acceso);
+    const inexistente = await acceder(otro, 'ZZZZZZZZ');
 
-    assert.equal(respuesta.estado, 404);
-    assert.match(motivo(respuesta), /no corresponde a ningun estacionamiento/i);
+    assert.equal(ajena.estado, 404);
+    assert.equal(motivo(ajena), motivo(inexistente));
   });
 
-  test('codigo de otro estacionamiento: no tenes reserva vigente aca', async () => {
-    const { conductor, reserva } = await escenario();
-    await ponerEnCurso(reserva.id_reserva);
-    const otroDuenio = await crearUsuario({ rol: 'PROPIETARIO' });
-    const otro = await crearEstacionamiento(otroDuenio.token);
-
-    const respuesta = await acceder(conductor, { codigo: await codigoDe(otroDuenio, otro) });
-
-    assert.equal(respuesta.estado, 404);
-    assert.match(motivo(respuesta), /no tenes una reserva vigente/i);
-  });
-
-  test('reserva pendiente: todavia no fue confirmada', async () => {
+  test('reserva pendiente: todavia no esta confirmada', async () => {
     const propietario = await crearUsuario({ rol: 'PROPIETARIO' });
     const estacionamiento = await crearEstacionamiento(propietario.token);
     const conductor = await crearUsuario();
@@ -700,81 +540,56 @@ describe('ingreso y egreso del conductor por codigo', () => {
     });
     await ponerEnCurso(datos.reserva.id_reserva);
 
-    const respuesta = await acceder(conductor, { codigo: await codigoDe(propietario, estacionamiento) });
+    const respuesta = await acceder(propietario, datos.reserva.codigo_acceso);
 
     assert.equal(respuesta.estado, 409);
-    assert.match(motivo(respuesta), /todavia no fue confirmada/i);
+    assert.match(motivo(respuesta), /todavia no esta confirmada/i);
   });
 
-  test('demasiado temprano: dice desde que hora puede ingresar', async () => {
-    const { conductor, codigo } = await escenario(); // la franja es manana de 08:00 a 10:00
+  test('reserva cancelada o finalizada: 409', async () => {
+    const { propietario, conductor, reserva } = await escenario();
+    await api('PATCH', `/reservas/${reserva.id_reserva}/cancelar`, { token: conductor.token });
 
-    const respuesta = await acceder(conductor, { codigo });
+    const cancelada = await acceder(propietario, reserva.codigo_acceso);
+    assert.equal(cancelada.estado, 409);
+    assert.match(motivo(cancelada), /cancelada/i);
+
+    const otra = await escenario();
+    await ponerEnCurso(otra.reserva.id_reserva);
+    await acceder(otra.propietario, otra.reserva.codigo_acceso);
+    await ingresoHaceUnRato(otra.reserva.id_reserva);
+    await acceder(otra.propietario, otra.reserva.codigo_acceso);
+
+    const finalizada = await acceder(otra.propietario, otra.reserva.codigo_acceso);
+    assert.equal(finalizada.estado, 409);
+    assert.match(motivo(finalizada), /ya termino/i);
+  });
+
+  test('demasiado temprano: dice desde que hora se puede ingresar', async () => {
+    const { propietario, reserva } = await escenario(); // manana de 08:00 a 10:00
+
+    const respuesta = await acceder(propietario, reserva.codigo_acceso);
 
     assert.equal(respuesta.estado, 409);
-    assert.match(motivo(respuesta), /empieza a las 08:00; podes ingresar desde las 07:30/i);
+    assert.match(motivo(respuesta), /empieza a las 08:00; se puede ingresar desde las 07:30/i);
   });
 
-  test('dos reservas en curso: pide elegir, y con id_reserva aplica sobre esa', async () => {
-    const { propietario, estacionamiento, conductor, codigo, reserva } = await escenario({ cocheras: 2 });
-    // Misma franja que la primera: asi el backend le asigna la otra cochera y
-    // ponerEnCurso() no las superpone en la misma (lo impediria el EXCLUDE).
-    const otroVehiculo = await crearVehiculo(conductor.token);
-    const segunda = await reservaConfirmada(propietario, conductor, estacionamiento, otroVehiculo);
-    await ponerEnCurso(reserva.id_reserva);
-    await ponerEnCurso(segunda.id_reserva);
+  test('un conductor no puede usar los endpoints de acceso', async () => {
+    const { conductor, reserva } = await escenario();
 
-    const sinElegir = await acceder(conductor, { codigo });
-    assert.equal(sinElegir.estado, 409);
-    assert.match(motivo(sinElegir), /mas de una reserva/i);
-
-    const previa = await api('GET', `/reservas/acceso/${codigo}`, { token: conductor.token });
-    assert.equal(previa.datos.candidatas.length, 2);
-
-    const elegida = await acceder(conductor, { codigo, id_reserva: segunda.id_reserva });
-    assert.equal(elegida.estado, 200);
-    assert.equal(elegida.datos.reserva.id_reserva, segunda.id_reserva);
-  });
-
-  test('id_reserva de otra persona: 404', async () => {
-    const { conductor, codigo, reserva } = await escenario();
-    await ponerEnCurso(reserva.id_reserva);
-    const ajena = await escenario();
-
-    const respuesta = await acceder(conductor, { codigo, id_reserva: ajena.reserva.id_reserva });
-
-    assert.equal(respuesta.estado, 404);
-  });
-
-  test('despues de regenerar, el codigo anterior deja de funcionar', async () => {
-    const { propietario, estacionamiento, conductor, codigo, reserva } = await escenario();
-    await ponerEnCurso(reserva.id_reserva);
-    await api(
-      'POST',
-      `/estacionamientos/${estacionamiento.id_estacionamiento}/codigo-acceso/regenerar`,
-      { token: propietario.token },
-    );
-
-    assert.equal((await acceder(conductor, { codigo })).estado, 404);
-    assert.equal(
-      (await acceder(conductor, { codigo: await codigoDe(propietario, estacionamiento) })).estado,
-      200,
-    );
-  });
-
-  test('un propietario no puede usar el endpoint del conductor', async () => {
-    const { propietario, codigo } = await escenario();
-    assert.equal((await acceder(propietario, { codigo })).estado, 403);
+    assert.equal((await acceder(conductor, reserva.codigo_acceso)).estado, 403);
+    const previa = await api('GET', `/reservas/acceso/${reserva.codigo_acceso}`, { token: conductor.token });
+    assert.equal(previa.estado, 403);
   });
 });
 ```
 
-Nota sobre la prueba "demasiado temprano": `franja()` arma la franja de mañana a las 08:00 en hora argentina, así que el mensaje tiene que formatear la hora en `America/Argentina/Buenos_Aires`, no en la zona del servidor.
+Nota sobre "demasiado temprano": `franja()` arma la franja de mañana a las 08:00 en hora argentina, así que el mensaje tiene que formatear la hora en `America/Argentina/Buenos_Aires`, no en la zona del servidor.
 
 - [ ] **Step 2: Correrlas y verificar que fallan**
 
 Run: `cd Back && node --test --env-file=.env pruebas/acceso.test.mjs`
-Expected: los 5 tests de la Task 2 pasan y los nuevos fallan con 404 (la ruta no existe).
+Expected: los 2 tests de la Task 2 pasan y los nuevos fallan con 404 (la ruta no existe).
 
 - [ ] **Step 3: Servicio**
 
@@ -787,10 +602,10 @@ import { normalizarCodigo } from '../utils/codigoAcceso.js';
 Y debajo de `registrarEgreso`:
 
 ```js
-/* --------------------- ingreso y egreso por codigo -----------------------
-   El conductor escanea el QR de la entrada (o tipea el codigo) y el sistema
-   decide que registrar segun su reserva en ese estacionamiento: el egreso si
-   ya esta adentro (ACTIVA), o el ingreso si esta CONFIRMADA y en su franja.
+/* ----------------------- ingreso y egreso por codigo -----------------------
+   El conductor muestra el QR de su reserva al entrar y al salir; el operador
+   (hoy, el propietario) lo escanea o tipea el codigo. El mismo codigo sirve
+   para las dos cosas: el estado de la reserva decide que se registra.
 -------------------------------------------------------------------------- */
 
 const ACCIONES_ACCESO = Object.freeze({ INGRESO: 'INGRESO', EGRESO: 'EGRESO' });
@@ -802,129 +617,75 @@ const HORA_LOCAL = new Intl.DateTimeFormat('es-AR', {
   hour12: false,
 });
 
-/** Mismo mensaje para codigo inexistente, mal formado o de un estacionamiento dado de baja. */
-const CODIGO_INVALIDO = 'El codigo no corresponde a ningun estacionamiento';
+/** Mismo mensaje para un codigo inexistente, mal formado o de un estacionamiento ajeno. */
+const CODIGO_INVALIDO = 'El codigo no corresponde a ninguna reserva de tus estacionamientos';
 
-async function buscarEstacionamientoPorCodigo(ejecutor, bruto) {
+async function buscarReservaPorCodigo(ejecutor, idPropietario, bruto, { bloquear = false } = {}) {
   const codigo = normalizarCodigo(bruto);
   if (!codigo) throw ApiError.notFound(CODIGO_INVALIDO);
 
   const { rows } = await ejecutor.query(
-    `SELECT id_estacionamiento, nombre FROM estacionamiento
-      WHERE codigo_acceso = $1 AND activo`,
-    [codigo],
+    `SELECT r.id_reserva, r.estado, r.inicio, r.fin, r.ingreso_real, r.egreso_real, r.id_cochera
+       FROM reserva r
+       JOIN cochera c         ON c.id_cochera = r.id_cochera
+       JOIN estacionamiento e ON e.id_estacionamiento = c.id_estacionamiento
+      WHERE r.codigo_acceso = $1 AND e.id_propietario = $2
+      ${bloquear ? 'FOR UPDATE OF r' : ''}`,
+    [codigo, idPropietario],
   );
   if (!rows[0]) throw ApiError.notFound(CODIGO_INVALIDO);
   return rows[0];
 }
 
 /**
- * Reservas vigentes del conductor en el estacionamiento. Una ACTIVA entra
- * aunque su `fin` haya pasado: el auto sigue adentro hasta que registre el
- * egreso (o lo cierre el job).
+ * Que se registra ahora sobre esta reserva. Una ACTIVA da egreso aunque su
+ * `fin` haya pasado (el auto sigue adentro); el resto explica por que no.
  */
-async function reservasDelConductorEn(ejecutor, idEstacionamiento, idConductor, { bloquear = false } = {}) {
-  const { rows } = await ejecutor.query(
-    `SELECT r.id_reserva, r.estado, r.inicio, r.fin, r.ingreso_real, r.egreso_real, r.id_cochera
-       FROM reserva r
-       JOIN cochera c ON c.id_cochera = r.id_cochera
-      WHERE c.id_estacionamiento = $1
-        AND r.id_conductor = $2
-        AND r.estado = ANY($3::estado_reserva[])
-        AND (r.estado = $4 OR r.fin > now())
-      ORDER BY r.inicio
-      ${bloquear ? 'FOR UPDATE OF r' : ''}`,
-    [idEstacionamiento, idConductor, ESTADOS_VIGENTES, ESTADOS_RESERVA.ACTIVA],
-  );
-  return rows;
-}
-
-/** Que se registraria ahora sobre esta reserva, o null si no le toca nada. */
 function accionPara(reserva, ahora = Date.now()) {
-  if (reserva.estado === ESTADOS_RESERVA.ACTIVA) return ACCIONES_ACCESO.EGRESO;
-  if (
-    reserva.estado === ESTADOS_RESERVA.CONFIRMADA &&
-    ahora >= reserva.inicio.getTime() - MARGEN_INGRESO_MS &&
-    ahora <= reserva.fin.getTime()
-  ) {
-    return ACCIONES_ACCESO.INGRESO;
+  switch (reserva.estado) {
+    case ESTADOS_RESERVA.ACTIVA:
+      return ACCIONES_ACCESO.EGRESO;
+    case ESTADOS_RESERVA.CONFIRMADA: {
+      const desde = new Date(reserva.inicio.getTime() - MARGEN_INGRESO_MS);
+      if (ahora < desde.getTime()) {
+        throw ApiError.conflict(
+          `La reserva empieza a las ${HORA_LOCAL.format(reserva.inicio)}; ` +
+            `se puede ingresar desde las ${HORA_LOCAL.format(desde)}`,
+        );
+      }
+      if (ahora > reserva.fin.getTime()) throw ApiError.conflict('La franja de la reserva ya termino');
+      return ACCIONES_ACCESO.INGRESO;
+    }
+    case ESTADOS_RESERVA.PENDIENTE:
+      throw ApiError.conflict('La reserva todavia no esta confirmada');
+    case ESTADOS_RESERVA.CANCELADA:
+      throw ApiError.conflict('La reserva esta cancelada');
+    default:
+      throw ApiError.conflict('La reserva ya termino');
   }
-  return null;
 }
 
-/** El error mas util cuando ninguna reserva tiene accion: explica por que. */
-function errorSinCandidatas(reservas) {
-  const proxima = reservas.find((r) => r.estado === ESTADOS_RESERVA.CONFIRMADA);
-  if (proxima) {
-    const desde = new Date(proxima.inicio.getTime() - MARGEN_INGRESO_MS);
-    return ApiError.conflict(
-      `Tu reserva empieza a las ${HORA_LOCAL.format(proxima.inicio)}; ` +
-        `podes ingresar desde las ${HORA_LOCAL.format(desde)}`,
-    );
-  }
-  if (reservas.some((r) => r.estado === ESTADOS_RESERVA.PENDIENTE)) {
-    return ApiError.conflict('Tu reserva todavia no fue confirmada por el estacionamiento');
-  }
-  return ApiError.notFound('No tenes una reserva vigente en este estacionamiento');
-}
-
-function candidatasDe(reservas) {
-  return reservas
-    .map((reserva) => ({ reserva, accion: accionPara(reserva) }))
-    .filter(({ accion }) => accion !== null);
-}
-
-/** Vista previa para la pantalla de confirmacion: no registra nada. */
-export async function previaAcceso(idConductor, codigo) {
-  const estacionamiento = await buscarEstacionamientoPorCodigo({ query }, codigo);
-  const reservas = await reservasDelConductorEn({ query }, estacionamiento.id_estacionamiento, idConductor);
-
-  const candidatas = candidatasDe(reservas);
-  if (candidatas.length === 0) throw errorSinCandidatas(reservas);
-
-  return {
-    estacionamiento,
-    candidatas: await Promise.all(
-      candidatas.map(async ({ reserva, accion }) => ({
-        accion,
-        reserva: await obtenerDetalle({ query }, reserva.id_reserva),
-      })),
-    ),
-  };
+/** Vista previa para la pantalla de confirmacion del operador: no registra nada. */
+export async function previaAcceso(idPropietario, codigo) {
+  const reserva = await buscarReservaPorCodigo({ query }, idPropietario, codigo);
+  const accion = accionPara(reserva);
+  return { accion, reserva: await obtenerDetalle({ query }, reserva.id_reserva) };
 }
 
 /**
  * Registra el ingreso o el egreso. Vuelve a resolver la accion con la reserva
  * bloqueada: entre la vista previa y la confirmacion puede haber cambiado.
  */
-export async function registrarAcceso(idConductor, { codigo, id_reserva }) {
+export async function registrarAcceso(idPropietario, { codigo }) {
   return withTransaction(async (client) => {
-    const estacionamiento = await buscarEstacionamientoPorCodigo(client, codigo);
-    const reservas = await reservasDelConductorEn(
-      client, estacionamiento.id_estacionamiento, idConductor, { bloquear: true },
-    );
+    const reserva = await buscarReservaPorCodigo(client, idPropietario, codigo, { bloquear: true });
+    const accion = accionPara(reserva);
 
-    const candidatas = candidatasDe(reservas);
-    if (candidatas.length === 0) throw errorSinCandidatas(reservas);
-
-    let elegida;
-    if (id_reserva) {
-      elegida = candidatas.find(({ reserva }) => reserva.id_reserva === id_reserva);
-      if (!elegida) throw ApiError.notFound('Esa reserva no se puede registrar con este codigo');
-    } else if (candidatas.length === 1) {
-      elegida = candidatas[0];
-    } else {
-      throw ApiError.conflict('Tenes mas de una reserva en este estacionamiento; elegi cual', {
-        candidatas: candidatas.map(({ reserva }) => reserva.id_reserva),
-      });
-    }
-
-    const { reserva, accion } = elegida;
     if (accion === ACCIONES_ACCESO.INGRESO) {
       await aplicarIngreso(client, reserva);
     } else {
       if (Date.now() - reserva.ingreso_real.getTime() < MARGEN_EGRESO_TRAS_INGRESO_MS) {
-        throw ApiError.conflict('Acabas de registrar el ingreso; el egreso se marca al irte');
+        throw ApiError.conflict('Acabas de registrar el ingreso; el egreso se marca cuando el auto se va');
       }
       await aplicarEgreso(client, reserva);
     }
@@ -934,25 +695,22 @@ export async function registrarAcceso(idConductor, { codigo, id_reserva }) {
 }
 ```
 
-`{ query }` funciona como "ejecutor" porque `obtenerDetalle` y las funciones nuevas solo llaman a `.query(...)`, igual que con el `client` de una transacción (ver el comentario de `obtenerDetalle`).
+`{ query }` funciona como "ejecutor" porque `obtenerDetalle` y `buscarReservaPorCodigo` solo llaman a `.query(...)`, igual que con el `client` de una transacción (ver el comentario de `obtenerDetalle`).
 
 - [ ] **Step 4: Validador**
 
-En `Back/src/validators/reserva.validator.js`, al final:
+Al final de `Back/src/validators/reserva.validator.js`:
 
 ```js
 /** `POST /reservas/acceso`: el formato fino del codigo lo valida el servicio (404 si no existe). */
 export function validarAcceso(body) {
-  return campos(body)
-    .texto('codigo', body.codigo, { max: 20 })
-    .uuid('id_reserva', body.id_reserva, { requerido: false })
-    .resultado();
+  return campos(body).texto('codigo', body.codigo, { max: 20 }).resultado();
 }
 ```
 
 - [ ] **Step 5: Controlador y rutas**
 
-En `Back/src/controllers/reserva.controller.js`, al final:
+Al final de `Back/src/controllers/reserva.controller.js`:
 
 ```js
 export const previaAcceso = asyncHandler(async (req, res) => {
@@ -964,12 +722,12 @@ export const registrarAcceso = asyncHandler(async (req, res) => {
 });
 ```
 
-En `Back/src/routes/reserva.routes.js`, cambiar el import del validador a `import { validarAcceso, validarReserva } from '../validators/reserva.validator.js';` y agregar después de `router.patch('/:id/cancelar', ...)`:
+En `Back/src/routes/reserva.routes.js`, cambiar el import del validador a `import { validarAcceso, validarReserva } from '../validators/reserva.validator.js';` y agregar al final, antes de `export default router;`:
 
 ```js
-// El conductor escanea el QR de la entrada (o tipea el codigo) al llegar y al irse.
-router.get('/acceso/:codigo', ...soloConductor, reservaController.previaAcceso);
-router.post('/acceso', ...soloConductor, validate(validarAcceso), reservaController.registrarAcceso);
+// El operador escanea (o tipea) el QR de la reserva al entrar y al salir.
+router.get('/acceso/:codigo', ...soloPropietario, reservaController.previaAcceso);
+router.post('/acceso', ...soloPropietario, validate(validarAcceso), reservaController.registrarAcceso);
 ```
 
 - [ ] **Step 6: Correr las pruebas y verificar que pasan**
@@ -986,29 +744,28 @@ Expected: PASS
 
 ```bash
 git add Back/src/services/reserva.service.js Back/src/validators/reserva.validator.js Back/src/controllers/reserva.controller.js Back/src/routes/reserva.routes.js Back/pruebas/acceso.test.mjs
-git commit -m "El conductor registra ingreso y egreso con el codigo del estacionamiento"
+git commit -m "El operador registra ingreso y egreso con el codigo de la reserva"
 ```
 
 ---
 
-### Task 5: Front — util del código, modelos y servicios
+### Task 4: Front — util del código, modelos y servicio
 
 **Files:**
 - Create: `Front/src/app/utils/codigo-acceso.util.ts`
 - Test: `Front/src/app/utils/codigo-acceso.util.spec.ts`
-- Modify: `Front/src/app/models/reserva.model.ts` (al final)
-- Modify: `Front/src/app/services/api/api.dto.ts` (después de `ReservaDto`)
-- Modify: `Front/src/app/services/api/api.mapeo.ts` (después de `aReserva`)
+- Modify: `Front/src/app/models/reserva.model.ts`
+- Modify: `Front/src/app/services/api/api.dto.ts`
+- Modify: `Front/src/app/services/api/api.mapeo.ts`
 - Modify: `Front/src/app/services/reserva.service.ts`
-- Modify: `Front/src/app/services/estacionamiento.service.ts`
 
 **Interfaces:**
-- Consumes: los endpoints de las Tasks 2 y 4.
+- Consumes: los endpoints de las Tasks 2 y 3.
 - Produces:
   - `normalizarCodigo(bruto: string): string | null`, `formatearCodigo(codigo: string): string` y `urlDeAcceso(codigo: string, origen?: string): string`.
-  - Tipos `AccionAcceso`, `CandidataAcceso`, `PreviaAcceso` y `ResultadoAcceso`.
-  - `ReservaService.previaAcceso(codigo): Observable<PreviaAcceso>` y `ReservaService.registrarAcceso(codigo, reservaId): Observable<ResultadoAcceso>`.
-  - `EstacionamientoService.codigoAcceso(id): Observable<string>` y `EstacionamientoService.regenerarCodigoAcceso(id): Observable<string>`.
+  - `Reserva.codigoAcceso: string`.
+  - Tipos `AccionAcceso` y `AccesoReserva { accion, reserva: ReservaDetallada }`.
+  - `ReservaService.previaAcceso(codigo): Observable<AccesoReserva>` y `ReservaService.registrarAcceso(codigo): Observable<AccesoReserva>`.
 
 - [ ] **Step 1: Escribir la prueba que falla**
 
@@ -1019,26 +776,26 @@ import { formatearCodigo, normalizarCodigo, urlDeAcceso } from './codigo-acceso.
 
 describe('normalizarCodigo', () => {
   it('ignora guion, espacios y minusculas', () => {
-    expect(normalizarCodigo(' k7m-2qx ')).toBe('K7M2QX');
+    expect(normalizarCodigo(' k7mq-2xtr ')).toBe('K7MQ2XTR');
   });
 
   it('rechaza caracteres ambiguos y largos incorrectos', () => {
-    expect(normalizarCodigo('K7M2Q0')).toBeNull();
-    expect(normalizarCodigo('K7M2Q')).toBeNull();
+    expect(normalizarCodigo('K7MQ2XT0')).toBeNull();
+    expect(normalizarCodigo('K7MQ2XT')).toBeNull();
     expect(normalizarCodigo('')).toBeNull();
   });
 });
 
 describe('formatearCodigo', () => {
   it('lo parte en dos para leerlo o dictarlo', () => {
-    expect(formatearCodigo('K7M2QX')).toBe('K7M-2QX');
+    expect(formatearCodigo('K7MQ2XTR')).toBe('K7MQ-2XTR');
   });
 });
 
 describe('urlDeAcceso', () => {
-  it('apunta a la pantalla del conductor', () => {
-    expect(urlDeAcceso('K7M2QX', 'https://parkit.app')).toBe(
-      'https://parkit.app/conductor/acceso/K7M2QX',
+  it('apunta a la pantalla del operador', () => {
+    expect(urlDeAcceso('K7MQ2XTR', 'https://parkit.app')).toBe(
+      'https://parkit.app/propietario/acceso/K7MQ2XTR',
     );
   });
 });
@@ -1055,11 +812,12 @@ Expected: FAIL. No encuentra `./codigo-acceso.util`.
 
 ```ts
 /**
- * Codigo de acceso del estacionamiento (el que va debajo del QR de la
- * entrada). Mismo alfabeto que el backend: sin 0 O 1 I L.
+ * Codigo de acceso de una reserva (el de su QR). Mismo alfabeto y largo que
+ * el backend: sin 0 O 1 I L.
  */
 const ALFABETO = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-const REGEX_CODIGO = new RegExp(`^[${ALFABETO}]{6}$`);
+const LARGO = 8;
+const REGEX_CODIGO = new RegExp(`^[${ALFABETO}]{${LARGO}}$`);
 
 /** Saca guiones y espacios y pasa a mayusculas. `null` si no tiene forma de codigo. */
 export function normalizarCodigo(bruto: string): string | null {
@@ -1067,14 +825,14 @@ export function normalizarCodigo(bruto: string): string | null {
   return REGEX_CODIGO.test(limpio) ? limpio : null;
 }
 
-/** `K7M2QX` -> `K7M-2QX`. */
+/** `K7MQ2XTR` -> `K7MQ-2XTR`. */
 export function formatearCodigo(codigo: string): string {
-  return `${codigo.slice(0, 3)}-${codigo.slice(3)}`;
+  return `${codigo.slice(0, 4)}-${codigo.slice(4)}`;
 }
 
-/** URL que codifica el QR: la camara del celular abre la app directo en la confirmacion. */
+/** URL que codifica el QR: la camara del operador abre la app directo en la confirmacion. */
 export function urlDeAcceso(codigo: string, origen: string = globalThis.location.origin): string {
-  return `${origen}/conductor/acceso/${codigo}`;
+  return `${origen}/propietario/acceso/${codigo}`;
 }
 ```
 
@@ -1085,94 +843,75 @@ Expected: PASS
 
 - [ ] **Step 5: Modelos, DTO y mapeo**
 
-Al final de `Front/src/app/models/reserva.model.ts`:
+En `Front/src/app/models/reserva.model.ts`, dentro de `interface Reserva`, después de `motivoReasignacion`:
 
 ```ts
-/** Lo que registra el codigo del estacionamiento segun el estado de la reserva. */
+  /** Codigo del QR de la reserva: lo muestra el conductor y lo escanea el operador. */
+  codigoAcceso: string;
+```
+
+Y al final del archivo:
+
+```ts
+/** Lo que registra el QR de la reserva segun su estado. */
 export type AccionAcceso = 'INGRESO' | 'EGRESO';
 
-export interface CandidataAcceso {
-  accion: AccionAcceso;
-  reserva: ReservaDetallada;
-}
-
-/** Vista previa de `GET /api/reservas/acceso/:codigo`: que se va a registrar, antes de confirmar. */
-export interface PreviaAcceso {
-  estacionamiento: { id: Id; nombre: string };
-  candidatas: CandidataAcceso[];
-}
-
-export interface ResultadoAcceso {
+/** Vista previa (`GET /reservas/acceso/:codigo`) y resultado (`POST /reservas/acceso`). */
+export interface AccesoReserva {
   accion: AccionAcceso;
   reserva: ReservaDetallada;
 }
 ```
 
-En `Front/src/app/services/api/api.dto.ts`, después de `ReservaDto`:
+En `Front/src/app/services/api/api.dto.ts`, dentro de `ReservaDto`, después de `motivo_reasignacion`:
 
 ```ts
-export interface PreviaAccesoDto {
-  estacionamiento: { id_estacionamiento: string; nombre: string };
-  candidatas: { accion: 'INGRESO' | 'EGRESO'; reserva: ReservaDto }[];
-}
+  codigo_acceso: string;
+```
 
-export interface ResultadoAccesoDto {
+Y después de `ReservaDto`:
+
+```ts
+export interface AccesoReservaDto {
   accion: 'INGRESO' | 'EGRESO';
   reserva: ReservaDto;
 }
 ```
 
-En `Front/src/app/services/api/api.mapeo.ts`, después de `aReserva`. Sumar `PreviaAcceso` al import de `@app/models` y `PreviaAccesoDto` al de `./api.dto`:
+En `Front/src/app/services/api/api.mapeo.ts`, dentro de `aReserva`, después de `motivoReasignacion: dto.motivo_reasignacion,`:
 
 ```ts
-export function aPreviaAcceso(dto: PreviaAccesoDto): PreviaAcceso {
-  return {
-    estacionamiento: { id: dto.estacionamiento.id_estacionamiento, nombre: dto.estacionamiento.nombre },
-    candidatas: dto.candidatas.map(({ accion, reserva }) => ({ accion, reserva: aReserva(reserva) })),
-  };
+    codigoAcceso: dto.codigo_acceso,
+```
+
+Y después de `aReserva` (sumar `AccesoReserva` al import de `@app/models` y `AccesoReservaDto` al de `./api.dto`):
+
+```ts
+export function aAccesoReserva(dto: AccesoReservaDto): AccesoReserva {
+  return { accion: dto.accion, reserva: aReserva(dto.reserva) };
 }
 ```
 
-- [ ] **Step 6: Servicios**
+- [ ] **Step 6: Servicio**
 
 En `Front/src/app/services/reserva.service.ts`:
-- Sumar `PreviaAcceso` y `ResultadoAcceso` al import de `@app/models`.
-- Sumar `PreviaAccesoDto` y `ResultadoAccesoDto` al de `./api/api.dto`.
-- Sumar `aPreviaAcceso` al de `./api/api.mapeo`.
+- Sumar `AccesoReserva` al import de `@app/models`.
+- Sumar `AccesoReservaDto` al de `./api/api.dto`.
+- Sumar `aAccesoReserva` al de `./api/api.mapeo`.
 
 Después agregar, debajo de `registrarEgreso`:
 
 ```ts
-  /** `GET /api/reservas/acceso/:codigo`: que registraria el codigo, sin registrar nada. */
-  previaAcceso(codigo: string): Observable<PreviaAcceso> {
-    return this.http
-      .get<PreviaAccesoDto>(`${this.ruta}/acceso/${codigo}`)
-      .pipe(map(aPreviaAcceso));
+  /** `GET /api/reservas/acceso/:codigo`: que registraria el QR, sin registrar nada. */
+  previaAcceso(codigo: string): Observable<AccesoReserva> {
+    return this.http.get<AccesoReservaDto>(`${this.ruta}/acceso/${codigo}`).pipe(map(aAccesoReserva));
   }
 
   /** `POST /api/reservas/acceso`: registra el ingreso o el egreso de esa reserva. */
-  registrarAcceso(codigo: string, reservaId: Id): Observable<ResultadoAcceso> {
+  registrarAcceso(codigo: string): Observable<AccesoReserva> {
     return this.http
-      .post<ResultadoAccesoDto>(`${this.ruta}/acceso`, { codigo, id_reserva: reservaId })
-      .pipe(map(({ accion, reserva }) => ({ accion, reserva: aReserva(reserva) })));
-  }
-```
-
-En `Front/src/app/services/estacionamiento.service.ts`, después de `listarDelPropietario`:
-
-```ts
-  /** `GET /api/estacionamientos/:id/codigo-acceso` (solo el dueño). */
-  codigoAcceso(id: Id): Observable<string> {
-    return this.http
-      .get<{ codigo_acceso: string }>(`${this.ruta}/${id}/codigo-acceso`)
-      .pipe(map(({ codigo_acceso }) => codigo_acceso));
-  }
-
-  /** `POST /api/estacionamientos/:id/codigo-acceso/regenerar`: el codigo anterior deja de andar. */
-  regenerarCodigoAcceso(id: Id): Observable<string> {
-    return this.http
-      .post<{ codigo_acceso: string }>(`${this.ruta}/${id}/codigo-acceso/regenerar`, {})
-      .pipe(map(({ codigo_acceso }) => codigo_acceso));
+      .post<AccesoReservaDto>(`${this.ruta}/acceso`, { codigo })
+      .pipe(map(aAccesoReserva));
   }
 ```
 
@@ -1184,230 +923,192 @@ Expected: build sin errores y tests PASS.
 - [ ] **Step 8: Commit**
 
 ```bash
-git add Front/src/app/utils/codigo-acceso.util.ts Front/src/app/utils/codigo-acceso.util.spec.ts Front/src/app/models/reserva.model.ts Front/src/app/services
-git commit -m "Front: tipos y servicios del ingreso por codigo"
+git add Front/src/app/utils/codigo-acceso.util.ts Front/src/app/utils/codigo-acceso.util.spec.ts Front/src/app/models/reserva.model.ts Front/src/app/services/api Front/src/app/services/reserva.service.ts
+git commit -m "Front: codigo de acceso de la reserva y servicio de acceso"
 ```
 
 ---
 
-### Task 6: Front — QR del propietario
+### Task 5: Front — el conductor ve el QR de su reserva
 
 **Files:**
-- Create: `Front/src/app/components/estacionamiento/qr-acceso/qr-acceso.ts`
-- Modify: `Front/src/app/components/estacionamiento/index.ts`
-- Modify: `Front/src/app/pages/propietario/editar-estacionamiento/editar-estacionamiento.ts` y `.html`
+- Create: `Front/src/app/components/reserva/qr-reserva/qr-reserva.ts`
+- Modify: `Front/src/app/components/reserva/index.ts`
+- Modify: `Front/src/app/components/reserva/tarjeta-reserva/tarjeta-reserva.ts` y `.html`
+- Modify: `Front/src/app/pages/conductor/mis-reservas/mis-reservas.ts` y `.html`
 - Modify: `Front/package.json` (dependencia `qrcode`)
 
 **Interfaces:**
-- Consumes: `EstacionamientoService.codigoAcceso` y `regenerarCodigoAcceso`; `formatearCodigo` y `urlDeAcceso` (Task 5).
-- Produces: el componente `<app-qr-acceso [estacionamientoId]="..." [nombre]="..." />`.
+- Consumes: `Reserva.codigoAcceso`, `formatearCodigo` y `urlDeAcceso` (Task 4).
+- Produces: `<app-qr-reserva [codigo]="..." />` y el output `verQr` de `TarjetaReserva`.
 
 - [ ] **Step 1: Instalar la librería**
 
 Run: `cd Front && npm install qrcode && npm install -D @types/qrcode`
 Expected: `package.json` y `package-lock.json` actualizados.
 
-- [ ] **Step 2: Componente**
+- [ ] **Step 2: Componente del QR**
 
-`Front/src/app/components/estacionamiento/qr-acceso/qr-acceso.ts`:
+`Front/src/app/components/reserva/qr-reserva/qr-reserva.ts`:
 
 ```ts
-import { ChangeDetectionStrategy, Component, inject, input, resource, signal } from '@angular/core';
-import { firstValueFrom } from 'rxjs';
+import { ChangeDetectionStrategy, Component, computed, input, resource } from '@angular/core';
 import QRCode from 'qrcode';
-import { Boton, Cargando } from '@app/components/ui';
-import { Id } from '@app/models';
-import { EstacionamientoService } from '@app/services/estacionamiento.service';
 import { formatearCodigo, urlDeAcceso } from '@app/utils/codigo-acceso.util';
 
 /**
- * QR de la entrada del estacionamiento. El conductor lo escanea al llegar y
- * al irse; el propietario lo imprime y lo pega. Regenerar invalida el cartel
- * impreso, por eso pide confirmacion.
+ * QR de una reserva con su codigo debajo. El conductor lo muestra al entrar y
+ * al salir; si la camara no lo lee, el operador tipea el codigo.
  */
 @Component({
-  selector: 'app-qr-acceso',
+  selector: 'app-qr-reserva',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Boton, Cargando],
   template: `
-    <section
-      class="flex flex-col gap-4 rounded-tarjeta border border-borde bg-papel px-5 py-4 shadow-tarjeta"
-      aria-labelledby="titulo-qr-acceso"
-    >
-      <div>
-        <h2 id="titulo-qr-acceso" class="text-[14px] font-semibold text-tinta">QR de acceso</h2>
-        <p class="mt-1 text-[13px] text-plomo">
-          Pegalo en la entrada. Los conductores lo escanean al llegar y al irse para registrar su
-          ingreso y su egreso.
-        </p>
-      </div>
-
-      @if (qr.isLoading()) {
-        <ui-cargando [cantidad]="1" />
-      } @else if (qr.error(); as error) {
-        <p class="text-[13px] text-ocupada" role="alert">{{ error.message }}</p>
-      } @else if (qr.value(); as datos) {
-        <div class="flex flex-col items-center gap-2 sm:flex-row sm:gap-6">
-          <img [src]="datos.imagen" alt="QR de acceso" class="size-44 rounded-boton bg-white p-2" />
-          <div class="flex flex-col items-center gap-3 sm:items-start">
-            <p class="num-tabular text-[24px] font-semibold tracking-[0.12em] text-tinta">
-              {{ datos.codigoVisible }}
-            </p>
-            <div class="flex flex-wrap gap-2">
-              <ui-boton variante="primario" (presionado)="imprimir(datos.imagen, datos.codigoVisible)">
-                Imprimir
-              </ui-boton>
-              @if (!confirmandoRegenerar()) {
-                <ui-boton (presionado)="confirmandoRegenerar.set(true)">Regenerar código</ui-boton>
-              }
-            </div>
-          </div>
-        </div>
-
-        @if (confirmandoRegenerar()) {
-          <div class="flex flex-col gap-2 rounded-boton bg-ocupada/8 px-4 py-3" role="alert">
-            <p class="text-[13px] text-tinta">
-              El QR que ya imprimiste va a dejar de funcionar. ¿Generar uno nuevo?
-            </p>
-            <div class="flex gap-2">
-              <ui-boton variante="primario" [cargando]="regenerando()" (presionado)="regenerar()">
-                Sí, regenerar
-              </ui-boton>
-              <ui-boton (presionado)="confirmandoRegenerar.set(false)">Cancelar</ui-boton>
-            </div>
-          </div>
-        }
+    <div class="flex flex-col items-center gap-3 text-center">
+      @if (imagen.value(); as src) {
+        <img [src]="src" alt="QR de la reserva" class="size-56 rounded-boton bg-white p-2" />
+      } @else {
+        <div class="size-56 animate-pulse rounded-boton bg-borde-sutil" aria-hidden="true"></div>
       }
-    </section>
+      <p class="num-tabular text-[22px] font-semibold tracking-[0.12em] text-tinta">
+        {{ codigoVisible() }}
+      </p>
+      <p class="text-[13px] text-plomo">Mostralo al entrar y al salir del estacionamiento.</p>
+    </div>
   `,
 })
-export class QrAcceso {
-  private readonly estacionamientos = inject(EstacionamientoService);
+export class QrReserva {
+  readonly codigo = input.required<string>();
 
-  readonly estacionamientoId = input.required<Id>();
-  readonly nombre = input.required<string>();
+  protected readonly codigoVisible = computed(() => formatearCodigo(this.codigo()));
 
-  protected readonly confirmandoRegenerar = signal(false);
-  protected readonly regenerando = signal(false);
-
-  protected readonly qr = resource({
-    params: () => this.estacionamientoId(),
-    loader: async ({ params }) => {
-      const codigo = await firstValueFrom(this.estacionamientos.codigoAcceso(params));
-      return this.armar(codigo);
-    },
+  protected readonly imagen = resource({
+    params: () => this.codigo(),
+    loader: ({ params }) => QRCode.toDataURL(urlDeAcceso(params), { width: 512, margin: 1 }),
   });
-
-  protected regenerar(): void {
-    this.regenerando.set(true);
-    this.estacionamientos.regenerarCodigoAcceso(this.estacionamientoId()).subscribe({
-      next: async (codigo) => {
-        this.qr.set(await this.armar(codigo));
-        this.regenerando.set(false);
-        this.confirmandoRegenerar.set(false);
-      },
-      error: () => this.regenerando.set(false),
-    });
-  }
-
-  /** Abre una hoja aparte solo con el cartel y lanza la impresion. */
-  protected imprimir(imagen: string, codigoVisible: string): void {
-    const hoja = window.open('', '_blank');
-    if (!hoja) return;
-    hoja.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8">
-      <title>QR de acceso · ${this.nombre()}</title>
-      <style>
-        body { font-family: system-ui, sans-serif; text-align: center; padding: 48px; }
-        h1 { font-size: 28px; margin: 0 0 8px; }
-        img { width: 360px; height: 360px; margin: 24px auto; display: block; }
-        .codigo { font-size: 40px; font-weight: 700; letter-spacing: 0.15em; }
-        p { font-size: 18px; color: #444; }
-      </style></head><body>
-      <h1>${this.nombre()}</h1>
-      <p>Escaneá este código al llegar y al irte</p>
-      <img src="${imagen}" alt="QR de acceso">
-      <p>¿No funciona la cámara? Ingresá el código en la app:</p>
-      <p class="codigo">${codigoVisible}</p>
-      </body></html>`);
-    hoja.document.close();
-    hoja.onload = () => hoja.print();
-  }
-
-  private async armar(codigo: string) {
-    const imagen = await QRCode.toDataURL(urlDeAcceso(codigo), { width: 512, margin: 1 });
-    return { imagen, codigoVisible: formatearCodigo(codigo) };
-  }
 }
 ```
 
-Nota: `this.nombre()` va dentro de `document.write`. Es el nombre del estacionamiento que cargó el mismo propietario, en su propia ventana, así que no es un vector de XSS hacia otros usuarios. Aun así, si el nombre trae `<`, se rompe el layout de la hoja: escapá con `.replace(/</g, '&lt;')`.
-
-- [ ] **Step 3: Exportarlo y usarlo**
-
-En `Front/src/app/components/estacionamiento/index.ts`, agregar:
+En `Front/src/app/components/reserva/index.ts`, agregar:
 
 ```ts
-export * from './qr-acceso/qr-acceso';
+export * from './qr-reserva/qr-reserva';
 ```
 
-En `editar-estacionamiento.ts`, sumar `QrAcceso` al import de `@app/components/estacionamiento` y al array `imports` del componente.
+- [ ] **Step 3: Botón "Ver QR" en la tarjeta**
 
-En `editar-estacionamiento.html`, justo después del `</section>` de la sección `aria-labelledby="titulo-publicacion"` (dentro del `@else` del estacionamiento activo):
+En `tarjeta-reserva.ts`, debajo de `readonly cancelar = output<ReservaDetallada>();`:
+
+```ts
+  readonly verQr = output<ReservaDetallada>();
+
+  /** El QR sirve mientras la reserva puede entrar o salir: confirmada o en curso. */
+  protected readonly conQr = computed(() => {
+    const r = this.reserva();
+    // Una ACTIVA lo necesita para salir aunque ya haya pasado su fin.
+    return r.estado === 'ACTIVA' || (r.estado === 'CONFIRMADA' && reservaEnJuego(r));
+  });
+```
+
+En `tarjeta-reserva.html`, dentro del `<footer>`, justo antes de `@if (cancelable()) {`:
 
 ```html
-        <app-qr-acceso [estacionamientoId]="estacionamiento.id" [nombre]="estacionamiento.nombre" />
+      @if (conQr()) {
+        <button
+          type="button"
+          class="inline-flex min-h-11 items-center gap-2 rounded-boton px-3 text-[13px] font-semibold
+                 text-acento transition-colors duration-160 ease-out hover:bg-acento-suave"
+          (click)="verQr.emit(r)"
+        >
+          Ver QR
+        </button>
+      }
 ```
 
-- [ ] **Step 4: Compilar**
+Si el footer queda con tres elementos, envolvé los dos botones en un `<div class="flex items-center gap-1">` para que el precio siga a la izquierda.
+
+- [ ] **Step 4: Modal en Mis reservas**
+
+En `mis-reservas.ts`:
+- Sumar `QrReserva` al import de `@app/components/reserva` y al array `imports`.
+- Agregar en la clase:
+
+```ts
+  /** Reserva cuyo QR se esta mostrando: mientras no sea null, el modal esta abierto. */
+  protected readonly conQrAbierto = signal<ReservaDetallada | null>(null);
+```
+
+En `mis-reservas.html`, en las dos `<app-tarjeta-reserva` de Vigentes (la de `enCurso()` y la de `proximas()`), agregar el atributo:
+
+```html
+          (verQr)="conQrAbierto.set($event)"
+```
+
+Y al final del archivo, junto al modal de cancelar:
+
+```html
+  <ui-modal titulo="QR de tu reserva" [abierto]="conQrAbierto() !== null" (cerrado)="conQrAbierto.set(null)">
+    @if (conQrAbierto(); as r) {
+      <div class="flex flex-col gap-4">
+        <p class="text-center text-[13px] text-plomo">
+          {{ r.estacionamiento.nombre }} · Cochera {{ r.cocheraIdentificador }} ·
+          {{ r.horaDesde }}–{{ r.horaHasta }}
+        </p>
+        <app-qr-reserva [codigo]="r.codigoAcceso" />
+      </div>
+    }
+  </ui-modal>
+```
+
+- [ ] **Step 5: Compilar**
 
 Run: `cd Front && npx ng build --configuration development`
 Expected: sin errores.
 
-- [ ] **Step 5: Probar a mano**
+- [ ] **Step 6: Probar a mano**
 
-Levantar el back (`cd Back && npm run dev`) y el front (`cd Front && npm start`). Con un propietario, entrar a "Editar estacionamiento" y verificar:
-- Se ve el QR con el código `XXX-XXX`.
-- "Imprimir" abre la hoja con el nombre, el QR y el código.
-- "Regenerar código" pide confirmación, y al confirmar cambia el código y el QR.
-- Al escanear el QR con el celular, abre `http://<host>/conductor/acceso/<codigo>`. Para probar desde el celular en la red local, levantar con `npm start -- --host 0.0.0.0`.
+Con back (`cd Back && npm run dev`) y front (`cd Front && npm start`): como conductor, reservar; como propietario, confirmar. En "Mis reservas" del conductor, "Ver QR" abre el modal con el QR y el código `XXXX-XXXX`. Al escanear el QR con el celular abre `http://<host>/propietario/acceso/<codigo>`. Para probar desde el celular en la red local: `npm start -- --host 0.0.0.0`. Una reserva PENDIENTE o del historial no muestra "Ver QR".
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add Front/package.json Front/package-lock.json Front/src/app/components/estacionamiento Front/src/app/pages/propietario/editar-estacionamiento
-git commit -m "QR de acceso del estacionamiento para imprimir y regenerar"
+git add Front/package.json Front/package-lock.json Front/src/app/components/reserva Front/src/app/pages/conductor/mis-reservas
+git commit -m "El conductor ve el QR de su reserva en Mis reservas"
 ```
 
 ---
 
-### Task 7: Front — pantalla del conductor y "Tengo un código"
+### Task 6: Front — pantalla del operador e "Ingresar código"
 
 **Files:**
-- Create: `Front/src/app/pages/conductor/acceso/acceso.ts`
-- Create: `Front/src/app/pages/conductor/acceso/acceso.html`
-- Modify: `Front/src/app/app.routes.ts` (rama `conductor`, después de `mis-reservas`)
-- Modify: `Front/src/app/pages/conductor/mis-reservas/mis-reservas.ts` y `.html`
+- Create: `Front/src/app/pages/propietario/acceso/acceso.ts`
+- Create: `Front/src/app/pages/propietario/acceso/acceso.html`
+- Create: `Front/src/app/components/reserva/ingresar-codigo/ingresar-codigo.ts`
+- Modify: `Front/src/app/components/reserva/index.ts`
+- Modify: `Front/src/app/app.routes.ts` (rama `propietario`, después de `reservas`)
+- Modify: `Front/src/app/pages/propietario/tablero/tablero.ts` y `.html`
+- Modify: `Front/src/app/pages/propietario/reservas/reservas.ts` y `.html` (ver Global Constraints sobre los cambios sin commitear)
 
 **Interfaces:**
-- Consumes: `ReservaService.previaAcceso` y `registrarAcceso`; `normalizarCodigo` y `formatearCodigo` (Task 5).
-- Produces: la ruta `/conductor/acceso/:codigo`.
+- Consumes: `ReservaService.previaAcceso` y `registrarAcceso`; `normalizarCodigo` y `formatearCodigo` (Task 4).
+- Produces: la ruta `/propietario/acceso/:codigo` y el componente `<app-ingresar-codigo />`.
 
 - [ ] **Step 1: Ruta**
 
-En `Front/src/app/app.routes.ts`, dentro de `children` de `conductor`, después del bloque de `mis-reservas`:
+En `Front/src/app/app.routes.ts`, dentro de `children` de `propietario`, después del bloque de `reservas`:
 
 ```ts
       {
-        // Destino del QR de la entrada del estacionamiento.
+        // Destino del QR de cada reserva: lo escanea el operador al entrar y al salir.
         path: 'acceso/:codigo',
         title: 'Parkit · Registrar acceso',
-        loadComponent: () => import('./pages/conductor/acceso/acceso').then((m) => m.Acceso),
+        loadComponent: () => import('./pages/propietario/acceso/acceso').then((m) => m.Acceso),
       },
 ```
 
-- [ ] **Step 2: Componente**
+- [ ] **Step 2: Pantalla de confirmación**
 
-`Front/src/app/pages/conductor/acceso/acceso.ts`:
+`Front/src/app/pages/propietario/acceso/acceso.ts`:
 
 ```ts
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
@@ -1415,18 +1116,18 @@ import { rxResource } from '@angular/core/rxjs-interop';
 import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Boton, Cargando, EstadoVacio, Tarjeta } from '@app/components/ui';
-import { CandidataAcceso, ResultadoAcceso } from '@app/models';
+import { AccesoReserva } from '@app/models';
 import { ReservaService } from '@app/services/reserva.service';
 import { formatearCodigo, normalizarCodigo } from '@app/utils/codigo-acceso.util';
 
 const TEXTO_ACCION = { INGRESO: 'Registrar ingreso', EGRESO: 'Registrar egreso' } as const;
 
 /**
- * Pantalla `/conductor/acceso/:codigo` · rol CONDUCTOR
+ * Pantalla `/propietario/acceso/:codigo` · rol PROPIETARIO (operador)
  *
- * Adonde lleva el QR de la entrada. Muestra que se va a registrar (ingreso o
- * egreso, segun la reserva) y espera la confirmacion: un escaneo accidental
- * no registra nada.
+ * Adonde lleva el QR de una reserva. Muestra que se va a registrar (ingreso o
+ * egreso, segun su estado) y espera la confirmacion: un escaneo accidental no
+ * registra nada.
  */
 @Component({
   selector: 'app-acceso',
@@ -1437,7 +1138,7 @@ const TEXTO_ACCION = { INGRESO: 'Registrar ingreso', EGRESO: 'Registrar egreso' 
 export class Acceso {
   private readonly reservas = inject(ReservaService);
 
-  /** Llega del parametro de ruta `:codigo`, tal cual lo escaneo o tipeo el conductor. */
+  /** Llega del parametro de ruta `:codigo`, tal cual lo escaneo o tipeo el operador. */
   readonly codigo = input.required<string>();
 
   protected readonly textoAccion = TEXTO_ACCION;
@@ -1453,23 +1154,23 @@ export class Acceso {
     stream: ({ params }) => this.reservas.previaAcceso(params),
   });
 
-  protected readonly registrandoId = signal<string | null>(null);
+  protected readonly registrando = signal(false);
   protected readonly error = signal<string | null>(null);
-  protected readonly resultado = signal<ResultadoAcceso | null>(null);
+  protected readonly resultado = signal<AccesoReserva | null>(null);
 
-  protected registrar(candidata: CandidataAcceso): void {
+  protected registrar(): void {
     const codigo = this.codigoNormalizado();
     if (!codigo) return;
 
-    this.registrandoId.set(candidata.reserva.id);
+    this.registrando.set(true);
     this.error.set(null);
-    this.reservas.registrarAcceso(codigo, candidata.reserva.id).subscribe({
+    this.reservas.registrarAcceso(codigo).subscribe({
       next: (resultado) => {
-        this.registrandoId.set(null);
+        this.registrando.set(false);
         this.resultado.set(resultado);
       },
       error: (e: Error) => {
-        this.registrandoId.set(null);
+        this.registrando.set(false);
         this.error.set(e.message);
       },
     });
@@ -1477,24 +1178,22 @@ export class Acceso {
 }
 ```
 
-`Front/src/app/pages/conductor/acceso/acceso.html`:
+`Front/src/app/pages/propietario/acceso/acceso.html`:
 
 ```html
 <div class="aparece mx-auto w-full max-w-[560px] px-6 pt-5 pb-8 lg:px-10 lg:pt-[34px] lg:pb-11">
   <div class="flex flex-col gap-6">
     <header>
       <p class="eyebrow">Código {{ codigoVisible() }}</p>
-      <h1 class="titulo-vista mt-1.5">
-        {{ previa.value()?.estacionamiento?.nombre ?? 'Registrar acceso' }}
-      </h1>
+      <h1 class="titulo-vista mt-1.5">Registrar acceso</h1>
     </header>
 
     @if (!codigoNormalizado()) {
       <ui-estado-vacio
         titulo="Ese código no es válido"
-        descripcion="Tiene 6 caracteres, como K7M-2QX. Revisalo en el cartel de la entrada."
+        descripcion="Tiene 8 caracteres, como K7MQ-2XTR. Revisalo en el QR del conductor."
       >
-        <ui-boton routerLink="/conductor/mis-reservas">Ir a mis reservas</ui-boton>
+        <ui-boton routerLink="/propietario/reservas">Ir a reservas</ui-boton>
       </ui-estado-vacio>
     } @else if (resultado(); as hecho) {
       <ui-tarjeta>
@@ -1506,8 +1205,8 @@ export class Acceso {
             Cochera {{ hecho.reserva.cocheraIdentificador }} · {{ hecho.reserva.vehiculo.patente }} ·
             {{ (hecho.accion === 'INGRESO' ? hecho.reserva.ingresoEn : hecho.reserva.egresoEn) | date: 'HH:mm' }}
           </p>
-          <ui-boton variante="primario" class="mt-3" routerLink="/conductor/mis-reservas">
-            Ver mis reservas
+          <ui-boton variante="primario" class="mt-3" routerLink="/propietario/tablero">
+            Volver al inicio
           </ui-boton>
         </div>
       </ui-tarjeta>
@@ -1515,38 +1214,30 @@ export class Acceso {
       <ui-cargando [cantidad]="1" />
     } @else if (previa.error(); as e) {
       <ui-estado-vacio titulo="No se puede registrar" [descripcion]="e.message">
-        <ui-boton routerLink="/conductor/mis-reservas">Ir a mis reservas</ui-boton>
+        <ui-boton routerLink="/propietario/reservas">Ir a reservas</ui-boton>
       </ui-estado-vacio>
     } @else if (previa.value(); as datos) {
-      @if (datos.candidatas.length > 1) {
-        <p class="text-[13px] text-plomo">Tenés más de una reserva acá. Elegí cuál registrar.</p>
-      }
-      @for (candidata of datos.candidatas; track candidata.reserva.id) {
-        <ui-tarjeta>
-          <div class="flex flex-col gap-3">
-            <div>
-              <p class="text-[15px] font-semibold text-tinta">
-                Cochera {{ candidata.reserva.cocheraIdentificador }}
-                @if (candidata.reserva.cochera?.sector; as sector) {
-                  <span class="font-normal text-plomo"> · {{ sector }}</span>
-                }
-              </p>
-              <p class="mt-1 text-[13px] text-plomo">
-                {{ candidata.reserva.horaDesde }}–{{ candidata.reserva.horaHasta }} ·
-                {{ candidata.reserva.vehiculo.patente }}
-              </p>
-            </div>
-            <ui-boton
-              variante="primario"
-              [bloque]="true"
-              [cargando]="registrandoId() === candidata.reserva.id"
-              (presionado)="registrar(candidata)"
-            >
-              {{ textoAccion[candidata.accion] }}
-            </ui-boton>
+      <ui-tarjeta>
+        <div class="flex flex-col gap-3">
+          <div>
+            <p class="text-[15px] font-semibold text-tinta">
+              {{ datos.reserva.estacionamiento.nombre }} · Cochera {{ datos.reserva.cocheraIdentificador }}
+            </p>
+            <p class="mt-1 text-[13px] text-plomo">
+              {{ datos.reserva.horaDesde }}–{{ datos.reserva.horaHasta }} ·
+              {{ datos.reserva.vehiculo.patente }}
+            </p>
           </div>
-        </ui-tarjeta>
-      }
+          <ui-boton
+            variante="primario"
+            [bloque]="true"
+            [cargando]="registrando()"
+            (presionado)="registrar()"
+          >
+            {{ textoAccion[datos.accion] }}
+          </ui-boton>
+        </div>
+      </ui-tarjeta>
       @if (error(); as mensaje) {
         <p class="text-[13px] text-ocupada" role="alert">{{ mensaje }}</p>
       }
@@ -1555,80 +1246,106 @@ export class Acceso {
 </div>
 ```
 
-- [ ] **Step 3: "Tengo un código" en Mis reservas**
+- [ ] **Step 3: Campo "Ingresar código" reutilizable**
 
-En `mis-reservas.ts`:
-- Sumar `Router` al import de `@angular/router`.
-- Sumar `normalizarCodigo` desde `@app/utils/codigo-acceso.util`.
-- Agregar en la clase:
+`Front/src/app/components/reserva/ingresar-codigo/ingresar-codigo.ts`:
 
 ```ts
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
+import { Boton } from '@app/components/ui';
+import { normalizarCodigo } from '@app/utils/codigo-acceso.util';
+
+/** Para cuando la camara no lee el QR: el operador tipea el codigo de la reserva. */
+@Component({
+  selector: 'app-ingresar-codigo',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [Boton],
+  template: `
+    @if (!abierto()) {
+      <ui-boton tamano="sm" (presionado)="abierto.set(true)">Ingresar código</ui-boton>
+    } @else {
+      <form class="flex flex-wrap items-start gap-2" (submit)="$event.preventDefault(); ir(campo.value)">
+        <label class="sr-only" for="codigo-reserva">Código de la reserva</label>
+        <input
+          #campo
+          id="codigo-reserva"
+          class="h-10 w-40 rounded-boton border border-borde bg-papel px-3 text-[15px] uppercase tracking-[0.12em]"
+          placeholder="K7MQ-2XTR"
+          autocomplete="off"
+          autocapitalize="characters"
+          maxlength="10"
+        />
+        <ui-boton tipo="submit" variante="primario" tamano="sm">Buscar</ui-boton>
+        <ui-boton tamano="sm" (presionado)="abierto.set(false)">Cancelar</ui-boton>
+        @if (error(); as mensaje) {
+          <p class="w-full text-[12.5px] text-ocupada" role="alert">{{ mensaje }}</p>
+        }
+      </form>
+    }
+  `,
+})
+export class IngresarCodigo {
   private readonly router = inject(Router);
 
-  /** Campo "Tengo un codigo": por si la camara no lee el QR de la entrada. */
-  protected readonly ingresandoCodigo = signal(false);
-  protected readonly errorCodigo = signal<string | null>(null);
+  protected readonly abierto = signal(false);
+  protected readonly error = signal<string | null>(null);
 
-  protected irAlCodigo(bruto: string): void {
+  protected ir(bruto: string): void {
     const codigo = normalizarCodigo(bruto);
     if (!codigo) {
-      this.errorCodigo.set('El código tiene 6 caracteres, como K7M-2QX');
+      this.error.set('El código tiene 8 caracteres, como K7MQ-2XTR');
       return;
     }
-    this.errorCodigo.set(null);
-    void this.router.navigate(['/conductor/acceso', codigo]);
+    this.error.set(null);
+    void this.router.navigate(['/propietario/acceso', codigo]);
   }
+}
 ```
 
-En `mis-reservas.html`, dentro del `<header>`, justo después de `<h1 class="titulo-vista mt-1.5">Mis reservas</h1>`:
+En `Front/src/app/components/reserva/index.ts`, agregar:
+
+```ts
+export * from './ingresar-codigo/ingresar-codigo';
+```
+
+- [ ] **Step 4: Usarlo en el tablero y en Reservas recibidas**
+
+En `tablero.ts` y `reservas.ts`, sumar `IngresarCodigo` al import de `@app/components/reserva` (o agregar ese import) y al array `imports`.
+
+En `tablero.html`, dentro del `<header>`, como último hijo (a la derecha del saludo):
 
 ```html
-      <div class="mt-3">
-        @if (!ingresandoCodigo()) {
-          <ui-boton tamano="sm" (presionado)="ingresandoCodigo.set(true)">Tengo un código</ui-boton>
-        } @else {
-          <form class="flex flex-wrap items-start gap-2" (submit)="$event.preventDefault(); irAlCodigo(campo.value)">
-            <label class="sr-only" for="codigo-acceso">Código del estacionamiento</label>
-            <input
-              #campo
-              id="codigo-acceso"
-              class="h-10 w-36 rounded-boton border border-borde bg-papel px-3 text-[15px] uppercase tracking-[0.12em]"
-              placeholder="K7M-2QX"
-              autocomplete="off"
-              autocapitalize="characters"
-              maxlength="8"
-            />
-            <ui-boton tipo="submit" variante="primario" tamano="sm">Registrar</ui-boton>
-            <ui-boton tamano="sm" (presionado)="ingresandoCodigo.set(false)">Cancelar</ui-boton>
-            @if (errorCodigo(); as mensaje) {
-              <p class="w-full text-[12.5px] text-ocupada" role="alert">{{ mensaje }}</p>
-            }
-          </form>
-        }
-      </div>
+    <app-ingresar-codigo />
 ```
 
-Si `ui-boton` no acepta `tamano="sm"`, usá el valor de `TamanoBoton` que exista (ver `components/ui/boton/boton.ts`).
+En `reservas.html`, dentro del `<header>`, como último hijo:
 
-- [ ] **Step 4: Compilar y correr los tests**
+```html
+      <app-ingresar-codigo />
+```
+
+- [ ] **Step 5: Compilar y correr los tests**
 
 Run: `cd Front && npx ng build --configuration development && npx ng test --watch=false`
 Expected: build sin errores y tests PASS.
 
-- [ ] **Step 5: Probar a mano el flujo completo**
+- [ ] **Step 6: Probar a mano el flujo completo**
 
 Con back y front levantados:
 1. Un conductor reserva y el propietario confirma.
 2. Correr la reserva a "ahora": `UPDATE reserva SET inicio = now() - interval '5 minutes', fin = now() + interval '1 hour' WHERE id_reserva = '<id>';`
-3. Abrir `/conductor/acceso/<codigo>` y ver la tarjeta con "Registrar ingreso". Confirmar: "Ingreso registrado" con la cochera, la patente y la hora.
+3. El conductor abre "Ver QR". Escanearlo con otro celular (o abrir `/propietario/acceso/<codigo>` con la sesión del propietario): aparece "Registrar ingreso". Confirmar: "Ingreso registrado" con la cochera, la patente y la hora.
 4. Volver a abrir la misma URL: aparece "Registrar egreso". Confirmar antes de que pase un minuto: error "Acabas de registrar el ingreso…". Esperar un minuto y confirmar: "Egreso registrado".
-5. Cerrar sesión, abrir `/conductor/acceso/<codigo>`, loguearse y verificar que vuelve a esa pantalla. Si no vuelve, revisar que `pages/ingresar/ingresar.ts` navegue a `queryParams.redirigir` después del login y corregirlo ahí.
-6. En "Mis reservas", "Tengo un código" con `k7m 2qx` (cualquier formato) navega a la pantalla. Con `abc` muestra el error de formato.
-7. En el panel del propietario, los botones "Registrar ingreso" y "Registrar egreso" siguen funcionando (acción simulada del operador).
+5. Cerrar sesión, abrir `/propietario/acceso/<codigo>`, loguearse como propietario y verificar que vuelve a esa pantalla. Si no vuelve, revisar que `pages/ingresar/ingresar.ts` navegue a `queryParams.redirigir` después del login y corregirlo ahí.
+6. En el tablero, "Ingresar código" con `k7mq 2xtr` (cualquier formato) navega a la pantalla; con `abc` muestra el error de formato.
+7. Los botones por reserva del tablero y de "Reservas recibidas" siguen funcionando (acción simulada del operador).
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
+
+Antes de commitear, `git status`: si `pages/propietario/reservas/*` todavía tiene los cambios ajenos sin commitear (ver Global Constraints), pará y pedí que se commiteen primero, así este commit no se los lleva.
 
 ```bash
-git add Front/src/app/app.routes.ts Front/src/app/pages/conductor/acceso Front/src/app/pages/conductor/mis-reservas
-git commit -m "Pantalla del conductor para registrar ingreso y egreso con el QR o el codigo"
+git add Front/src/app/app.routes.ts Front/src/app/pages/propietario/acceso Front/src/app/components/reserva Front/src/app/pages/propietario/tablero Front/src/app/pages/propietario/reservas
+git commit -m "Pantalla del operador para registrar ingreso y egreso con el QR o el codigo"
 ```

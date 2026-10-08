@@ -95,12 +95,18 @@ Las dos entradas las usan:
 
 **Endpoint del propietario:**
 
+- `GET /estacionamientos/:id/codigo-acceso` (`PROPIETARIO`, dueño): devuelve
+  el código.
 - `POST /estacionamientos/:id/codigo-acceso/regenerar` (`PROPIETARIO`, dueño):
   genera un código nuevo e invalida el anterior.
-- `codigo_acceso` se agrega a `COLUMNAS` solo en las respuestas para el
-  propietario (`/mios`, `/:id` si es el dueño). **No** va en la búsqueda
-  pública: si estuviera ahí, cualquiera podría registrar su ingreso desde la
-  casa.
+- `codigo_acceso` **no** se agrega a `COLUMNAS`, porque esas columnas también
+  las usan la búsqueda y el detalle públicos: si estuviera ahí, cualquiera
+  podría registrar su ingreso desde la casa. Solo se expone por el endpoint
+  de arriba.
+- El código lo genera la base: una función SQL `generar_codigo_acceso()` como
+  `DEFAULT` de la columna.
+- Un egreso por código dentro de los 60 s posteriores al ingreso se rechaza
+  (409), porque casi seguro es un doble escaneo.
 
 **Validación:** `reserva.validator.js` agrega el esquema de `{ codigo, id_reserva? }`.
 
@@ -126,9 +132,9 @@ Las dos entradas las usan:
   a "Mis reservas".
 - Al confirmar, muestra el resultado ("Ingreso registrado 14:03") y lleva a
   "Mis reservas".
-- En "Mis reservas", las tarjetas CONFIRMADA (en ventana) y ACTIVA tienen el
-  botón "Registrar con código". Abre un campo para tipear el código y navega
-  a `/conductor/acceso/:codigo`.
+- En "Mis reservas", un solo botón "Tengo un código" en el encabezado (el
+  código identifica el estacionamiento, no la reserva). Abre un campo para
+  tipearlo y navega a `/conductor/acceso/:codigo`.
 - **No hace falta un lector de QR dentro de la app**: la cámara del celular
   abre la URL directamente.
 

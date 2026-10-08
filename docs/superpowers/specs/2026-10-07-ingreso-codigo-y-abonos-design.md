@@ -11,325 +11,328 @@ del primero:
 
 Se implementan en ese orden (Parte A y Parte B), cada una con su plan.
 
-## Supuestos pendientes de confirmar con los profesores
+## Definiciones de los profesores (2026-10-08)
 
-- **El código/QR es por estacionamiento**, no por cochera. El sistema no hace
-  hincapié en la cochera puntual: el conductor no la elige, se la asigna el
-  sistema, y si se bloquea se lo reasigna a otra (`cochera.service.js: bloquear`).
-- **El abono intenta mantener una cochera fija**, pero puede cambiar de cochera
-  algún día si hace falta (ver Parte B).
+- **El QR es único por reserva.** Es un identificador que valida esa reserva y
+  la distingue de las demás. El mismo QR sirve para la entrada y para la
+  salida.
+- **El abono se paga por adelantado y da un cupo de usos.** No es una reserva:
+  el conductor paga de antemano y después puede hacer reservas **gratis**
+  dentro de los horarios del abono, hasta agotar el cupo ("x cupos en y
+  horas").
+- **Los abonos se definen por turno: mañana, tarde o noche.** El abono define
+  la cantidad de veces que el conductor puede estacionar en ese turno.
 
-Si la respuesta es "por cochera", cambia solo dónde vive el código y la búsqueda
-de la reserva (A.2). El resto del diseño se mantiene.
+Esto reemplaza los supuestos anteriores (QR por estacionamiento y abono con
+reservas diarias generadas al contratar).
+
+## Preguntas abiertas
+
+Quedan supuestos marcados en el texto como **(supuesto)**. Conviene
+confirmarlos antes de implementar la Parte B:
+
+1. **Horario de cada turno.** ¿Lo fija el sistema o lo define cada
+   estacionamiento? Supuesto: fijo, mañana 06–12, tarde 12–18 y noche 18–24
+   (así ninguno cruza la medianoche, que hoy las reservas por hora no
+   permiten).
+2. **"x cupos en y horas".** ¿"y horas" son las horas del turno, o el máximo
+   de horas de cada uso? Supuesto: las horas del turno; cada reserva con el
+   abono puede durar lo que quiera dentro del turno y consume 1 cupo.
+3. **Vigencia.** ¿Mes calendario o 30 días desde la compra? Supuesto: 30 días
+   corridos desde la compra.
+4. **Cancelación de una reserva con abono.** ¿Devuelve el cupo? Supuesto: sí,
+   si se cancela antes de que empiece. Un no show (feature aparte) lo consume.
+5. **Garantía de lugar.** ¿El abono asegura que haya cochera, o solo da el
+   derecho a reservar gratis si hay lugar? Supuesto: no garantiza lugar; cada
+   reserva con abono compite por las cocheras como cualquier otra.
+6. **Confirmación.** ¿Una reserva con abono necesita que el propietario la
+   confirme? Supuesto: no, nace CONFIRMADA porque ya está paga.
 
 ---
 
-## Parte A: ingreso y egreso por código o QR
+## Parte A: ingreso y egreso con el QR de la reserva
 
 ### Objetivo
 
-El conductor, al llegar al estacionamiento, escanea el QR pegado en la entrada
-(o tipea el código que figura debajo) y con eso registra su ingreso. Al irse,
-el mismo QR registra el egreso. Los botones del propietario que ya existen
-("Registrar ingreso" / "Registrar egreso") quedan como la **acción simulada del
-operador**.
+Cada reserva tiene su propio código y su QR. El conductor lo muestra al llegar
+y al irse; el operador (hoy, el propietario) lo escanea o tipea el código, y
+el sistema registra el ingreso o el egreso según el estado de la reserva. Los
+botones del propietario que ya existen ("Registrar ingreso" / "Registrar
+egreso") quedan como la **acción simulada del operador**.
 
 ### A.1 Modelo de datos (`Back/src/db/schema.sql`, idempotente)
 
-- `estacionamiento.codigo_acceso VARCHAR(6)`, `UNIQUE`.
+- `reserva.codigo_acceso VARCHAR(8)`, `UNIQUE`, `NOT NULL`.
 - Alfabeto sin caracteres ambiguos: `ABCDEFGHJKMNPQRSTUVWXYZ23456789` (31
-  símbolos, sin `0 O 1 I L`). Unas 887 millones de combinaciones.
-- Se genera en `estacionamiento.service.js: crear`. Las filas existentes se
-  rellenan en la migración con una función SQL que reintenta ante colisión.
-  Después, `NOT NULL`.
-- Se muestra partido como `K7M-2QX`. Al validar se ignoran guiones, espacios
+  símbolos, sin `0 O 1 I L`). Con 8 caracteres hay unos 850 billones de
+  combinaciones, así que no se puede adivinar el código de otra reserva.
+- Lo genera la base: una función SQL `generar_codigo_acceso()` como `DEFAULT`
+  de la columna, así el `INSERT` de `reserva.service.js: crear` no cambia. Las
+  reservas existentes se rellenan en la migración.
+- Se muestra partido como `K7MQ-2XTR`. Al validar se ignoran guiones, espacios
   y mayúsculas/minúsculas.
 
 ### A.2 Backend
 
 **Refactor de `reserva.service.js`.** Hoy `registrarIngreso` y
-`registrarEgreso` buscan la reserva con `bloquearReservaDelPropietario`. Se
-separan las reglas en dos funciones internas que reciben una reserva ya
+`registrarEgreso` buscan la reserva por id con `bloquearReservaDelPropietario`.
+Se separan las reglas en dos funciones internas que reciben una reserva ya
 bloqueada:
 
 - `aplicarIngreso(client, reserva)`: las validaciones actuales (no PENDIENTE,
-  sin ingreso previo, `MARGEN_INGRESO_MS`, franja no terminada), luego
-  `ingreso_real = now()` y CONFIRMADA → ACTIVA.
+  sin ingreso previo, desde `MARGEN_INGRESO_MS` antes del inicio hasta el
+  fin), luego `ingreso_real = now()` y CONFIRMADA → ACTIVA.
 - `aplicarEgreso(client, reserva)`: las validaciones actuales, luego
   `egreso_real = now()` y ACTIVA → FINALIZADA.
 
-Las dos entradas las usan:
+Las usan las dos entradas: por id de reserva (`PATCH /reservas/:id/ingreso|egreso`,
+sin cambios de contrato) y por código (nueva).
 
-- Propietario (sin cambios de contrato): `PATCH /reservas/:id/ingreso|egreso`.
-- Conductor (nuevo): por código.
+**Resolución por código** (`resolverAcceso(client, idPropietario, codigo)`):
 
-**Resolución de la reserva por código** (`resolverAcceso(client, idConductor, codigo)`):
+1. Normaliza el código y busca la reserva con ese `codigo_acceso` en un
+   estacionamiento del propietario. Si no existe, o es de otro propietario:
+   404 "El código no corresponde a ninguna reserva de tus estacionamientos"
+   (el mismo mensaje en los dos casos, para no revelar reservas ajenas).
+2. Decide la acción según el estado:
+   - ACTIVA → `EGRESO`. Vale aunque `fin` ya haya pasado: el auto sigue
+     adentro.
+   - CONFIRMADA dentro de la ventana de ingreso → `INGRESO`.
+   - CONFIRMADA antes de la ventana → 409 "La reserva empieza a las HH:MM; se
+     puede ingresar desde las HH:MM" (hora de Buenos Aires).
+   - PENDIENTE → 409 "La reserva todavía no está confirmada".
+   - CANCELADA o FINALIZADA → 409 "La reserva está cancelada / ya terminó".
+3. Un egreso dentro de los 60 s posteriores al ingreso se rechaza (409
+   "Acabás de registrar el ingreso"), porque casi seguro es un doble escaneo.
 
-1. Normaliza el código y busca el estacionamiento activo con ese
-   `codigo_acceso`. Si no lo encuentra: 404 "El código no corresponde a ningún
-   estacionamiento".
-2. Busca las reservas del conductor en cocheras de ese estacionamiento, en este
-   orden de prioridad:
-   - ACTIVA → acción `EGRESO`.
-   - CONFIRMADA con `now()` entre `inicio - MARGEN_INGRESO_MS` y `fin` →
-     acción `INGRESO`.
-3. Si no encuentra ninguna, el mensaje explica el motivo:
-   - Hay una PENDIENTE en la ventana: 409 "Tu reserva todavía no fue
-     confirmada por el estacionamiento".
-   - Hay una CONFIRMADA más adelante: 409 "Tu reserva empieza a las HH:MM;
-     podés ingresar desde las HH:MM".
-   - Ninguna: 404 "No tenés una reserva vigente en este estacionamiento".
-4. Si hay más de una candidata (dos vehículos con reserva a la vez), se
-   devuelven todas y el conductor elige.
+**Endpoints nuevos** (`reserva.routes.js`, solo `PROPIETARIO`):
 
-**Endpoints nuevos** (`reserva.routes.js`, solo `CONDUCTOR`):
+- `GET /reservas/acceso/:codigo`: vista previa sin efectos. Devuelve la
+  reserva (estacionamiento, cochera, vehículo, franja) y la acción que
+  corresponde. Alimenta la pantalla de confirmación.
+- `POST /reservas/acceso` con `{ codigo }`: dentro de una transacción bloquea
+  la reserva (`FOR UPDATE`), vuelve a resolver la acción (puede haber cambiado
+  desde la vista previa) y llama a `aplicarIngreso` o `aplicarEgreso`. Responde
+  `{ accion, reserva }`.
 
-- `GET /reservas/acceso/:codigo`: vista previa sin efectos. Devuelve el
-  estacionamiento, las candidatas (reserva + cochera + vehículo) y la acción
-  que corresponde a cada una. Alimenta la pantalla de confirmación.
-- `POST /reservas/acceso` con `{ codigo, id_reserva? }`: aplica la acción
-  dentro de una transacción. Bloquea la reserva (`FOR UPDATE`), vuelve a
-  resolver la acción (puede haber cambiado desde la vista previa) y llama a
-  `aplicarIngreso` o `aplicarEgreso`. `id_reserva` es obligatorio solo si hay
-  más de una candidata. Responde `{ accion, reserva }`.
+**Quién ve el código.** `codigo_acceso` va en `SELECT_DETALLE`, que solo usan
+los listados del conductor (sus reservas) y del propietario (las reservas de
+sus estacionamientos). No aparece en ningún endpoint público.
 
-**Endpoint del propietario:**
-
-- `GET /estacionamientos/:id/codigo-acceso` (`PROPIETARIO`, dueño): devuelve
-  el código.
-- `POST /estacionamientos/:id/codigo-acceso/regenerar` (`PROPIETARIO`, dueño):
-  genera un código nuevo e invalida el anterior.
-- `codigo_acceso` **no** se agrega a `COLUMNAS`, porque esas columnas también
-  las usan la búsqueda y el detalle públicos: si estuviera ahí, cualquiera
-  podría registrar su ingreso desde la casa. Solo se expone por el endpoint
-  de arriba.
-- El código lo genera la base: una función SQL `generar_codigo_acceso()` como
-  `DEFAULT` de la columna.
-- Un egreso por código dentro de los 60 s posteriores al ingreso se rechaza
-  (409), porque casi seguro es un doble escaneo.
-
-**Validación:** `reserva.validator.js` agrega el esquema de `{ codigo, id_reserva? }`.
+**Validación:** `reserva.validator.js` agrega el esquema de `{ codigo }`.
 
 ### A.3 Frontend
 
-**Propietario**, en la edición del estacionamiento (o en el listado):
+**Conductor**, en "Mis reservas":
 
-- Una sección "QR de acceso" con el QR, el código `K7M-2QX` y los botones
-  "Imprimir" (hoja A4 con el nombre del estacionamiento, el QR grande, el
-  código e instrucciones) y "Regenerar código" (con confirmación).
-- El QR codifica `https://<origen del front>/conductor/acceso/K7M2QX`.
-- Se genera con la librería `qrcode` (npm) del lado del cliente.
+- Las tarjetas CONFIRMADA y ACTIVA tienen el botón "Ver QR". Abre un modal con
+  el QR grande, el código `K7MQ-2XTR` debajo y la indicación "Mostralo al
+  entrar y al salir".
+- El QR codifica `https://<origen del front>/propietario/acceso/K7MQ2XTR` y se
+  genera con la librería `qrcode` (npm) del lado del cliente.
 
-**Conductor:**
+**Propietario (operador):**
 
-- Ruta nueva `/conductor/acceso/:codigo` (dentro de la rama `conductor`, con
-  `authGuard` + `rolGuard`). Si no hay sesión, `authGuard` ya manda a
+- Ruta nueva `/propietario/acceso/:codigo` (rama `propietario`, con
+  `authGuard` + `rolGuard`). Si no hay sesión, `authGuard` manda a
   `/ingresar?redirigir=...` y vuelve después del login.
-- La pantalla llama a la vista previa y muestra, por ejemplo, "Estacionamiento
-  Centro · Cochera A-12 · 14:00–16:00 · ABC123" con el botón "Registrar
-  ingreso" (o "Registrar egreso"). Si hay varias candidatas, muestra una
-  tarjeta por cada una. Los errores aparecen en lenguaje claro, con un enlace
-  a "Mis reservas".
-- Al confirmar, muestra el resultado ("Ingreso registrado 14:03") y lleva a
-  "Mis reservas".
-- En "Mis reservas", un solo botón "Tengo un código" en el encabezado (el
-  código identifica el estacionamiento, no la reserva). Abre un campo para
-  tipearlo y navega a `/conductor/acceso/:codigo`.
-- **No hace falta un lector de QR dentro de la app**: la cámara del celular
-  abre la URL directamente.
+- **No hace falta un lector de QR dentro de la app**: el operador escanea el
+  QR con la cámara de su celular y se abre esta pantalla.
+- La pantalla llama a la vista previa y muestra, por ejemplo, "Cochera A-12 ·
+  14:00–16:00 · ABC123 · Juan Pérez" con el botón "Registrar ingreso" (o
+  "Registrar egreso"). Al confirmar muestra el resultado ("Ingreso registrado
+  14:03"). Los errores aparecen en lenguaje claro.
+- En el tablero y en "Reservas recibidas", un botón "Ingresar código" abre un
+  campo para tipear el código (por si la cámara no lee el QR) y navega a esa
+  pantalla.
+- Los botones actuales por reserva siguen como acción simulada del operador.
 
-### A.4 Limitación conocida
+### A.4 Pruebas (`Back/pruebas/acceso.test.mjs`)
 
-El QR es fijo, así que una foto del cartel permite registrar el ingreso desde
-otro lugar. Para el TP se acepta. Mitigaciones posibles fuera de alcance:
-validar la geolocalización (radio de unos 200 m) o un código rotativo en la
-pantalla del encargado.
-
-### A.5 Pruebas (`Back/pruebas/reserva.test.mjs`)
-
+- Cada reserva nueva tiene un código con el formato esperado, distinto del de
+  las demás.
 - Ingreso por código en la ventana: la reserva pasa a ACTIVA y la cochera a
   OCUPADA.
-- Egreso por código: la reserva pasa a FINALIZADA y la cochera a LIBRE.
+- Egreso con el mismo código: la reserva pasa a FINALIZADA y la cochera a
+  LIBRE.
+- Egreso aunque la franja ya haya terminado.
+- Doble escaneo: el segundo no registra el egreso enseguida (409).
 - El código se acepta en minúsculas y con guion.
-- Código inexistente: 404.
-- Código válido pero de otro estacionamiento que aquel donde el conductor
-  tiene la reserva: 404 "no tenés una reserva vigente".
-- Reserva PENDIENTE: 409.
-- Demasiado temprano: 409 con la hora desde la que puede ingresar.
-- Dos candidatas sin `id_reserva`: 409 con la lista de candidatas. Con
-  `id_reserva`, aplica sobre esa.
-- Al regenerar el código, el anterior deja de funcionar.
-- Un propietario que no es el dueño no puede regenerar: 403/404, siguiendo lo
-  que haga `asegurarPropiedad`.
-- Los endpoints del propietario `PATCH /:id/ingreso|egreso` siguen pasando
-  sus pruebas actuales sin cambios.
+- Código inexistente, mal formado o basura: 404 (o 400), nunca 500.
+- Código de una reserva de otro propietario: 404 con el mismo mensaje.
+- Reserva PENDIENTE, CANCELADA o FINALIZADA: 409.
+- Demasiado temprano: 409 con la hora desde la que se puede ingresar.
+- La vista previa no cambia nada.
+- Un conductor no puede usar los endpoints de acceso (403).
+- El conductor ve el código de sus reservas; un endpoint público no lo expone.
+- Los endpoints `PATCH /:id/ingreso|egreso` siguen pasando sus pruebas
+  actuales.
 
 ---
 
-## Parte B: abonos mensuales
+## Parte B: abonos mensuales por turno
 
 ### Objetivo
 
-El conductor paga por adelantado (de forma simulada) un mes de uso en un
-estacionamiento, dentro de unas franjas autorizadas que elige él, sin cubrir
-necesariamente todo el horario de atención. Por ejemplo, si el estacionamiento
-abre de 10 a 22, el abono puede ser solo los miércoles de 10 a 13, o de lunes
-a viernes de 8 a 18 en otro que abra antes. No reserva día por día. Llega,
-escanea el QR (Parte A) y entra si está dentro de su franja.
+El propietario ofrece planes de abono por turno (mañana, tarde o noche), cada
+uno con una cantidad de usos y un precio; por ejemplo, "Turno mañana · 20
+usos · $40.000". El conductor compra un abono pagando por adelantado (de forma
+simulada). Después hace reservas **gratis** en ese estacionamiento, dentro del
+horario del turno, y cada reserva consume un uso del cupo. Cada reserva tiene
+su propio QR como cualquier otra (Parte A).
 
-### B.1 Decisión central: el abono genera reservas diarias
+### B.1 Turnos
 
-Al contratar un abono, el sistema **crea en el momento una reserva hija por
-cada día autorizado del período** (por ejemplo, 22 reservas de 8 a 18),
-CONFIRMADAS, ligadas al abono y con `precio_total = 0` (lo pagado vive en el
-abono).
+Constantes en el código (como las duraciones de estadía y jornada), con su
+espejo en el front **(supuesto, ver pregunta 1)**:
 
-Así se resuelven las dos dudas planteadas:
+| Turno | Desde | Hasta |
+|---|---|---|
+| `MANANA` | 06:00 | 12:00 |
+| `TARDE` | 12:00 | 18:00 |
+| `NOCHE` | 18:00 | 24:00 |
 
-- **"Si es fija, ¿qué pasa con las reservas que ya existen en esa cochera?"**
-  Al contratar, el sistema elige una cochera libre en **todas** las franjas
-  del mes. Las reservas ya hechas nunca se tocan: si una cochera tiene una
-  reserva por hora un martes a las 10, simplemente no es candidata.
-- **"Si no es fija, ¿cómo garantizo que siempre tenga cochera?"** Porque el
-  lugar queda reservado de antemano, día por día. Una vez contratado el abono,
-  ninguna reserva por hora puede ocupar ese hueco: lo impiden los mismos
-  `EXCLUDE` (`reserva_sin_solapamiento`) y el chequeo transaccional de hoy.
-
-**Asignación de cochera** (todo dentro de una transacción, con el mismo
-bloqueo de cocheras que usa `crear`):
-
-1. Se busca una cochera compatible (tipo de vehículo, activa, no bloqueada)
-   libre en todas las franjas del período, en `ORDEN_NATURAL`. Si existe, todas
-   las reservas hijas van ahí (**cochera fija**).
-2. Si ninguna está libre en todas, se asigna **por día** la primera cochera
-   libre de esa franja. Igual cubre **todos** los días; solo cambia la
-   cochera. El conductor ve un aviso: "Algunos días vas a usar otra cochera".
-3. Si algún día no tiene ninguna cochera libre, el abono **no se contrata y no
-   se crea nada**. El cliente quiere el mes completo, no "lo que haya", así
-   que no se ofrece un abono parcial. 409 "Este estacionamiento no tiene lugar
-   para un abono en esas franjas. Probá con otros días u horarios." Las fechas
-   sin lugar van en `detalles` del error, por si el front las quiere mostrar,
-   pero no se ofrece contratar el resto.
-
-**De regalo** se obtiene todo lo que ya existe para reservas:
-
-- Disponibilidad: las franjas del abono ya cuentan como ocupadas.
-- Bloqueo de cochera: reasigna o cancela cada reserva hija como a cualquier
-  otra.
-- Ingreso por QR: el conductor con abono tiene una reserva CONFIRMADA hoy en
-  su franja, y `resolverAcceso` la encuentra sin cambios.
-- No show (feature posterior): un día sin ingreso es un no show de esa reserva
-  hija.
-- Dashboards: la ocupación sale de las reservas, igual que antes.
-
-Con este enfoque **no hace falta una tabla `sesion_uso`**: el ingreso y el
-egreso siguen viviendo en `reserva`.
+Una reserva con abono tiene que empezar y terminar dentro del turno, el mismo
+día, y además dentro del horario de atención (`validarHorario`, igual que una
+reserva por hora).
 
 ### B.2 Modelo de datos
 
-- `estacionamiento.tarifa_abono_mensual DECIMAL(10,2)`, nullable (`NULL` = no
-  ofrece abonos), `>= 0`. Con esto se amplía el `CHECK
-  estacionamiento_alguna_tarifa` para que también la cuente.
-- `estacionamiento.cupo_abonos SMALLINT`, nullable (`NULL` = sin tope), `>= 0`:
-  la cantidad máxima de abonos vigentes a la vez. Es el "cupo" del enunciado:
-  el propietario reserva capacidad para el público por hora.
+- Enum `turno_abono` (`MANANA`, `TARDE`, `NOCHE`).
 - Enum `estado_abono` (`VIGENTE`, `CANCELADO`, `VENCIDO`).
-- Tabla `abono`:
+- Tabla `plan_abono`, los planes que ofrece el propietario:
+
+  | columna | tipo | nota |
+  |---|---|---|
+  | `id_plan` | UUID PK | |
+  | `id_estacionamiento` | UUID FK estacionamiento | `ON DELETE CASCADE` |
+  | `turno` | `turno_abono` | |
+  | `cupos` | SMALLINT | `> 0`, usos incluidos |
+  | `precio` | DECIMAL(10,2) | `>= 0` |
+  | `activo` | BOOLEAN | baja lógica; los abonos ya vendidos no cambian |
+
+  Único por `(id_estacionamiento, turno)` entre los activos: un plan por turno.
+
+- Tabla `abono`, lo que compró el conductor. Copia turno, cupos y precio del
+  plan al momento de la compra, para que un cambio posterior del plan no lo
+  altere (igual que `reserva.precio_total`):
 
   | columna | tipo | nota |
   |---|---|---|
   | `id_abono` | UUID PK | |
   | `id_conductor` | UUID FK usuario | |
-  | `id_vehiculo` | UUID FK vehiculo | |
   | `id_estacionamiento` | UUID FK estacionamiento | |
-  | `desde` | DATE | primer día |
-  | `hasta` | DATE | `desde + 29 días` (30 días corridos) |
-  | `dias_semana` | SMALLINT[] | 0–6, igual que `horario.dia_semana` |
-  | `hora_desde`, `hora_hasta` | TIME | `hora_hasta > hora_desde` |
-  | `precio_total` | DECIMAL(10,2) | se congela al contratar |
+  | `id_plan` | UUID FK plan_abono | referencia, no fuente de verdad |
+  | `turno` | `turno_abono` | congelado |
+  | `cupos_totales` | SMALLINT | congelado |
+  | `precio_total` | DECIMAL(10,2) | congelado |
+  | `desde` | DATE | día de la compra |
+  | `hasta` | DATE | `desde + 29 días` **(supuesto, pregunta 3)** |
   | `estado` | `estado_abono` | |
   | `created_at` | TIMESTAMPTZ | |
 
-- `reserva.id_abono UUID NULL` FK `abono ON DELETE RESTRICT`, con índice.
-- `modalidad_reserva` suma `ABONO` (las reservas hijas usan esta modalidad).
+- `reserva.id_abono UUID NULL`, FK a `abono` `ON DELETE RESTRICT`, con índice.
+- `modalidad_reserva` suma `ABONO`.
+- Los **cupos usados** no se guardan: se cuentan como las reservas del abono
+  que no están CANCELADAS. Así nunca quedan desincronizados con las reservas
+  reales.
 
 ### B.3 Reglas
 
-- **Franjas:** un rango horario por abono (por ejemplo, de 10 a 13), aplicado
-  a uno o más días de la semana (por ejemplo, solo los miércoles). Puede ser
-  cualquier sub-rango del horario de atención, pero tiene que caber entero en
-  el horario de cada día elegido (se reusa `validarHorario`). Si un día elegido
-  está cerrado o el rango no entra: 400 indicando el día.
-- **Período:** 30 días corridos desde `desde`. `desde` no puede ser en el
-  pasado.
-- **Precio:** `tarifa_abono_mensual`, fijo, sin prorrateo.
-- **Cupo:** si `cupo_abonos` no es nulo y ya hay esa cantidad de abonos
-  VIGENTES que se superponen con el período: 409 "No hay cupo de abonos".
-- **Vehículo:** no puede tener reservas que se superpongan con ninguna franja
-  (ya lo cubre `reserva_vehiculo_sin_solapamiento`).
-- **Confirmación:** el abono nace VIGENTE y sus reservas CONFIRMADAS. El pago
-  ya está hecho y el propietario no tiene que confirmar día por día.
-- **Cancelación por el conductor:** el abono pasa a CANCELADO y se cancelan las
-  reservas hijas futuras que no hayan empezado. No hay reembolso (el pago es
-  simulado). Si en ese momento hay una reserva hija ACTIVA, no se toca.
-- **Vencimiento:** el job de `vencimientos.job.js` pasa a VENCIDO los abonos con
-  `hasta < hoy`.
-- **Bloqueo de cochera:** sin cambios. El aviso de reasignación o cancelación
-  aparece en la reserva hija de ese día.
+**Comprar un abono** (`POST /abonos` con `{ id_plan }`):
+
+- El plan tiene que estar activo y su estacionamiento publicado y activo.
+- Se crea VIGENTE, con los datos del plan copiados y `precio_total` = precio
+  del plan.
+- Un conductor puede tener varios abonos (de distintos turnos o
+  estacionamientos).
+
+**Reservar con abono** (`POST /reservas` con `id_abono`, sin `modalidad`):
+
+1. Bloquea el abono (`FOR UPDATE`) para que dos reservas simultáneas no
+   consuman el mismo último cupo.
+2. Valida que el abono sea del conductor, esté VIGENTE y la reserva caiga
+   entre `desde` y `hasta`.
+3. Valida que el estacionamiento sea el del abono y que la franja esté dentro
+   del turno.
+4. Cuenta los cupos usados; si llegó a `cupos_totales`: 409 "No te quedan usos
+   en este abono".
+5. Sigue el flujo normal de `crear` (vehículo libre, asignación de cochera con
+   bloqueos, `EXCLUDE`), con `modalidad = ABONO`, `precio_total = 0`,
+   `id_abono` y estado CONFIRMADA **(supuesto, pregunta 6)**.
+6. Si no hay cochera libre, 409 como cualquier reserva: el abono no garantiza
+   lugar **(supuesto, pregunta 5)**.
+
+**Cancelar una reserva con abono:** mismas reglas que hoy. Al quedar
+CANCELADA deja de contar, así que el cupo vuelve **(supuesto, pregunta 4)**.
+
+**Cancelar el abono** (`PATCH /abonos/:id/cancelar`): pasa a CANCELADO y se
+cancelan sus reservas futuras que no empezaron. Una ACTIVA no se toca. No hay
+reembolso (el pago es simulado).
+
+**Vencimiento:** el job de `vencimientos.job.js` pasa a VENCIDO los abonos con
+`hasta < hoy`. Sus reservas ya hechas siguen su ciclo normal.
+
+**Ingreso y egreso:** cada reserva con abono tiene su propio código y QR, y
+pasa por la Parte A sin cambios.
 
 ### B.4 Backend
 
-- `Back/src/services/abono.service.js`, con `contratar`, `listarPorConductor`,
-  `listarPorEstacionamiento`, `cancelar` y `vencerAbonos`.
-- Función pura `fechasDelAbono(desde, diasSemana, horaDesde, horaHasta,
-  horarios)` en `Back/src/utils/` que devuelve los pares `{ inicio, fin }` en
-  hora de Buenos Aires, reusando `instanteLocal` y `sumarDias` de
-  `utils/horario.js`. Se prueba aislada.
-- Rutas (`abono.routes.js`, montadas en `/abonos`):
-  - `POST /abonos` (CONDUCTOR) con `{ id_estacionamiento, id_vehiculo, desde,
-    dias_semana, hora_desde, hora_hasta }`.
-  - `GET /abonos` (CONDUCTOR): los propios.
+- `Back/src/services/abono.service.js`: planes (`crearPlan`, `actualizarPlan`,
+  `darDeBajaPlan`, `listarPlanes`) y abonos (`comprar`, `listarPorConductor`,
+  `listarPorEstacionamiento`, `cancelar`, `vencerAbonos`).
+- `Back/src/utils/turnos.js`: `TURNOS` y la función pura
+  `motivoFueraDeTurno(turno, inicio, fin)`, que devuelve un motivo o `null`
+  (como `motivoFueraDeHorario`). Se prueba aislada.
+- `reserva.service.js: crear` acepta `id_abono` y aplica las reglas de B.3
+  antes de insertar. `reserva.validator.js` acepta `id_abono` y lo hace
+  excluyente con `modalidad`.
+- Rutas:
+  - `GET /estacionamientos/:id/planes-abono` (público): planes activos.
+  - `POST`, `PATCH`, `DELETE /estacionamientos/:id/planes-abono[/:idPlan]`
+    (PROPIETARIO dueño).
+  - `POST /abonos` y `GET /abonos` (CONDUCTOR): comprar y listar los propios,
+    con `cupos_usados` y `cupos_restantes` calculados.
   - `PATCH /abonos/:id/cancelar` (CONDUCTOR).
-  - `GET /estacionamientos/:id/abonos` (PROPIETARIO dueño).
-- `SELECT_DETALLE` de reserva devuelve `id_abono`, para que el front muestre
-  "Abono" en vez del precio.
-- La cancelación individual de una reserva hija por `PATCH
-  /reservas/:id/cancelar` se rechaza con 409 "Es parte de un abono; cancelá el
-  abono".
+  - `GET /estacionamientos/:id/abonos` (PROPIETARIO dueño): abonos vendidos.
+- `SELECT_DETALLE` de reserva devuelve `id_abono` y el turno, para que el
+  front muestre "Abono · Turno mañana" en lugar del precio.
 
 ### B.5 Frontend
 
-- **Propietario:** en el formulario del estacionamiento, los campos "Tarifa de
-  abono mensual" y "Cupo de abonos". En su página de reservas, filtro o
-  pestaña "Abonos" con los abonos vigentes.
-- **Conductor:** en el detalle del estacionamiento (si ofrece abono), el botón
-  "Contratar abono mensual". El formulario pide vehículo, fecha de inicio, días
-  (chips L M M J V S D) y rango horario, y muestra un resumen con precio, días
-  incluidos y cochera asignada antes de confirmar.
-- **"Mis reservas":** sección "Mis abonos" con período, franjas, cochera y el
-  botón "Cancelar abono". Las reservas hijas de cada día aparecen como
-  cualquier otra reserva, con la etiqueta "Abono" y sin botón de cancelar.
+- **Propietario:** en la edición del estacionamiento, una sección "Abonos" con
+  un plan por turno (activar, cupos, precio). Una vista de abonos vendidos con
+  conductor, turno, usos y vencimiento.
+- **Conductor:**
+  - En el detalle del estacionamiento, los planes disponibles y el botón
+    "Comprar abono", con un resumen (turno, usos, vigencia, precio) antes de
+    confirmar.
+  - "Mis abonos": cada abono con estacionamiento, turno, usos restantes
+    (por ejemplo, "14 de 20") y vencimiento, más el botón "Reservar con este
+    abono" y "Cancelar abono".
+  - En la pantalla de reserva, si tiene un abono vigente de ese
+    estacionamiento, la opción "Usar abono": limita los horarios al turno,
+    muestra el precio en $0 y descuenta un uso.
+  - Las reservas con abono aparecen en "Mis reservas" con la etiqueta "Abono"
+    y su QR como cualquier otra.
 
 ### B.6 Pruebas
 
-- `fechasDelAbono`: días correctos, omite los días cerrados y respeta el
-  horario de Buenos Aires.
-- Contratar con una cochera libre todo el mes: N reservas en la misma cochera.
-- Contratar con una cochera ocupada un día: se usa otra cochera fija libre.
-- Contratar sin ninguna cochera libre todo el mes: asignación por día.
-- Contratar con un día sin ninguna cochera: 409 y no se crea ni el abono ni ninguna reserva hija.
-- Abono solo los miércoles de 10 a 13 en un estacionamiento de 10 a 22: 4 o 5 reservas hijas, todas miércoles.
-- Día elegido cerrado, o rango que excede el horario de ese día: 400.
-- Cupo agotado: 409.
-- Estacionamiento sin `tarifa_abono_mensual`: 409.
-- Ingreso por QR con abono dentro de la franja: ACTIVA.
-- Ingreso por QR con abono fuera de la franja: 409 con la hora.
-- Cancelar el abono: las futuras quedan CANCELADAS y las pasadas o la ACTIVA
-  no cambian.
-- Cancelar una reserva hija suelta: 409.
-- Una reserva por hora en una franja tomada por el abono: no se le asigna esa
-  cochera (o 409 si no hay otra).
+- `motivoFueraDeTurno`: dentro, en el borde, fuera y cruzando de turno.
+- El propietario crea un plan por turno; un segundo plan activo del mismo
+  turno da 409; otro propietario no puede tocarlo.
+- Comprar un plan activo crea un abono VIGENTE con los datos copiados;
+  cambiar el plan después no cambia el abono.
+- Reservar con abono dentro del turno: CONFIRMADA, precio 0, consume un uso.
+- Reservar fuera del turno, en otro estacionamiento, antes o después de la
+  vigencia, o con un abono ajeno, CANCELADO o VENCIDO: 409 (o 404 si es ajeno).
+- Sin usos restantes: 409.
+- Dos reservas simultáneas por el último uso: solo una se crea.
+- Cancelar una reserva con abono devuelve el uso.
+- Cancelar el abono cancela sus reservas futuras y deja la ACTIVA.
 - Job: un abono vencido pasa a VENCIDO.
+- Ingreso y egreso con el QR de una reserva con abono funcionan igual que con
+  una reserva común.
 
 ---
 
@@ -337,6 +340,6 @@ egreso siguen viviendo en `reserva`.
 
 - No show, el rol Administrador y los dashboards: son specs propias. Esta spec
   deja preparados `ingreso_real` y `reserva.id_abono` para que los usen.
-- Pagos reales, prorrateo y renovación automática del abono.
-- Más de una franja horaria distinta por abono.
+- Pagos reales, reembolsos, prorrateo y renovación automática del abono.
+- Abonos con lugar garantizado o cochera fija.
 - Lector de QR dentro de la app.

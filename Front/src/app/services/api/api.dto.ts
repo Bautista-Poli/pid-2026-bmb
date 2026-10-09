@@ -1,4 +1,4 @@
-import { EstadoCochera, ModalidadReserva, RolUsuario } from '@app/models';
+import { EstadoAbono, EstadoCochera, ModalidadReserva, RolUsuario, TurnoAbono } from '@app/models';
 
 /*
  * Forma exacta de las respuestas de la API de Express (snake_case, tal cual
@@ -119,9 +119,11 @@ export interface ReservaDto {
   estacionamiento: string;
   direccion: string;
   precio_total: number;
-  modalidad: ModalidadReserva;
+  modalidad: ModalidadReserva | 'ABONO';
   motivo_reasignacion: string | null;
   codigo_acceso: string;
+  id_abono: string | null;
+  turno_abono: TurnoAbono | null;
 }
 
 export interface AccesoReservaDto {
@@ -137,4 +139,32 @@ export interface FranjaDto {
   motivo: string | null;
   fecha_hasta?: string;
   causa?: 'HORARIO' | 'PASADO' | 'SIN_LUGAR' | null;
+}
+
+export interface PlanAbonoDto {
+  id_plan: string;
+  id_estacionamiento: string;
+  turno: TurnoAbono;
+  cupos: number;
+  precio: number;
+  activo: boolean;
+}
+
+export interface AbonoDto {
+  id_abono: string;
+  id_conductor: string;
+  conductor_nombre: string;
+  conductor_apellido: string;
+  id_estacionamiento: string;
+  estacionamiento: string;
+  id_plan: string;
+  turno: TurnoAbono;
+  cupos_totales: number;
+  cupos_usados: number;
+  cupos_restantes: number;
+  precio_total: number;
+  desde: string;
+  hasta: string;
+  estado: EstadoAbono;
+  created_at: string;
 }

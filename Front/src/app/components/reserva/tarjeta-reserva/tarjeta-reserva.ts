@@ -17,6 +17,7 @@ import {
   ETIQUETA_ESTADO_RESERVA,
   ETIQUETA_MODALIDAD,
   ETIQUETA_TIPO_VEHICULO,
+  TURNOS,
   direccionCorta,
   ReservaDetallada,
 } from '@app/models';
@@ -84,6 +85,7 @@ export class TarjetaReserva implements OnInit {
 
   protected readonly etiquetaEstado = ETIQUETA_ESTADO_RESERVA;
   protected readonly etiquetaModalidad = ETIQUETA_MODALIDAD;
+  protected readonly turnos = TURNOS;
 
   protected readonly ahora = signal(Date.now());
 

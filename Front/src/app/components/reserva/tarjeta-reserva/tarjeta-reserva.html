@@ -213,10 +213,15 @@
       [class]="margen()"
     >
       <p class="flex items-baseline gap-2">
-        <span class="num-tabular text-[17px] font-semibold text-tinta">
-          $ {{ r.precioTotal.toLocaleString('es-AR') }}
-        </span>
-        <span class="text-[12.5px] text-plomo">{{ etiquetaModalidad[r.modalidad] }}</span>
+        @if (r.abono; as abono) {
+          <span class="text-[15px] font-semibold text-tinta">Abono</span>
+          <span class="text-[12.5px] text-plomo">Turno {{ turnos[abono.turno].etiqueta.toLowerCase() }}</span>
+        } @else {
+          <span class="num-tabular text-[17px] font-semibold text-tinta">
+            $ {{ r.precioTotal.toLocaleString('es-AR') }}
+          </span>
+          <span class="text-[12.5px] text-plomo">{{ etiquetaModalidad[r.modalidad] }}</span>
+        }
       </p>
 
       <div class="flex items-center gap-1">

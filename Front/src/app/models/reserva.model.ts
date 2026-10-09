@@ -1,3 +1,4 @@
+import { TurnoAbono } from './abono.model';
 import { FechaHoraISO, FechaISO, HoraHHmm, Id } from './api.model';
 import { Cochera } from './cochera.model';
 import { Estacionamiento } from './estacionamiento.model';
@@ -47,6 +48,8 @@ export interface Reserva {
   motivoReasignacion: string | null;
   /** Codigo del QR de la reserva: lo muestra el conductor y lo escanea el operador. */
   codigoAcceso: string;
+  /** Con que abono se hizo, o null si se pago aparte. */
+  abono: { id: Id; turno: TurnoAbono } | null;
 }
 
 /**

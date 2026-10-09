@@ -11,13 +11,14 @@ import {
   HORAS_POR_MODALIDAD,
   Id,
   NuevaReserva,
+  NuevaReservaConAbono,
   Reserva,
   ReservaDetallada,
   Tarifas,
 } from '@app/models';
 import { calcularPrecio } from '@app/utils/tarifa.util';
 import { AccesoReservaDto, FranjaDto, ReservaDto } from './api/api.dto';
-import { ID_TIPO_VEHICULO, aAccesoReserva, aFranja, aPayloadReserva, aReserva } from './api/api.mapeo';
+import { ID_TIPO_VEHICULO, aAccesoReserva, aFranja, aPayloadReserva, aPayloadReservaConAbono, aReserva } from './api/api.mapeo';
 
 /**
  * Acceso a `/api/reservas` mas el estado del wizard de reserva.
@@ -98,6 +99,13 @@ export class ReservaService {
   crear(datos: NuevaReserva): Observable<Reserva> {
     return this.http
       .post<{ reserva: ReservaDto }>(this.ruta, aPayloadReserva(datos))
+      .pipe(map(({ reserva }) => aReserva(reserva)));
+  }
+
+  /** `POST /api/reservas` con `id_abono`: gratis, dentro del turno del abono. */
+  crearConAbono(datos: NuevaReservaConAbono): Observable<Reserva> {
+    return this.http
+      .post<{ reserva: ReservaDto }>(this.ruta, aPayloadReservaConAbono(datos))
       .pipe(map(({ reserva }) => aReserva(reserva)));
   }
 

@@ -89,4 +89,15 @@ describe('planes de abono', () => {
     assert.equal((await api('PATCH', ruta, { token: otro.token, body: { cupos: 9 } })).estado, 403);
     assert.equal((await api('DELETE', ruta, { token: otro.token })).estado, 403);
   });
+
+  test('PATCH sin cupos ni precio (vacio o null): 400', async () => {
+    const propietario = await crearUsuario({ rol: 'PROPIETARIO' });
+    const estacionamiento = await crearEstacionamiento(propietario.token);
+    const { datos } = await crearPlan(propietario, estacionamiento);
+    const ruta = `${rutaPlanes(estacionamiento)}/${datos.plan.id_plan}`;
+
+    for (const body of [{ cupos: null }, {}]) {
+      assert.equal((await api('PATCH', ruta, { token: propietario.token, body })).estado, 400, JSON.stringify(body));
+    }
+  });
 });

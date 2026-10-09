@@ -52,6 +52,7 @@ export async function actualizarPlan(idEstacionamiento, idPropietario, idPlan, c
     valores.push(cambios[campo]);
     sets.push(`${campo} = $${valores.length}`);
   }
+  if (sets.length === 0) throw ApiError.badRequest('Enviar cupos y/o precio');
   valores.push(idPlan, idEstacionamiento);
 
   const { rows } = await query(

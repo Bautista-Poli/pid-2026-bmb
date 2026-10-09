@@ -73,6 +73,14 @@ export class TarjetaReserva implements OnInit {
   readonly cancelando = input(false);
 
   readonly cancelar = output<ReservaDetallada>();
+  readonly verQr = output<ReservaDetallada>();
+
+  /** El QR sirve mientras la reserva puede entrar o salir: confirmada o en curso. */
+  protected readonly conQr = computed(() => {
+    const r = this.reserva();
+    // Una ACTIVA lo necesita para salir aunque ya haya pasado su fin.
+    return r.estado === 'ACTIVA' || (r.estado === 'CONFIRMADA' && reservaEnJuego(r));
+  });
 
   protected readonly etiquetaEstado = ETIQUETA_ESTADO_RESERVA;
   protected readonly etiquetaModalidad = ETIQUETA_MODALIDAD;

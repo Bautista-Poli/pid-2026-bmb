@@ -219,24 +219,36 @@
         <span class="text-[12.5px] text-plomo">{{ etiquetaModalidad[r.modalidad] }}</span>
       </p>
 
-      @if (cancelable()) {
-        <button
-          type="button"
-          class="inline-flex min-h-11 items-center gap-2 rounded-boton px-3 text-[13px] font-semibold
-                 text-ocupada transition-colors duration-160 ease-out hover:bg-ocupada/8
-                 disabled:pointer-events-none disabled:opacity-50"
-          [disabled]="cancelando()"
-          (click)="cancelar.emit(r)"
-        >
-          @if (cancelando()) {
-            <span
-              class="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent"
-              aria-hidden="true"
-            ></span>
-          }
-          Cancelar
-        </button>
-      }
+      <div class="flex items-center gap-1">
+        @if (conQr()) {
+          <button
+            type="button"
+            class="inline-flex min-h-11 items-center gap-2 rounded-boton px-3 text-[13px] font-semibold
+                   text-acento transition-colors duration-160 ease-out hover:bg-acento-suave"
+            (click)="verQr.emit(r)"
+          >
+            Ver QR
+          </button>
+        }
+        @if (cancelable()) {
+          <button
+            type="button"
+            class="inline-flex min-h-11 items-center gap-2 rounded-boton px-3 text-[13px] font-semibold
+                   text-ocupada transition-colors duration-160 ease-out hover:bg-ocupada/8
+                   disabled:pointer-events-none disabled:opacity-50"
+            [disabled]="cancelando()"
+            (click)="cancelar.emit(r)"
+          >
+            @if (cancelando()) {
+              <span
+                class="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent"
+                aria-hidden="true"
+              ></span>
+            }
+            Cancelar
+          </button>
+        }
+      </div>
     </footer>
   </article>
 }

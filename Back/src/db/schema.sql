@@ -401,3 +401,34 @@ SELECT f.id_estacionamiento, 0, f.mime, f.bytes, f.actualizada
  WHERE NOT EXISTS (
    SELECT 1 FROM estacionamiento_imagen i WHERE i.id_estacionamiento = f.id_estacionamiento
  );
+
+-- Codigo de acceso de la reserva: va en su QR. El conductor lo muestra al
+-- entrar y al salir y el operador lo escanea (o lo tipea). Es unico por
+-- reserva. Sin 0 O 1 I L para que no se confundan; el alfabeto tiene que
+-- coincidir con src/utils/codigoAcceso.js. Lo genera la base, asi el INSERT
+-- de reserva.service.js no cambia.
+CREATE OR REPLACE FUNCTION generar_codigo_acceso(largo INT) RETURNS TEXT AS $$
+DECLARE
+  alfabeto CONSTANT TEXT := 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  codigo TEXT := '';
+BEGIN
+  FOR i IN 1..largo LOOP
+    codigo := codigo || substr(alfabeto, 1 + floor(random() * length(alfabeto))::int, 1);
+  END LOOP;
+  RETURN codigo;
+END
+$$ LANGUAGE plpgsql VOLATILE;
+
+ALTER TABLE reserva
+  ADD COLUMN IF NOT EXISTS codigo_acceso VARCHAR(8);
+
+-- Relleno de las reservas que ya existen. Con 31^8 combinaciones una colision
+-- es practicamente imposible; si pasara, el CREATE UNIQUE INDEX de abajo falla
+-- y alcanza con volver a migrar.
+UPDATE reserva SET codigo_acceso = generar_codigo_acceso(8) WHERE codigo_acceso IS NULL;
+
+ALTER TABLE reserva
+  ALTER COLUMN codigo_acceso SET DEFAULT generar_codigo_acceso(8),
+  ALTER COLUMN codigo_acceso SET NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS reserva_codigo_acceso_unico ON reserva (codigo_acceso);

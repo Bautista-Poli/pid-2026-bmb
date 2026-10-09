@@ -62,7 +62,11 @@
           class="num-tabular text-[13px] font-semibold"
           [class]="r.estado === 'CANCELADA' ? 'text-humo line-through' : 'text-tinta'"
         >
-          $ {{ r.precioTotal.toLocaleString('es-AR') }}
+          @if (r.abono; as abono) {
+            Abono · Turno {{ turnos[abono.turno].etiqueta.toLowerCase() }}
+          } @else {
+            $ {{ r.precioTotal.toLocaleString('es-AR') }}
+          }
         </span>
       </div>
     </div>

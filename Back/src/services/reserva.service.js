@@ -78,7 +78,7 @@ const SELECT_DETALLE = `
          r.id_cochera, c.identificador AS cochera,
          c.sector AS cochera_sector, c.cubierta AS cochera_cubierta,
          e.id_estacionamiento, e.nombre AS estacionamiento, e.direccion,
-         r.modalidad, r.precio_total, r.motivo_reasignacion,
+         r.modalidad, r.precio_total, r.motivo_reasignacion, r.codigo_acceso,
          u.nombre AS conductor_nombre, u.apellido AS conductor_apellido
     FROM reserva r
     JOIN vehiculo v        ON v.id_vehiculo = r.id_vehiculo
@@ -466,25 +466,47 @@ export async function confirmar(idReserva, idPropietario) {
   });
 }
 
+/**
+ * Un egreso pegado al ingreso es casi seguro un doble escaneo del QR (o una
+ * recarga de la pantalla), no un auto que entro y salio: se rechaza. Solo
+ * aplica a la entrada por codigo; los botones del propietario no lo usan.
+ */
+const MARGEN_EGRESO_TRAS_INGRESO_MS = 60 * 1000;
+
+/**
+ * Reglas del ingreso sobre una reserva ya bloqueada. Las comparten el boton
+ * del propietario (registrarIngreso) y el QR de la reserva (registrarAcceso).
+ */
+async function aplicarIngreso(client, reserva) {
+  if (reserva.estado === ESTADOS_RESERVA.PENDIENTE) {
+    throw ApiError.conflict('Primero hay que confirmar la reserva');
+  }
+  if (reserva.ingreso_real) throw ApiError.conflict('El ingreso ya estaba registrado');
+
+  const ahora = Date.now();
+  if (ahora < reserva.inicio.getTime() - MARGEN_INGRESO_MS) {
+    throw ApiError.conflict('Todavia es muy temprano para registrar el ingreso');
+  }
+  if (ahora > reserva.fin.getTime()) throw ApiError.conflict('La franja de la reserva ya termino');
+
+  await client.query('UPDATE reserva SET ingreso_real = now() WHERE id_reserva = $1', [reserva.id_reserva]);
+  await cambiarEstado(client, reserva, ESTADOS_RESERVA.ACTIVA);
+}
+
+/** Reglas del egreso sobre una reserva ya bloqueada. */
+async function aplicarEgreso(client, reserva) {
+  if (!reserva.ingreso_real) throw ApiError.conflict('La reserva todavia no tiene ingreso');
+  if (reserva.egreso_real) throw ApiError.conflict('El egreso ya estaba registrado');
+
+  await client.query('UPDATE reserva SET egreso_real = now() WHERE id_reserva = $1', [reserva.id_reserva]);
+  await cambiarEstado(client, reserva, ESTADOS_RESERVA.FINALIZADA);
+}
+
 /** Llego el vehiculo: se guarda la hora y la cochera pasa a OCUPADA. */
 export async function registrarIngreso(idReserva, idPropietario) {
   return withTransaction(async (client) => {
     const reserva = await bloquearReservaDelPropietario(client, idReserva, idPropietario);
-
-    if (reserva.estado === ESTADOS_RESERVA.PENDIENTE) {
-      throw ApiError.conflict('Primero hay que confirmar la reserva');
-    }
-    if (reserva.ingreso_real) throw ApiError.conflict('El ingreso ya estaba registrado');
-
-    const ahora = Date.now();
-    if (ahora < reserva.inicio.getTime() - MARGEN_INGRESO_MS) {
-      throw ApiError.conflict('Todavia es muy temprano para registrar el ingreso');
-    }
-    if (ahora > reserva.fin.getTime()) throw ApiError.conflict('La franja de la reserva ya termino');
-
-    await client.query('UPDATE reserva SET ingreso_real = now() WHERE id_reserva = $1', [idReserva]);
-    await cambiarEstado(client, reserva, ESTADOS_RESERVA.ACTIVA);
-
+    await aplicarIngreso(client, reserva);
     return obtenerDetalle(client, idReserva);
   });
 }
@@ -493,13 +515,7 @@ export async function registrarIngreso(idReserva, idPropietario) {
 export async function registrarEgreso(idReserva, idPropietario) {
   return withTransaction(async (client) => {
     const reserva = await bloquearReservaDelPropietario(client, idReserva, idPropietario);
-
-    if (!reserva.ingreso_real) throw ApiError.conflict('La reserva todavia no tiene ingreso');
-    if (reserva.egreso_real) throw ApiError.conflict('El egreso ya estaba registrado');
-
-    await client.query('UPDATE reserva SET egreso_real = now() WHERE id_reserva = $1', [idReserva]);
-    await cambiarEstado(client, reserva, ESTADOS_RESERVA.FINALIZADA);
-
+    await aplicarEgreso(client, reserva);
     return obtenerDetalle(client, idReserva);
   });
 }

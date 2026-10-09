@@ -45,6 +45,8 @@ export interface Reserva {
   egresoEn: FechaHoraISO | null;
   /** Aviso cuando el bloqueo de la cochera original la reasignó o, sin alternativa, la canceló. */
   motivoReasignacion: string | null;
+  /** Codigo del QR de la reserva: lo muestra el conductor y lo escanea el operador. */
+  codigoAcceso: string;
 }
 
 /**
@@ -119,4 +121,13 @@ export const ESTADOS_ACTIVOS: EstadoReserva[] = ['PENDIENTE', 'CONFIRMADA', 'ACT
 
 export function esReservaActiva(reserva: Reserva): boolean {
   return ESTADOS_ACTIVOS.includes(reserva.estado);
+}
+
+/** Lo que registra el QR de la reserva segun su estado. */
+export type AccionAcceso = 'INGRESO' | 'EGRESO';
+
+/** Vista previa (`GET /reservas/acceso/:codigo`) y resultado (`POST /reservas/acceso`). */
+export interface AccesoReserva {
+  accion: AccionAcceso;
+  reserva: ReservaDetallada;
 }

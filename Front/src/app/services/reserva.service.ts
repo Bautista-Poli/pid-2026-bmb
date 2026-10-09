@@ -2,6 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Observable, forkJoin, map, of } from 'rxjs';
 import {
+  AccesoReserva,
   BORRADOR_VACIO,
   BorradorReserva,
   ConsultaDisponibilidad,
@@ -15,8 +16,8 @@ import {
   Tarifas,
 } from '@app/models';
 import { calcularPrecio } from '@app/utils/tarifa.util';
-import { FranjaDto, ReservaDto } from './api/api.dto';
-import { ID_TIPO_VEHICULO, aFranja, aPayloadReserva, aReserva } from './api/api.mapeo';
+import { AccesoReservaDto, FranjaDto, ReservaDto } from './api/api.dto';
+import { ID_TIPO_VEHICULO, aAccesoReserva, aFranja, aPayloadReserva, aReserva } from './api/api.mapeo';
 
 /**
  * Acceso a `/api/reservas` mas el estado del wizard de reserva.
@@ -151,6 +152,18 @@ export class ReservaService {
 
   registrarEgreso(id: Id): Observable<Reserva> {
     return this.transicion(id, 'egreso');
+  }
+
+  /** `GET /api/reservas/acceso/:codigo`: que registraria el QR, sin registrar nada. */
+  previaAcceso(codigo: string): Observable<AccesoReserva> {
+    return this.http.get<AccesoReservaDto>(`${this.ruta}/acceso/${codigo}`).pipe(map(aAccesoReserva));
+  }
+
+  /** `POST /api/reservas/acceso`: registra el ingreso o el egreso de esa reserva. */
+  registrarAcceso(codigo: string): Observable<AccesoReserva> {
+    return this.http
+      .post<AccesoReservaDto>(`${this.ruta}/acceso`, { codigo })
+      .pipe(map(aAccesoReserva));
   }
 
   private transicion(id: Id, paso: 'confirmar' | 'ingreso' | 'egreso'): Observable<Reserva> {

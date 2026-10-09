@@ -1,4 +1,5 @@
 import {
+  AccesoReserva,
   Cochera,
   Estacionamiento,
   EstadoCochera,
@@ -20,7 +21,7 @@ import {
   Vehiculo,
 } from '@app/models';
 import { aInstante, DIAS_POR_NUMERO, partesLocales } from '@app/utils/fecha.util';
-import { CocheraDto, EstacionamientoDto, EstadoReservaDto, FranjaDto, HorarioDto, ReservaDto, UsuarioDto, VehiculoDto } from './api.dto';
+import { AccesoReservaDto, CocheraDto, EstacionamientoDto, EstadoReservaDto, FranjaDto, HorarioDto, ReservaDto, UsuarioDto, VehiculoDto } from './api.dto';
 
 /*
  * Traduccion entre la API (snake_case, ids de catalogo, instantes ISO) y los
@@ -273,6 +274,7 @@ export function aReserva(dto: ReservaDto): ReservaDetallada {
     ingresoEn: dto.ingreso_real,
     egresoEn: dto.egreso_real,
     motivoReasignacion: dto.motivo_reasignacion,
+    codigoAcceso: dto.codigo_acceso,
     estacionamiento: {
       id: dto.id_estacionamiento,
       nombre: dto.estacionamiento,
@@ -295,6 +297,10 @@ export function aReserva(dto: ReservaDto): ReservaDetallada {
     },
     cochera: { id: dto.id_cochera, identificador: dto.cochera, sector: dto.cochera_sector ?? '' },
   };
+}
+
+export function aAccesoReserva(dto: AccesoReservaDto): AccesoReserva {
+  return { accion: dto.accion, reserva: aReserva(dto.reserva) };
 }
 
 /** El backend asigna la cochera: se reserva por estacionamiento. */

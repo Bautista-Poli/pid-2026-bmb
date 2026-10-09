@@ -121,6 +121,12 @@ export interface ReservaDto {
   precio_total: number;
   modalidad: ModalidadReserva;
   motivo_reasignacion: string | null;
+  codigo_acceso: string;
+}
+
+export interface AccesoReservaDto {
+  accion: 'INGRESO' | 'EGRESO';
+  reserva: ReservaDto;
 }
 
 export interface FranjaDto {

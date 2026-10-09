@@ -1,9 +1,11 @@
 import express, { Router } from 'express';
 
+import * as abonoController from '../controllers/abono.controller.js';
 import * as estacionamientoController from '../controllers/estacionamiento.controller.js';
 import { authenticate, requireRole } from '../middlewares/auth.js';
 import { validate } from '../middlewares/validate.js';
 import { ROLES } from '../utils/roles.js';
+import { validarCambiosPlanAbono, validarPlanAbono } from '../validators/abono.validator.js';
 import {
   validarActualizacionCochera,
   validarBloqueoCochera,
@@ -125,5 +127,24 @@ router.post(
   ...soloPropietario,
   estacionamientoController.desbloquearCochera,
 );
+
+// Abonos: los planes que ofrece el propietario (uno activo por turno).
+router.get('/:id/planes-abono', abonoController.listarPlanes);
+
+router.post(
+  '/:id/planes-abono',
+  ...soloPropietario,
+  validate(validarPlanAbono),
+  abonoController.crearPlan,
+);
+
+router.patch(
+  '/:id/planes-abono/:idPlan',
+  ...soloPropietario,
+  validate(validarCambiosPlanAbono),
+  abonoController.actualizarPlan,
+);
+
+router.delete('/:id/planes-abono/:idPlan', ...soloPropietario, abonoController.darDeBajaPlan);
 
 export default router;

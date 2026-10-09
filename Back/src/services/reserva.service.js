@@ -13,9 +13,14 @@ import { ESTADOS_COCHERA, ESTADOS_RESERVA, ESTADOS_VIGENTES } from '../utils/rol
 import { sinSolapamiento } from '../utils/solapamiento.js';
 import { CAMPOS_TARIFA, HORAS_POR_MODALIDAD, MODALIDADES, precioDeReserva } from '../utils/tarifas.js';
 import { ORDEN_NATURAL } from './cochera.service.js';
+import { validarAbonoParaReservar } from './abono.service.js';
 import { asegurarPropiedad } from './estacionamiento.service.js';
 
 const VIOLACION_EXCLUSION = '23P01';
+
+// Modalidad de las reservas hechas con un abono: no se cobra (ya se pago el
+// abono). No esta en MODALIDADES porque el conductor no la elige: sale de `id_abono`.
+const MODALIDAD_ABONO = 'ABONO';
 
 // El vehiculo puede llegar hasta 30 minutos antes de su franja.
 const MARGEN_INGRESO_MS = 30 * 60 * 1000;
@@ -80,12 +85,14 @@ const SELECT_DETALLE = `
          c.sector AS cochera_sector, c.cubierta AS cochera_cubierta,
          e.id_estacionamiento, e.nombre AS estacionamiento, e.direccion,
          r.modalidad, r.precio_total, r.motivo_reasignacion, r.codigo_acceso,
+         r.id_abono, a.turno::text AS turno_abono,
          u.nombre AS conductor_nombre, u.apellido AS conductor_apellido
     FROM reserva r
     JOIN vehiculo v        ON v.id_vehiculo = r.id_vehiculo
     JOIN cochera c         ON c.id_cochera = r.id_cochera
     JOIN estacionamiento e ON e.id_estacionamiento = c.id_estacionamiento
     JOIN usuario u         ON u.id_usuario = r.id_conductor
+    LEFT JOIN abono a      ON a.id_abono = r.id_abono
 `;
 
 /**
@@ -107,25 +114,35 @@ const SELECT_DETALLE = `
  */
 export async function crear(
   idConductor,
-  { id_cochera, id_estacionamiento, id_vehiculo, inicio, fin, modalidad = MODALIDADES.HORA },
+  { id_cochera, id_estacionamiento, id_vehiculo, inicio, fin, modalidad = MODALIDADES.HORA, id_abono },
 ) {
   return withTransaction(async (client) => {
+    // El abono se bloquea primero (orden fijo: abono -> vehiculo -> cocheras).
+    const abono = id_abono
+      ? await validarAbonoParaReservar(client, id_abono, idConductor, inicio, fin)
+      : null;
+
     const vehiculo = await obtenerVehiculo(client, id_vehiculo, idConductor);
     await asegurarVehiculoLibre(client, id_vehiculo, inicio, fin);
 
     const cochera = id_cochera
       ? await bloquearCochera(client, id_cochera, vehiculo, inicio, fin)
-      : await asignarCochera(client, id_estacionamiento, vehiculo, inicio, fin);
+      : await asignarCochera(client, abono?.id_estacionamiento ?? id_estacionamiento, vehiculo, inicio, fin);
 
-    const precio = await precioDe(client, cochera.id_estacionamiento, modalidad, inicio, fin);
-    await validarHorario(client, cochera.id_estacionamiento, inicio, fin, modalidad);
+    if (abono && cochera.id_estacionamiento !== abono.id_estacionamiento) {
+      throw ApiError.conflict('El abono es de otro estacionamiento');
+    }
+
+    // Con abono no se cobra y se valida como una reserva por hora (todo el rango en horario).
+    const precio = abono ? 0 : await precioDe(client, cochera.id_estacionamiento, modalidad, inicio, fin);
+    await validarHorario(client, cochera.id_estacionamiento, inicio, fin, abono ? MODALIDADES.HORA : modalidad);
 
     let idReserva;
     try {
       const { rows } = await client.query(
         `INSERT INTO reserva
-           (id_conductor, id_vehiculo, id_cochera, inicio, fin, estado, modalidad, precio_total)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+           (id_conductor, id_vehiculo, id_cochera, inicio, fin, estado, modalidad, precio_total, id_abono)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          RETURNING id_reserva`,
         [
           idConductor,
@@ -133,9 +150,11 @@ export async function crear(
           cochera.id_cochera,
           inicio,
           fin,
-          ESTADOS_RESERVA.PENDIENTE,
-          modalidad,
+          // Con abono ya esta paga: nace confirmada (supuesto de la spec, pregunta 6).
+          abono ? ESTADOS_RESERVA.CONFIRMADA : ESTADOS_RESERVA.PENDIENTE,
+          abono ? MODALIDAD_ABONO : modalidad,
           precio,
+          abono?.id_abono ?? null,
         ],
       );
       idReserva = rows[0].id_reserva;

@@ -3,6 +3,8 @@
 // reserva descuenta un uso (ver validarAbonoParaReservar y reserva.service.js).
 import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
+import { partesLocales } from '../utils/horario.js';
+import { motivoFueraDeTurno } from '../utils/turnos.js';
 import { asegurarPropiedad } from './estacionamiento.service.js';
 
 const VIOLACION_UNIQUE = '23505';
@@ -192,4 +194,41 @@ export async function vencerAbonos() {
     `UPDATE abono SET estado = 'VENCIDO' WHERE estado = 'VIGENTE' AND hasta < ${HOY_LOCAL}`,
   );
   return rowCount;
+}
+
+/**
+ * Reglas para reservar con el abono. Se llama dentro de la transaccion de
+ * reserva.service.js: crear, ANTES de bloquear vehiculo y cocheras. El
+ * FOR UPDATE serializa dos reservas con el mismo abono: la segunda espera y
+ * ya cuenta el uso de la primera, asi el ultimo uso no se consume dos veces.
+ */
+export async function validarAbonoParaReservar(client, idAbono, idConductor, inicio, fin) {
+  const { rows } = await client.query(
+    `SELECT id_abono, id_conductor, id_estacionamiento, turno::text AS turno, cupos_totales,
+            estado::text AS estado, desde::text AS desde, hasta::text AS hasta
+       FROM abono WHERE id_abono = $1 FOR UPDATE`,
+    [idAbono],
+  );
+  const abono = rows[0];
+  if (!abono || abono.id_conductor !== idConductor) throw ApiError.notFound('El abono no existe');
+  if (abono.estado !== ESTADOS_ABONO.VIGENTE) {
+    throw ApiError.conflict(`El abono esta ${abono.estado.toLowerCase()}`);
+  }
+
+  // Por fecha y no solo por estado: el job puede no haberlo vencido todavia.
+  const dia = partesLocales(inicio).fecha;
+  if (dia < abono.desde || dia > abono.hasta) {
+    throw ApiError.conflict(`El abono vale del ${abono.desde} al ${abono.hasta}`);
+  }
+
+  const motivo = motivoFueraDeTurno(abono.turno, inicio, fin);
+  if (motivo) throw ApiError.conflict(motivo);
+
+  const { rows: usados } = await client.query(
+    `SELECT COUNT(*)::int AS usados FROM reserva WHERE id_abono = $1 AND estado <> 'CANCELADA'`,
+    [idAbono],
+  );
+  if (usados[0].usados >= abono.cupos_totales) throw ApiError.conflict('No te quedan usos en este abono');
+
+  return abono;
 }

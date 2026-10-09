@@ -199,3 +199,153 @@ describe('comprar y administrar abonos', () => {
     assert.equal(rows[0].estado, 'VENCIDO');
   });
 });
+
+const reservarConAbono = (conductor, abono, vehiculo, cuando) =>
+  api('POST', '/reservas', {
+    token: conductor.token,
+    body: { id_abono: abono.id_abono, id_vehiculo: vehiculo.id_vehiculo, ...cuando },
+  });
+
+const usosRestantes = async (conductor) =>
+  (await api('GET', '/abonos', { token: conductor.token })).datos.abonos[0].cupos_restantes;
+
+describe('reservar con abono', () => {
+  test('dentro del turno: CONFIRMADA, gratis y descuenta un uso', async () => {
+    const { conductor, abono, vehiculo } = await escenario();
+
+    const { estado, datos } = await reservarConAbono(conductor, abono, vehiculo, franja('08:00', '10:00'));
+
+    assert.equal(estado, 201);
+    assert.equal(datos.reserva.estado, 'CONFIRMADA');
+    assert.equal(datos.reserva.modalidad, 'ABONO');
+    assert.equal(datos.reserva.precio_total, 0);
+    assert.equal(datos.reserva.id_abono, abono.id_abono);
+    assert.equal(datos.reserva.turno_abono, 'MANANA');
+    assert.equal(await usosRestantes(conductor), 1);
+  });
+
+  test('sin usos restantes: 409', async () => {
+    const { conductor, abono, vehiculo } = await escenario({ cupos: 1 });
+    await reservarConAbono(conductor, abono, vehiculo, franja('06:00', '07:00'));
+
+    const sinUsos = await reservarConAbono(conductor, abono, vehiculo, franja('08:00', '09:00'));
+
+    assert.equal(sinUsos.estado, 409);
+    assert.match(motivo(sinUsos), /no te quedan usos/i);
+  });
+
+  test('cancelar la reserva devuelve el uso', async () => {
+    const { conductor, abono, vehiculo } = await escenario({ cupos: 1 });
+    const { datos } = await reservarConAbono(conductor, abono, vehiculo, franja('06:00', '07:00'));
+    await api('PATCH', `/reservas/${datos.reserva.id_reserva}/cancelar`, { token: conductor.token });
+
+    assert.equal(await usosRestantes(conductor), 1);
+    const otra = await reservarConAbono(conductor, abono, vehiculo, franja('08:00', '09:00'));
+    assert.equal(otra.estado, 201);
+  });
+
+  test('fuera del turno o cruzando su borde: 409 con el horario del turno', async () => {
+    const { conductor, abono, vehiculo } = await escenario();
+
+    for (const cuando of [franja('13:00', '14:00'), franja('11:00', '13:00')]) {
+      const respuesta = await reservarConAbono(conductor, abono, vehiculo, cuando);
+      assert.equal(respuesta.estado, 409);
+      assert.match(motivo(respuesta), /turno manana \(06:00 a 12:00\)/i);
+    }
+  });
+
+  test('fuera de la vigencia: 409 aunque el job no lo haya vencido', async () => {
+    const { conductor, abono, vehiculo } = await escenario();
+
+    const despues = await reservarConAbono(conductor, abono, vehiculo, franja('08:00', '09:00', 40));
+
+    assert.equal(despues.estado, 409);
+    assert.match(motivo(despues), /el abono vale del/i);
+  });
+
+  test('abono cancelado: 409; abono de otro conductor: 404', async () => {
+    const { conductor, abono, vehiculo } = await escenario();
+    const ajeno = await crearUsuario();
+    const vehiculoAjeno = await crearVehiculo(ajeno.token);
+
+    const deOtro = await reservarConAbono(ajeno, abono, vehiculoAjeno, franja('08:00', '09:00'));
+    assert.equal(deOtro.estado, 404);
+
+    await api('PATCH', `/abonos/${abono.id_abono}/cancelar`, { token: conductor.token });
+    const cancelado = await reservarConAbono(conductor, abono, vehiculo, franja('08:00', '09:00'));
+    assert.equal(cancelado.estado, 409);
+  });
+
+  test('con id_abono no se manda modalidad: 400', async () => {
+    const { conductor, abono, vehiculo } = await escenario();
+
+    const respuesta = await api('POST', '/reservas', {
+      token: conductor.token,
+      body: { id_abono: abono.id_abono, id_vehiculo: vehiculo.id_vehiculo, modalidad: 'HORA', ...franja() },
+    });
+
+    assert.equal(respuesta.estado, 400);
+  });
+
+  test('dos reservas simultaneas por el ultimo uso: solo una se crea', async () => {
+    const { conductor, abono, vehiculo } = await escenario({ cocheras: 2, cupos: 1 });
+    const otroVehiculo = await crearVehiculo(conductor.token);
+
+    const respuestas = await Promise.all([
+      reservarConAbono(conductor, abono, vehiculo, franja('08:00', '09:00')),
+      reservarConAbono(conductor, abono, otroVehiculo, franja('08:00', '09:00')),
+    ]);
+
+    assert.equal(respuestas.filter((r) => r.estado === 201).length, 1);
+    assert.equal(respuestas.filter((r) => r.estado === 409).length, 1);
+  });
+
+  test('sin cochera libre: 409 como cualquier reserva (el abono no garantiza lugar)', async () => {
+    const { estacionamiento, conductor, abono, vehiculo } = await escenario();
+    const otroConductor = await crearUsuario();
+    const otroVehiculo = await crearVehiculo(otroConductor.token);
+    await api('POST', '/reservas', {
+      token: otroConductor.token,
+      body: {
+        id_estacionamiento: estacionamiento.id_estacionamiento,
+        id_vehiculo: otroVehiculo.id_vehiculo,
+        ...franja('08:00', '10:00'),
+      },
+    });
+
+    const respuesta = await reservarConAbono(conductor, abono, vehiculo, franja('08:00', '10:00'));
+
+    assert.equal(respuesta.estado, 409);
+    assert.match(motivo(respuesta), /no quedan cocheras libres/i);
+    assert.equal(await usosRestantes(conductor), 2);
+  });
+
+  test('cancelar el abono cancela sus reservas futuras', async () => {
+    const { conductor, abono, vehiculo } = await escenario();
+    const { datos } = await reservarConAbono(conductor, abono, vehiculo, franja('08:00', '09:00'));
+
+    await api('PATCH', `/abonos/${abono.id_abono}/cancelar`, { token: conductor.token });
+
+    const { rows } = await query('SELECT estado::text FROM reserva WHERE id_reserva = $1', [
+      datos.reserva.id_reserva,
+    ]);
+    assert.equal(rows[0].estado, 'CANCELADA');
+  });
+
+  test('una reserva comun no trae abono', async () => {
+    const { estacionamiento, conductor, vehiculo } = await escenario();
+
+    const { datos } = await api('POST', '/reservas', {
+      token: conductor.token,
+      body: {
+        id_estacionamiento: estacionamiento.id_estacionamiento,
+        id_vehiculo: vehiculo.id_vehiculo,
+        ...franja('14:00', '15:00'),
+      },
+    });
+
+    assert.equal(datos.reserva.id_abono, null);
+    assert.equal(datos.reserva.turno_abono, null);
+    assert.equal(datos.reserva.modalidad, 'HORA');
+  });
+});

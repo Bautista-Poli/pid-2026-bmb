@@ -27,7 +27,12 @@ import { AbonoService } from '@app/services/abono.service';
         </p>
       </div>
 
-      @if (planes.isLoading()) {
+      @if (planes.error(); as fallo) {
+        <p class="text-[13px] text-ocupada" role="alert">
+          No pudimos cargar los abonos: {{ mensaje(fallo) }}
+        </p>
+        <div><ui-boton variante="secundario" tamano="sm" (presionado)="planes.reload()">Reintentar</ui-boton></div>
+      } @else if (planes.status() === 'loading') {
         <ui-cargando [cantidad]="1" />
       } @else {
         <div class="flex flex-col divide-y divide-borde-sutil">
@@ -69,7 +74,14 @@ import { AbonoService } from '@app/services/abono.service';
 
       <div>
         <h3 class="text-[13px] font-semibold text-tinta">Vendidos</h3>
-        @if (vendidos.value().length === 0) {
+        @if (vendidos.error(); as fallo) {
+          <p class="mt-1 text-[13px] text-ocupada" role="alert">
+            No pudimos cargar los abonos: {{ mensaje(fallo) }}
+          </p>
+          <div class="mt-2"><ui-boton variante="secundario" tamano="sm" (presionado)="vendidos.reload()">Reintentar</ui-boton></div>
+        } @else if (vendidos.status() === 'loading') {
+          <ui-cargando [cantidad]="1" />
+        } @else if (vendidos.value().length === 0) {
           <p class="mt-1 text-[13px] text-plomo">Todavía no vendiste abonos.</p>
         } @else {
           <ul class="mt-2 flex flex-col gap-1.5 text-[13px]">
@@ -112,8 +124,12 @@ export class PlanesAbono {
   });
 
   private readonly porTurno = computed(
-    () => new Map(this.planes.value().map((plan) => [plan.turno, plan])),
+    () => new Map((this.planes.hasValue() ? this.planes.value() : []).map((plan) => [plan.turno, plan])),
   );
+
+  protected mensaje(e: unknown): string {
+    return e instanceof Error ? e.message : 'Error inesperado.';
+  }
 
   protected planDe(turno: TurnoAbono): PlanAbono | undefined {
     return this.porTurno().get(turno);

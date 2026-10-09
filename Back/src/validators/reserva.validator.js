@@ -4,11 +4,15 @@ import { campos } from './helpers.js';
 const vino = (valor) => valor !== undefined && valor !== null && valor !== '';
 
 /**
- * La reserva se pide por estacionamiento (el backend asigna la cochera) o por
- * una cochera puntual. Tiene que venir exactamente uno de los dos.
+ * La reserva se pide por estacionamiento (el backend asigna la cochera), por
+ * una cochera puntual o con un abono (el estacionamiento sale del abono).
+ * Sin abono tiene que venir exactamente uno de id_estacionamiento o id_cochera;
+ * con abono no se manda modalidad (no se cobra).
  */
 export function validarReserva(body) {
+  const conAbono = vino(body.id_abono);
   const validador = campos(body)
+    .uuid('id_abono', body.id_abono, { requerido: false })
     .uuid('id_estacionamiento', body.id_estacionamiento, { requerido: false })
     .uuid('id_cochera', body.id_cochera, { requerido: false })
     .uuid('id_vehiculo', body.id_vehiculo)
@@ -19,10 +23,11 @@ export function validarReserva(body) {
     .fechaHora('inicio', body.inicio)
     .fechaHora('fin', body.fin)
     .verificar(
-      vino(body.id_estacionamiento) !== vino(body.id_cochera),
+      conAbono || vino(body.id_estacionamiento) !== vino(body.id_cochera),
       'id_estacionamiento',
       'enviar id_estacionamiento o id_cochera (uno solo)',
-    );
+    )
+    .verificar(!conAbono || !vino(body.modalidad), 'modalidad', 'con id_abono no se envia modalidad');
 
   const { valores, errores } = validador.resultado();
 

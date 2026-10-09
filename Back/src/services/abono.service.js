@@ -4,7 +4,7 @@
 import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
 import { partesLocales } from '../utils/horario.js';
-import { motivoFueraDeTurno } from '../utils/turnos.js';
+import { motivoFueraDeTurno, TURNOS } from '../utils/turnos.js';
 import { asegurarPropiedad } from './estacionamiento.service.js';
 
 const VIOLACION_UNIQUE = '23505';
@@ -24,8 +24,22 @@ export async function listarPlanes(idEstacionamiento) {
   return rows;
 }
 
+/** Sin horarios cargados no se restringe (igual que al reservar). */
+async function asegurarQueAbreEnElTurno(idEstacionamiento, turno) {
+  const { rows } = await query(
+    `SELECT to_char(hora_apertura, 'HH24:MI') AS apertura, to_char(hora_cierre, 'HH24:MI') AS cierre
+       FROM horario WHERE id_estacionamiento = $1`,
+    [idEstacionamiento],
+  );
+  const t = TURNOS[turno];
+  if (rows.length > 0 && !rows.some((h) => h.apertura < t.hasta && h.cierre > t.desde)) {
+    throw ApiError.conflict(`El estacionamiento no abre en el turno ${t.etiqueta} (${t.desde} a ${t.hasta})`);
+  }
+}
+
 export async function crearPlan(idEstacionamiento, idPropietario, { turno, cupos, precio }) {
   await asegurarPropiedad(idEstacionamiento, idPropietario);
+  await asegurarQueAbreEnElTurno(idEstacionamiento, turno);
 
   try {
     const { rows } = await query(

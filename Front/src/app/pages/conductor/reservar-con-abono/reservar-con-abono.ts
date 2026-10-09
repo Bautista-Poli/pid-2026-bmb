@@ -38,6 +38,10 @@ const dosDigitos = (n: number) => String(n).padStart(2, '0');
           <ui-estado-vacio titulo="No encontramos ese abono">
             <ui-boton routerLink="/conductor/abonos">Ir a mis abonos</ui-boton>
           </ui-estado-vacio>
+        } @else if (abono()?.cuposRestantes === 0) {
+          <ui-estado-vacio titulo="Ya usaste todos los usos de este abono">
+            <ui-boton routerLink="/conductor/abonos">Ir a mis abonos</ui-boton>
+          </ui-estado-vacio>
         } @else if (abono(); as a) {
           <ui-tarjeta>
             <form class="flex flex-col gap-4" (submit)="$event.preventDefault(); confirmar(a, vehiculo.value, fecha.value, desde.value, hasta.value)">

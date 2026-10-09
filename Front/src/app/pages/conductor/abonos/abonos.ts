@@ -57,14 +57,19 @@ import { AbonoService } from '@app/services/abono.service';
                 </div>
                 @if (abono.estado === 'VIGENTE') {
                   <div class="flex flex-wrap gap-2">
-                    <ui-boton
-                      variante="primario"
-                      tamano="sm"
-                      [deshabilitado]="abono.cuposRestantes === 0"
-                      [routerLink]="['/conductor/abonos', abono.id, 'reservar']"
-                    >
-                      Reservar con este abono
-                    </ui-boton>
+                    @if (abono.cuposRestantes > 0) {
+                      <ui-boton
+                        variante="primario"
+                        tamano="sm"
+                        [routerLink]="['/conductor/abonos', abono.id, 'reservar']"
+                      >
+                        Reservar con este abono
+                      </ui-boton>
+                    } @else {
+                      <ui-boton variante="primario" tamano="sm" [deshabilitado]="true">
+                        Sin usos disponibles
+                      </ui-boton>
+                    }
                     <ui-boton variante="peligro" tamano="sm" (presionado)="aCancelar.set(abono)">
                       Cancelar abono
                     </ui-boton>

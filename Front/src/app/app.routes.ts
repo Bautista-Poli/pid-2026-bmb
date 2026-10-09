@@ -99,6 +99,12 @@ export const routes: Routes = [
           import('./pages/propietario/reservas/reservas').then((m) => m.Reservas),
       },
       {
+        // Destino del QR de cada reserva: lo escanea el operador al entrar y al salir.
+        path: 'acceso/:codigo',
+        title: 'Parkit · Registrar acceso',
+        loadComponent: () => import('./pages/propietario/acceso/acceso').then((m) => m.Acceso),
+      },
+      {
         path: 'estacionamientos',
         title: 'Parkit · Mis estacionamientos',
         loadComponent: () =>

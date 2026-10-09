@@ -16,6 +16,7 @@
       <ui-icono nombre="calendario" [tamano]="16" class="text-plomo" />
       <span class="inline-block first-letter:uppercase">{{ hoy | date: 'EEE, d MMM y' }}</span>
     </span>
+    <app-ingresar-codigo />
   </header>
 
   @if (recursoEstacionamientos.isLoading()) {

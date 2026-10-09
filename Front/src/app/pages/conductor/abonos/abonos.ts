@@ -1,0 +1,126 @@
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { rxResource } from '@angular/core/rxjs-interop';
+import { DatePipe } from '@angular/common';
+import { RouterLink } from '@angular/router';
+import { Boton, Cargando, EstadoVacio, Modal, Tarjeta } from '@app/components/ui';
+import { Abono, TURNOS } from '@app/models';
+import { AbonoService } from '@app/services/abono.service';
+
+/**
+ * Pantalla `/conductor/abonos` · rol CONDUCTOR
+ *
+ * Los abonos comprados con sus usos restantes. Desde aca se reserva con uno
+ * (gratis, dentro de su turno) o se lo cancela.
+ */
+@Component({
+  selector: 'app-abonos',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [Boton, Cargando, EstadoVacio, Modal, Tarjeta, RouterLink, DatePipe],
+  template: `
+    <div class="aparece mx-auto w-full max-w-[640px] px-6 pt-5 pb-8 lg:px-10 lg:pt-[34px] lg:pb-11">
+      <div class="flex flex-col gap-6">
+        <header>
+          <p class="eyebrow">Conductor</p>
+          <h1 class="titulo-vista mt-1.5">Mis abonos</h1>
+        </header>
+
+        @if (recurso.status() === 'loading') {
+          <ui-cargando [cantidad]="2" />
+        } @else if (recurso.error(); as e) {
+          <ui-estado-vacio titulo="No pudimos cargar tus abonos" [descripcion]="e.message">
+            <ui-boton (presionado)="recurso.reload()">Reintentar</ui-boton>
+          </ui-estado-vacio>
+        } @else if (recurso.value().length === 0) {
+          <ui-estado-vacio
+            titulo="Todavía no tenés abonos"
+            descripcion="Buscá un estacionamiento en el mapa y abrí “Ver abonos mensuales”."
+          >
+            <ui-boton routerLink="/conductor/explorar">Explorar estacionamientos</ui-boton>
+          </ui-estado-vacio>
+        } @else {
+          @for (abono of recurso.value(); track abono.id) {
+            <ui-tarjeta>
+              <div class="flex flex-col gap-3">
+                <div>
+                  <p class="text-[15px] font-semibold text-tinta">{{ abono.estacionamiento }}</p>
+                  <p class="mt-1 text-[13px] text-plomo">
+                    Turno {{ turnos[abono.turno].etiqueta.toLowerCase() }}
+                    ({{ turnos[abono.turno].desde }} a {{ turnos[abono.turno].hasta }}) ·
+                    vence el {{ abono.hasta | date: 'd MMM' }}
+                  </p>
+                  <p class="mt-1 text-[13px] text-tinta">
+                    {{ abono.cuposRestantes }} de {{ abono.cuposTotales }} usos disponibles
+                    @if (abono.estado !== 'VIGENTE') {
+                      <span class="text-plomo">· {{ abono.estado.toLowerCase() }}</span>
+                    }
+                  </p>
+                </div>
+                @if (abono.estado === 'VIGENTE') {
+                  <div class="flex flex-wrap gap-2">
+                    <ui-boton
+                      variante="primario"
+                      tamano="sm"
+                      [deshabilitado]="abono.cuposRestantes === 0"
+                      [routerLink]="['/conductor/abonos', abono.id, 'reservar']"
+                    >
+                      Reservar con este abono
+                    </ui-boton>
+                    <ui-boton variante="peligro" tamano="sm" (presionado)="aCancelar.set(abono)">
+                      Cancelar abono
+                    </ui-boton>
+                  </div>
+                }
+              </div>
+            </ui-tarjeta>
+          }
+        }
+      </div>
+    </div>
+
+    <ui-modal titulo="Cancelar abono" [abierto]="aCancelar() !== null" (cerrado)="aCancelar.set(null)">
+      @if (aCancelar(); as abono) {
+        <div class="flex flex-col gap-4">
+          <p class="text-[13.5px] text-grafito">
+            Se cancelan también tus reservas con este abono que todavía no empezaron. El pago no se
+            devuelve.
+          </p>
+          @if (error(); as mensaje) {
+            <p class="text-[13px] text-ocupada" role="alert">{{ mensaje }}</p>
+          }
+          <ui-boton variante="peligro" [bloque]="true" [cargando]="cancelando()" (presionado)="cancelar(abono)">
+            Cancelar abono
+          </ui-boton>
+        </div>
+      }
+    </ui-modal>
+  `,
+})
+export class Abonos {
+  private readonly abonos = inject(AbonoService);
+
+  protected readonly turnos = TURNOS;
+  protected readonly aCancelar = signal<Abono | null>(null);
+  protected readonly cancelando = signal(false);
+  protected readonly error = signal<string | null>(null);
+
+  protected readonly recurso = rxResource({
+    stream: () => this.abonos.misAbonos(),
+    defaultValue: [] as Abono[],
+  });
+
+  protected cancelar(abono: Abono): void {
+    this.cancelando.set(true);
+    this.error.set(null);
+    this.abonos.cancelar(abono.id).subscribe({
+      next: () => {
+        this.cancelando.set(false);
+        this.aCancelar.set(null);
+        this.recurso.reload();
+      },
+      error: (e: Error) => {
+        this.cancelando.set(false);
+        this.error.set(e.message);
+      },
+    });
+  }
+}

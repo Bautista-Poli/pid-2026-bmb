@@ -61,7 +61,16 @@ import { AbonoService } from '@app/services/abono.service';
                 {{ planDe(turno) ? 'Guardar' : 'Ofrecer' }}
               </ui-boton>
               @if (planDe(turno); as plan) {
-                <ui-boton variante="peligro" tamano="sm" (presionado)="quitar(plan)">Dejar de ofrecer</ui-boton>
+                @if (confirmandoBaja() === plan.id) {
+                  <ui-boton variante="peligro" tamano="sm" [cargando]="dandoDeBaja() === plan.id" (presionado)="quitar(plan)">
+                    Sí, dejar de ofrecer
+                  </ui-boton>
+                  <ui-boton variante="secundario" tamano="sm" [deshabilitado]="dandoDeBaja() !== null" (presionado)="confirmandoBaja.set(null)">
+                    Cancelar
+                  </ui-boton>
+                } @else {
+                  <ui-boton variante="peligro" tamano="sm" (presionado)="confirmandoBaja.set(plan.id)">Dejar de ofrecer</ui-boton>
+                }
               }
             </form>
           }
@@ -109,6 +118,8 @@ export class PlanesAbono {
   protected readonly ordenTurnos = ORDEN_TURNOS;
 
   protected readonly guardando = signal<TurnoAbono | null>(null);
+  protected readonly confirmandoBaja = signal<Id | null>(null);
+  protected readonly dandoDeBaja = signal<Id | null>(null);
   protected readonly error = signal<string | null>(null);
 
   protected readonly planes = rxResource({
@@ -161,9 +172,18 @@ export class PlanesAbono {
 
   protected quitar(plan: PlanAbono): void {
     this.error.set(null);
+    this.dandoDeBaja.set(plan.id);
     this.abonos.darDeBajaPlan(this.estacionamientoId(), plan.id).subscribe({
-      next: () => this.planes.reload(),
-      error: (e: Error) => this.error.set(e.message),
+      next: () => {
+        this.dandoDeBaja.set(null);
+        this.confirmandoBaja.set(null);
+        this.planes.reload();
+      },
+      error: (e: Error) => {
+        this.dandoDeBaja.set(null);
+        this.confirmandoBaja.set(null);
+        this.error.set(e.message);
+      },
     });
   }
 }

@@ -2,12 +2,14 @@
 // - reserva.service.js: PENDIENTE sin confirmar que ya empezo -> CANCELADA, y
 //   ACTIVA sin egreso vencida hace mas de MARGEN_CIERRE_AUTOMATICO_MS -> FINALIZADA.
 // - cochera.service.js: cocheras bloqueadas con `bloqueada_hasta` vencido se desbloquean solas.
+// - abono.service.js: abonos VIGENTES con `hasta` vencido -> VENCIDO.
 //
 // Solo lo arranca src/index.js (el proceso real del servidor). Las pruebas
 // levantan la app con app.listen() directamente y nunca importan este
 // archivo, asi que no corre durante `npm test`.
 import cron from 'node-cron';
 
+import { vencerAbonos } from '../services/abono.service.js';
 import { desbloquearVencidas } from '../services/cochera.service.js';
 import { vencerActivasSinEgreso, vencerPendientesSinConfirmar } from '../services/reserva.service.js';
 
@@ -18,10 +20,11 @@ async function revisar() {
     const canceladas = await vencerPendientesSinConfirmar();
     const finalizadas = await vencerActivasSinEgreso();
     const desbloqueadas = await desbloquearVencidas();
-    if (canceladas || finalizadas || desbloqueadas) {
+    const abonosVencidos = await vencerAbonos();
+    if (canceladas || finalizadas || desbloqueadas || abonosVencidos) {
       console.log(
         `[vencimientos] ${canceladas} pendiente(s) cancelada(s), ${finalizadas} activa(s) finalizada(s), ` +
-          `${desbloqueadas} cochera(s) desbloqueada(s)`,
+          `${desbloqueadas} cochera(s) desbloqueada(s), ${abonosVencidos} abono(s) vencido(s)`,
       );
     }
   } catch (error) {

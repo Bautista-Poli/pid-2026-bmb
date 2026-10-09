@@ -101,3 +101,101 @@ describe('planes de abono', () => {
     }
   });
 });
+
+/** Estacionamiento con un plan de manana (2 usos) y un conductor que lo compro. */
+async function escenario({ cocheras = 1, cupos = 2 } = {}) {
+  const propietario = await crearUsuario({ rol: 'PROPIETARIO' });
+  const estacionamiento = await crearEstacionamiento(propietario.token, { cocheras });
+  const { datos } = await crearPlan(propietario, estacionamiento, { turno: 'MANANA', cupos, precio: 30000 });
+  const conductor = await crearUsuario();
+  const vehiculo = await crearVehiculo(conductor.token);
+  const compra = await api('POST', '/abonos', { token: conductor.token, body: { id_plan: datos.plan.id_plan } });
+  return { propietario, estacionamiento, plan: datos.plan, conductor, vehiculo, abono: compra.datos.abono };
+}
+
+describe('comprar y administrar abonos', () => {
+  test('comprar un plan crea un abono vigente por 30 dias con los datos del plan', async () => {
+    const { abono, plan, estacionamiento } = await escenario();
+
+    assert.equal(abono.estado, 'VIGENTE');
+    assert.equal(abono.id_plan, plan.id_plan);
+    assert.equal(abono.id_estacionamiento, estacionamiento.id_estacionamiento);
+    assert.equal(abono.turno, 'MANANA');
+    assert.equal(abono.cupos_totales, 2);
+    assert.equal(abono.cupos_usados, 0);
+    assert.equal(abono.cupos_restantes, 2);
+    assert.equal(abono.precio_total, 30000);
+    const dias = (Date.parse(abono.hasta) - Date.parse(abono.desde)) / 86_400_000;
+    assert.equal(dias, 29);
+  });
+
+  test('cambiar el plan despues no cambia el abono vendido', async () => {
+    const { propietario, estacionamiento, plan, conductor } = await escenario();
+    await api('PATCH', `${rutaPlanes(estacionamiento)}/${plan.id_plan}`, {
+      token: propietario.token,
+      body: { cupos: 50, precio: 1 },
+    });
+
+    const { datos } = await api('GET', '/abonos', { token: conductor.token });
+
+    assert.equal(datos.abonos[0].cupos_totales, 2);
+    assert.equal(datos.abonos[0].precio_total, 30000);
+  });
+
+  test('no se compra un plan dado de baja ni uno inexistente', async () => {
+    const propietario = await crearUsuario({ rol: 'PROPIETARIO' });
+    const estacionamiento = await crearEstacionamiento(propietario.token);
+    const { datos } = await crearPlan(propietario, estacionamiento);
+    await api('DELETE', `${rutaPlanes(estacionamiento)}/${datos.plan.id_plan}`, { token: propietario.token });
+    const conductor = await crearUsuario();
+
+    const deBaja = await api('POST', '/abonos', { token: conductor.token, body: { id_plan: datos.plan.id_plan } });
+    const inexistente = await api('POST', '/abonos', {
+      token: conductor.token,
+      body: { id_plan: crypto.randomUUID() },
+    });
+
+    assert.equal(deBaja.estado, 404);
+    assert.equal(inexistente.estado, 404);
+  });
+
+  test('el propietario ve los abonos vendidos de su estacionamiento; otro no', async () => {
+    const { propietario, estacionamiento, abono } = await escenario();
+    const ruta = `/estacionamientos/${estacionamiento.id_estacionamiento}/abonos`;
+
+    const vendidos = await api('GET', ruta, { token: propietario.token });
+    assert.deepEqual(vendidos.datos.abonos.map((a) => a.id_abono), [abono.id_abono]);
+
+    const otro = await crearUsuario({ rol: 'PROPIETARIO' });
+    assert.equal((await api('GET', ruta, { token: otro.token })).estado, 403);
+  });
+
+  test('cancelar el abono: queda CANCELADO y otro conductor no puede cancelarlo', async () => {
+    const { conductor, abono } = await escenario();
+    const ajeno = await crearUsuario();
+
+    const intento = await api('PATCH', `/abonos/${abono.id_abono}/cancelar`, { token: ajeno.token });
+    assert.equal(intento.estado, 404);
+
+    const { estado, datos } = await api('PATCH', `/abonos/${abono.id_abono}/cancelar`, { token: conductor.token });
+    assert.equal(estado, 200);
+    assert.equal(datos.abono.estado, 'CANCELADO');
+
+    const otraVez = await api('PATCH', `/abonos/${abono.id_abono}/cancelar`, { token: conductor.token });
+    assert.equal(otraVez.estado, 409);
+  });
+
+  test('vencerAbonos pasa a VENCIDO los que terminaron', async () => {
+    const { abono } = await escenario();
+    await query(
+      `UPDATE abono SET desde = current_date - 40, hasta = current_date - 11 WHERE id_abono = $1`,
+      [abono.id_abono],
+    );
+
+    const { vencerAbonos } = await import('../src/services/abono.service.js');
+    await vencerAbonos();
+
+    const { rows } = await query('SELECT estado::text FROM abono WHERE id_abono = $1', [abono.id_abono]);
+    assert.equal(rows[0].estado, 'VENCIDO');
+  });
+});

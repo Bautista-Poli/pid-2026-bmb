@@ -147,4 +147,6 @@ router.patch(
 
 router.delete('/:id/planes-abono/:idPlan', ...soloPropietario, abonoController.darDeBajaPlan);
 
+router.get('/:id/abonos', ...soloPropietario, abonoController.listarVendidos);
+
 export default router;

@@ -19,3 +19,20 @@ export const darDeBajaPlan = asyncHandler(async (req, res) => {
   await abonoService.darDeBajaPlan(req.params.id, req.usuario.id, req.params.idPlan);
   res.status(204).end();
 });
+
+export const comprar = asyncHandler(async (req, res) => {
+  const abono = await abonoService.comprar(req.usuario.id, req.body);
+  res.status(201).json({ abono });
+});
+
+export const listarMios = asyncHandler(async (req, res) => {
+  res.json({ abonos: await abonoService.listarPorConductor(req.usuario.id) });
+});
+
+export const cancelar = asyncHandler(async (req, res) => {
+  res.json({ abono: await abonoService.cancelar(req.params.id, req.usuario.id) });
+});
+
+export const listarVendidos = asyncHandler(async (req, res) => {
+  res.json({ abonos: await abonoService.listarPorEstacionamiento(req.params.id, req.usuario.id) });
+});

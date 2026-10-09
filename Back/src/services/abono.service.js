@@ -1,7 +1,7 @@
 // Abonos por turno. El abono no es una reserva anticipada: es un cupo de usos
 // prepago. Con el, el conductor reserva gratis dentro de su turno y cada
 // reserva descuenta un uso (ver validarAbonoParaReservar y reserva.service.js).
-import { query } from '../config/database.js';
+import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
 import { asegurarPropiedad } from './estacionamiento.service.js';
 
@@ -75,4 +75,121 @@ export async function darDeBajaPlan(idEstacionamiento, idPropietario, idPlan) {
     [idPlan, idEstacionamiento],
   );
   if (rowCount === 0) throw ApiError.notFound('El plan no existe en este estacionamiento');
+}
+
+/* --------------------------------- abonos --------------------------------- */
+
+/** Vigencia en dias corridos desde la compra (supuesto de la spec, pregunta 3). */
+export const DIAS_VIGENCIA = 30;
+
+const ESTADOS_ABONO = Object.freeze({ VIGENTE: 'VIGENTE', CANCELADO: 'CANCELADO', VENCIDO: 'VENCIDO' });
+
+/** "Hoy" del negocio: la fecha en Argentina, no la del servidor. */
+const HOY_LOCAL = `(now() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date`;
+
+/**
+ * `desde`/`hasta` van como texto: pg convierte un DATE en un Date de JS a la
+ * medianoche del servidor y la fecha se puede correr un dia. Los usos
+ * consumidos se cuentan de las reservas, no se guardan.
+ */
+const SELECT_ABONO = `
+  SELECT a.id_abono, a.id_conductor, u.nombre AS conductor_nombre, u.apellido AS conductor_apellido,
+         a.id_estacionamiento, e.nombre AS estacionamiento, a.id_plan,
+         a.turno::text AS turno, a.cupos_totales, a.precio_total,
+         a.desde::text AS desde, a.hasta::text AS hasta, a.estado::text AS estado, a.created_at,
+         (SELECT COUNT(*)::int FROM reserva r
+           WHERE r.id_abono = a.id_abono AND r.estado <> 'CANCELADA') AS cupos_usados
+    FROM abono a
+    JOIN estacionamiento e ON e.id_estacionamiento = a.id_estacionamiento
+    JOIN usuario u         ON u.id_usuario = a.id_conductor
+`;
+
+const conRestantes = (abono) => ({ ...abono, cupos_restantes: abono.cupos_totales - abono.cupos_usados });
+
+async function obtenerAbono(ejecutor, idAbono) {
+  const { rows } = await ejecutor.query(`${SELECT_ABONO} WHERE a.id_abono = $1`, [idAbono]);
+  return conRestantes(rows[0]);
+}
+
+/** El pago es simulado: comprar es crear el abono con los datos del plan copiados. */
+export async function comprar(idConductor, { id_plan }) {
+  return withTransaction(async (client) => {
+    const { rows } = await client.query(
+      `SELECT p.id_plan, p.id_estacionamiento, p.turno, p.cupos, p.precio, p.activo,
+              e.publicado, e.activo AS estacionamiento_activo
+         FROM plan_abono p
+         JOIN estacionamiento e ON e.id_estacionamiento = p.id_estacionamiento
+        WHERE p.id_plan = $1`,
+      [id_plan],
+    );
+    const plan = rows[0];
+    if (!plan || !plan.activo) throw ApiError.notFound('El plan no existe o ya no se ofrece');
+    if (!plan.publicado || !plan.estacionamiento_activo) {
+      throw ApiError.conflict('El estacionamiento no esta publicado');
+    }
+
+    const { rows: creado } = await client.query(
+      `INSERT INTO abono
+         (id_conductor, id_estacionamiento, id_plan, turno, cupos_totales, precio_total, desde, hasta)
+       VALUES ($1, $2, $3, $4, $5, $6, ${HOY_LOCAL}, ${HOY_LOCAL} + $7::int)
+       RETURNING id_abono`,
+      [idConductor, plan.id_estacionamiento, plan.id_plan, plan.turno, plan.cupos, plan.precio, DIAS_VIGENCIA - 1],
+    );
+
+    return obtenerAbono(client, creado[0].id_abono);
+  });
+}
+
+export async function listarPorConductor(idConductor) {
+  const { rows } = await query(`${SELECT_ABONO} WHERE a.id_conductor = $1 ORDER BY a.created_at DESC`, [
+    idConductor,
+  ]);
+  return rows.map(conRestantes);
+}
+
+export async function listarPorEstacionamiento(idEstacionamiento, idPropietario) {
+  await asegurarPropiedad(idEstacionamiento, idPropietario);
+  const { rows } = await query(
+    `${SELECT_ABONO} WHERE a.id_estacionamiento = $1 ORDER BY a.created_at DESC`,
+    [idEstacionamiento],
+  );
+  return rows.map(conRestantes);
+}
+
+/**
+ * Cancela el abono y sus reservas que todavia no empezaron. Una ACTIVA (el
+ * auto esta adentro) no se toca. No hay reembolso: el pago es simulado.
+ * Igual que la baja de una cochera, las reservas se cancelan con un UPDATE
+ * directo: CANCELADA no tiene efectos sobre la cochera.
+ */
+export async function cancelar(idAbono, idConductor) {
+  return withTransaction(async (client) => {
+    const { rows } = await client.query(
+      'SELECT id_conductor, estado::text AS estado FROM abono WHERE id_abono = $1 FOR UPDATE',
+      [idAbono],
+    );
+    const abono = rows[0];
+    // Ajeno = inexistente: no se revela que el abono existe.
+    if (!abono || abono.id_conductor !== idConductor) throw ApiError.notFound('El abono no existe');
+    if (abono.estado !== ESTADOS_ABONO.VIGENTE) {
+      throw ApiError.conflict(`El abono ya esta ${abono.estado.toLowerCase()}`);
+    }
+
+    await client.query(
+      `UPDATE reserva SET estado = 'CANCELADA'
+        WHERE id_abono = $1 AND estado IN ('PENDIENTE', 'CONFIRMADA') AND inicio > now()`,
+      [idAbono],
+    );
+    await client.query(`UPDATE abono SET estado = 'CANCELADO' WHERE id_abono = $1`, [idAbono]);
+
+    return obtenerAbono(client, idAbono);
+  });
+}
+
+/** Abonos vigentes cuya fecha `hasta` ya paso: los llama el job de vencimientos. */
+export async function vencerAbonos() {
+  const { rowCount } = await query(
+    `UPDATE abono SET estado = 'VENCIDO' WHERE estado = 'VIGENTE' AND hasta < ${HOY_LOCAL}`,
+  );
+  return rowCount;
 }

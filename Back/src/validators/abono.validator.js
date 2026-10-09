@@ -14,11 +14,14 @@ export function validarPlanAbono(body) {
 
 /** PATCH: el turno no se cambia (para eso se da de baja y se crea otro). */
 export function validarCambiosPlanAbono(body) {
-  return campos(body)
+  const { valores, errores } = campos(body)
     .entero('cupos', body.cupos, { ...OPCIONES_CUPOS, requerido: false })
     .numero('precio', body.precio, { ...OPCIONES_PRECIO, requerido: false })
-    .verificar(body.cupos !== undefined || body.precio !== undefined, 'cupos', 'enviar cupos y/o precio')
     .resultado();
+  if (errores.length === 0 && valores.cupos === undefined && valores.precio === undefined) {
+    errores.push({ campo: 'cupos', mensaje: 'enviar cupos y/o precio' });
+  }
+  return { valores, errores };
 }
 
 export function validarCompraAbono(body) {

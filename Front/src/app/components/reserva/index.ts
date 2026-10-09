@@ -7,3 +7,4 @@ export * from './resumen-reserva/resumen-reserva';
 export * from './fila-reserva/fila-reserva';
 export * from './tarjeta-reserva/tarjeta-reserva';
 export * from './reserva-hecha/reserva-hecha';
+export * from './qr-reserva/qr-reserva';

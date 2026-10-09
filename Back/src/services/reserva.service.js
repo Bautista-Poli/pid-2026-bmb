@@ -1,5 +1,6 @@
 import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
+import { normalizarCodigo } from '../utils/codigoAcceso.js';
 import {
   FRANJAS_ESTANDAR,
   instanteLocal,
@@ -517,6 +518,98 @@ export async function registrarEgreso(idReserva, idPropietario) {
     const reserva = await bloquearReservaDelPropietario(client, idReserva, idPropietario);
     await aplicarEgreso(client, reserva);
     return obtenerDetalle(client, idReserva);
+  });
+}
+
+/* ----------------------- ingreso y egreso por codigo -----------------------
+   El conductor muestra el QR de su reserva al entrar y al salir; el operador
+   (hoy, el propietario) lo escanea o tipea el codigo. El mismo codigo sirve
+   para las dos cosas: el estado de la reserva decide que se registra.
+-------------------------------------------------------------------------- */
+
+const ACCIONES_ACCESO = Object.freeze({ INGRESO: 'INGRESO', EGRESO: 'EGRESO' });
+
+const HORA_LOCAL = new Intl.DateTimeFormat('es-AR', {
+  timeZone: 'America/Argentina/Buenos_Aires',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+});
+
+/** Mismo mensaje para un codigo inexistente, mal formado o de un estacionamiento ajeno. */
+const CODIGO_INVALIDO = 'El codigo no corresponde a ninguna reserva de tus estacionamientos';
+
+async function buscarReservaPorCodigo(ejecutor, idPropietario, bruto, { bloquear = false } = {}) {
+  const codigo = normalizarCodigo(bruto);
+  if (!codigo) throw ApiError.notFound(CODIGO_INVALIDO);
+
+  const { rows } = await ejecutor.query(
+    `SELECT r.id_reserva, r.estado, r.inicio, r.fin, r.ingreso_real, r.egreso_real, r.id_cochera
+       FROM reserva r
+       JOIN cochera c         ON c.id_cochera = r.id_cochera
+       JOIN estacionamiento e ON e.id_estacionamiento = c.id_estacionamiento
+      WHERE r.codigo_acceso = $1 AND e.id_propietario = $2
+      ${bloquear ? 'FOR UPDATE OF r' : ''}`,
+    [codigo, idPropietario],
+  );
+  if (!rows[0]) throw ApiError.notFound(CODIGO_INVALIDO);
+  return rows[0];
+}
+
+/**
+ * Que se registra ahora sobre esta reserva. Una ACTIVA da egreso aunque su
+ * `fin` haya pasado (el auto sigue adentro); el resto explica por que no.
+ */
+function accionPara(reserva, ahora = Date.now()) {
+  switch (reserva.estado) {
+    case ESTADOS_RESERVA.ACTIVA:
+      return ACCIONES_ACCESO.EGRESO;
+    case ESTADOS_RESERVA.CONFIRMADA: {
+      const desde = new Date(reserva.inicio.getTime() - MARGEN_INGRESO_MS);
+      if (ahora < desde.getTime()) {
+        throw ApiError.conflict(
+          `La reserva empieza a las ${HORA_LOCAL.format(reserva.inicio)}; ` +
+            `se puede ingresar desde las ${HORA_LOCAL.format(desde)}`,
+        );
+      }
+      if (ahora > reserva.fin.getTime()) throw ApiError.conflict('La franja de la reserva ya termino');
+      return ACCIONES_ACCESO.INGRESO;
+    }
+    case ESTADOS_RESERVA.PENDIENTE:
+      throw ApiError.conflict('La reserva todavia no esta confirmada');
+    case ESTADOS_RESERVA.CANCELADA:
+      throw ApiError.conflict('La reserva esta cancelada');
+    default:
+      throw ApiError.conflict('La reserva ya termino');
+  }
+}
+
+/** Vista previa para la pantalla de confirmacion del operador: no registra nada. */
+export async function previaAcceso(idPropietario, codigo) {
+  const reserva = await buscarReservaPorCodigo({ query }, idPropietario, codigo);
+  const accion = accionPara(reserva);
+  return { accion, reserva: await obtenerDetalle({ query }, reserva.id_reserva) };
+}
+
+/**
+ * Registra el ingreso o el egreso. Vuelve a resolver la accion con la reserva
+ * bloqueada: entre la vista previa y la confirmacion puede haber cambiado.
+ */
+export async function registrarAcceso(idPropietario, { codigo }) {
+  return withTransaction(async (client) => {
+    const reserva = await buscarReservaPorCodigo(client, idPropietario, codigo, { bloquear: true });
+    const accion = accionPara(reserva);
+
+    if (accion === ACCIONES_ACCESO.INGRESO) {
+      await aplicarIngreso(client, reserva);
+    } else {
+      if (Date.now() - reserva.ingreso_real.getTime() < MARGEN_EGRESO_TRAS_INGRESO_MS) {
+        throw ApiError.conflict('Acabas de registrar el ingreso; el egreso se marca cuando el auto se va');
+      }
+      await aplicarEgreso(client, reserva);
+    }
+
+    return { accion, reserva: await obtenerDetalle(client, reserva.id_reserva) };
   });
 }
 

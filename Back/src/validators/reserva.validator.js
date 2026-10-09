@@ -39,3 +39,8 @@ export function validarReserva(body) {
 
   return { valores, errores };
 }
+
+/** `POST /reservas/acceso`: el formato fino del codigo lo valida el servicio (404 si no existe). */
+export function validarAcceso(body) {
+  return campos(body).texto('codigo', body.codigo, { max: 20 }).resultado();
+}

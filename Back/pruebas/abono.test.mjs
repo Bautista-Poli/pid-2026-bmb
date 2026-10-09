@@ -11,6 +11,7 @@ import {
   franja,
   levantarApi,
   motivo,
+  ponerEnCurso,
   query,
 } from './ayuda.mjs';
 
@@ -63,6 +64,24 @@ describe('planes de abono', () => {
     assert.equal((await api('DELETE', ruta, { token: propietario.token })).estado, 204);
     assert.equal((await api('GET', rutaPlanes(estacionamiento))).datos.planes.length, 0);
     assert.equal((await crearPlan(propietario, estacionamiento)).estado, 201);
+  });
+
+  test('no se ofrece un turno en que el estacionamiento esta cerrado', async () => {
+    const propietario = await crearUsuario({ rol: 'PROPIETARIO' });
+    const estacionamiento = await crearEstacionamiento(propietario.token, {
+      horarios: [0, 1, 2, 3, 4, 5, 6].map((dia_semana) => ({
+        dia_semana,
+        hora_apertura: '08:00',
+        hora_cierre: '17:00',
+      })),
+    });
+
+    const noche = await crearPlan(propietario, estacionamiento, { turno: 'NOCHE', cupos: 2, precio: 100 });
+    const manana = await crearPlan(propietario, estacionamiento, { turno: 'MANANA', cupos: 2, precio: 100 });
+
+    assert.equal(noche.estado, 409);
+    assert.match(motivo(noche), /no abre en el turno noche/i);
+    assert.equal(manana.estado, 201);
   });
 
   test('datos invalidos: 400', async () => {
@@ -330,6 +349,45 @@ describe('reservar con abono', () => {
       datos.reserva.id_reserva,
     ]);
     assert.equal(rows[0].estado, 'CANCELADA');
+  });
+
+  test('ingreso y egreso con el codigo de una reserva con abono', async () => {
+    const { propietario, conductor, abono, vehiculo } = await escenario();
+    const { datos } = await reservarConAbono(conductor, abono, vehiculo, franja('08:00', '09:00'));
+    const reserva = datos.reserva;
+    await ponerEnCurso(reserva.id_reserva);
+    const acceder = () =>
+      api('POST', '/reservas/acceso', { token: propietario.token, body: { codigo: reserva.codigo_acceso } });
+
+    const ingreso = await acceder();
+    assert.equal(ingreso.estado, 200);
+    assert.equal(ingreso.datos.accion, 'INGRESO');
+    assert.equal(ingreso.datos.reserva.estado, 'ACTIVA');
+
+    await query(`UPDATE reserva SET ingreso_real = now() - interval '10 minutes' WHERE id_reserva = $1`, [
+      reserva.id_reserva,
+    ]);
+    const egreso = await acceder();
+    assert.equal(egreso.estado, 200);
+    assert.equal(egreso.datos.accion, 'EGRESO');
+    assert.equal(egreso.datos.reserva.estado, 'FINALIZADA');
+  });
+
+  test('cancelar el abono no toca una reserva ya ACTIVA', async () => {
+    const { propietario, conductor, abono, vehiculo } = await escenario();
+    const { datos } = await reservarConAbono(conductor, abono, vehiculo, franja('08:00', '09:00'));
+    await ponerEnCurso(datos.reserva.id_reserva);
+    const ingreso = await api('PATCH', `/reservas/${datos.reserva.id_reserva}/ingreso`, {
+      token: propietario.token,
+    });
+    assert.equal(ingreso.estado, 200);
+
+    await api('PATCH', `/abonos/${abono.id_abono}/cancelar`, { token: conductor.token });
+
+    const { rows } = await query('SELECT estado::text FROM reserva WHERE id_reserva = $1', [
+      datos.reserva.id_reserva,
+    ]);
+    assert.equal(rows[0].estado, 'ACTIVA');
   });
 
   test('una reserva comun no trae abono', async () => {

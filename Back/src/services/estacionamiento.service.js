@@ -7,6 +7,8 @@ import { listarPorEstacionamiento as listarCocheras } from './cochera.service.js
 import { geocodificar } from './geocodificacion.service.js';
 
 const CAMPOS_DIRECCION = ['calle', 'numero', 'ciudad', 'provincia'];
+// Si cambia alguno de estos en uno aprobado, vuelve a la cola de revision.
+const CAMPOS_REVISION = ['nombre', ...CAMPOS_DIRECCION];
 const tieneCoordenadas = (datos) => datos.latitud != null && datos.longitud != null;
 
 const DIRECCION_INEXISTENTE =
@@ -420,6 +422,47 @@ async function completarCoordenadas(idEstacionamiento, entrada) {
 }
 
 /**
+ * Un aprobado al que le cambian el nombre o la direccion vuelve a PENDIENTE:
+ * es lo que el administrador verifico. El formulario manda siempre todos los
+ * campos, asi que se compara contra lo guardado (fila ya bloqueada por
+ * `asegurarAlgunaTarifa`). Las reservas existentes no se tocan.
+ */
+async function vuelveARevision(client, idEstacionamiento, datos) {
+  const { rows } = await client.query(
+    `SELECT estado_aprobacion, ${CAMPOS_REVISION.join(', ')}
+       FROM estacionamiento WHERE id_estacionamiento = $1`,
+    [idEstacionamiento],
+  );
+  const guardado = rows[0];
+  if (guardado.estado_aprobacion !== ESTADOS_APROBACION.APROBADO) return false;
+
+  return CAMPOS_REVISION.some(
+    (campo) => datos[campo] !== undefined && (datos[campo] ?? '') !== (guardado[campo] ?? ''),
+  );
+}
+
+/**
+ * El propietario vuelve a mandar a revision uno rechazado, cuando quiera: con
+ * o sin cambios, sin esperar. Solo desde RECHAZADO.
+ */
+export async function reenviarRevision(idEstacionamiento, idPropietario) {
+  await asegurarPropiedad(idEstacionamiento, idPropietario);
+
+  const { rows } = await query(
+    `UPDATE estacionamiento
+        SET estado_aprobacion = '${ESTADOS_APROBACION.PENDIENTE}', motivo_rechazo = NULL, enviado_en = now()
+      WHERE id_estacionamiento = $1
+        AND estado_aprobacion = '${ESTADOS_APROBACION.RECHAZADO}'
+        AND activo
+      RETURNING id_estacionamiento`,
+    [idEstacionamiento],
+  );
+  if (!rows[0]) throw ApiError.conflict('Solo se puede reenviar a revision un estacionamiento rechazado');
+
+  return obtenerPorId(idEstacionamiento, { idSolicitante: idPropietario });
+}
+
+/**
  * Modifica los datos del estacionamiento. Si vienen `horarios` reemplazan a los
  * cargados: es lo que espera la pantalla, que manda la semana completa.
  */
@@ -438,6 +481,15 @@ export async function actualizar(idEstacionamiento, idPropietario, entrada) {
       if (datos[campo] === undefined) continue;
       parametros.push(datos[campo]);
       asignaciones.push(`${campo} = $${parametros.length}`);
+    }
+
+    if (await vuelveARevision(client, idEstacionamiento, datos)) {
+      asignaciones.push(
+        `estado_aprobacion = '${ESTADOS_APROBACION.PENDIENTE}'`,
+        'enviado_en = now()',
+        'revisado_por = NULL',
+        'revisado_en = NULL',
+      );
     }
 
     if (asignaciones.length > 0) {

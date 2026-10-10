@@ -147,3 +147,121 @@ describe('visibilidad segun la aprobacion', () => {
     assert.equal(respuesta.estado, 409);
   });
 });
+
+describe('el propietario y la revision', () => {
+  const estadoDe = async (id) => {
+    const { rows } = await query(
+      'SELECT estado_aprobacion, motivo_rechazo, enviado_en FROM estacionamiento WHERE id_estacionamiento = $1',
+      [id],
+    );
+    return rows[0];
+  };
+  const rechazarDirecto = (id) =>
+    query(
+      `UPDATE estacionamiento SET estado_aprobacion = 'RECHAZADO', motivo_rechazo = 'Faltan fotos del frente'
+        WHERE id_estacionamiento = $1`,
+      [id],
+    );
+
+  test('cambiar el nombre de un aprobado lo vuelve a PENDIENTE y sus reservas siguen', async () => {
+    const propietario = await nuevoPropietario();
+    const conductor = await crearUsuario();
+    const vehiculo = await crearVehiculo(conductor.token);
+    const estacionamiento = await crearEstacionamiento(propietario.token);
+    const id = estacionamiento.id_estacionamiento;
+
+    const { datos } = await api('POST', '/reservas', {
+      token: conductor.token,
+      body: { id_estacionamiento: id, id_vehiculo: vehiculo.id_vehiculo, ...franja() },
+    });
+    const idReserva = datos.reserva.id_reserva;
+    await api('PATCH', `/reservas/${idReserva}/confirmar`, { token: propietario.token });
+    const antes = await estadoDe(id);
+
+    const cambio = await api('PATCH', `/estacionamientos/${id}`, {
+      token: propietario.token,
+      body: { nombre: 'Otro nombre de prueba' },
+    });
+    assert.equal(cambio.estado, 200);
+
+    const despues = await estadoDe(id);
+    assert.equal(despues.estado_aprobacion, 'PENDIENTE');
+    assert.ok(despues.enviado_en > antes.enviado_en);
+
+    const { rows } = await query('SELECT estado FROM reserva WHERE id_reserva = $1', [idReserva]);
+    assert.equal(rows[0].estado, 'CONFIRMADA');
+  });
+
+  test('mandar la misma direccion y cambiar la tarifa no lo saca de APROBADO', async () => {
+    const propietario = await nuevoPropietario();
+    const estacionamiento = await crearEstacionamiento(propietario.token);
+
+    const cambio = await api('PATCH', `/estacionamientos/${estacionamiento.id_estacionamiento}`, {
+      token: propietario.token,
+      body: {
+        nombre: estacionamiento.nombre,
+        calle: 'Av. Prueba',
+        numero: '100',
+        ciudad: 'CABA',
+        provincia: 'Buenos Aires',
+        tarifa_hora: 2000,
+      },
+    });
+    assert.equal(cambio.estado, 200);
+    assert.equal((await estadoDe(estacionamiento.id_estacionamiento)).estado_aprobacion, 'APROBADO');
+  });
+
+  test('reenviar desde RECHAZADO lo pasa a PENDIENTE en el momento y limpia el motivo', async () => {
+    const propietario = await nuevoPropietario();
+    const estacionamiento = await crearEstacionamiento(propietario.token, { aprobado: false });
+    const id = estacionamiento.id_estacionamiento;
+    await rechazarDirecto(id);
+
+    const reenvio = await api('PATCH', `/estacionamientos/${id}/reenviar-revision`, {
+      token: propietario.token,
+    });
+    assert.equal(reenvio.estado, 200);
+    assert.equal(reenvio.datos.estacionamiento.estado_aprobacion, 'PENDIENTE');
+    assert.equal(reenvio.datos.estacionamiento.motivo_rechazo, null);
+  });
+
+  test('reenviar desde PENDIENTE o APROBADO da 409', async () => {
+    const propietario = await nuevoPropietario();
+    const pendiente = await crearEstacionamiento(propietario.token, { aprobado: false });
+    const aprobado = await crearEstacionamiento(propietario.token);
+
+    for (const { id_estacionamiento } of [pendiente, aprobado]) {
+      const reenvio = await api('PATCH', `/estacionamientos/${id_estacionamiento}/reenviar-revision`, {
+        token: propietario.token,
+      });
+      assert.equal(reenvio.estado, 409);
+    }
+  });
+
+  test('reenviar uno ajeno da 403', async () => {
+    const propietario = await nuevoPropietario();
+    const ajeno = await nuevoPropietario();
+    const estacionamiento = await crearEstacionamiento(propietario.token, { aprobado: false });
+    await rechazarDirecto(estacionamiento.id_estacionamiento);
+
+    const reenvio = await api(
+      'PATCH',
+      `/estacionamientos/${estacionamiento.id_estacionamiento}/reenviar-revision`,
+      { token: ajeno.token },
+    );
+    assert.equal(reenvio.estado, 403);
+  });
+
+  test('editar un RECHAZADO no lo reenvia solo', async () => {
+    const propietario = await nuevoPropietario();
+    const estacionamiento = await crearEstacionamiento(propietario.token, { aprobado: false });
+    const id = estacionamiento.id_estacionamiento;
+    await rechazarDirecto(id);
+
+    await api('PATCH', `/estacionamientos/${id}`, {
+      token: propietario.token,
+      body: { nombre: 'Nombre corregido', descripcion: 'Agregue fotos' },
+    });
+    assert.equal((await estadoDe(id)).estado_aprobacion, 'RECHAZADO');
+  });
+});

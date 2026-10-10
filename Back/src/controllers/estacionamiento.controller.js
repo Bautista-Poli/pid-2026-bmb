@@ -45,6 +45,11 @@ export const actualizar = asyncHandler(async (req, res) => {
   res.json({ estacionamiento });
 });
 
+export const reenviarRevision = asyncHandler(async (req, res) => {
+  const estacionamiento = await estacionamientoService.reenviarRevision(req.params.id, req.usuario.id);
+  res.json({ estacionamiento });
+});
+
 export const darDeBaja = asyncHandler(async (req, res) => {
   const estacionamiento = await estacionamientoService.darDeBaja(req.params.id, req.usuario.id);
   res.json({ estacionamiento });

@@ -6,8 +6,9 @@ import { asegurarPropiedad } from './estacionamiento.service.js';
 
 const VIOLACION_UNIQUE = '23505';
 const VIOLACION_FK = '23503';
-// ON DELETE RESTRICT falla con este codigo (NO ACTION usa el de arriba, 23001).
-const VIOLACION_RESTRICT = '23503';
+// Borrar una fila referenciada por una FK ON DELETE RESTRICT: Postgres 18 (el de
+// Neon) responde restrict_violation (23001); versiones anteriores, 23503.
+const VIOLACION_RESTRICT = ['23001', '23503'];
 
 const CAMPOS =
   'id_cochera, id_estacionamiento, id_tipo_vehiculo, identificador, sector, cubierta, estado_actual, ' +
@@ -380,7 +381,7 @@ export async function eliminar(idEstacionamiento, idPropietario, idCochera) {
   try {
     await query('DELETE FROM cochera WHERE id_cochera = $1', [idCochera]);
   } catch (error) {
-    if (error.code === VIOLACION_RESTRICT) {
+    if (VIOLACION_RESTRICT.includes(error.code)) {
       throw ApiError.conflict('La cochera tiene reservas en su historial: queda inactiva, no se puede eliminar');
     }
     throw error;

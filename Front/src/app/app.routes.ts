@@ -55,6 +55,25 @@ export const routes: Routes = [
           import('./pages/conductor/mis-reservas/mis-reservas').then((m) => m.MisReservas),
       },
       {
+        path: 'abonos',
+        title: 'Parkit · Mis abonos',
+        loadComponent: () => import('./pages/conductor/abonos/abonos').then((m) => m.Abonos),
+      },
+      {
+        path: 'abonos/estacionamiento/:estacionamientoId',
+        title: 'Parkit · Abonos del estacionamiento',
+        loadComponent: () =>
+          import('./pages/conductor/planes-estacionamiento/planes-estacionamiento').then(
+            (m) => m.PlanesEstacionamiento,
+          ),
+      },
+      {
+        path: 'abonos/:abonoId/reservar',
+        title: 'Parkit · Reservar con abono',
+        loadComponent: () =>
+          import('./pages/conductor/reservar-con-abono/reservar-con-abono').then((m) => m.ReservarConAbono),
+      },
+      {
         path: 'vehiculos',
         title: 'Parkit · Mis vehículos',
         loadComponent: () =>
@@ -97,6 +116,12 @@ export const routes: Routes = [
         title: 'Parkit · Reservas recibidas',
         loadComponent: () =>
           import('./pages/propietario/reservas/reservas').then((m) => m.Reservas),
+      },
+      {
+        // Destino del QR de cada reserva: lo escanea el operador al entrar y al salir.
+        path: 'acceso/:codigo',
+        title: 'Parkit · Registrar acceso',
+        loadComponent: () => import('./pages/propietario/acceso/acceso').then((m) => m.Acceso),
       },
       {
         path: 'estacionamientos',

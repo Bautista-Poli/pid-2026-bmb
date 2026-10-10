@@ -1,4 +1,6 @@
 import {
+  Abono,
+  AccesoReserva,
   Cochera,
   Estacionamiento,
   EstadoCochera,
@@ -10,9 +12,11 @@ import {
   LoteCocheras,
   NuevaCochera,
   NuevaReserva,
+  NuevaReservaConAbono,
   NuevoEstacionamiento,
   CambiosVehiculo,
   NuevoVehiculo,
+  PlanAbono,
   RegistroUsuario,
   ReservaDetallada,
   TipoVehiculo,
@@ -20,7 +24,7 @@ import {
   Vehiculo,
 } from '@app/models';
 import { aInstante, DIAS_POR_NUMERO, partesLocales } from '@app/utils/fecha.util';
-import { CocheraDto, EstacionamientoDto, EstadoReservaDto, FranjaDto, HorarioDto, ReservaDto, UsuarioDto, VehiculoDto } from './api.dto';
+import { AbonoDto, AccesoReservaDto, CocheraDto, EstacionamientoDto, EstadoReservaDto, FranjaDto, HorarioDto, PlanAbonoDto, ReservaDto, UsuarioDto, VehiculoDto } from './api.dto';
 
 /*
  * Traduccion entre la API (snake_case, ids de catalogo, instantes ISO) y los
@@ -266,13 +270,16 @@ export function aReserva(dto: ReservaDto): ReservaDetallada {
     horaDesde: desde.hora,
     horaHasta: hasta.hora,
     fechaHasta: hasta.fecha,
-    modalidad: dto.modalidad,
+    // Una reserva con abono no se cobra: se muestra por hora y el abono va aparte.
+    modalidad: dto.modalidad === 'ABONO' ? 'HORA' : dto.modalidad,
+    abono: dto.id_abono && dto.turno_abono ? { id: dto.id_abono, turno: dto.turno_abono } : null,
     estado: dto.estado,
     precioTotal: dto.precio_total,
     creadaEn: dto.created_at,
     ingresoEn: dto.ingreso_real,
     egresoEn: dto.egreso_real,
     motivoReasignacion: dto.motivo_reasignacion,
+    codigoAcceso: dto.codigo_acceso,
     estacionamiento: {
       id: dto.id_estacionamiento,
       nombre: dto.estacionamiento,
@@ -295,6 +302,10 @@ export function aReserva(dto: ReservaDto): ReservaDetallada {
     },
     cochera: { id: dto.id_cochera, identificador: dto.cochera, sector: dto.cochera_sector ?? '' },
   };
+}
+
+export function aAccesoReserva(dto: AccesoReservaDto): AccesoReserva {
+  return { accion: dto.accion, reserva: aReserva(dto.reserva) };
 }
 
 /** El backend asigna la cochera: se reserva por estacionamiento. */
@@ -324,5 +335,43 @@ export function aFranja(dto: FranjaDto): FranjaDisponible {
     disponible: dto.disponible,
     cocherasLibres: dto.cocheras_libres,
     causa: dto.causa ?? null,
+  };
+}
+
+/* --------------------------------- abonos --------------------------------- */
+
+export function aPlanAbono(dto: PlanAbonoDto): PlanAbono {
+  return {
+    id: dto.id_plan,
+    estacionamientoId: dto.id_estacionamiento,
+    turno: dto.turno,
+    cupos: dto.cupos,
+    precio: dto.precio,
+  };
+}
+
+export function aAbono(dto: AbonoDto): Abono {
+  return {
+    id: dto.id_abono,
+    estacionamientoId: dto.id_estacionamiento,
+    estacionamiento: dto.estacionamiento,
+    conductor: `${dto.conductor_nombre} ${dto.conductor_apellido}`,
+    turno: dto.turno,
+    cuposTotales: dto.cupos_totales,
+    cuposUsados: dto.cupos_usados,
+    cuposRestantes: dto.cupos_restantes,
+    precioTotal: dto.precio_total,
+    desde: dto.desde,
+    hasta: dto.hasta,
+    estado: dto.estado,
+  };
+}
+
+export function aPayloadReservaConAbono(datos: NuevaReservaConAbono) {
+  return {
+    id_abono: datos.abonoId,
+    id_vehiculo: datos.vehiculoId,
+    inicio: aInstante(datos.fecha, datos.horaDesde),
+    fin: aInstante(datos.fecha, datos.horaHasta),
   };
 }

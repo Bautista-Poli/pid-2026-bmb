@@ -204,6 +204,11 @@ async function borrarDatosDePrueba() {
          OR id_cochera IN (SELECT id_cochera FROM cochera WHERE id_estacionamiento IN (${propios}))`,
     [deLaSuite],
   );
+  await query(
+    `DELETE FROM abono WHERE id_conductor IN (${usuarios}) OR id_estacionamiento IN (${propios})`,
+    [deLaSuite],
+  );
+  await query(`DELETE FROM plan_abono WHERE id_estacionamiento IN (${propios})`, [deLaSuite]);
   await query(`DELETE FROM vehiculo WHERE id_conductor IN (${usuarios})`, [deLaSuite]);
   await query(`DELETE FROM horario WHERE id_estacionamiento IN (${propios})`, [deLaSuite]);
   await query(`DELETE FROM cochera WHERE id_estacionamiento IN (${propios})`, [deLaSuite]);

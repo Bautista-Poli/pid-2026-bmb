@@ -401,3 +401,111 @@ SELECT f.id_estacionamiento, 0, f.mime, f.bytes, f.actualizada
  WHERE NOT EXISTS (
    SELECT 1 FROM estacionamiento_imagen i WHERE i.id_estacionamiento = f.id_estacionamiento
  );
+
+-- Codigo de acceso de la reserva: va en su QR. El conductor lo muestra al
+-- entrar y al salir y el operador lo escanea (o lo tipea). Es unico por
+-- reserva. Sin 0 O 1 I L para que no se confundan; el alfabeto tiene que
+-- coincidir con src/utils/codigoAcceso.js. Lo genera la base, asi el INSERT
+-- de reserva.service.js no cambia.
+CREATE OR REPLACE FUNCTION generar_codigo_acceso(largo INT) RETURNS TEXT AS $$
+DECLARE
+  alfabeto CONSTANT TEXT := 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  codigo TEXT := '';
+BEGIN
+  FOR i IN 1..largo LOOP
+    codigo := codigo || substr(alfabeto, 1 + floor(random() * length(alfabeto))::int, 1);
+  END LOOP;
+  RETURN codigo;
+END
+$$ LANGUAGE plpgsql VOLATILE;
+
+ALTER TABLE reserva
+  ADD COLUMN IF NOT EXISTS codigo_acceso VARCHAR(8);
+
+-- Relleno de las reservas que ya existen. Con 31^8 combinaciones una colision
+-- es practicamente imposible; si pasara, el CREATE UNIQUE INDEX de abajo falla
+-- y alcanza con volver a migrar.
+UPDATE reserva SET codigo_acceso = generar_codigo_acceso(8) WHERE codigo_acceso IS NULL;
+
+ALTER TABLE reserva
+  ALTER COLUMN codigo_acceso SET DEFAULT generar_codigo_acceso(8),
+  ALTER COLUMN codigo_acceso SET NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS reserva_codigo_acceso_unico ON reserva (codigo_acceso);
+
+-- Abonos (Parte B de docs/superpowers/specs/2026-10-07-ingreso-codigo-y-abonos-design.md).
+-- No son reservas anticipadas: el conductor paga por adelantado un cupo de
+-- usos en un turno y despues reserva gratis dentro de ese turno. Cada reserva
+-- con abono descuenta un uso. Los usos consumidos no se guardan: son las
+-- reservas del abono que no estan CANCELADAS.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'turno_abono') THEN
+    CREATE TYPE turno_abono AS ENUM ('MANANA', 'TARDE', 'NOCHE');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'estado_abono') THEN
+    CREATE TYPE estado_abono AS ENUM ('VIGENTE', 'CANCELADO', 'VENCIDO');
+  END IF;
+END
+$$;
+
+ALTER TYPE modalidad_reserva ADD VALUE IF NOT EXISTS 'ABONO';
+
+-- Lo que ofrece el propietario: un plan activo por turno.
+CREATE TABLE IF NOT EXISTS plan_abono (
+  id_plan            UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+  id_estacionamiento UUID          NOT NULL,
+  turno              turno_abono   NOT NULL,
+  cupos              SMALLINT      NOT NULL,
+  precio             DECIMAL(10, 2) NOT NULL,
+  activo             BOOLEAN       NOT NULL DEFAULT TRUE,
+  created_at         TIMESTAMPTZ   NOT NULL DEFAULT now(),
+  CONSTRAINT plan_abono_estacionamiento_fk
+    FOREIGN KEY (id_estacionamiento) REFERENCES estacionamiento (id_estacionamiento) ON DELETE CASCADE,
+  CONSTRAINT plan_abono_cupos_positivos CHECK (cupos > 0),
+  CONSTRAINT plan_abono_precio_no_negativo CHECK (precio >= 0)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS plan_abono_un_activo_por_turno
+  ON plan_abono (id_estacionamiento, turno) WHERE activo;
+
+-- Lo que compro el conductor. Turno, cupos y precio se copian del plan al
+-- comprar, para que un cambio posterior del plan no altere lo ya vendido.
+CREATE TABLE IF NOT EXISTS abono (
+  id_abono           UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+  id_conductor       UUID          NOT NULL,
+  id_estacionamiento UUID          NOT NULL,
+  id_plan            UUID          NOT NULL,
+  turno              turno_abono   NOT NULL,
+  cupos_totales      SMALLINT      NOT NULL,
+  precio_total       DECIMAL(10, 2) NOT NULL,
+  desde              DATE          NOT NULL,
+  hasta              DATE          NOT NULL,
+  estado             estado_abono  NOT NULL DEFAULT 'VIGENTE',
+  created_at         TIMESTAMPTZ   NOT NULL DEFAULT now(),
+  CONSTRAINT abono_conductor_fk
+    FOREIGN KEY (id_conductor) REFERENCES usuario (id_usuario) ON DELETE RESTRICT,
+  CONSTRAINT abono_estacionamiento_fk
+    FOREIGN KEY (id_estacionamiento) REFERENCES estacionamiento (id_estacionamiento) ON DELETE RESTRICT,
+  CONSTRAINT abono_plan_fk
+    FOREIGN KEY (id_plan) REFERENCES plan_abono (id_plan) ON DELETE RESTRICT,
+  CONSTRAINT abono_cupos_positivos CHECK (cupos_totales > 0),
+  CONSTRAINT abono_rango_valido CHECK (hasta >= desde)
+);
+
+CREATE INDEX IF NOT EXISTS idx_abono_conductor       ON abono (id_conductor);
+CREATE INDEX IF NOT EXISTS idx_abono_estacionamiento ON abono (id_estacionamiento);
+
+ALTER TABLE reserva
+  ADD COLUMN IF NOT EXISTS id_abono UUID;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'reserva_abono_fk') THEN
+    ALTER TABLE reserva ADD CONSTRAINT reserva_abono_fk
+      FOREIGN KEY (id_abono) REFERENCES abono (id_abono) ON DELETE RESTRICT;
+  END IF;
+END
+$$;
+
+CREATE INDEX IF NOT EXISTS idx_reserva_abono ON reserva (id_abono) WHERE id_abono IS NOT NULL;

@@ -2,7 +2,7 @@ import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
 import { sinSolapamiento } from '../utils/solapamiento.js';
 import { CAMPOS_TARIFA } from '../utils/tarifas.js';
-import { ESTADOS_COCHERA, ESTADOS_VIGENTES } from '../utils/roles.js';
+import { ESTADOS_APROBACION, ESTADOS_COCHERA, ESTADOS_VIGENTES } from '../utils/roles.js';
 import { listarPorEstacionamiento as listarCocheras } from './cochera.service.js';
 import { geocodificar } from './geocodificacion.service.js';
 
@@ -29,6 +29,7 @@ const COLUMNAS = [
   'latitud', 'longitud', 'telefono_contacto', 'email_contacto',
   'tarifa_hora', 'tarifa_estadia', 'tarifa_jornada', 'politica_cancelacion_horas',
   'cubierto', 'publicado', 'activo',
+  'estado_aprobacion', 'motivo_rechazo', 'enviado_en', 'created_at',
 ];
 
 const CAMPOS_EDITABLES = [
@@ -39,14 +40,14 @@ const CAMPOS_EDITABLES = [
 ];
 
 const CAMPOS = COLUMNAS.join(', ');
-const CAMPOS_E = COLUMNAS.map((columna) => `e.${columna}`).join(', ');
+export const CAMPOS_E = COLUMNAS.map((columna) => `e.${columna}`).join(', ');
 
 /**
  * Datos derivados que muestran los listados y el detalle.
  * `cocheras_libres` cuenta las cocheras activas, marcadas LIBRE y sin una
  * reserva vigente transcurriendo en este momento.
  */
-const AGREGADOS = `
+export const AGREGADOS = `
   (SELECT COUNT(*)::int
      FROM cochera c
     WHERE c.id_estacionamiento = e.id_estacionamiento AND c.activo) AS cocheras_activas,
@@ -183,7 +184,11 @@ async function insertarHorarios(client, idEstacionamiento, horarios) {
  * libres, tipos admitidos y horarios para poder comparar opciones.
  */
 export async function buscar(filtros) {
-  const condiciones = ['e.publicado = TRUE', 'e.activo = TRUE'];
+  const condiciones = [
+    'e.publicado = TRUE',
+    'e.activo = TRUE',
+    `e.estado_aprobacion = '${ESTADOS_APROBACION.APROBADO}'`,
+  ];
   const parametros = [];
 
   if (filtros.q) {
@@ -287,7 +292,11 @@ export async function buscar(filtros) {
   return rows;
 }
 
-export async function obtenerPorId(idEstacionamiento) {
+/**
+ * Detalle de un estacionamiento. Mientras no este aprobado solo lo ven su dueno
+ * y el administrador: para el resto no existe (404), igual que en la busqueda.
+ */
+export async function obtenerPorId(idEstacionamiento, { idSolicitante = null, esAdmin = false } = {}) {
   const { rows } = await query(
     `SELECT ${CAMPOS_E}, ${AGREGADOS}
        FROM estacionamiento e
@@ -295,11 +304,25 @@ export async function obtenerPorId(idEstacionamiento) {
     [idEstacionamiento],
   );
 
-  if (!rows[0]) throw ApiError.notFound('Estacionamiento no encontrado');
+  const visible =
+    rows[0] &&
+    (rows[0].estado_aprobacion === ESTADOS_APROBACION.APROBADO ||
+      esAdmin ||
+      rows[0].id_propietario === idSolicitante);
+  if (!visible) throw ApiError.notFound('Estacionamiento no encontrado');
 
   const estacionamiento = rows[0];
   estacionamiento.cocheras = await listarCocheras(idEstacionamiento);
   return estacionamiento;
+}
+
+/**
+ * Un estacionamiento recibe reservas si esta activo, publicado por su dueno y
+ * aprobado por el administrador. `fila` trae `activo`, `publicado` y
+ * `estado_aprobacion`.
+ */
+export function aceptaReservas(fila) {
+  return fila.activo && fila.publicado && fila.estado_aprobacion === ESTADOS_APROBACION.APROBADO;
 }
 
 /** Verifica que el estacionamiento exista y sea del propietario autenticado. */
@@ -441,7 +464,7 @@ export async function actualizar(idEstacionamiento, idPropietario, entrada) {
     }
   });
 
-  return obtenerPorId(idEstacionamiento);
+  return obtenerPorId(idEstacionamiento, { idSolicitante: idPropietario });
 }
 
 /**

@@ -2,7 +2,7 @@ import express, { Router } from 'express';
 
 import * as abonoController from '../controllers/abono.controller.js';
 import * as estacionamientoController from '../controllers/estacionamiento.controller.js';
-import { authenticate, requireRole } from '../middlewares/auth.js';
+import { authenticate, authenticateOpcional, requireRole } from '../middlewares/auth.js';
 import { validate } from '../middlewares/validate.js';
 import { ROLES } from '../utils/roles.js';
 import { validarCambiosPlanAbono, validarPlanAbono } from '../validators/abono.validator.js';
@@ -35,7 +35,8 @@ router.get('/', validate(validarBusqueda, 'query'), estacionamientoController.bu
 // Propietario: sus estacionamientos. Va antes de '/:id' para que no lo capture.
 router.get('/mios', ...soloPropietario, estacionamientoController.listarMios);
 
-router.get('/:id', estacionamientoController.obtener);
+// Con sesion opcional: el dueno ve el suyo aunque todavia no este aprobado.
+router.get('/:id', authenticateOpcional, estacionamientoController.obtener);
 router.get('/:id/cocheras', estacionamientoController.listarCocheras);
 router.get('/:id/foto', estacionamientoController.obtenerFoto);
 router.get('/:id/fotos/:idFoto', estacionamientoController.obtenerFotoDeGaleria);

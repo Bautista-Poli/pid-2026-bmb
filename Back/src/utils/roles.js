@@ -1,6 +1,15 @@
 export const ROLES = Object.freeze({
   CONDUCTOR: 'CONDUCTOR',
   PROPIETARIO: 'PROPIETARIO',
+  // Usuario aparte: no se registra ni se combina con los otros perfiles.
+  ADMINISTRADOR: 'ADMINISTRADOR',
+});
+
+// Revision del estacionamiento por el administrador antes de verse en la busqueda.
+export const ESTADOS_APROBACION = Object.freeze({
+  PENDIENTE: 'PENDIENTE',
+  APROBADO: 'APROBADO',
+  RECHAZADO: 'RECHAZADO',
 });
 
 export const ESTADOS_RESERVA = Object.freeze({

@@ -72,7 +72,16 @@
 
         <label class="campo">
           <span class="label-campo">Contraseña</span>
-          <input type="password" formControlName="password" autocomplete="new-password" />
+          <div class="relative">
+            <input
+              #campoPassword
+              type="password"
+              class="w-full pr-11"
+              formControlName="password"
+              autocomplete="new-password"
+            />
+            <ui-ver-password [campo]="campoPassword" />
+          </div>
           @if (invalido('password')) {
             <span class="campo-error">Tiene que tener entre {{ passwordMin }} y {{ passwordMax }} caracteres.</span>
           } @else {
@@ -82,7 +91,16 @@
 
         <label class="campo">
           <span class="label-campo">Repetir contraseña</span>
-          <input type="password" formControlName="repetirPassword" autocomplete="new-password" />
+          <div class="relative">
+            <input
+              #campoRepetir
+              type="password"
+              class="w-full pr-11"
+              formControlName="repetirPassword"
+              autocomplete="new-password"
+            />
+            <ui-ver-password [campo]="campoRepetir" />
+          </div>
           @if (invalido('repetirPassword')) {
             <span class="campo-error">Repetí la contraseña.</span>
           } @else if (passwordsDistintas()) {

@@ -36,12 +36,17 @@
 
         <label class="campo">
           <span class="label-campo">Contraseña</span>
-          <input
-            type="password"
-            formControlName="password"
-            autocomplete="current-password"
-            placeholder="••••••••"
-          />
+          <div class="relative">
+            <input
+              #campoPassword
+              type="password"
+              class="w-full pr-11"
+              formControlName="password"
+              autocomplete="current-password"
+              placeholder="••••••••"
+            />
+            <ui-ver-password [campo]="campoPassword" />
+          </div>
         </label>
 
         @if (error(); as mensaje) {

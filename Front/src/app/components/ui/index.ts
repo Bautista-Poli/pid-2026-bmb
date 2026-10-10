@@ -14,3 +14,4 @@ export * from './logo/logo';
 export * from './miniatura/miniatura';
 export * from './modal/modal';
 export * from './campo-autocompletar/campo-autocompletar';
+export * from './ver-password/ver-password';

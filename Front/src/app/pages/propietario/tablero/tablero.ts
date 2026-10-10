@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { rxResource } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { CeldaCochera, LeyendaCocheras } from '@app/components/cochera';
+import { IngresarCodigo } from '@app/components/reserva';
 import {
   Boton,
   Cargando,
@@ -112,6 +113,7 @@ const pesos = (monto: number) => `$ ${monto.toLocaleString('es-AR')}`;
     EstadoVacio,
     Etiqueta,
     Icono,
+    IngresarCodigo,
   ],
   templateUrl: './tablero.html',
 })

@@ -1,5 +1,6 @@
 import { NuevaReserva, NuevoEstacionamiento } from '@app/models';
-import { aPayloadEstacionamiento, aPayloadReserva } from './api.mapeo';
+import { ReservaDto } from './api.dto';
+import { aAbono, aPayloadEstacionamiento, aPayloadReserva, aReserva } from './api.mapeo';
 
 const BASE: NuevoEstacionamiento = {
   nombre: 'Cochera Centro',
@@ -64,5 +65,57 @@ describe('aPayloadReserva', () => {
     expect(payload.modalidad).toBe('JORNADA');
     expect(payload.fin).toBe('2026-09-15T11:00:00.000Z');
     expect(horas(payload)).toBe(24);
+  });
+});
+
+describe('aAbono', () => {
+  it('traduce el abono y sus usos', () => {
+    const abono = aAbono({
+      id_abono: 'a1',
+      id_conductor: 'c1',
+      conductor_nombre: 'Ana',
+      conductor_apellido: 'Paz',
+      id_estacionamiento: 'e1',
+      estacionamiento: 'Centro',
+      id_plan: 'p1',
+      turno: 'MANANA',
+      cupos_totales: 20,
+      cupos_usados: 6,
+      cupos_restantes: 14,
+      precio_total: 40000,
+      desde: '2026-10-08',
+      hasta: '2026-11-06',
+      estado: 'VIGENTE',
+      created_at: '2026-10-08T12:00:00.000Z',
+    });
+
+    expect(abono).toMatchObject({
+      id: 'a1',
+      conductor: 'Ana Paz',
+      estacionamiento: 'Centro',
+      turno: 'MANANA',
+      cuposTotales: 20,
+      cuposRestantes: 14,
+      hasta: '2026-11-06',
+    });
+  });
+});
+
+describe('aReserva con abono', () => {
+  it('muestra la modalidad por hora y guarda el abono', () => {
+    const reserva = aReserva({
+      id_reserva: 'r1', id_conductor: 'c1',
+      inicio: '2026-10-09T11:00:00.000Z', fin: '2026-10-09T13:00:00.000Z',
+      estado: 'CONFIRMADA', created_at: '2026-10-08T12:00:00.000Z',
+      ingreso_real: null, egreso_real: null,
+      id_vehiculo: 'v1', patente: 'AB123CD', marca: null, modelo: null, id_tipo_vehiculo: 1,
+      id_cochera: 'k1', cochera: 'P-1', cochera_sector: null, cochera_cubierta: false,
+      id_estacionamiento: 'e1', estacionamiento: 'Centro', direccion: 'Calle 1',
+      precio_total: 0, modalidad: 'ABONO', motivo_reasignacion: null,
+      codigo_acceso: 'K7MQ2XTR', id_abono: 'a1', turno_abono: 'MANANA',
+    } as ReservaDto);
+
+    expect(reserva.modalidad).toBe('HORA');
+    expect(reserva.abono).toEqual({ id: 'a1', turno: 'MANANA' });
   });
 });

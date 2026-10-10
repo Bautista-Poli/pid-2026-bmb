@@ -1,0 +1,63 @@
+<div class="aparece mx-auto w-full max-w-[560px] px-6 pt-5 pb-8 lg:px-10 lg:pt-[34px] lg:pb-11">
+  <div class="flex flex-col gap-6">
+    <header>
+      <p class="eyebrow">Código {{ codigoVisible() }}</p>
+      <h1 class="titulo-vista mt-1.5">Registrar acceso</h1>
+    </header>
+
+    @if (!codigoNormalizado()) {
+      <ui-estado-vacio
+        titulo="Ese código no es válido"
+        descripcion="Tiene 8 caracteres, como K7MQ-2XTR. Revisalo en el QR del conductor."
+      >
+        <ui-boton routerLink="/propietario/reservas">Ir a reservas</ui-boton>
+      </ui-estado-vacio>
+    } @else if (resultado(); as hecho) {
+      <ui-tarjeta>
+        <div class="flex flex-col items-center gap-2 py-4 text-center" role="status">
+          <p class="text-[18px] font-semibold text-tinta">
+            {{ hecho.accion === 'INGRESO' ? 'Ingreso registrado' : 'Egreso registrado' }}
+          </p>
+          <p class="text-[14px] text-plomo">
+            Cochera {{ hecho.reserva.cocheraIdentificador }} · {{ hecho.reserva.vehiculo.patente }} ·
+            {{ (hecho.accion === 'INGRESO' ? hecho.reserva.ingresoEn : hecho.reserva.egresoEn) | date: 'HH:mm' }}
+          </p>
+          <ui-boton variante="primario" class="mt-3" routerLink="/propietario/tablero">
+            Volver al inicio
+          </ui-boton>
+        </div>
+      </ui-tarjeta>
+    } @else if (previa.isLoading()) {
+      <ui-cargando [cantidad]="1" />
+    } @else if (previa.error(); as e) {
+      <ui-estado-vacio titulo="No se puede registrar" [descripcion]="e.message">
+        <ui-boton routerLink="/propietario/reservas">Ir a reservas</ui-boton>
+      </ui-estado-vacio>
+    } @else if (previa.value(); as datos) {
+      <ui-tarjeta>
+        <div class="flex flex-col gap-3">
+          <div>
+            <p class="text-[15px] font-semibold text-tinta">
+              {{ datos.reserva.estacionamiento.nombre }} · Cochera {{ datos.reserva.cocheraIdentificador }}
+            </p>
+            <p class="mt-1 text-[13px] text-plomo">
+              {{ datos.reserva.horaDesde }}–{{ datos.reserva.horaHasta }} ·
+              {{ datos.reserva.vehiculo.patente }}
+            </p>
+          </div>
+          <ui-boton
+            variante="primario"
+            [bloque]="true"
+            [cargando]="registrando()"
+            (presionado)="registrar()"
+          >
+            {{ textoAccion[datos.accion] }}
+          </ui-boton>
+        </div>
+      </ui-tarjeta>
+      @if (error(); as mensaje) {
+        <p class="text-[13px] text-ocupada" role="alert">{{ mensaje }}</p>
+      }
+    }
+  </div>
+</div>

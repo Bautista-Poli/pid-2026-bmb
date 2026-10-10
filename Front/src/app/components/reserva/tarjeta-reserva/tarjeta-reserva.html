@@ -62,7 +62,11 @@
           class="num-tabular text-[13px] font-semibold"
           [class]="r.estado === 'CANCELADA' ? 'text-humo line-through' : 'text-tinta'"
         >
-          $ {{ r.precioTotal.toLocaleString('es-AR') }}
+          @if (r.abono; as abono) {
+            Abono · Turno {{ turnos[abono.turno].etiqueta.toLowerCase() }}
+          } @else {
+            $ {{ r.precioTotal.toLocaleString('es-AR') }}
+          }
         </span>
       </div>
     </div>
@@ -213,30 +217,47 @@
       [class]="margen()"
     >
       <p class="flex items-baseline gap-2">
-        <span class="num-tabular text-[17px] font-semibold text-tinta">
-          $ {{ r.precioTotal.toLocaleString('es-AR') }}
-        </span>
-        <span class="text-[12.5px] text-plomo">{{ etiquetaModalidad[r.modalidad] }}</span>
+        @if (r.abono; as abono) {
+          <span class="text-[15px] font-semibold text-tinta">Abono</span>
+          <span class="text-[12.5px] text-plomo">Turno {{ turnos[abono.turno].etiqueta.toLowerCase() }}</span>
+        } @else {
+          <span class="num-tabular text-[17px] font-semibold text-tinta">
+            $ {{ r.precioTotal.toLocaleString('es-AR') }}
+          </span>
+          <span class="text-[12.5px] text-plomo">{{ etiquetaModalidad[r.modalidad] }}</span>
+        }
       </p>
 
-      @if (cancelable()) {
-        <button
-          type="button"
-          class="inline-flex min-h-11 items-center gap-2 rounded-boton px-3 text-[13px] font-semibold
-                 text-ocupada transition-colors duration-160 ease-out hover:bg-ocupada/8
-                 disabled:pointer-events-none disabled:opacity-50"
-          [disabled]="cancelando()"
-          (click)="cancelar.emit(r)"
-        >
-          @if (cancelando()) {
-            <span
-              class="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent"
-              aria-hidden="true"
-            ></span>
-          }
-          Cancelar
-        </button>
-      }
+      <div class="flex items-center gap-1">
+        @if (conQr()) {
+          <button
+            type="button"
+            class="inline-flex min-h-11 items-center gap-2 rounded-boton px-3 text-[13px] font-semibold
+                   text-acento transition-colors duration-160 ease-out hover:bg-acento-suave"
+            (click)="verQr.emit(r)"
+          >
+            Ver QR
+          </button>
+        }
+        @if (cancelable()) {
+          <button
+            type="button"
+            class="inline-flex min-h-11 items-center gap-2 rounded-boton px-3 text-[13px] font-semibold
+                   text-ocupada transition-colors duration-160 ease-out hover:bg-ocupada/8
+                   disabled:pointer-events-none disabled:opacity-50"
+            [disabled]="cancelando()"
+            (click)="cancelar.emit(r)"
+          >
+            @if (cancelando()) {
+              <span
+                class="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent"
+                aria-hidden="true"
+              ></span>
+            }
+            Cancelar
+          </button>
+        }
+      </div>
     </footer>
   </article>
 }

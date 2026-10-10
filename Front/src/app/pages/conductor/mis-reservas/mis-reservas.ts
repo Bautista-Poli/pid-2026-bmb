@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { rxResource } from '@angular/core/rxjs-interop';
 import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { TarjetaReserva } from '@app/components/reserva';
+import { QrReserva, TarjetaReserva } from '@app/components/reserva';
 import { Boton, Cargando, Chip, EstadoVacio, Modal, Tarjeta } from '@app/components/ui';
 import { Id, ReservaDetallada } from '@app/models';
 import { reservaEnJuego } from '@app/services/ciclo-reserva';
@@ -32,7 +32,7 @@ const inicioDe = (reserva: ReservaDetallada) =>
 @Component({
   selector: 'app-mis-reservas',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TarjetaReserva, Tarjeta, Chip, Cargando, EstadoVacio, Boton, Modal, RouterLink, DatePipe],
+  imports: [TarjetaReserva, QrReserva, Tarjeta, Chip, Cargando, EstadoVacio, Boton, Modal, RouterLink, DatePipe],
   templateUrl: './mis-reservas.html',
 })
 export class MisReservas {
@@ -50,6 +50,8 @@ export class MisReservas {
   protected readonly errorCancelar = signal<string | null>(null);
   /** Confirmacion visible: la reserva cancelada se va a Historial. */
   protected readonly aviso = signal<string | null>(null);
+  /** Reserva cuyo QR se esta mostrando: mientras no sea null, el modal esta abierto. */
+  protected readonly conQrAbierto = signal<ReservaDetallada | null>(null);
 
   protected readonly recurso = rxResource({
     stream: () => this.reservas.listarMisReservas(),

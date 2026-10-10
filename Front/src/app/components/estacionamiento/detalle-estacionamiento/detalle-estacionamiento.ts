@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { Icono } from '@app/components/ui';
 import { Estacionamiento } from '@app/models';
 import { GaleriaFotos } from '../galeria-fotos/galeria-fotos';
@@ -30,7 +31,7 @@ const pesos = (monto: number) => `$${monto.toLocaleString('es-AR')}`;
 @Component({
   selector: 'app-detalle-estacionamiento',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Icono, GaleriaFotos],
+  imports: [Icono, GaleriaFotos, RouterLink],
   template: `
     <article
       class="pointer-events-auto flex max-h-full min-h-0 flex-col overflow-hidden rounded-t-[20px] border border-borde bg-papel
@@ -157,6 +158,12 @@ const pesos = (monto: number) => `$${monto.toLocaleString('es-AR')}`;
         >
           {{ agotado() ? 'No disponible para ese momento' : 'Reservar' }}
         </button>
+        <a
+          class="mt-2 block text-center text-[13px] font-semibold text-acento hover:underline"
+          [routerLink]="['/conductor/abonos/estacionamiento', estacionamiento().id]"
+        >
+          Ver abonos mensuales
+        </a>
       </div>
     </article>
   `,

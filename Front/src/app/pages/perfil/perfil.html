@@ -176,7 +176,16 @@
       <form class="flex flex-col gap-4" [formGroup]="clave" (ngSubmit)="cambiarPassword()" novalidate>
         <label class="campo">
           <span class="label-campo">Contraseña actual</span>
-          <input type="password" formControlName="passwordActual" autocomplete="current-password" />
+          <div class="relative">
+            <input
+              #campoActual
+              type="password"
+              class="w-full pr-11"
+              formControlName="passwordActual"
+              autocomplete="current-password"
+            />
+            <ui-ver-password [campo]="campoActual" />
+          </div>
           @if (invalidoClave('passwordActual')) {
             <span class="campo-error">Ingresá tu contraseña actual.</span>
           }
@@ -185,14 +194,32 @@
         <div class="grid grid-cols-2 gap-3">
           <label class="campo">
             <span class="label-campo">Nueva</span>
-            <input type="password" formControlName="password" autocomplete="new-password" />
+            <div class="relative">
+              <input
+                #campoNueva
+                type="password"
+                class="w-full pr-11"
+                formControlName="password"
+                autocomplete="new-password"
+              />
+              <ui-ver-password [campo]="campoNueva" />
+            </div>
             @if (invalidoClave('password')) {
               <span class="campo-error">Al menos {{ passwordMin }} caracteres.</span>
             }
           </label>
           <label class="campo">
             <span class="label-campo">Repetir</span>
-            <input type="password" formControlName="repetirPassword" autocomplete="new-password" />
+            <div class="relative">
+              <input
+                #campoRepetir
+                type="password"
+                class="w-full pr-11"
+                formControlName="repetirPassword"
+                autocomplete="new-password"
+              />
+              <ui-ver-password [campo]="campoRepetir" />
+            </div>
             @if (passwordsDistintas()) {
               <span class="campo-error">No coinciden.</span>
             }

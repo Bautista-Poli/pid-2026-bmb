@@ -7,7 +7,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { Router } from '@angular/router';
-import { Boton, Icono, Modal, NombreIcono, Tarjeta } from '@app/components/ui';
+import { Boton, Icono, Modal, NombreIcono, Tarjeta, VerPassword } from '@app/components/ui';
 import { inicioSegunRol } from '@app/guards/rol.guard';
 import { CambiosPerfil, ETIQUETA_ROL, RolUsuario } from '@app/models';
 import { AuthService } from '@app/services/auth.service';
@@ -52,7 +52,7 @@ function passwordsIguales(grupo: AbstractControl): ValidationErrors | null {
 @Component({
   selector: 'app-perfil',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, Boton, Icono, Modal, Tarjeta],
+  imports: [ReactiveFormsModule, Boton, Icono, Modal, Tarjeta, VerPassword],
   templateUrl: './perfil.html',
 })
 export class Perfil {

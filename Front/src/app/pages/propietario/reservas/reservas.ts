@@ -1,6 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
+import { Router } from '@angular/router';
 import {
   Cargando,
   EstadoVacio,
@@ -19,26 +20,21 @@ import {
   ReservaDetallada,
   TipoVehiculo,
 } from '@app/models';
-import { avanzarReserva } from '@app/services/ciclo-reserva';
+import { avanzarReserva, puedeAvanzar, rutaAcceso } from '@app/services/ciclo-reserva';
 import { AuthService } from '@app/services/auth.service';
 import { EstacionamientoService } from '@app/services/estacionamiento.service';
 import { ReservaService } from '@app/services/reserva.service';
 import { desdeFechaISO } from '@app/utils/fecha.util';
 
-type Pestana = 'TODAS' | 'ACTIVAS' | 'PENDIENTES' | 'FINALIZADAS';
-
-const ESTADOS_POR_PESTANA: Record<Pestana, EstadoReserva[] | null> = {
-  TODAS: null,
-  ACTIVAS: ['CONFIRMADA', 'ACTIVA'],
-  PENDIENTES: ['PENDIENTE'],
-  FINALIZADAS: ['FINALIZADA', 'CANCELADA'],
-};
-
-const PESTANAS: { valor: Pestana; etiqueta: string }[] = [
-  { valor: 'TODAS', etiqueta: 'Todas' },
-  { valor: 'ACTIVAS', etiqueta: 'Activas' },
-  { valor: 'PENDIENTES', etiqueta: 'Pendientes' },
-  { valor: 'FINALIZADAS', etiqueta: 'Finalizadas' },
+/**
+ * Secciones en el orden en que se muestran, una debajo de la otra: nunca una
+ * lista mezclada. Las canceladas van al final y se ocultan hasta pedirlas.
+ */
+const SECCIONES: { clave: string; titulo: string; estados: EstadoReserva[] }[] = [
+  { clave: 'ACTIVAS', titulo: 'Activas', estados: ['CONFIRMADA', 'ACTIVA'] },
+  { clave: 'PENDIENTES', titulo: 'Pendientes', estados: ['PENDIENTE'] },
+  { clave: 'FINALIZADAS', titulo: 'Finalizadas', estados: ['FINALIZADA'] },
+  { clave: 'CANCELADAS', titulo: 'Canceladas', estados: ['CANCELADA'] },
 ];
 
 const TONO_ESTADO: Record<EstadoReserva, TonoEtiqueta> = {
@@ -81,8 +77,8 @@ export class Reservas {
   private readonly estacionamientos = inject(EstacionamientoService);
   private readonly reservas = inject(ReservaService);
   private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
 
-  protected readonly pestanas = PESTANAS;
   protected readonly etiquetaEstado = ETIQUETA_ESTADO_RESERVA;
   protected readonly etiquetaTipo = ETIQUETA_TIPO_VEHICULO;
   protected readonly tonoEstado = TONO_ESTADO;
@@ -90,10 +86,11 @@ export class Reservas {
   protected readonly pasos = PASOS;
   protected readonly desdeFechaISO = desdeFechaISO;
 
-  protected readonly pestana = signal<Pestana>('TODAS');
   protected readonly busqueda = signal('');
   protected readonly fecha = signal('');
   protected readonly estacionamientoId = signal<Id | ''>('');
+  /** Las canceladas quedan ocultas hasta que el propietario las pide. */
+  protected readonly verCanceladas = signal(false);
 
   protected readonly recursoEstacionamientos = rxResource({
     params: () => this.auth.usuario()?.id,
@@ -115,6 +112,7 @@ export class Reservas {
 
     return this.recurso
       .value()
+      .filter((r) => this.verCanceladas() || r.estado !== 'CANCELADA')
       .filter((r) => !fecha || r.fecha === fecha)
       .filter((r) => !lote || r.estacionamientoId === lote)
       .filter((r) => {
@@ -131,24 +129,13 @@ export class Reservas {
       .sort((a, b) => b.fecha.localeCompare(a.fecha) || a.horaDesde.localeCompare(b.horaDesde));
   });
 
-  protected readonly conteos = computed(() => {
+  /** Cada seccion con sus reservas; las vacias no se muestran. */
+  protected readonly secciones = computed(() => {
     const lista = this.filtradas();
-    const contar = (p: Pestana) => {
-      const estados = ESTADOS_POR_PESTANA[p];
-      return estados ? lista.filter((r) => estados.includes(r.estado)).length : lista.length;
-    };
-    return {
-      TODAS: contar('TODAS'),
-      ACTIVAS: contar('ACTIVAS'),
-      PENDIENTES: contar('PENDIENTES'),
-      FINALIZADAS: contar('FINALIZADAS'),
-    } satisfies Record<Pestana, number>;
-  });
-
-  protected readonly visibles = computed(() => {
-    const estados = ESTADOS_POR_PESTANA[this.pestana()];
-    const lista = this.filtradas();
-    return estados ? lista.filter((r) => estados.includes(r.estado)) : lista;
+    return SECCIONES.map((seccion) => ({
+      ...seccion,
+      reservas: lista.filter((r) => seccion.estados.includes(r.estado)),
+    })).filter((seccion) => seccion.reservas.length > 0);
   });
 
   protected readonly hayFiltros = computed(
@@ -159,6 +146,11 @@ export class Reservas {
   protected readonly procesandoId = signal<Id | null>(null);
   protected readonly aviso = signal<string | null>(null);
   protected readonly error = signal<string | null>(null);
+
+  /** El boton del paso siguiente, o null si hoy no corresponde (p. ej. ingreso fuera de la ventana). */
+  protected pasoDe(reserva: ReservaDetallada): string | null {
+    return puedeAvanzar(reserva) ? (this.pasos[reserva.estado] ?? null) : null;
+  }
 
   protected vehiculo(reserva: ReservaDetallada): string {
     const nombre = [reserva.vehiculo.marca, reserva.vehiculo.modelo].filter(Boolean).join(' ');
@@ -175,8 +167,14 @@ export class Reservas {
     this.estacionamientoId.set('');
   }
 
-  /** Confirmar, registrar ingreso o registrar egreso, segun el estado. */
+  /** Confirmar; ingreso y egreso pasan por la pantalla de acceso (codigo o QR). */
   protected avanzar(reserva: ReservaDetallada): void {
+    const ruta = rutaAcceso(reserva);
+    if (ruta) {
+      void this.router.navigate(ruta);
+      return;
+    }
+
     const paso = avanzarReserva(this.reservas, reserva);
     if (!paso) return;
 

@@ -3,6 +3,37 @@ import { esReservaActiva, Reserva, ReservaDetallada } from '@app/models';
 import { aInstante } from '@app/utils/fecha.util';
 import { ReservaService } from './reserva.service';
 
+/** Mismo margen que el backend: el ingreso se registra desde 30 min antes del inicio. */
+const MARGEN_INGRESO_MS = 30 * 60 * 1000;
+
+/**
+ * El ingreso solo se registra dentro de la franja: desde 30 min antes del
+ * inicio hasta el fin. Fuera de esa ventana el backend lo rechaza.
+ */
+export function ingresoHabilitado(reserva: Reserva, ahora = Date.now()): boolean {
+  const inicio = Date.parse(aInstante(reserva.fecha, reserva.horaDesde));
+  const fin = Date.parse(aInstante(reserva.fechaHasta, reserva.horaHasta));
+  return ahora >= inicio - MARGEN_INGRESO_MS && ahora < fin;
+}
+
+/**
+ * Si el propietario puede avanzar la reserva en este momento. Una confirmada
+ * solo habilita el ingreso dentro de su ventana; el resto de los pasos siempre.
+ */
+export function puedeAvanzar(reserva: Reserva): boolean {
+  return reserva.estado !== 'CONFIRMADA' || ingresoHabilitado(reserva);
+}
+
+/**
+ * Ingreso y egreso se registran desde la pantalla de acceso, con el codigo o el
+ * QR de la reserva: el operador confirma ahi antes de que se guarde. Devuelve la
+ * ruta de esa pantalla, o null si el paso no es de acceso.
+ */
+export function rutaAcceso(reserva: Reserva): string[] | null {
+  if (reserva.estado !== 'CONFIRMADA' && reserva.estado !== 'ACTIVA') return null;
+  return ['/propietario/acceso', reserva.codigoAcceso];
+}
+
 /**
  * Una reserva sigue en juego si su estado lo permite y su franja todavia no
  * termino. El backend no cierra sola a la que nadie ingreso, asi que sin la
@@ -28,6 +59,8 @@ export function avanzarReserva(
   reserva: ReservaDetallada,
 ): PasoReserva | null {
   const patente = reserva.vehiculo.patente;
+
+  if (!puedeAvanzar(reserva)) return null;
 
   switch (reserva.estado) {
     case 'PENDIENTE':

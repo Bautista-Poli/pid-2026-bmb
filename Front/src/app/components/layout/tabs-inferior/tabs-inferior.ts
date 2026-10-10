@@ -1,9 +1,13 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { ItemNavegacion } from '@app/components/layout';
 import { Icono } from '@app/components/ui';
+import { EstadoNavegacion } from '@app/services/estado-navegacion';
 
-/** Tab bar mobile: grilla de columnas iguales, activo con fondo acento. */
+/**
+ * Tab bar mobile: grilla de columnas iguales, activo con fondo acento. Mientras
+ * la pantalla de la pestaña tocada se carga, su icono se cambia por un spinner.
+ */
 @Component({
   selector: 'app-tabs-inferior',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -22,8 +26,16 @@ import { Icono } from '@app/components/ui';
                      transition-[background-color,box-shadow,color] duration-160 ease-out"
               [routerLink]="item.ruta"
               routerLinkActive="bg-acento text-sobre-acento shadow-elevada"
+              [attr.aria-busy]="cargando(item.ruta) || null"
             >
-              <ui-icono [nombre]="item.icono" [tamano]="21" />
+              @if (cargando(item.ruta)) {
+                <span
+                  class="size-[21px] animate-spin rounded-full border-2 border-current border-t-transparent"
+                  aria-hidden="true"
+                ></span>
+              } @else {
+                <ui-icono [nombre]="item.icono" [tamano]="21" />
+              }
               {{ item.etiqueta }}
             </a>
           </li>
@@ -35,4 +47,12 @@ import { Icono } from '@app/components/ui';
 })
 export class TabsInferior {
   readonly items = input.required<ItemNavegacion[]>();
+
+  private readonly navegacion = inject(EstadoNavegacion);
+
+  /** La pestaña esta cargando si el destino pendiente es su ruta (o una subruta). */
+  protected cargando(ruta: string): boolean {
+    const destino = this.navegacion.destino();
+    return destino !== null && (destino === ruta || destino.startsWith(ruta + '/'));
+  }
 }

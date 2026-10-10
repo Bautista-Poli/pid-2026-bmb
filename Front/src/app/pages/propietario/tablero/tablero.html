@@ -228,7 +228,7 @@
                     <ui-etiqueta [tono]="tonoEstado[reserva.estado]">
                       {{ etiquetaEstado[reserva.estado] }}
                     </ui-etiqueta>
-                    @if (pasos[reserva.estado]; as paso) {
+                    @if (pasoDe(reserva); as paso) {
                       <button
                         type="button"
                         class="text-[11.5px] font-semibold text-acento hover:text-acento-fuerte

@@ -1,7 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { EstadoReserva, ETIQUETA_ESTADO_RESERVA, ETIQUETA_MODALIDAD, ReservaDetallada } from '@app/models';
-import { reservaEnJuego } from '@app/services/ciclo-reserva';
+import { puedeAvanzar, reservaEnJuego } from '@app/services/ciclo-reserva';
 import { desdeFechaISO } from '@app/utils/fecha.util';
 import { Boton, Etiqueta, TonoEtiqueta } from '@app/components/ui';
 
@@ -62,8 +62,10 @@ export class FilaReserva {
 
   protected readonly fecha = computed(() => desdeFechaISO(this.reserva().fecha));
 
-  /** El unico paso que le queda al propietario, o null si no hay nada que hacer. */
-  protected readonly paso = computed(() => PASOS[this.reserva().estado]);
+  /** El unico paso que le queda al propietario, o null si no hay nada que hacer hoy. */
+  protected readonly paso = computed(() =>
+    puedeAvanzar(this.reserva()) ? (PASOS[this.reserva().estado] ?? null) : null,
+  );
 
   /** El conductor no puede cancelar una reserva que ya arranco. */
   protected readonly cancelable = computed(

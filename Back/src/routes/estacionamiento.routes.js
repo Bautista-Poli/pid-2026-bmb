@@ -68,6 +68,8 @@ router.patch(
   estacionamientoController.actualizar,
 );
 
+router.patch('/:id/reenviar-revision', ...soloPropietario, estacionamientoController.reenviarRevision);
+
 router.delete('/:id', ...soloPropietario, estacionamientoController.darDeBaja);
 
 router.put('/:id/foto', ...soloPropietario, imagen, estacionamientoController.guardarFoto);

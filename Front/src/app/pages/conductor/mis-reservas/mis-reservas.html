@@ -48,7 +48,7 @@
       </ui-estado-vacio>
     } @else if (pestania() === 'VIGENTES') {
       @for (reserva of enCurso(); track reserva.id) {
-        <app-tarjeta-reserva class="aparece" [reserva]="reserva" />
+        <app-tarjeta-reserva class="aparece" [reserva]="reserva" (verQr)="conQrAbierto.set($event)" />
       }
 
       @if (proximas().length > 0) {
@@ -60,6 +60,7 @@
                 [reserva]="reserva"
                 [cancelando]="cancelandoId() === reserva.id"
                 (cancelar)="pedirCancelacion($event)"
+                (verQr)="conQrAbierto.set($event)"
               />
             }
           </div>
@@ -141,6 +142,18 @@
             Cancelar reserva
           </ui-boton>
         </div>
+      </div>
+    }
+  </ui-modal>
+
+  <ui-modal titulo="QR de tu reserva" [abierto]="conQrAbierto() !== null" (cerrado)="conQrAbierto.set(null)">
+    @if (conQrAbierto(); as r) {
+      <div class="flex flex-col gap-4">
+        <p class="text-center text-[13px] text-plomo">
+          {{ r.estacionamiento.nombre }} · Cochera {{ r.cochera?.identificador ?? 'a asignar' }} ·
+          {{ r.horaDesde }}–{{ r.horaHasta }}
+        </p>
+        <app-qr-reserva [codigo]="r.codigoAcceso" />
       </div>
     }
   </ui-modal>

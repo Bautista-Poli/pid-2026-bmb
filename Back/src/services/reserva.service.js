@@ -1,5 +1,6 @@
 import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
+import { normalizarCodigo } from '../utils/codigoAcceso.js';
 import {
   FRANJAS_ESTANDAR,
   instanteLocal,
@@ -12,9 +13,14 @@ import { ESTADOS_COCHERA, ESTADOS_RESERVA, ESTADOS_VIGENTES } from '../utils/rol
 import { sinSolapamiento } from '../utils/solapamiento.js';
 import { CAMPOS_TARIFA, HORAS_POR_MODALIDAD, MODALIDADES, precioDeReserva } from '../utils/tarifas.js';
 import { ORDEN_NATURAL } from './cochera.service.js';
+import { validarAbonoParaReservar } from './abono.service.js';
 import { asegurarPropiedad } from './estacionamiento.service.js';
 
 const VIOLACION_EXCLUSION = '23P01';
+
+// Modalidad de las reservas hechas con un abono: no se cobra (ya se pago el
+// abono). No esta en MODALIDADES porque el conductor no la elige: sale de `id_abono`.
+const MODALIDAD_ABONO = 'ABONO';
 
 // El vehiculo puede llegar hasta 30 minutos antes de su franja.
 const MARGEN_INGRESO_MS = 30 * 60 * 1000;
@@ -78,13 +84,15 @@ const SELECT_DETALLE = `
          r.id_cochera, c.identificador AS cochera,
          c.sector AS cochera_sector, c.cubierta AS cochera_cubierta,
          e.id_estacionamiento, e.nombre AS estacionamiento, e.direccion,
-         r.modalidad, r.precio_total, r.motivo_reasignacion,
+         r.modalidad, r.precio_total, r.motivo_reasignacion, r.codigo_acceso,
+         r.id_abono, a.turno::text AS turno_abono,
          u.nombre AS conductor_nombre, u.apellido AS conductor_apellido
     FROM reserva r
     JOIN vehiculo v        ON v.id_vehiculo = r.id_vehiculo
     JOIN cochera c         ON c.id_cochera = r.id_cochera
     JOIN estacionamiento e ON e.id_estacionamiento = c.id_estacionamiento
     JOIN usuario u         ON u.id_usuario = r.id_conductor
+    LEFT JOIN abono a      ON a.id_abono = r.id_abono
 `;
 
 /**
@@ -106,25 +114,35 @@ const SELECT_DETALLE = `
  */
 export async function crear(
   idConductor,
-  { id_cochera, id_estacionamiento, id_vehiculo, inicio, fin, modalidad = MODALIDADES.HORA },
+  { id_cochera, id_estacionamiento, id_vehiculo, inicio, fin, modalidad = MODALIDADES.HORA, id_abono },
 ) {
   return withTransaction(async (client) => {
+    // El abono se bloquea primero (orden fijo: abono -> vehiculo -> cocheras).
+    const abono = id_abono
+      ? await validarAbonoParaReservar(client, id_abono, idConductor, inicio, fin)
+      : null;
+
     const vehiculo = await obtenerVehiculo(client, id_vehiculo, idConductor);
     await asegurarVehiculoLibre(client, id_vehiculo, inicio, fin);
 
     const cochera = id_cochera
       ? await bloquearCochera(client, id_cochera, vehiculo, inicio, fin)
-      : await asignarCochera(client, id_estacionamiento, vehiculo, inicio, fin);
+      : await asignarCochera(client, abono?.id_estacionamiento ?? id_estacionamiento, vehiculo, inicio, fin);
 
-    const precio = await precioDe(client, cochera.id_estacionamiento, modalidad, inicio, fin);
-    await validarHorario(client, cochera.id_estacionamiento, inicio, fin, modalidad);
+    if (abono && cochera.id_estacionamiento !== abono.id_estacionamiento) {
+      throw ApiError.conflict('El abono es de otro estacionamiento');
+    }
+
+    // Con abono no se cobra y se valida como una reserva por hora (todo el rango en horario).
+    const precio = abono ? 0 : await precioDe(client, cochera.id_estacionamiento, modalidad, inicio, fin);
+    await validarHorario(client, cochera.id_estacionamiento, inicio, fin, abono ? MODALIDADES.HORA : modalidad);
 
     let idReserva;
     try {
       const { rows } = await client.query(
         `INSERT INTO reserva
-           (id_conductor, id_vehiculo, id_cochera, inicio, fin, estado, modalidad, precio_total)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+           (id_conductor, id_vehiculo, id_cochera, inicio, fin, estado, modalidad, precio_total, id_abono)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          RETURNING id_reserva`,
         [
           idConductor,
@@ -132,9 +150,11 @@ export async function crear(
           cochera.id_cochera,
           inicio,
           fin,
-          ESTADOS_RESERVA.PENDIENTE,
-          modalidad,
+          // Con abono ya esta paga: nace confirmada (supuesto de la spec, pregunta 6).
+          abono ? ESTADOS_RESERVA.CONFIRMADA : ESTADOS_RESERVA.PENDIENTE,
+          abono ? MODALIDAD_ABONO : modalidad,
           precio,
+          abono?.id_abono ?? null,
         ],
       );
       idReserva = rows[0].id_reserva;
@@ -466,25 +486,47 @@ export async function confirmar(idReserva, idPropietario) {
   });
 }
 
+/**
+ * Un egreso pegado al ingreso es casi seguro un doble escaneo del QR (o una
+ * recarga de la pantalla), no un auto que entro y salio: se rechaza. Solo
+ * aplica a la entrada por codigo; los botones del propietario no lo usan.
+ */
+const MARGEN_EGRESO_TRAS_INGRESO_MS = 60 * 1000;
+
+/**
+ * Reglas del ingreso sobre una reserva ya bloqueada. Las comparten el boton
+ * del propietario (registrarIngreso) y el QR de la reserva (registrarAcceso).
+ */
+async function aplicarIngreso(client, reserva) {
+  if (reserva.estado === ESTADOS_RESERVA.PENDIENTE) {
+    throw ApiError.conflict('Primero hay que confirmar la reserva');
+  }
+  if (reserva.ingreso_real) throw ApiError.conflict('El ingreso ya estaba registrado');
+
+  const ahora = Date.now();
+  if (ahora < reserva.inicio.getTime() - MARGEN_INGRESO_MS) {
+    throw ApiError.conflict('Todavia es muy temprano para registrar el ingreso');
+  }
+  if (ahora > reserva.fin.getTime()) throw ApiError.conflict('La franja de la reserva ya termino');
+
+  await client.query('UPDATE reserva SET ingreso_real = now() WHERE id_reserva = $1', [reserva.id_reserva]);
+  await cambiarEstado(client, reserva, ESTADOS_RESERVA.ACTIVA);
+}
+
+/** Reglas del egreso sobre una reserva ya bloqueada. */
+async function aplicarEgreso(client, reserva) {
+  if (!reserva.ingreso_real) throw ApiError.conflict('La reserva todavia no tiene ingreso');
+  if (reserva.egreso_real) throw ApiError.conflict('El egreso ya estaba registrado');
+
+  await client.query('UPDATE reserva SET egreso_real = now() WHERE id_reserva = $1', [reserva.id_reserva]);
+  await cambiarEstado(client, reserva, ESTADOS_RESERVA.FINALIZADA);
+}
+
 /** Llego el vehiculo: se guarda la hora y la cochera pasa a OCUPADA. */
 export async function registrarIngreso(idReserva, idPropietario) {
   return withTransaction(async (client) => {
     const reserva = await bloquearReservaDelPropietario(client, idReserva, idPropietario);
-
-    if (reserva.estado === ESTADOS_RESERVA.PENDIENTE) {
-      throw ApiError.conflict('Primero hay que confirmar la reserva');
-    }
-    if (reserva.ingreso_real) throw ApiError.conflict('El ingreso ya estaba registrado');
-
-    const ahora = Date.now();
-    if (ahora < reserva.inicio.getTime() - MARGEN_INGRESO_MS) {
-      throw ApiError.conflict('Todavia es muy temprano para registrar el ingreso');
-    }
-    if (ahora > reserva.fin.getTime()) throw ApiError.conflict('La franja de la reserva ya termino');
-
-    await client.query('UPDATE reserva SET ingreso_real = now() WHERE id_reserva = $1', [idReserva]);
-    await cambiarEstado(client, reserva, ESTADOS_RESERVA.ACTIVA);
-
+    await aplicarIngreso(client, reserva);
     return obtenerDetalle(client, idReserva);
   });
 }
@@ -493,14 +535,100 @@ export async function registrarIngreso(idReserva, idPropietario) {
 export async function registrarEgreso(idReserva, idPropietario) {
   return withTransaction(async (client) => {
     const reserva = await bloquearReservaDelPropietario(client, idReserva, idPropietario);
-
-    if (!reserva.ingreso_real) throw ApiError.conflict('La reserva todavia no tiene ingreso');
-    if (reserva.egreso_real) throw ApiError.conflict('El egreso ya estaba registrado');
-
-    await client.query('UPDATE reserva SET egreso_real = now() WHERE id_reserva = $1', [idReserva]);
-    await cambiarEstado(client, reserva, ESTADOS_RESERVA.FINALIZADA);
-
+    await aplicarEgreso(client, reserva);
     return obtenerDetalle(client, idReserva);
+  });
+}
+
+/* ----------------------- ingreso y egreso por codigo -----------------------
+   El conductor muestra el QR de su reserva al entrar y al salir; el operador
+   (hoy, el propietario) lo escanea o tipea el codigo. El mismo codigo sirve
+   para las dos cosas: el estado de la reserva decide que se registra.
+-------------------------------------------------------------------------- */
+
+const ACCIONES_ACCESO = Object.freeze({ INGRESO: 'INGRESO', EGRESO: 'EGRESO' });
+
+const HORA_LOCAL = new Intl.DateTimeFormat('es-AR', {
+  timeZone: 'America/Argentina/Buenos_Aires',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+});
+
+/** Mismo mensaje para un codigo inexistente, mal formado o de un estacionamiento ajeno. */
+const CODIGO_INVALIDO = 'El codigo no corresponde a ninguna reserva de tus estacionamientos';
+
+async function buscarReservaPorCodigo(ejecutor, idPropietario, bruto, { bloquear = false } = {}) {
+  const codigo = normalizarCodigo(bruto);
+  if (!codigo) throw ApiError.notFound(CODIGO_INVALIDO);
+
+  const { rows } = await ejecutor.query(
+    `SELECT r.id_reserva, r.estado, r.inicio, r.fin, r.ingreso_real, r.egreso_real, r.id_cochera
+       FROM reserva r
+       JOIN cochera c         ON c.id_cochera = r.id_cochera
+       JOIN estacionamiento e ON e.id_estacionamiento = c.id_estacionamiento
+      WHERE r.codigo_acceso = $1 AND e.id_propietario = $2
+      ${bloquear ? 'FOR UPDATE OF r' : ''}`,
+    [codigo, idPropietario],
+  );
+  if (!rows[0]) throw ApiError.notFound(CODIGO_INVALIDO);
+  return rows[0];
+}
+
+/**
+ * Que se registra ahora sobre esta reserva. Una ACTIVA da egreso aunque su
+ * `fin` haya pasado (el auto sigue adentro); el resto explica por que no.
+ */
+function accionPara(reserva, ahora = Date.now()) {
+  switch (reserva.estado) {
+    case ESTADOS_RESERVA.ACTIVA:
+      return ACCIONES_ACCESO.EGRESO;
+    case ESTADOS_RESERVA.CONFIRMADA: {
+      const desde = new Date(reserva.inicio.getTime() - MARGEN_INGRESO_MS);
+      if (ahora < desde.getTime()) {
+        throw ApiError.conflict(
+          `La reserva empieza a las ${HORA_LOCAL.format(reserva.inicio)}; ` +
+            `se puede ingresar desde las ${HORA_LOCAL.format(desde)}`,
+        );
+      }
+      if (ahora > reserva.fin.getTime()) throw ApiError.conflict('La franja de la reserva ya termino');
+      return ACCIONES_ACCESO.INGRESO;
+    }
+    case ESTADOS_RESERVA.PENDIENTE:
+      throw ApiError.conflict('La reserva todavia no esta confirmada');
+    case ESTADOS_RESERVA.CANCELADA:
+      throw ApiError.conflict('La reserva esta cancelada');
+    default:
+      throw ApiError.conflict('La reserva ya termino');
+  }
+}
+
+/** Vista previa para la pantalla de confirmacion del operador: no registra nada. */
+export async function previaAcceso(idPropietario, codigo) {
+  const reserva = await buscarReservaPorCodigo({ query }, idPropietario, codigo);
+  const accion = accionPara(reserva);
+  return { accion, reserva: await obtenerDetalle({ query }, reserva.id_reserva) };
+}
+
+/**
+ * Registra el ingreso o el egreso. Vuelve a resolver la accion con la reserva
+ * bloqueada: entre la vista previa y la confirmacion puede haber cambiado.
+ */
+export async function registrarAcceso(idPropietario, { codigo }) {
+  return withTransaction(async (client) => {
+    const reserva = await buscarReservaPorCodigo(client, idPropietario, codigo, { bloquear: true });
+    const accion = accionPara(reserva);
+
+    if (accion === ACCIONES_ACCESO.INGRESO) {
+      await aplicarIngreso(client, reserva);
+    } else {
+      if (Date.now() - reserva.ingreso_real.getTime() < MARGEN_EGRESO_TRAS_INGRESO_MS) {
+        throw ApiError.conflict('Acabas de registrar el ingreso; el egreso se marca cuando el auto se va');
+      }
+      await aplicarEgreso(client, reserva);
+    }
+
+    return { accion, reserva: await obtenerDetalle(client, reserva.id_reserva) };
   });
 }
 

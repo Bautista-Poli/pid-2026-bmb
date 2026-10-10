@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
-import { FormularioEstacionamiento } from '@app/components/estacionamiento';
+import { FormularioEstacionamiento, PlanesAbono } from '@app/components/estacionamiento';
 import { Boton, Cargando, EstadoVacio } from '@app/components/ui';
 import { Id, NuevoEstacionamiento } from '@app/models';
 import { EstacionamientoService } from '@app/services/estacionamiento.service';
@@ -15,7 +15,7 @@ import { EstacionamientoService } from '@app/services/estacionamiento.service';
 @Component({
   selector: 'app-editar-estacionamiento',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, FormularioEstacionamiento, Boton, Cargando, EstadoVacio],
+  imports: [RouterLink, FormularioEstacionamiento, PlanesAbono, Boton, Cargando, EstadoVacio],
   templateUrl: './editar-estacionamiento.html',
 })
 export class EditarEstacionamiento {

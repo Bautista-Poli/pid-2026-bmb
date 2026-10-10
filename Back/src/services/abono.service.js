@@ -5,7 +5,7 @@ import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
 import { partesLocales } from '../utils/horario.js';
 import { motivoFueraDeTurno, TURNOS } from '../utils/turnos.js';
-import { asegurarPropiedad } from './estacionamiento.service.js';
+import { aceptaReservas, asegurarPropiedad } from './estacionamiento.service.js';
 
 const VIOLACION_UNIQUE = '23505';
 
@@ -132,7 +132,7 @@ export async function comprar(idConductor, { id_plan }) {
   return withTransaction(async (client) => {
     const { rows } = await client.query(
       `SELECT p.id_plan, p.id_estacionamiento, p.turno, p.cupos, p.precio, p.activo,
-              e.publicado, e.activo AS estacionamiento_activo
+              e.publicado, e.estado_aprobacion, e.activo AS estacionamiento_activo
          FROM plan_abono p
          JOIN estacionamiento e ON e.id_estacionamiento = p.id_estacionamiento
         WHERE p.id_plan = $1`,
@@ -140,8 +140,8 @@ export async function comprar(idConductor, { id_plan }) {
     );
     const plan = rows[0];
     if (!plan || !plan.activo) throw ApiError.notFound('El plan no existe o ya no se ofrece');
-    if (!plan.publicado || !plan.estacionamiento_activo) {
-      throw ApiError.conflict('El estacionamiento no esta publicado');
+    if (!aceptaReservas({ ...plan, activo: plan.estacionamiento_activo })) {
+      throw ApiError.conflict('El estacionamiento no esta disponible para reservar');
     }
 
     const { rows: creado } = await client.query(

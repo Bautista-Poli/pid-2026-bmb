@@ -3,6 +3,7 @@ import * as fotoService from '../services/estacionamiento-foto.service.js';
 import * as cocheraService from '../services/cochera.service.js';
 import * as reservaService from '../services/reserva.service.js';
 import { ApiError } from '../utils/ApiError.js';
+import { ROLES } from '../utils/roles.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
 export const crear = asyncHandler(async (req, res) => {
@@ -23,7 +24,10 @@ export const buscar = asyncHandler(async (req, res) => {
 });
 
 export const obtener = asyncHandler(async (req, res) => {
-  const estacionamiento = await estacionamientoService.obtenerPorId(req.params.id);
+  const estacionamiento = await estacionamientoService.obtenerPorId(req.params.id, {
+    idSolicitante: req.usuario?.id ?? null,
+    esAdmin: req.usuario?.rol === ROLES.ADMINISTRADOR,
+  });
   res.json({ estacionamiento });
 });
 

@@ -509,3 +509,60 @@ END
 $$;
 
 CREATE INDEX IF NOT EXISTS idx_reserva_abono ON reserva (id_abono) WHERE id_abono IS NOT NULL;
+
+-- Aprobacion de estacionamientos (Sprint 3). Un Administrador de plataforma
+-- revisa cada estacionamiento antes de que aparezca en la busqueda. `publicado`
+-- sigue siendo la intencion del propietario; lo que se ve es publicado Y
+-- aprobado. El rol nuevo no se usa como literal en este archivo: Postgres no
+-- deja usar un valor de enum en la misma transaccion en la que se agrega.
+ALTER TYPE rol_usuario ADD VALUE IF NOT EXISTS 'ADMINISTRADOR';
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'estado_aprobacion') THEN
+    CREATE TYPE estado_aprobacion AS ENUM ('PENDIENTE', 'APROBADO', 'RECHAZADO');
+  END IF;
+END
+$$;
+
+-- `enviado_en`: cuando entro a la cola de revision por ultima vez (alta,
+-- reenvio o cambio de nombre/direccion). `created_at` no estaba y lo usan los
+-- dashboards.
+ALTER TABLE estacionamiento
+  ADD COLUMN IF NOT EXISTS estado_aprobacion estado_aprobacion,
+  ADD COLUMN IF NOT EXISTS motivo_rechazo    VARCHAR(300),
+  ADD COLUMN IF NOT EXISTS revisado_por      UUID,
+  ADD COLUMN IF NOT EXISTS revisado_en       TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS enviado_en        TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS created_at        TIMESTAMPTZ;
+
+-- Los que ya existian quedan aprobados: estaban a la vista antes de que
+-- hubiera revision. Solo toca filas sin estado, asi que volver a migrar no
+-- aprueba a los pendientes.
+UPDATE estacionamiento SET estado_aprobacion = 'APROBADO' WHERE estado_aprobacion IS NULL;
+UPDATE estacionamiento SET created_at = now() WHERE created_at IS NULL;
+UPDATE estacionamiento SET enviado_en = created_at WHERE enviado_en IS NULL;
+
+ALTER TABLE estacionamiento
+  ALTER COLUMN estado_aprobacion SET DEFAULT 'PENDIENTE',
+  ALTER COLUMN estado_aprobacion SET NOT NULL,
+  ALTER COLUMN created_at SET DEFAULT now(),
+  ALTER COLUMN created_at SET NOT NULL,
+  ALTER COLUMN enviado_en SET DEFAULT now(),
+  ALTER COLUMN enviado_en SET NOT NULL;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'estacionamiento_revisado_por_fk') THEN
+    ALTER TABLE estacionamiento ADD CONSTRAINT estacionamiento_revisado_por_fk
+      FOREIGN KEY (revisado_por) REFERENCES usuario (id_usuario) ON DELETE SET NULL;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'estacionamiento_rechazo_con_motivo') THEN
+    ALTER TABLE estacionamiento ADD CONSTRAINT estacionamiento_rechazo_con_motivo
+      CHECK (estado_aprobacion <> 'RECHAZADO' OR motivo_rechazo IS NOT NULL);
+  END IF;
+END
+$$;
+
+CREATE INDEX IF NOT EXISTS idx_estacionamiento_aprobacion
+  ON estacionamiento (estado_aprobacion, enviado_en);

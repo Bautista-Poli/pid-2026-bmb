@@ -10,6 +10,7 @@ import {
   signal,
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { Etiqueta, Icono, TonoEtiqueta } from '@app/components/ui';
 import { ChapaPatente } from '@app/components/vehiculo';
 import {
@@ -25,6 +26,7 @@ import {
 import { reservaEnJuego } from '@app/services/ciclo-reserva';
 import { aInstante, desdeFechaISO } from '@app/utils/fecha.util';
 import { linksComoLlegar } from '@app/utils/mapas.util';
+import { reservaReclamable } from '@app/utils/reclamo.util';
 
 const TONO_ESTADO: Record<EstadoReserva, TonoEtiqueta> = {
   PENDIENTE: 'aviso',
@@ -64,7 +66,7 @@ function duracion(ms: number): string {
 @Component({
   selector: 'app-tarjeta-reserva',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgTemplateOutlet, Etiqueta, Icono, ChapaPatente],
+  imports: [NgTemplateOutlet, RouterLink, Etiqueta, Icono, ChapaPatente],
   templateUrl: './tarjeta-reserva.html',
   host: { class: 'block' },
 })
@@ -77,6 +79,11 @@ export class TarjetaReserva implements OnInit {
 
   readonly cancelar = output<ReservaDetallada>();
   readonly verQr = output<ReservaDetallada>();
+  /** "Tengo un problema": abre un reclamo sobre esta reserva. */
+  readonly reclamar = output<ReservaDetallada>();
+
+  /** Pagada aparte, dentro de los 15 dias y sin otro reclamo abierto. */
+  protected readonly reclamable = computed(() => reservaReclamable(this.reserva()));
 
   /** El QR sirve mientras la reserva puede entrar o salir: confirmada o en curso. */
   protected readonly conQr = computed(() => {

@@ -1,10 +1,12 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { DatePipe } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
+import { AbrirReclamo, ObjetoReclamo } from '@app/components/reclamo';
 import { Boton, Cargando, EstadoVacio, Modal, Tarjeta } from '@app/components/ui';
-import { Abono, TURNOS } from '@app/models';
+import { Abono, Id, TURNOS } from '@app/models';
 import { AbonoService } from '@app/services/abono.service';
+import { abonoReclamable } from '@app/utils/reclamo.util';
 
 /**
  * Pantalla `/conductor/abonos` · rol CONDUCTOR
@@ -15,7 +17,7 @@ import { AbonoService } from '@app/services/abono.service';
 @Component({
   selector: 'app-abonos',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Boton, Cargando, EstadoVacio, Modal, Tarjeta, RouterLink, DatePipe],
+  imports: [AbrirReclamo, Boton, Cargando, EstadoVacio, Modal, Tarjeta, RouterLink, DatePipe],
   template: `
     <div class="aparece mx-auto w-full max-w-[640px] px-6 pt-5 pb-8 lg:px-10 lg:pt-[34px] lg:pb-11">
       <div class="flex flex-col gap-6">
@@ -54,6 +56,11 @@ import { AbonoService } from '@app/services/abono.service';
                       <span class="text-plomo">· {{ abono.estado.toLowerCase() }}</span>
                     }
                   </p>
+                  @if (abono.devuelto > 0) {
+                    <p class="num-tabular mt-1 text-[12.5px] font-semibold text-exito">
+                      Devuelto $ {{ abono.devuelto.toLocaleString('es-AR') }}
+                    </p>
+                  }
                 </div>
                 @if (abono.estado === 'VIGENTE') {
                   <div class="flex flex-wrap gap-2">
@@ -72,6 +79,19 @@ import { AbonoService } from '@app/services/abono.service';
                     }
                     <ui-boton variante="peligro" tamano="sm" (presionado)="aCancelar.set(abono)">
                       Cancelar abono
+                    </ui-boton>
+                  </div>
+                }
+                @if (abono.reclamoAbierto; as id) {
+                  <div>
+                    <ui-boton variante="secundario" tamano="sm" routerLink="/conductor/incidencias" [queryParams]="{ id }">
+                      Ver reclamo
+                    </ui-boton>
+                  </div>
+                } @else if (reclamable(abono)) {
+                  <div>
+                    <ui-boton variante="secundario" tamano="sm" (presionado)="pedirReclamo(abono)">
+                      Tengo un problema
                     </ui-boton>
                   </div>
                 }
@@ -98,10 +118,31 @@ import { AbonoService } from '@app/services/abono.service';
         </div>
       }
     </ui-modal>
+
+    <app-abrir-reclamo [objeto]="aReclamar()" (cerrado)="aReclamar.set(null)" (creado)="verReclamo($event)" />
   `,
 })
 export class Abonos {
   private readonly abonos = inject(AbonoService);
+  private readonly router = inject(Router);
+
+  protected readonly reclamable = (abono: Abono) => abonoReclamable(abono);
+  /** Abono sobre el que el conductor abre un reclamo: mientras no sea null, el modal esta abierto. */
+  protected readonly aReclamar = signal<ObjetoReclamo | null>(null);
+
+  protected pedirReclamo(abono: Abono): void {
+    this.aReclamar.set({
+      tipo: 'abono',
+      id: abono.id,
+      descripcion: `Abono en ${abono.estacionamiento}`,
+      tope: Math.max(0, abono.precioTotal - abono.devuelto),
+    });
+  }
+
+  protected verReclamo(id: Id): void {
+    this.aReclamar.set(null);
+    this.router.navigate(['/conductor/incidencias'], { queryParams: { id } });
+  }
 
   protected readonly turnos = TURNOS;
   protected readonly aCancelar = signal<Abono | null>(null);

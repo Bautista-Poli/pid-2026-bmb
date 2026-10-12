@@ -225,8 +225,8 @@
                   </div>
 
                   <div class="flex shrink-0 flex-col items-end gap-1.5">
-                    <ui-etiqueta [tono]="tonoEstado[reserva.estado]">
-                      {{ etiquetaEstado[reserva.estado] }}
+                    <ui-etiqueta [tono]="tonoEstado(reserva)">
+                      {{ etiquetaEstado(reserva) }}
                     </ui-etiqueta>
                     @if (pasoDe(reserva); as paso) {
                       <button

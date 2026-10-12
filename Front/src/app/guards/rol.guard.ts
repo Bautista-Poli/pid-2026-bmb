@@ -10,6 +10,8 @@ export function inicioSegunRol(rol: RolUsuario | null): string {
       return '/conductor/explorar';
     case 'PROPIETARIO':
       return '/propietario/tablero';
+    case 'ADMINISTRADOR':
+      return '/admin';
     default:
       return '/ingresar';
   }

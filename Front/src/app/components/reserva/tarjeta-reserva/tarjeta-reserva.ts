@@ -14,7 +14,8 @@ import { Etiqueta, Icono, TonoEtiqueta } from '@app/components/ui';
 import { ChapaPatente } from '@app/components/vehiculo';
 import {
   EstadoReserva,
-  ETIQUETA_ESTADO_RESERVA,
+  esVencida,
+  etiquetaReserva,
   ETIQUETA_MODALIDAD,
   ETIQUETA_TIPO_VEHICULO,
   TURNOS,
@@ -31,6 +32,7 @@ const TONO_ESTADO: Record<EstadoReserva, TonoEtiqueta> = {
   ACTIVA: 'exito',
   FINALIZADA: 'neutro',
   CANCELADA: 'peligro',
+  NO_SHOW: 'peligro',
 };
 
 /** El reloj de la reserva en curso se refresca cada 30 s: alcanza para los minutos. */
@@ -83,13 +85,15 @@ export class TarjetaReserva implements OnInit {
     return r.estado === 'ACTIVA' || (r.estado === 'CONFIRMADA' && reservaEnJuego(r));
   });
 
-  protected readonly etiquetaEstado = ETIQUETA_ESTADO_RESERVA;
+  protected readonly etiquetaEstado = computed(() => etiquetaReserva(this.reserva(), 'CONDUCTOR'));
   protected readonly etiquetaModalidad = ETIQUETA_MODALIDAD;
   protected readonly turnos = TURNOS;
 
   protected readonly ahora = signal(Date.now());
 
-  protected readonly tono = computed(() => TONO_ESTADO[this.reserva().estado]);
+  protected readonly tono = computed(() =>
+    esVencida(this.reserva()) ? 'aviso' : TONO_ESTADO[this.reserva().estado],
+  );
   protected readonly enCurso = computed(
     () => this.variante() === 'completa' && this.reserva().estado === 'ACTIVA',
   );

@@ -192,7 +192,7 @@ export async function cancelar(idAbono, idConductor) {
     }
 
     await client.query(
-      `UPDATE reserva SET estado = 'CANCELADA'
+      `UPDATE reserva SET estado = 'CANCELADA', cancelada_por = 'CONDUCTOR'
         WHERE id_abono = $1 AND estado IN ('PENDIENTE', 'CONFIRMADA') AND inicio > now()`,
       [idAbono],
     );

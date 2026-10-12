@@ -1,13 +1,14 @@
 import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
 import { errorPatente } from '../validators/vehiculo.validator.js';
+import * as cloudinary from './cloudinary.service.js';
 
 const VIOLACION_UNIQUE = '23505';
 const VIOLACION_FK = '23503';
 
 const CAMPOS = `
   id_vehiculo, id_conductor, id_tipo_vehiculo, patente, marca, modelo, color,
-  predeterminado, activo
+  predeterminado, activo, foto_public_id
 `;
 
 // Columnas que el PATCH puede tocar; predeterminado se maneja aparte por el
@@ -72,7 +73,7 @@ export async function crear(idConductor, datos) {
 export async function listarPorConductor(idConductor) {
   const { rows } = await query(
     `SELECT v.id_vehiculo, v.id_conductor, v.id_tipo_vehiculo, v.patente,
-            v.marca, v.modelo, v.color, v.predeterminado, v.activo,
+            v.marca, v.modelo, v.color, v.predeterminado, v.activo, v.foto_public_id,
             t.nombre AS tipo_vehiculo
        FROM vehiculo v
        JOIN tipo_vehiculo t ON t.id_tipo_vehiculo = v.id_tipo_vehiculo
@@ -176,4 +177,32 @@ export async function listarTipos() {
     'SELECT id_tipo_vehiculo, nombre FROM tipo_vehiculo ORDER BY id_tipo_vehiculo',
   );
   return rows;
+}
+
+/* --------------------------------- foto ---------------------------------- */
+
+/** Firma para que el navegador suba la foto del vehiculo a su carpeta. */
+export async function firmarFoto(idVehiculo, idConductor) {
+  await obtenerDelConductor(idVehiculo, idConductor);
+  return cloudinary.firmarSubida(cloudinary.carpetaDe('vehiculos', idVehiculo));
+}
+
+/** Pone (o reemplaza) la foto propia del vehiculo. La anterior se borra de Cloudinary. */
+export async function guardarFoto(idVehiculo, idConductor, publicId) {
+  const actual = await obtenerDelConductor(idVehiculo, idConductor);
+  await cloudinary.verificar(publicId, cloudinary.carpetaDe('vehiculos', idVehiculo));
+
+  const { rows } = await query(
+    `UPDATE vehiculo SET foto_public_id = $2 WHERE id_vehiculo = $1 RETURNING ${CAMPOS}`,
+    [idVehiculo, publicId],
+  );
+  if (actual.foto_public_id !== publicId) await cloudinary.borrar(actual.foto_public_id);
+  return rows[0];
+}
+
+/** Saca la foto propia: el front vuelve a la de catalogo. Idempotente. */
+export async function borrarFoto(idVehiculo, idConductor) {
+  const actual = await obtenerDelConductor(idVehiculo, idConductor);
+  await query('UPDATE vehiculo SET foto_public_id = NULL WHERE id_vehiculo = $1', [idVehiculo]);
+  await cloudinary.borrar(actual.foto_public_id);
 }

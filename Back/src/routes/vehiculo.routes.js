@@ -30,4 +30,10 @@ router.patch(
 
 router.delete('/:id', authenticate, requireRole(ROLES.CONDUCTOR), vehiculoController.eliminar);
 
+// Foto propia del vehiculo: firma para subir a Cloudinary y despues su public_id.
+const soloConductor = [authenticate, requireRole(ROLES.CONDUCTOR)];
+router.post('/:id/foto/firma', ...soloConductor, vehiculoController.firmarFoto);
+router.put('/:id/foto', ...soloConductor, vehiculoController.guardarFoto);
+router.delete('/:id/foto', ...soloConductor, vehiculoController.borrarFoto);
+
 export default router;

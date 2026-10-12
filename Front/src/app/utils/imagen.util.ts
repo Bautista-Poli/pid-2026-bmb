@@ -9,7 +9,13 @@ export const LADO_MAXIMO = 1600;
 export async function achicarImagen(archivo: Blob, ladoMax = LADO_MAXIMO): Promise<Blob> {
   if (typeof createImageBitmap !== 'function' || typeof document === 'undefined') return archivo;
 
-  const imagen = await createImageBitmap(archivo);
+  let imagen: ImageBitmap;
+  try {
+    // `from-image`: respeta la rotacion EXIF de las fotos de celular.
+    imagen = await createImageBitmap(archivo, { imageOrientation: 'from-image' });
+  } catch {
+    throw new Error('No pudimos leer la foto. Probá con otra imagen JPG, PNG o WEBP.');
+  }
   const escala = Math.min(1, ladoMax / Math.max(imagen.width, imagen.height));
   if (escala === 1 && archivo.size <= 1.5 * 1024 * 1024) {
     imagen.close();

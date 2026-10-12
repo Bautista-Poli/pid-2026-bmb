@@ -27,6 +27,8 @@ export class AltaVehiculo {
 
   protected readonly enviando = signal(false);
   protected readonly error = signal<string | null>(null);
+  /** Porcentaje de la subida de la foto en curso, o `null`. */
+  protected readonly progresoFoto = signal<number | null>(null);
 
   // El listado solo alimenta el aviso "tu primer vehiculo queda predeterminado".
   private readonly recurso = rxResource({
@@ -82,9 +84,10 @@ export class AltaVehiculo {
       this.volverAlListado();
       return;
     }
-    this.vehiculos.subirFoto(id, this.foto).subscribe({
+    this.vehiculos.subirFoto(id, this.foto, (porcentaje) => this.progresoFoto.set(porcentaje)).subscribe({
       next: () => this.volverAlListado(),
       error: (e: Error) => {
+        this.progresoFoto.set(null);
         this.enviando.set(false);
         this.error.set(
           `Agregamos el vehículo, pero la foto no se pudo subir (${e.message}). ` +

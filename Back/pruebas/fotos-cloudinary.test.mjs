@@ -173,3 +173,61 @@ describe('foto del vehiculo', () => {
     assert.equal(await fotoDe(conductor, vehiculo.id_vehiculo), null);
   });
 });
+
+describe('pendientes de la revision', () => {
+  test('una misma foto no puede quedar en dos lugares', async () => {
+    const { propietario, id, ruta } = await escenario();
+    const publicId = `${carpetaEst(id)}/repetida`;
+
+    const portada = await api('PUT', `${ruta}/foto`, { token: propietario.token, body: { public_id: publicId } });
+    assert.equal(portada.estado, 200);
+    const galeria = await api('POST', `${ruta}/fotos`, { token: propietario.token, body: { public_id: publicId } });
+    assert.equal(galeria.estado, 409);
+  });
+
+  test('dos reemplazos de portada a la vez dejan una sola portada', async () => {
+    const { propietario, id, ruta } = await escenario();
+    await Promise.all(
+      ['x1', 'x2', 'x3'].map((nombre) =>
+        api('PUT', `${ruta}/foto`, { token: propietario.token, body: { public_id: `${carpetaEst(id)}/${nombre}` } }),
+      ),
+    );
+    const { rows } = await query('SELECT count(*)::int AS n FROM estacionamiento_imagen WHERE id_estacionamiento = $1', [id]);
+    assert.equal(rows[0].n, 1);
+  });
+
+  test('un vehiculo dado de baja no recibe foto y al darlo de baja se le saca', async () => {
+    const conductor = await crearUsuario();
+    const vehiculo = await crearVehiculo(conductor.token);
+    const ruta = `/vehiculos/${vehiculo.id_vehiculo}`;
+    await api('PUT', `${ruta}/foto`, {
+      token: conductor.token,
+      body: { public_id: `${carpetaVeh(vehiculo.id_vehiculo)}/auto` },
+    });
+
+    await api('DELETE', ruta, { token: conductor.token });
+    const { rows } = await query('SELECT foto_public_id FROM vehiculo WHERE id_vehiculo = $1', [vehiculo.id_vehiculo]);
+    assert.equal(rows[0].foto_public_id, null);
+
+    assert.equal((await api('POST', `${ruta}/foto/firma`, { token: conductor.token })).estado, 404);
+  });
+
+  test('pedir firmas sin parar termina en 429', async () => {
+    const { propietario, ruta } = await escenario();
+    let estado = 200;
+    for (let i = 0; i < 40 && estado === 200; i++) {
+      estado = (await api('POST', `${ruta}/fotos/firma`, { token: propietario.token })).estado;
+    }
+    assert.equal(estado, 429);
+  });
+
+  test('el vehiculo trae tambien una miniatura chica', async () => {
+    const conductor = await crearUsuario();
+    const vehiculo = await crearVehiculo(conductor.token);
+    const { datos } = await api('PUT', `/vehiculos/${vehiculo.id_vehiculo}/foto`, {
+      token: conductor.token,
+      body: { public_id: `${carpetaVeh(vehiculo.id_vehiculo)}/mini` },
+    });
+    assert.match(datos.vehiculo.foto_miniatura_url, /w_240/);
+  });
+});

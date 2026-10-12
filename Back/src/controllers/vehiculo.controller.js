@@ -7,7 +7,12 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 function aRespuesta(vehiculo) {
   if (!vehiculo) return vehiculo;
   const { foto_public_id: publicId, ...resto } = vehiculo;
-  return { ...resto, foto_url: publicId ? url(publicId, { ancho: 800 }) : null };
+  return {
+    ...resto,
+    foto_url: publicId ? url(publicId, { ancho: 800 }) : null,
+    // Para los recuadros chicos (listas, selector al reservar).
+    foto_miniatura_url: publicId ? url(publicId, { ancho: 240 }) : null,
+  };
 }
 
 export const crear = asyncHandler(async (req, res) => {

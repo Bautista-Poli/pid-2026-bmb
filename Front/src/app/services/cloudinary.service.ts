@@ -1,6 +1,6 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpEventType } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, map } from 'rxjs';
+import { Observable, filter, map, tap } from 'rxjs';
 
 /** Lo que devuelve la API (`.../firma`) para subir una foto a una carpeta. */
 export interface FirmaSubida {
@@ -23,8 +23,8 @@ export interface FirmaSubida {
 export class CloudinaryService {
   private readonly http = inject(HttpClient);
 
-  /** Sube el archivo y devuelve su `public_id`. */
-  subir(archivo: Blob, firma: FirmaSubida): Observable<string> {
+  /** Sube el archivo y devuelve su `public_id`. `alProgresar` recibe de 0 a 100. */
+  subir(archivo: Blob, firma: FirmaSubida, alProgresar?: (porcentaje: number) => void): Observable<string> {
     const cuerpo = new FormData();
     cuerpo.append('file', archivo);
     cuerpo.append('api_key', firma.apiKey);
@@ -36,7 +36,17 @@ export class CloudinaryService {
     return this.http
       .post<{ public_id: string }>(`https://api.cloudinary.com/v1_1/${firma.cloudName}/image/upload`, cuerpo, {
         withCredentials: false,
+        reportProgress: true,
+        observe: 'events',
       })
-      .pipe(map(({ public_id }) => public_id));
+      .pipe(
+        tap((evento) => {
+          if (evento.type === HttpEventType.UploadProgress && evento.total) {
+            alProgresar?.(Math.round((100 * evento.loaded) / evento.total));
+          }
+        }),
+        filter((evento) => evento.type === HttpEventType.Response),
+        map((evento) => evento.body!.public_id),
+      );
   }
 }

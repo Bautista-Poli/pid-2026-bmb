@@ -36,6 +36,8 @@ export class EditarVehiculo {
   protected readonly enviando = signal(false);
   protected readonly borrando = signal(false);
   protected readonly error = signal<string | null>(null);
+  /** Porcentaje de la subida de la foto en curso, o `null`. */
+  protected readonly progresoFoto = signal<number | null>(null);
 
   // `undefined` = no se toco la foto, `null` = se pidio sacarla, `File` = una nueva.
   private foto: File | null | undefined;
@@ -50,11 +52,12 @@ export class EditarVehiculo {
       return;
     }
     const pedido: Observable<unknown> = this.foto
-      ? this.vehiculos.subirFoto(id, this.foto)
+      ? this.vehiculos.subirFoto(id, this.foto, (porcentaje) => this.progresoFoto.set(porcentaje))
       : this.vehiculos.borrarFoto(id);
     pedido.subscribe({
       next: () => this.volverAlListado(),
       error: (e: Error) => {
+        this.progresoFoto.set(null);
         this.enviando.set(false);
         this.error.set(`Guardamos los datos, pero la foto no se pudo actualizar: ${e.message}`);
       },

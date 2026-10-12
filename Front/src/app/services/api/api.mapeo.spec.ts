@@ -84,6 +84,13 @@ describe('aVehiculo', () => {
     expect(aVehiculo(dto).foto).toBe('https://res.cloudinary.com/demo/image/upload/auto.jpg');
     expect(aVehiculo({ ...dto, foto_url: null }).foto).toBeNull();
   });
+
+  it('mapea la miniatura de la foto propia', () => {
+    expect(aVehiculo({ ...dto, foto_miniatura_url: 'https://res.cloudinary.com/demo/w_240/auto.jpg' }).fotoMiniatura).toBe(
+      'https://res.cloudinary.com/demo/w_240/auto.jpg',
+    );
+    expect(aVehiculo({ ...dto, foto_miniatura_url: null }).fotoMiniatura).toBeNull();
+  });
 });
 
 describe('aPayloadReserva', () => {

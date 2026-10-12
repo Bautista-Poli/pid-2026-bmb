@@ -7,7 +7,10 @@
 >
   <!-- Foto del modelo (decoracion: el texto de abajo lo describe), o la silueta de su tipo. -->
   <div class="relative aspect-[10/7] bg-lienzo">
-    @if (foto(); as ruta) {
+    @if (v.foto) {
+      <!-- La que subio el conductor: tamano desconocido, sin NgOptimizedImage. -->
+      <img [src]="v.foto" alt="" class="size-full object-cover" loading="lazy" />
+    } @else if (foto(); as ruta) {
       <img [ngSrc]="ruta" width="400" height="280" alt="" class="size-full object-cover" />
     } @else {
       <span class="grid size-full place-items-center text-humo" aria-hidden="true">

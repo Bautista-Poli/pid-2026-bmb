@@ -33,7 +33,7 @@ export async function listar({ estado = ESTADOS_INCIDENCIA.DENUNCIADA } = {}) {
 
 async function buscar(ejecutor, idIncidencia, { bloquear = false } = {}) {
   const { rows } = await ejecutor.query(
-    `${SELECT_INCIDENCIA} WHERE i.id_incidencia = $1 ${bloquear ? 'FOR UPDATE OF i' : ''}`,
+    `${SELECT_INCIDENCIA} WHERE i.id_incidencia = $1 ${bloquear ? 'FOR NO KEY UPDATE OF i' : ''}`,
     [idIncidencia],
   );
   if (!rows[0]) throw ApiError.notFound('La incidencia no existe');

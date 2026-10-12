@@ -22,8 +22,10 @@ export async function topeDe(ejecutor, { idReserva = null, idAbono = null }) {
               (SELECT ${PAGADO_RESERVA} FROM reserva r WHERE r.id_reserva = $1),
               (SELECT precio_total FROM abono WHERE id_abono = $2),
               0) AS pagado,
-            (SELECT COALESCE(SUM(monto), 0) FROM devolucion
-              WHERE id_reserva = $1 OR id_abono = $2) AS devuelto`,
+            CASE WHEN $1::uuid IS NOT NULL
+                 THEN (SELECT COALESCE(SUM(monto), 0) FROM devolucion WHERE id_reserva = $1)
+                 ELSE (SELECT COALESCE(SUM(monto), 0) FROM devolucion WHERE id_abono = $2)
+            END AS devuelto`,
     [idReserva, idAbono],
   );
   const pagado = Number(rows[0].pagado);

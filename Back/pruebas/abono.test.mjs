@@ -229,6 +229,17 @@ const usosRestantes = async (conductor) =>
   (await api('GET', '/abonos', { token: conductor.token })).datos.abonos[0].cupos_restantes;
 
 describe('reservar con abono', () => {
+  test('el abono pago se sigue usando mientras el estacionamiento vuelve a revision', async () => {
+    const { conductor, abono, vehiculo, estacionamiento } = await escenario();
+    await query(
+      `UPDATE estacionamiento SET estado_aprobacion = 'PENDIENTE' WHERE id_estacionamiento = $1`,
+      [estacionamiento.id_estacionamiento],
+    );
+
+    const { estado } = await reservarConAbono(conductor, abono, vehiculo, franja('08:00', '10:00'));
+    assert.equal(estado, 201);
+  });
+
   test('dentro del turno: CONFIRMADA, gratis y descuenta un uso', async () => {
     const { conductor, abono, vehiculo } = await escenario();
 

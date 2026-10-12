@@ -11,6 +11,7 @@ import { rolGuard } from './guards/rol.guard';
  *   /ingresar, /registrarse   -> pages/acceso/       (sin sesion)
  *   /conductor/...            -> pages/conductor/    (rol CONDUCTOR)
  *   /propietario/...          -> pages/propietario/  (rol PROPIETARIO)
+ *   /admin/...                -> pages/admin/        (rol ADMINISTRADOR)
  *
  * `authGuard` exige sesion; `rolGuard` verifica que el rol corresponda.
  */
@@ -171,6 +172,34 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/incidencias/incidencias').then((m) => m.Incidencias),
       },
       { path: '', pathMatch: 'full', redirectTo: 'tablero' },
+    ],
+  },
+
+  /* ----------------------------- ADMINISTRADOR ---------------------------- */
+  {
+    path: 'admin',
+    canActivate: [authGuard, rolGuard(['ADMINISTRADOR'])],
+    loadComponent: () => import('./layouts/layout-app/layout-app').then((m) => m.LayoutApp),
+    children: [
+      {
+        path: 'pendientes',
+        title: 'Parkit · Revisión de estacionamientos',
+        loadComponent: () => import('./pages/admin/pendientes/pendientes').then((m) => m.Pendientes),
+      },
+      {
+        path: 'estacionamientos/:estacionamientoId',
+        title: 'Parkit · Revisar estacionamiento',
+        loadComponent: () =>
+          import('./pages/admin/revision-estacionamiento/revision-estacionamiento').then(
+            (m) => m.RevisionEstacionamiento,
+          ),
+      },
+      {
+        path: 'perfil',
+        title: 'Parkit · Mi perfil',
+        loadComponent: () => import('./pages/perfil/perfil').then((m) => m.Perfil),
+      },
+      { path: '', pathMatch: 'full', redirectTo: 'pendientes' },
     ],
   },
 

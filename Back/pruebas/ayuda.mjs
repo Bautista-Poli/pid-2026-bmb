@@ -12,6 +12,8 @@ process.env.NODE_ENV ??= 'test';
 
 import { once } from 'node:events';
 
+import bcrypt from 'bcrypt';
+
 import app from '../src/app.js';
 import { pool, query } from '../src/config/database.js';
 
@@ -105,16 +107,47 @@ export async function crearUsuario({ rol = 'CONDUCTOR', roles } = {}) {
   return usuario;
 }
 
+/**
+ * Administrador de plataforma. No hay endpoint para crearlo (lo hace el script
+ * `db:crear-admin`), asi que se inserta directo y despues se inicia sesion.
+ */
+export async function crearAdmin() {
+  const email = `${crypto.randomUUID()}@${dominio}`;
+  const passwordHash = await bcrypt.hash(PASSWORD, 4);
+
+  const { rows } = await query(
+    `INSERT INTO usuario (nombre, apellido, email, password_hash, rol, roles)
+     VALUES ('Admin', 'Parkit', $1, $2, 'ADMINISTRADOR', ARRAY['ADMINISTRADOR']::rol_usuario[])
+     RETURNING id_usuario`,
+    [email, passwordHash],
+  );
+
+  const login = await api('POST', '/auth/login', { body: { email, password: PASSWORD } });
+  return { id: rows[0].id_usuario, email, token: cookieDeSesion(login) };
+}
+
+/** Aprueba un estacionamiento sin pasar por el administrador. */
+export function aprobarDirecto(idEstacionamiento) {
+  return query(
+    `UPDATE estacionamiento SET estado_aprobacion = 'APROBADO' WHERE id_estacionamiento = $1`,
+    [idEstacionamiento],
+  );
+}
+
 /** Cambia el perfil activo y devuelve la cookie de sesion nueva. */
 export async function cambiarRol(token, rol) {
   const respuesta = await api('POST', '/auth/rol', { token, body: { rol } });
   return cookieDeSesion(respuesta);
 }
 
-/** Estacionamiento publicado, abierto toda la semana, con `cocheras` cocheras. */
+/**
+ * Estacionamiento publicado, abierto toda la semana, con `cocheras` cocheras.
+ * Por defecto queda aprobado (como si el administrador ya lo hubiera revisado),
+ * para que las suites que no prueban la aprobacion puedan buscarlo y reservar.
+ */
 export async function crearEstacionamiento(
   token,
-  { cocheras = 1, tipo = 1, horarios, tarifas = { tarifa_hora: 1000 } } = {},
+  { cocheras = 1, tipo = 1, horarios, tarifas = { tarifa_hora: 1000 }, aprobado = true } = {},
 ) {
   const alta = await api('POST', '/estacionamientos', {
     token,
@@ -137,6 +170,11 @@ export async function crearEstacionamiento(
   });
 
   const estacionamiento = alta.datos.estacionamiento;
+
+  if (aprobado) {
+    await aprobarDirecto(estacionamiento.id_estacionamiento);
+    estacionamiento.estado_aprobacion = 'APROBADO';
+  }
 
   for (let i = 1; i <= cocheras; i++) {
     await api('POST', `/estacionamientos/${estacionamiento.id_estacionamiento}/cocheras`, {

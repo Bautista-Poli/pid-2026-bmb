@@ -15,7 +15,7 @@ import { CAMPOS_TARIFA, HORAS_POR_MODALIDAD, MODALIDADES, precioDeReserva } from
 import { ORDEN_NATURAL } from './cochera.service.js';
 import { validarAbonoParaReservar } from './abono.service.js';
 import { registrarEgresoEnIncidencia } from './incidencia.service.js';
-import { asegurarPropiedad } from './estacionamiento.service.js';
+import { aceptaReservas, asegurarPropiedad } from './estacionamiento.service.js';
 
 const VIOLACION_EXCLUSION = '23P01';
 
@@ -139,8 +139,10 @@ export async function crear(
     await asegurarVehiculoLibre(client, id_vehiculo, inicio, fin);
 
     const cochera = id_cochera
-      ? await bloquearCochera(client, id_cochera, vehiculo, inicio, fin)
-      : await asignarCochera(client, abono?.id_estacionamiento ?? id_estacionamiento, vehiculo, inicio, fin);
+      ? await bloquearCochera(client, id_cochera, vehiculo, inicio, fin, { conAbono: Boolean(abono) })
+      : await asignarCochera(client, abono?.id_estacionamiento ?? id_estacionamiento, vehiculo, inicio, fin, {
+          conAbono: Boolean(abono),
+        });
 
     if (abono && cochera.id_estacionamiento !== abono.id_estacionamiento) {
       throw ApiError.conflict('El abono es de otro estacionamiento');
@@ -236,11 +238,11 @@ async function asegurarVehiculoLibre(client, idVehiculo, inicio, fin) {
 }
 
 /** Reserva de una cochera puntual: lock sobre esa fila y validaciones. */
-async function bloquearCochera(client, idCochera, vehiculo, inicio, fin) {
+async function bloquearCochera(client, idCochera, vehiculo, inicio, fin, { conAbono = false } = {}) {
   const { rows: cocheras } = await client.query(
     `SELECT c.id_cochera, c.identificador, c.estado_actual, c.activo, c.bloqueada,
             c.id_tipo_vehiculo, c.id_estacionamiento,
-            e.publicado, e.activo AS estacionamiento_activo
+            e.publicado, e.estado_aprobacion, e.activo AS estacionamiento_activo
        FROM cochera c
        JOIN estacionamiento e ON e.id_estacionamiento = c.id_estacionamiento
       WHERE c.id_cochera = $1
@@ -254,8 +256,8 @@ async function bloquearCochera(client, idCochera, vehiculo, inicio, fin) {
   if (!cochera.activo || cochera.estado_actual === ESTADOS_COCHERA.INACTIVA || cochera.bloqueada) {
     throw ApiError.conflict('La cochera no esta disponible para reservar');
   }
-  if (!cochera.estacionamiento_activo || !cochera.publicado) {
-    throw ApiError.conflict('El estacionamiento no esta publicado');
+  if (!aceptaReservas({ ...cochera, activo: cochera.estacionamiento_activo }, { conAbono })) {
+    throw ApiError.conflict('El estacionamiento no esta disponible para reservar');
   }
   if (vehiculo.id_tipo_vehiculo !== cochera.id_tipo_vehiculo) {
     throw ApiError.conflict('La cochera no admite el tipo de vehiculo seleccionado');
@@ -294,16 +296,16 @@ async function bloquearCochera(client, idCochera, vehiculo, inicio, fin) {
  * en el mismo orden (por id), y recien despues se busca la primera sin
  * solapamiento. El orden fijo evita deadlocks entre pedidos simultaneos.
  */
-async function asignarCochera(client, idEstacionamiento, vehiculo, inicio, fin) {
+async function asignarCochera(client, idEstacionamiento, vehiculo, inicio, fin, { conAbono = false } = {}) {
   const { rows: estacionamientos } = await client.query(
-    'SELECT publicado, activo FROM estacionamiento WHERE id_estacionamiento = $1',
+    'SELECT publicado, activo, estado_aprobacion FROM estacionamiento WHERE id_estacionamiento = $1',
     [idEstacionamiento],
   );
 
   const estacionamiento = estacionamientos[0];
   if (!estacionamiento) throw ApiError.notFound('El estacionamiento no existe');
-  if (!estacionamiento.activo || !estacionamiento.publicado) {
-    throw ApiError.conflict('El estacionamiento no esta publicado');
+  if (!aceptaReservas(estacionamiento, { conAbono })) {
+    throw ApiError.conflict('El estacionamiento no esta disponible para reservar');
   }
 
   const { rows: candidatas } = await client.query(
@@ -706,13 +708,13 @@ export async function registrarAcceso(idPropietario, { codigo }) {
  */
 export async function disponibilidad(idEstacionamiento, { fecha, id_tipo_vehiculo, modalidad, horas }) {
   const { rows } = await query(
-    'SELECT publicado, activo FROM estacionamiento WHERE id_estacionamiento = $1',
+    'SELECT publicado, activo, estado_aprobacion FROM estacionamiento WHERE id_estacionamiento = $1',
     [idEstacionamiento],
   );
 
   if (!rows[0]) throw ApiError.notFound('Estacionamiento no encontrado');
-  if (!rows[0].publicado || !rows[0].activo) {
-    throw ApiError.conflict('El estacionamiento no esta publicado');
+  if (!aceptaReservas(rows[0])) {
+    throw ApiError.conflict('El estacionamiento no esta disponible para reservar');
   }
 
   const { rows: horarios } = await query(

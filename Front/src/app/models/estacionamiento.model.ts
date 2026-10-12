@@ -1,4 +1,4 @@
-import { FechaISO, HoraHHmm, Id } from './api.model';
+import { FechaHoraISO, FechaISO, HoraHHmm, Id } from './api.model';
 import { Tarifas } from './tarifa.model';
 import { TipoVehiculo } from './vehiculo.model';
 
@@ -26,6 +26,12 @@ export interface Direccion {
   latitud: number | null;
   longitud: number | null;
 }
+
+/**
+ * Revision del administrador. Solo los APROBADO se ven en la busqueda; un
+ * aprobado al que le cambian el nombre o la direccion vuelve a PENDIENTE.
+ */
+export type EstadoAprobacion = 'PENDIENTE' | 'APROBADO' | 'RECHAZADO';
 
 /** Estacionamiento publicado por un usuario con rol PROPIETARIO. */
 export interface Estacionamiento {
@@ -62,6 +68,24 @@ export interface Estacionamiento {
   distanciaKm?: number;
   publicado: boolean;
   activo: boolean;
+  estadoAprobacion: EstadoAprobacion;
+  /** Por que lo rechazo el administrador; solo en RECHAZADO. */
+  motivoRechazo: string | null;
+  /** Cuando entro a la cola de revision por ultima vez. */
+  enviadoEn: FechaHoraISO;
+}
+
+/** Datos de contacto del propietario, para que el administrador revise. */
+export interface PropietarioEnRevision {
+  nombre: string;
+  apellido: string;
+  email: string;
+  telefono: string | null;
+}
+
+/** Lo que ve el administrador al revisar: el estacionamiento y su propietario. */
+export interface EstacionamientoEnRevision extends Estacionamiento {
+  propietario: PropietarioEnRevision;
 }
 
 /**

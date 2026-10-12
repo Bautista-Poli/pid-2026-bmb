@@ -5,6 +5,7 @@ import { FormularioEstacionamiento, PlanesAbono } from '@app/components/estacion
 import { Boton, Cargando, EstadoVacio } from '@app/components/ui';
 import { Id, NuevoEstacionamiento } from '@app/models';
 import { EstacionamientoService } from '@app/services/estacionamiento.service';
+import { vuelveARevision } from '@app/utils/aprobacion.util';
 
 /**
  * Pantalla `/propietario/estacionamientos/:estacionamientoId/editar` · rol PROPIETARIO
@@ -46,6 +47,15 @@ export class EditarEstacionamiento {
 
   /** `PATCH /api/estacionamientos/:id` con el formulario completo, y la foto si se toco. */
   protected guardar(datos: NuevoEstacionamiento): void {
+    const actual = this.recurso.value();
+    if (actual && vuelveARevision(actual, datos)) {
+      const seguro = confirm(
+        'Cambiaste el nombre o la dirección. Esto lo vuelve a mandar a revisión y deja de ' +
+          'verse en la búsqueda hasta que lo aprueben. Tus reservas no cambian. ¿Guardar igual?',
+      );
+      if (!seguro) return;
+    }
+
     this.enviando.set(true);
     this.error.set(null);
 
@@ -93,9 +103,11 @@ export class EditarEstacionamiento {
         this.publicando.set(false);
         this.recurso.set(actualizado);
         this.aviso.set(
-          publicado
-            ? 'El estacionamiento vuelve a aparecer en la búsqueda.'
-            : 'El estacionamiento ya no aparece en la búsqueda.',
+          !publicado
+            ? 'El estacionamiento ya no aparece en la búsqueda.'
+            : actualizado.estadoAprobacion === 'APROBADO'
+              ? 'El estacionamiento vuelve a aparecer en la búsqueda.'
+              : 'Queda publicado: se va a ver en la búsqueda cuando lo aprueben.',
         );
       },
       error: (e: Error) => {

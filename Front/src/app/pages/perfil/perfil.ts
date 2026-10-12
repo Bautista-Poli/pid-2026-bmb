@@ -103,6 +103,9 @@ export class Perfil {
   protected readonly avisoDatos = signal<string | null>(null);
   protected readonly avisoClave = signal<string | null>(null);
 
+  /** El administrador es un usuario aparte: no elige perfiles. */
+  protected readonly esAdmin = computed(() => this.usuario()?.rol === 'ADMINISTRADOR');
+
   protected readonly rolActivo = computed(() => {
     const usuario = this.usuario();
     return usuario ? ETIQUETA_ROL[usuario.rol] : '';
@@ -126,6 +129,7 @@ export class Perfil {
         conductor: usuario.roles.includes('CONDUCTOR'),
         propietario: usuario.roles.includes('PROPIETARIO'),
       });
+      if (usuario.rol === 'ADMINISTRADOR') this.datos.clearValidators();
     }
   }
 
@@ -171,7 +175,7 @@ export class Perfil {
       apellido: valores.apellido.trim(),
       email: valores.email.trim(),
       telefono: valores.telefono.trim() || undefined,
-      roles,
+      roles: this.esAdmin() ? undefined : roles,
     };
 
     this.guardandoDatos.set(true);

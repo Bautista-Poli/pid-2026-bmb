@@ -27,10 +27,16 @@ const ALTO_PX = 180;
   selector: 'app-barras-dia',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="flex flex-col gap-2" role="img" [attr.aria-label]="descripcion()">
+    <div class="flex flex-col gap-2" role="group" [attr.aria-label]="descripcion()">
       <div class="flex items-end gap-[3px]" [style.height.px]="alto">
         @for (barra of barras(); track barra.clave) {
-          <div class="group relative flex h-full min-w-0 flex-1 flex-col justify-end">
+          <!-- Con foco (teclado o toque) tambien se ve el detalle; el lector lo lee del aria-label. -->
+          <div
+            class="group relative flex h-full min-w-0 flex-1 flex-col justify-end outline-none"
+            tabindex="0"
+            role="img"
+            [attr.aria-label]="barra.detalle"
+          >
             <div class="flex flex-col-reverse overflow-hidden rounded-t-[3px]" [style.height.%]="porcentaje(barra)">
               @for (tramo of barra.tramos; track tramo.etiqueta) {
                 @if (tramo.valor > 0) {
@@ -41,7 +47,7 @@ const ALTO_PX = 180;
             <div
               class="pointer-events-none absolute bottom-[calc(100%+6px)] left-1/2 z-10 hidden -translate-x-1/2
                      rounded-boton border border-borde bg-papel px-3 py-2 text-[12px] whitespace-nowrap
-                     shadow-flotante group-hover:block"
+                     shadow-flotante group-hover:block group-focus:block"
             >
               <p class="num-tabular text-tinta">{{ barra.detalle }}</p>
             </div>

@@ -17,7 +17,7 @@ import { PERIODOS, rangoDePeriodo, TipoPeriodo, Variacion, variacion } from '@ap
 
 const pesos = (monto: number) => `$ ${Math.round(monto).toLocaleString('es-AR')}`;
 const porciento = (fraccion: number) => `${Math.round(fraccion * 100)} %`;
-const DIAS_LARGOS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+const DIAS_PLURAL = ['domingos', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábados'];
 
 /** "12/10" para el tooltip; debajo de la barra alcanza con el dia ("12"). */
 const diaYMes = (fecha: string) => `${fecha.slice(8, 10)}/${fecha.slice(5, 7)}`;
@@ -82,10 +82,10 @@ export class Estadisticas {
     if (!datos) return [];
     const { ocupacion, ingresos, reservas, tasaCancelacion, ausentes } = datos.kpis;
     return [
-      { etiqueta: 'Ocupación', valor: porciento(ocupacion.valor), icono: 'estacionamiento', tono: 'azul', variacion: variacion(ocupacion.valor, ocupacion.anterior) },
+      { etiqueta: 'Ocupación', valor: porciento(ocupacion.valor), icono: 'estacionamiento', tono: 'azul', variacion: variacion(ocupacion.valor, ocupacion.anterior, { puntos: true }) },
       { etiqueta: 'Ingresos', valor: pesos(ingresos.valor), icono: 'moneda', tono: 'verde', variacion: variacion(ingresos.valor, ingresos.anterior) },
       { etiqueta: 'Reservas', valor: String(reservas.valor), icono: 'reservas', tono: 'violeta', variacion: variacion(reservas.valor, reservas.anterior) },
-      { etiqueta: 'Cancelaciones', valor: porciento(tasaCancelacion.valor), icono: 'cerrar', tono: 'ambar', variacion: variacion(tasaCancelacion.valor, tasaCancelacion.anterior, { menosEsMejor: true }) },
+      { etiqueta: 'Cancelaciones', valor: porciento(tasaCancelacion.valor), icono: 'cerrar', tono: 'ambar', variacion: variacion(tasaCancelacion.valor, tasaCancelacion.anterior, { menosEsMejor: true, puntos: true }) },
       { etiqueta: 'Ausentes', valor: String(ausentes.valor), icono: 'alerta', tono: 'rojo', variacion: variacion(ausentes.valor, ausentes.anterior, { menosEsMejor: true }) },
     ];
   });
@@ -121,7 +121,7 @@ export class Estadisticas {
 
   protected readonly horaPico = computed(() => {
     const pico = this.recurso.value()?.horaPico;
-    return pico ? `Los ${DIAS_LARGOS[pico.diaSemana]} a las ${pico.hora}:00` : null;
+    return pico ? `Los ${DIAS_PLURAL[pico.diaSemana]} a las ${pico.hora}:00` : null;
   });
 
   /** Barras horizontales de cancelaciones: ancho relativo a la mas grande. */

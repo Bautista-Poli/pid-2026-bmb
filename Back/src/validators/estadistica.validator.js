@@ -13,7 +13,9 @@ export function validarPeriodo(query) {
   const { valores, errores } = resultado;
   if (errores.length > 0) return resultado;
 
-  const valida = (fecha) => FECHA.test(fecha) && !Number.isNaN(Date.parse(fecha));
+  // Ida y vuelta: Date.parse acepta '2026-02-31' (lo corre al 3 de marzo) y la base no.
+  const valida = (fecha) =>
+    FECHA.test(fecha) && fecha >= '2000-01-01' && new Date(Date.parse(fecha) || 0).toISOString().slice(0, 10) === fecha;
   if (!valida(valores.desde)) errores.push({ campo: 'desde', mensaje: 'tiene que ser una fecha YYYY-MM-DD' });
   if (!valida(valores.hasta)) errores.push({ campo: 'hasta', mensaje: 'tiene que ser una fecha YYYY-MM-DD' });
   if (errores.length > 0) return resultado;

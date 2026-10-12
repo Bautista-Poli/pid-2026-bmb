@@ -58,6 +58,12 @@ const ABIERTO_8_A_20 = [0, 1, 2, 3, 4, 5, 6].map((dia_semana) => ({
   hora_cierre: '20:00',
 }));
 
+const ABIERTO_24_H = [0, 1, 2, 3, 4, 5, 6].map((dia_semana) => ({
+  dia_semana,
+  hora_apertura: '00:00',
+  hora_cierre: '23:59',
+}));
+
 /** Propietario con un estacionamiento 08-20 todos los dias y 2 cocheras, y un conductor. */
 async function escenario({ horarios = ABIERTO_8_A_20 } = {}) {
   const propietario = await crearUsuario({ rol: 'PROPIETARIO' });
@@ -116,7 +122,7 @@ describe('estadisticas del propietario', () => {
   });
 
   test('una reserva que cruza la medianoche reparte sus horas entre los dos dias', async () => {
-    const e = await escenario();
+    const e = await escenario({ horarios: ABIERTO_24_H });
     await e.reserva({ inicio: instante(D, '23:00'), fin: instante(D1, '01:00') });
 
     const { datos } = await estadisticas(e.propietario.token, { desde: D, hasta: D1 });
@@ -245,6 +251,69 @@ describe('estadisticas del propietario', () => {
     assert.equal(datos.kpis.ingresos.anterior, 4000);
   });
 
+  test('una jornada de 24 h en un lugar que abre 12 h no pasa el 100 %', async () => {
+    const e = await escenario();
+    await e.reserva({ inicio: instante(D, '00:00'), fin: instante(D1, '00:00'), modalidad: 'JORNADA' });
+
+    const { datos } = await estadisticas(e.propietario.token, { desde: D, hasta: D });
+    // Solo cuentan las horas dentro del horario (08-20) de esa cochera.
+    assert.equal(datos.ocupacionPorDia[0].horasUsadas, 12);
+    assert.ok(datos.kpis.ocupacion.valor <= 1);
+  });
+
+  test('un estacionamiento sin horarios no infla la ocupacion del total', async () => {
+    const e = await escenario();
+    const sinHorario = await crearEstacionamiento(e.propietario.token, { cocheras: 1, horarios: [] });
+    const { rows } = await query('SELECT id_cochera FROM cochera WHERE id_estacionamiento = $1', [
+      sinHorario.id_estacionamiento,
+    ]);
+    await query(
+      `INSERT INTO reserva (id_conductor, id_vehiculo, id_cochera, inicio, fin, estado, precio_total)
+       VALUES ($1, $2, $3, $4, $5, 'FINALIZADA', 0)`,
+      [e.conductor.id, e.vehiculo.id_vehiculo, rows[0].id_cochera, instante(D, '09:00'), instante(D, '19:00')],
+    );
+
+    const { datos } = await estadisticas(e.propietario.token, { desde: D, hasta: D });
+    assert.equal(datos.ocupacionPorDia[0].horasUsadas, 0);
+    assert.equal(datos.kpis.ocupacion.valor, 0);
+  });
+
+  test('las cocheras dadas de baja no suman horas usadas', async () => {
+    const e = await escenario();
+    await e.reserva({ cochera: 0, inicio: instante(D, '09:00'), fin: instante(D, '11:00') });
+    await query('UPDATE cochera SET activo = FALSE WHERE id_cochera = $1', [e.cocheras[0]]);
+
+    const { datos } = await estadisticas(e.propietario.token, { desde: D, hasta: D });
+    assert.deepEqual(datos.ocupacionPorDia, [{ fecha: D, horasUsadas: 0, horasOfrecidas: 12 }]);
+  });
+
+  test('abierto hasta las 23:59 cuenta como hasta medianoche', async () => {
+    const e = await escenario({ horarios: ABIERTO_24_H });
+    const { datos } = await estadisticas(e.propietario.token, { desde: D, hasta: D });
+    assert.equal(datos.ocupacionPorDia[0].horasOfrecidas, 48);
+  });
+
+  test('la anticipacion no cuenta cancelaciones despues del inicio', async () => {
+    const e = await escenario();
+    await e.reserva({
+      inicio: instante(D, '08:00'),
+      fin: instante(D, '09:00'),
+      estado: 'CANCELADA',
+      canceladaPor: 'CONDUCTOR',
+      canceladaEn: instante(D, '06:00'),
+    });
+    await e.reserva({
+      inicio: instante(D, '10:00'),
+      fin: instante(D, '11:00'),
+      estado: 'CANCELADA',
+      canceladaPor: 'CONDUCTOR',
+      canceladaEn: instante(D, '10:30'),
+    });
+
+    const { datos } = await estadisticas(e.propietario.token, { desde: D, hasta: D });
+    assert.equal(datos.cancelaciones.anticipacionPromedioHoras, 2);
+  });
+
   test('validaciones y permisos', async () => {
     const e = await escenario();
     const conductor = await crearUsuario();
@@ -253,5 +322,8 @@ describe('estadisticas del propietario', () => {
     assert.equal((await estadisticas(e.propietario.token, { desde: D1, hasta: D })).estado, 400);
     assert.equal((await estadisticas(e.propietario.token, { desde: diaLocal(120), hasta: D })).estado, 400);
     assert.equal((await estadisticas(e.propietario.token, { desde: 'ayer', hasta: D })).estado, 400);
+    // Fechas que no existen: Date.parse las corre al mes siguiente, la base no.
+    assert.equal((await estadisticas(e.propietario.token, { desde: '2026-02-31', hasta: '2026-03-02' })).estado, 400);
+    assert.equal((await estadisticas(e.propietario.token, { desde: '2026-04-31', hasta: '2026-04-31' })).estado, 400);
   });
 });

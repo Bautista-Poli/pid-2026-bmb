@@ -8,8 +8,9 @@ import { asegurarPropiedad } from './estacionamiento.service.js';
  * paralelo: la base es Neon y cada ida y vuelta cuesta.
  *
  * Reglas (ver docs/.../dashboard-propietario-design.md, seccion 3):
- *   - Una reserva cuenta en el periodo si su `inicio` cae en el; la ocupacion,
- *     en cambio, reparte sus horas por dia aunque cruce la medianoche.
+ *   - Una reserva cuenta en el periodo si su `inicio` cae en el (conteos,
+ *     ingresos, demanda); la ocupacion, en cambio, reparte sus horas por dia y
+ *     solo dentro del horario de atencion (ver VENTANAS).
  *   - Ocupan la cochera PENDIENTE, CONFIRMADA, ACTIVA y FINALIZADA. NO_SHOW la
  *     libera y no se cobra.
  *   - Ingresos: FINALIZADA y ACTIVA (las de abono valen 0) + abonos vendidos.
@@ -42,41 +43,49 @@ const RESERVAS = `
      AND r.inicio >= ${desdeDia('$2')}
      AND r.inicio <  ${hastaDia('$3')}`;
 
-const DIAS = `SELECT d::date AS fecha FROM generate_series($2::date, $3::date, interval '1 day') d`;
+// Fechas puras (date + entero): no dependen de la zona horaria de la sesion.
+const DIAS = `SELECT $2::date + i AS fecha FROM generate_series(0, $3::date - $2::date) i`;
 
-const fechaISO = (fecha) => (fecha instanceof Date ? fecha.toISOString().slice(0, 10) : String(fecha));
 const numero = (valor) => Number(valor ?? 0);
 const redondear = (valor, decimales = 2) => Math.round(valor * 10 ** decimales) / 10 ** decimales;
+
+/**
+ * Por cada dia, la ventana de atencion de cada cochera activa: [apertura,
+ * cierre) en hora local, con 23:59 tratado como medianoche. Es el universo de
+ * la ocupacion: las horas ofrecidas son estas ventanas, y las usadas son la
+ * parte de cada reserva que cae adentro. Asi la ocupacion nunca pasa el 100 %
+ * (una JORNADA de 24 h en un lugar que abre 12 h cuenta 12) y no suman
+ * cocheras dadas de baja ni estacionamientos sin horario.
+ */
+const VENTANAS = `
+  SELECT d.fecha, c.id_cochera,
+         (d.fecha + h.hora_apertura) AT TIME ZONE ${ZONA} AS abre,
+         (CASE WHEN h.hora_cierre >= '23:59' THEN (d.fecha + 1)::timestamp
+               ELSE d.fecha + h.hora_cierre END) AT TIME ZONE ${ZONA} AS cierra
+    FROM dias d
+    JOIN cochera c ON c.activo AND c.id_estacionamiento IN (${ESTACIONAMIENTOS})
+    JOIN horario h ON h.id_estacionamiento = c.id_estacionamiento
+                  AND h.dia_semana = EXTRACT(DOW FROM d.fecha)`;
 
 async function horasPorDia(parametros) {
   const { rows } = await query(
     `WITH dias AS (${DIAS}),
+     ventanas AS (${VENTANAS}),
      ofrecidas AS (
-       SELECT d.fecha,
-              SUM(EXTRACT(EPOCH FROM (h.hora_cierre - h.hora_apertura)) / 3600 * c.cantidad) AS horas
-         FROM dias d
-         JOIN horario h ON h.dia_semana = EXTRACT(DOW FROM d.fecha)
-                       AND h.id_estacionamiento IN (${ESTACIONAMIENTOS})
-         JOIN (SELECT id_estacionamiento, COUNT(*) AS cantidad
-                 FROM cochera WHERE activo GROUP BY id_estacionamiento) c
-           ON c.id_estacionamiento = h.id_estacionamiento
-        GROUP BY d.fecha
+       SELECT fecha, SUM(EXTRACT(EPOCH FROM (cierra - abre)) / 3600) AS horas
+         FROM ventanas GROUP BY fecha
      ),
      usadas AS (
-       SELECT d.fecha,
-              SUM(EXTRACT(EPOCH FROM (
-                LEAST(r.fin, (d.fecha + 1)::timestamp AT TIME ZONE ${ZONA})
-                - GREATEST(r.inicio, d.fecha::timestamp AT TIME ZONE ${ZONA})
-              )) / 3600) AS horas
-         FROM dias d
-         JOIN reserva r ON r.inicio < (d.fecha + 1)::timestamp AT TIME ZONE ${ZONA}
-                       AND r.fin > d.fecha::timestamp AT TIME ZONE ${ZONA}
-         JOIN cochera c ON c.id_cochera = r.id_cochera
-        WHERE r.estado IN ${OCUPAN}
-          AND c.id_estacionamiento IN (${ESTACIONAMIENTOS})
-        GROUP BY d.fecha
+       SELECT v.fecha,
+              SUM(EXTRACT(EPOCH FROM (LEAST(r.fin, v.cierra) - GREATEST(r.inicio, v.abre))) / 3600) AS horas
+         FROM ventanas v
+         JOIN reserva r ON r.id_cochera = v.id_cochera
+                       AND r.inicio < v.cierra
+                       AND r.fin > v.abre
+                       AND r.estado IN ${OCUPAN}
+        GROUP BY v.fecha
      )
-     SELECT d.fecha, COALESCE(u.horas, 0) AS usadas, COALESCE(o.horas, 0) AS ofrecidas
+     SELECT d.fecha::text AS fecha, COALESCE(u.horas, 0) AS usadas, COALESCE(o.horas, 0) AS ofrecidas
        FROM dias d
        LEFT JOIN usadas u ON u.fecha = d.fecha
        LEFT JOIN ofrecidas o ON o.fecha = d.fecha
@@ -84,7 +93,7 @@ async function horasPorDia(parametros) {
     parametros,
   );
   return rows.map((r) => ({
-    fecha: fechaISO(r.fecha),
+    fecha: r.fecha,
     horasUsadas: redondear(numero(r.usadas)),
     horasOfrecidas: redondear(numero(r.ofrecidas)),
   }));
@@ -96,7 +105,7 @@ async function ingresosPorDia(parametros) {
      reservas AS (
        SELECT (r.inicio AT TIME ZONE ${ZONA})::date AS fecha, SUM(r.precio_total) AS monto
          FROM (${RESERVAS}) r
-        WHERE r.estado IN ${COBRADAS}
+        WHERE r.estado IN ${COBRADAS} AND r.modalidad <> 'ABONO'
         GROUP BY 1
      ),
      abonos AS (
@@ -107,14 +116,14 @@ async function ingresosPorDia(parametros) {
           AND a.created_at <  ${hastaDia('$3')}
         GROUP BY 1
      )
-     SELECT d.fecha, COALESCE(r.monto, 0) AS reservas, COALESCE(a.monto, 0) AS abonos
+     SELECT d.fecha::text AS fecha, COALESCE(r.monto, 0) AS reservas, COALESCE(a.monto, 0) AS abonos
        FROM dias d
        LEFT JOIN reservas r ON r.fecha = d.fecha
        LEFT JOIN abonos a ON a.fecha = d.fecha
       ORDER BY d.fecha`,
     parametros,
   );
-  return rows.map((r) => ({ fecha: fechaISO(r.fecha), reservas: numero(r.reservas), abonos: numero(r.abonos) }));
+  return rows.map((r) => ({ fecha: r.fecha, reservas: numero(r.reservas), abonos: numero(r.abonos) }));
 }
 
 /** Reservas por (dia de semana, hora local) que ocupan cada hora; sin canceladas ni ausentes. */
@@ -147,7 +156,8 @@ async function conteos(parametros) {
             COUNT(*) FILTER (WHERE estado = 'CANCELADA' AND cancelada_por IS NULL)::int AS sin_dato,
             COUNT(*) FILTER (WHERE estado = 'NO_SHOW')::int AS ausentes,
             AVG(EXTRACT(EPOCH FROM (inicio - cancelada_en)) / 3600)
-              FILTER (WHERE estado = 'CANCELADA' AND cancelada_por = 'CONDUCTOR' AND cancelada_en IS NOT NULL)
+              FILTER (WHERE estado = 'CANCELADA' AND cancelada_por = 'CONDUCTOR'
+                        AND cancelada_en < inicio AND id_abono IS NULL)
               AS anticipacion,
             COALESCE(SUM(precio_total) FILTER (WHERE estado = 'CONFIRMADA' AND inicio > now()), 0) AS proyectados
        FROM (${RESERVAS}) r`,
@@ -171,14 +181,15 @@ function kpisDe({ horas, ingresos, totales }) {
   };
 }
 
-async function periodo(idPropietario, desde, hasta, idEstacionamiento) {
+async function periodo(idPropietario, desde, hasta, idEstacionamiento, { conDemanda = false } = {}) {
   const parametros = [idPropietario, desde, hasta, idEstacionamiento ?? null];
-  const [horas, ingresos, totales] = await Promise.all([
+  const [horas, ingresos, totales, celdas] = await Promise.all([
     horasPorDia(parametros),
     ingresosPorDia(parametros),
     conteos(parametros),
+    conDemanda ? demanda(parametros) : [],
   ]);
-  return { parametros, horas, ingresos, totales };
+  return { horas, ingresos, totales, celdas };
 }
 
 /** El periodo inmediatamente anterior, del mismo largo. */
@@ -193,10 +204,10 @@ export async function delPropietario(idPropietario, { desde, hasta, id_estaciona
 
   const previo = anteriorA(desde, hasta);
   const [actual, anterior] = await Promise.all([
-    periodo(idPropietario, desde, hasta, idEstacionamiento),
+    periodo(idPropietario, desde, hasta, idEstacionamiento, { conDemanda: true }),
     periodo(idPropietario, previo.desde, previo.hasta, idEstacionamiento),
   ]);
-  const celdas = await demanda(actual.parametros);
+  const { celdas } = actual;
 
   const ahora = kpisDe(actual);
   const antes = kpisDe(anterior);

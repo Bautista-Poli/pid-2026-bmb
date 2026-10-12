@@ -94,10 +94,10 @@ export class EstacionamientoService {
    * (`POST .../fotos/firma`), el navegador achica y sube directo, y la API
    * guarda el `public_id` (`PUT .../foto`).
    */
-  subirFoto(id: Id, archivo: File): Observable<void> {
+  subirFoto(id: Id, archivo: File, alProgresar?: (porcentaje: number) => void): Observable<void> {
     return this.http.post<{ firma: FirmaSubida }>(`${this.ruta}/${id}/fotos/firma`, {}).pipe(
       switchMap(({ firma }) =>
-        from(achicarImagen(archivo)).pipe(switchMap((imagen) => this.cloudinary.subir(imagen, firma))),
+        from(achicarImagen(archivo)).pipe(switchMap((imagen) => this.cloudinary.subir(imagen, firma, alProgresar))),
       ),
       switchMap((publicId) => this.http.put<void>(`${this.ruta}/${id}/foto`, { public_id: publicId })),
       map(() => undefined),

@@ -1,5 +1,5 @@
 import { Vehiculo } from '@app/models';
-import { fotoDeVehiculo } from './foto-vehiculo.util';
+import { fotoDeVehiculo, miniaturaDeVehiculo } from './foto-vehiculo.util';
 
 const base: Vehiculo = {
   id: 'v1',
@@ -12,6 +12,7 @@ const base: Vehiculo = {
   predeterminado: true,
   activo: true,
   foto: null,
+  fotoMiniatura: null,
 };
 
 describe('fotoDeVehiculo', () => {
@@ -27,5 +28,16 @@ describe('fotoDeVehiculo', () => {
 
   it('sin foto propia ni de catalogo devuelve null', () => {
     expect(fotoDeVehiculo({ ...base, marca: 'Marca', modelo: 'Rara' })).toBeNull();
+  });
+});
+
+describe('miniaturaDeVehiculo', () => {
+  it('usa la miniatura chica de la foto propia', () => {
+    const propio = { ...base, foto: 'https://x/grande.jpg', fotoMiniatura: 'https://x/chica.jpg' };
+    expect(miniaturaDeVehiculo(propio)).toBe('https://x/chica.jpg');
+  });
+
+  it('sin foto propia usa la de catalogo', () => {
+    expect(miniaturaDeVehiculo(base)).toBe('vehiculos/toyota-corolla.jpg');
   });
 });

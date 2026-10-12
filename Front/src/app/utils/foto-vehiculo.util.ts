@@ -35,3 +35,8 @@ export function fotoDeVehiculo(vehiculo: Vehiculo): string | null {
   const clave = normalizar([vehiculo.marca, vehiculo.modelo].filter(Boolean).join(' '));
   return clave ? (FOTOS[clave] ?? null) : null;
 }
+
+/** Para recuadros chicos: la miniatura de la foto propia, o la de catalogo. */
+export function miniaturaDeVehiculo(vehiculo: Vehiculo): string | null {
+  return vehiculo.fotoMiniatura ?? fotoDeVehiculo(vehiculo);
+}

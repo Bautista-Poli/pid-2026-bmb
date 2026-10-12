@@ -47,10 +47,10 @@ export class VehiculoService {
    * Foto propia del vehiculo, via Cloudinary: firma, achica y sube desde el
    * navegador, y la API guarda el `public_id`. Reemplaza la anterior.
    */
-  subirFoto(id: Id, archivo: File): Observable<Vehiculo> {
+  subirFoto(id: Id, archivo: File, alProgresar?: (porcentaje: number) => void): Observable<Vehiculo> {
     return this.http.post<{ firma: FirmaSubida }>(`${rutaFoto(this.ruta, id)}/firma`, {}).pipe(
       switchMap(({ firma }) =>
-        from(achicarImagen(archivo)).pipe(switchMap((imagen) => this.cloudinary.subir(imagen, firma))),
+        from(achicarImagen(archivo)).pipe(switchMap((imagen) => this.cloudinary.subir(imagen, firma, alProgresar))),
       ),
       switchMap((publicId) =>
         this.http.put<{ vehiculo: VehiculoDto }>(rutaFoto(this.ruta, id), { public_id: publicId }),

@@ -323,8 +323,11 @@ export async function obtenerPorId(idEstacionamiento, { idSolicitante = null, es
  * aprobado por el administrador. `fila` trae `activo`, `publicado` y
  * `estado_aprobacion`.
  */
-export function aceptaReservas(fila) {
-  return fila.activo && fila.publicado && fila.estado_aprobacion === ESTADOS_APROBACION.APROBADO;
+export function aceptaReservas(fila, { conAbono = false } = {}) {
+  // Un abono ya pagado se sigue usando aunque el estacionamiento haya vuelto a
+  // revision por un cambio de nombre o direccion: lo que no se vende es nuevo.
+  const aprobado = conAbono || fila.estado_aprobacion === ESTADOS_APROBACION.APROBADO;
+  return fila.activo && fila.publicado && aprobado;
 }
 
 /** Verifica que el estacionamiento exista y sea del propietario autenticado. */
@@ -422,23 +425,22 @@ async function completarCoordenadas(idEstacionamiento, entrada) {
 }
 
 /**
- * Un aprobado al que le cambian el nombre o la direccion vuelve a PENDIENTE:
- * es lo que el administrador verifico. El formulario manda siempre todos los
+ * Si cambiaron el nombre o la direccion (lo que verifica el administrador) y en
+ * que estado de aprobacion estaba. Un aprobado con cambios vuelve a PENDIENTE: El formulario manda siempre todos los
  * campos, asi que se compara contra lo guardado (fila ya bloqueada por
  * `asegurarAlgunaTarifa`). Las reservas existentes no se tocan.
  */
-async function vuelveARevision(client, idEstacionamiento, datos) {
+async function cambiosDeRevision(client, idEstacionamiento, datos) {
   const { rows } = await client.query(
     `SELECT estado_aprobacion, ${CAMPOS_REVISION.join(', ')}
        FROM estacionamiento WHERE id_estacionamiento = $1`,
     [idEstacionamiento],
   );
   const guardado = rows[0];
-  if (guardado.estado_aprobacion !== ESTADOS_APROBACION.APROBADO) return false;
-
-  return CAMPOS_REVISION.some(
+  const cambio = CAMPOS_REVISION.some(
     (campo) => datos[campo] !== undefined && (datos[campo] ?? '') !== (guardado[campo] ?? ''),
   );
+  return { cambio, estado: guardado.estado_aprobacion };
 }
 
 /**
@@ -483,13 +485,18 @@ export async function actualizar(idEstacionamiento, idPropietario, entrada) {
       asignaciones.push(`${campo} = $${parametros.length}`);
     }
 
-    if (await vuelveARevision(client, idEstacionamiento, datos)) {
+    const { cambio, estado } = await cambiosDeRevision(client, idEstacionamiento, datos);
+    if (cambio && estado === ESTADOS_APROBACION.APROBADO) {
       asignaciones.push(
         `estado_aprobacion = '${ESTADOS_APROBACION.PENDIENTE}'`,
         'enviado_en = now()',
         'revisado_por = NULL',
         'revisado_en = NULL',
       );
+    } else if (cambio && estado === ESTADOS_APROBACION.PENDIENTE) {
+      // Sigue en la cola, pero es otra version: el admin que estaba mirando la
+      // anterior no la puede aprobar sin recargar (ver admin.service.js: decidir).
+      asignaciones.push('enviado_en = now()');
     }
 
     if (asignaciones.length > 0) {

@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
-import { EstacionamientoEnRevision, EstadoAprobacion, Id } from '@app/models';
+import { EstacionamientoEnRevision, EstadoAprobacion, FechaHoraISO, Id } from '@app/models';
 import { EstacionamientoEnRevisionDto } from './api/api.dto';
 import { aEstacionamiento } from './api/api.mapeo';
 
@@ -29,17 +29,25 @@ export class AdminService {
       .pipe(map(({ estacionamiento }) => aEnRevision(estacionamiento)));
   }
 
-  /** `PATCH /api/admin/estacionamientos/:id/aprobar` */
-  aprobar(id: Id): Observable<EstacionamientoEnRevision> {
+  /**
+   * `PATCH /api/admin/estacionamientos/:id/aprobar`. `enviadoEn` es la version
+   * que se reviso: si el propietario la cambio mientras tanto, la API da 409.
+   */
+  aprobar(id: Id, enviadoEn: FechaHoraISO): Observable<EstacionamientoEnRevision> {
     return this.http
-      .patch<{ estacionamiento: EstacionamientoEnRevisionDto }>(`${this.ruta}/${id}/aprobar`, {})
+      .patch<{ estacionamiento: EstacionamientoEnRevisionDto }>(`${this.ruta}/${id}/aprobar`, {
+        enviado_en: enviadoEn,
+      })
       .pipe(map(({ estacionamiento }) => aEnRevision(estacionamiento)));
   }
 
   /** `PATCH /api/admin/estacionamientos/:id/rechazar` */
-  rechazar(id: Id, motivo: string): Observable<EstacionamientoEnRevision> {
+  rechazar(id: Id, motivo: string, enviadoEn: FechaHoraISO): Observable<EstacionamientoEnRevision> {
     return this.http
-      .patch<{ estacionamiento: EstacionamientoEnRevisionDto }>(`${this.ruta}/${id}/rechazar`, { motivo })
+      .patch<{ estacionamiento: EstacionamientoEnRevisionDto }>(`${this.ruta}/${id}/rechazar`, {
+        motivo,
+        enviado_en: enviadoEn,
+      })
       .pipe(map(({ estacionamiento }) => aEnRevision(estacionamiento)));
   }
 }

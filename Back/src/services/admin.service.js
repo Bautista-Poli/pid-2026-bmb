@@ -39,32 +39,43 @@ export async function obtenerEstacionamiento(idEstacionamiento) {
 /**
  * Cierra la revision de un PENDIENTE. El WHERE sobre el estado hace que dos
  * admins a la vez no puedan decidir los dos: el segundo recibe 409.
+ *
+ * `enviadoEn` es la version que el admin tenia en pantalla: si el propietario
+ * cambio el nombre o la direccion mientras tanto, `enviado_en` ya es otro y la
+ * decision se rechaza, para no aprobar algo que nadie vio. Se compara al
+ * milisegundo porque es la precision con la que viaja por JSON.
  */
-async function decidir(idEstacionamiento, idAdmin, estado, motivo) {
+async function decidir(idEstacionamiento, idAdmin, estado, motivo, enviadoEn = null) {
   const { rows } = await query(
     `UPDATE estacionamiento
         SET estado_aprobacion = $3, motivo_rechazo = $4, revisado_por = $2, revisado_en = now()
-      WHERE id_estacionamiento = $1 AND estado_aprobacion = '${ESTADOS_APROBACION.PENDIENTE}'
+      WHERE id_estacionamiento = $1
+        AND estado_aprobacion = '${ESTADOS_APROBACION.PENDIENTE}'
+        AND ($5::timestamptz IS NULL
+             OR date_trunc('milliseconds', enviado_en) = date_trunc('milliseconds', $5::timestamptz))
       RETURNING id_estacionamiento`,
-    [idEstacionamiento, idAdmin, estado, motivo],
+    [idEstacionamiento, idAdmin, estado, motivo, enviadoEn],
   );
 
   if (!rows[0]) {
     const { rows: existe } = await query(
-      'SELECT 1 FROM estacionamiento WHERE id_estacionamiento = $1',
+      'SELECT estado_aprobacion FROM estacionamiento WHERE id_estacionamiento = $1',
       [idEstacionamiento],
     );
     if (!existe[0]) throw ApiError.notFound('Estacionamiento no encontrado');
-    throw ApiError.conflict('El estacionamiento no esta pendiente de revision');
+    if (existe[0].estado_aprobacion !== ESTADOS_APROBACION.PENDIENTE) {
+      throw ApiError.conflict('El estacionamiento no esta pendiente de revision');
+    }
+    throw ApiError.conflict('El propietario lo cambio mientras lo revisabas: volve a cargarlo antes de decidir');
   }
 
   return obtenerEstacionamiento(idEstacionamiento);
 }
 
-export function aprobar(idEstacionamiento, idAdmin) {
-  return decidir(idEstacionamiento, idAdmin, ESTADOS_APROBACION.APROBADO, null);
+export function aprobar(idEstacionamiento, idAdmin, { enviado_en } = {}) {
+  return decidir(idEstacionamiento, idAdmin, ESTADOS_APROBACION.APROBADO, null, enviado_en);
 }
 
-export function rechazar(idEstacionamiento, idAdmin, motivo) {
-  return decidir(idEstacionamiento, idAdmin, ESTADOS_APROBACION.RECHAZADO, motivo);
+export function rechazar(idEstacionamiento, idAdmin, { motivo, enviado_en }) {
+  return decidir(idEstacionamiento, idAdmin, ESTADOS_APROBACION.RECHAZADO, motivo, enviado_en);
 }

@@ -91,6 +91,37 @@ describe('aprobar y rechazar', () => {
     assert.equal(otraVez.estado, 409);
   });
 
+  test('si el propietario cambio nombre o direccion mientras se revisaba, aprobar da 409', async () => {
+    const { propietario, admin, id } = await escenario();
+    const visto = (await api('GET', `/admin/estacionamientos/${id}`, { token: admin.token })).datos.estacionamiento;
+
+    await api('PATCH', `/estacionamientos/${id}`, { token: propietario.token, body: { nombre: 'Nombre cambiado' } });
+
+    const aprobar = await api('PATCH', `/admin/estacionamientos/${id}/aprobar`, {
+      token: admin.token,
+      body: { enviado_en: visto.enviado_en },
+    });
+    assert.equal(aprobar.estado, 409);
+    assert.match(motivo(aprobar), /cambio mientras lo revisabas/);
+
+    const rechazo = await api('PATCH', `/admin/estacionamientos/${id}/rechazar`, {
+      token: admin.token,
+      body: { motivo: MOTIVO, enviado_en: visto.enviado_en },
+    });
+    assert.equal(rechazo.estado, 409);
+  });
+
+  test('aprobar con el enviado_en vigente funciona', async () => {
+    const { admin, id } = await escenario();
+    const visto = (await api('GET', `/admin/estacionamientos/${id}`, { token: admin.token })).datos.estacionamiento;
+
+    const aprobar = await api('PATCH', `/admin/estacionamientos/${id}/aprobar`, {
+      token: admin.token,
+      body: { enviado_en: visto.enviado_en },
+    });
+    assert.equal(aprobar.estado, 200);
+  });
+
   test('rechazar sin motivo o con menos de 10 caracteres da 400', async () => {
     const { admin, id } = await escenario();
     const ruta = `/admin/estacionamientos/${id}/rechazar`;

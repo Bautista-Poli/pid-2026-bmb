@@ -12,11 +12,11 @@ export const obtenerEstacionamiento = asyncHandler(async (req, res) => {
 });
 
 export const aprobar = asyncHandler(async (req, res) => {
-  const estacionamiento = await adminService.aprobar(req.params.id, req.usuario.id);
+  const estacionamiento = await adminService.aprobar(req.params.id, req.usuario.id, req.body);
   res.json({ estacionamiento });
 });
 
 export const rechazar = asyncHandler(async (req, res) => {
-  const estacionamiento = await adminService.rechazar(req.params.id, req.usuario.id, req.body.motivo);
+  const estacionamiento = await adminService.rechazar(req.params.id, req.usuario.id, req.body);
   res.json({ estacionamiento });
 });

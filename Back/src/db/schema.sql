@@ -697,3 +697,23 @@ CREATE UNIQUE INDEX IF NOT EXISTS estacionamiento_imagen_public_id_unico
   ON estacionamiento_imagen (public_id) WHERE public_id IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS vehiculo_foto_public_id_unico
   ON vehiculo (foto_public_id) WHERE foto_public_id IS NOT NULL;
+
+-- Cuando se cancelo cada reserva (Sprint 3, dashboard del propietario: la
+-- anticipacion con la que cancelan los conductores). Lo carga un trigger y no
+-- cada llamador: hay varios caminos que cancelan y asi ninguno se olvida.
+ALTER TABLE reserva
+  ADD COLUMN IF NOT EXISTS cancelada_en TIMESTAMPTZ;
+
+CREATE OR REPLACE FUNCTION marcar_cancelada_en() RETURNS trigger AS $$
+BEGIN
+  IF NEW.estado = 'CANCELADA' AND OLD.estado IS DISTINCT FROM 'CANCELADA' THEN
+    NEW.cancelada_en := now();
+  END IF;
+  RETURN NEW;
+END
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS reserva_cancelada_en ON reserva;
+CREATE TRIGGER reserva_cancelada_en
+  BEFORE UPDATE OF estado ON reserva
+  FOR EACH ROW EXECUTE FUNCTION marcar_cancelada_en();

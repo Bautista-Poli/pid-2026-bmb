@@ -119,6 +119,12 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/propietario/tablero/tablero').then((m) => m.Tablero),
       },
       {
+        path: 'estadisticas',
+        title: 'Parkit · Estadísticas',
+        loadComponent: () =>
+          import('./pages/propietario/estadisticas/estadisticas').then((m) => m.Estadisticas),
+      },
+      {
         path: 'reservas',
         title: 'Parkit · Reservas recibidas',
         loadComponent: () =>

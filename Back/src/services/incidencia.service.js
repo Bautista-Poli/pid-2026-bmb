@@ -22,7 +22,7 @@ import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
 import { ESTADOS_RESERVA, ROLES } from '../utils/roles.js';
 import { buscarAlternativa } from './cochera.service.js';
-import { asegurarDentroDelTope, crearDevolucion } from './devolucion.service.js';
+import { PAGADO_RESERVA, asegurarDentroDelTope, crearDevolucion } from './devolucion.service.js';
 
 export const TIPOS_INCIDENCIA = Object.freeze({
   AUTO_EXCEDIDO: 'AUTO_EXCEDIDO',
@@ -258,7 +258,7 @@ export const SELECT_INCIDENCIA = `
          v.patente, c.identificador AS cochera,
          e.id_estacionamiento, e.nombre AS estacionamiento, e.id_propietario,
          i.motivo::text AS motivo, i.monto_pedido, i.resolucion::text AS resolucion,
-         COALESCE(r.precio_total, a.precio_total) AS pagado,
+         COALESCE(${PAGADO_RESERVA}, a.precio_total) AS pagado,
          (SELECT COALESCE(SUM(d.monto), 0) FROM devolucion d
            WHERE d.id_reserva = i.id_reserva OR d.id_abono = i.id_abono) AS devuelto,
          (SELECT m.monto_propuesto FROM incidencia_mensaje m

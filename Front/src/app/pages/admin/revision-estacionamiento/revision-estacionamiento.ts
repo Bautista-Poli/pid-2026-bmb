@@ -255,11 +255,11 @@ export class RevisionEstacionamiento {
   }
 
   protected aprobar(estacionamiento: EstacionamientoEnRevision): void {
-    this.decidir(this.admin.aprobar(estacionamiento.id));
+    this.decidir(this.admin.aprobar(estacionamiento.id, estacionamiento.enviadoEn));
   }
 
   protected rechazar(estacionamiento: EstacionamientoEnRevision): void {
-    this.decidir(this.admin.rechazar(estacionamiento.id, this.motivo().trim()));
+    this.decidir(this.admin.rechazar(estacionamiento.id, this.motivo().trim(), estacionamiento.enviadoEn));
   }
 
   /** Aprobar o rechazar: al terminar vuelve a la cola, que ya no lo muestra. */

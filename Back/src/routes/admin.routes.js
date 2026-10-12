@@ -4,7 +4,7 @@ import * as adminController from '../controllers/admin.controller.js';
 import { authenticate, requireRole } from '../middlewares/auth.js';
 import { validate } from '../middlewares/validate.js';
 import { ROLES } from '../utils/roles.js';
-import { validarFiltroAdmin, validarRechazo } from '../validators/admin.validator.js';
+import { validarAprobacion, validarFiltroAdmin, validarRechazo } from '../validators/admin.validator.js';
 
 const router = Router();
 
@@ -17,7 +17,7 @@ router.get(
   adminController.listarEstacionamientos,
 );
 router.get('/estacionamientos/:id', adminController.obtenerEstacionamiento);
-router.patch('/estacionamientos/:id/aprobar', adminController.aprobar);
+router.patch('/estacionamientos/:id/aprobar', validate(validarAprobacion), adminController.aprobar);
 router.patch(
   '/estacionamientos/:id/rechazar',
   validate(validarRechazo),

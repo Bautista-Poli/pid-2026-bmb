@@ -12,6 +12,20 @@ export function validarFiltroAdmin(query) {
   return resultado;
 }
 
+/** La version que el admin tenia en pantalla (opcional): ver admin.service.js: decidir. */
+function conVersionVista(validador, body) {
+  const resultado = validador.texto('enviado_en', body.enviado_en, { requerido: false, max: 40 }).resultado();
+  const { enviado_en } = resultado.valores;
+  if (enviado_en !== undefined && Number.isNaN(Date.parse(enviado_en))) {
+    resultado.errores.push({ campo: 'enviado_en', mensaje: 'tiene que ser una fecha' });
+  }
+  return resultado;
+}
+
+export function validarAprobacion(body) {
+  return conVersionVista(campos(body), body);
+}
+
 export function validarRechazo(body) {
-  return campos(body).texto('motivo', body.motivo, { min: 10, max: 300 }).resultado();
+  return conVersionVista(campos(body).texto('motivo', body.motivo, { min: 10, max: 300 }), body);
 }

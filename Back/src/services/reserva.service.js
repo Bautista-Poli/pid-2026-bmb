@@ -139,8 +139,10 @@ export async function crear(
     await asegurarVehiculoLibre(client, id_vehiculo, inicio, fin);
 
     const cochera = id_cochera
-      ? await bloquearCochera(client, id_cochera, vehiculo, inicio, fin)
-      : await asignarCochera(client, abono?.id_estacionamiento ?? id_estacionamiento, vehiculo, inicio, fin);
+      ? await bloquearCochera(client, id_cochera, vehiculo, inicio, fin, { conAbono: Boolean(abono) })
+      : await asignarCochera(client, abono?.id_estacionamiento ?? id_estacionamiento, vehiculo, inicio, fin, {
+          conAbono: Boolean(abono),
+        });
 
     if (abono && cochera.id_estacionamiento !== abono.id_estacionamiento) {
       throw ApiError.conflict('El abono es de otro estacionamiento');
@@ -236,7 +238,7 @@ async function asegurarVehiculoLibre(client, idVehiculo, inicio, fin) {
 }
 
 /** Reserva de una cochera puntual: lock sobre esa fila y validaciones. */
-async function bloquearCochera(client, idCochera, vehiculo, inicio, fin) {
+async function bloquearCochera(client, idCochera, vehiculo, inicio, fin, { conAbono = false } = {}) {
   const { rows: cocheras } = await client.query(
     `SELECT c.id_cochera, c.identificador, c.estado_actual, c.activo, c.bloqueada,
             c.id_tipo_vehiculo, c.id_estacionamiento,
@@ -254,7 +256,7 @@ async function bloquearCochera(client, idCochera, vehiculo, inicio, fin) {
   if (!cochera.activo || cochera.estado_actual === ESTADOS_COCHERA.INACTIVA || cochera.bloqueada) {
     throw ApiError.conflict('La cochera no esta disponible para reservar');
   }
-  if (!aceptaReservas({ ...cochera, activo: cochera.estacionamiento_activo })) {
+  if (!aceptaReservas({ ...cochera, activo: cochera.estacionamiento_activo }, { conAbono })) {
     throw ApiError.conflict('El estacionamiento no esta disponible para reservar');
   }
   if (vehiculo.id_tipo_vehiculo !== cochera.id_tipo_vehiculo) {
@@ -294,7 +296,7 @@ async function bloquearCochera(client, idCochera, vehiculo, inicio, fin) {
  * en el mismo orden (por id), y recien despues se busca la primera sin
  * solapamiento. El orden fijo evita deadlocks entre pedidos simultaneos.
  */
-async function asignarCochera(client, idEstacionamiento, vehiculo, inicio, fin) {
+async function asignarCochera(client, idEstacionamiento, vehiculo, inicio, fin, { conAbono = false } = {}) {
   const { rows: estacionamientos } = await client.query(
     'SELECT publicado, activo, estado_aprobacion FROM estacionamiento WHERE id_estacionamiento = $1',
     [idEstacionamiento],
@@ -302,7 +304,7 @@ async function asignarCochera(client, idEstacionamiento, vehiculo, inicio, fin) 
 
   const estacionamiento = estacionamientos[0];
   if (!estacionamiento) throw ApiError.notFound('El estacionamiento no existe');
-  if (!aceptaReservas(estacionamiento)) {
+  if (!aceptaReservas(estacionamiento, { conAbono })) {
     throw ApiError.conflict('El estacionamiento no esta disponible para reservar');
   }
 

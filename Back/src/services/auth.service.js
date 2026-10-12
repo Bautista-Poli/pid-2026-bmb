@@ -4,7 +4,7 @@ import { config } from '../config/env.js';
 import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
 import { firmarToken } from '../utils/jwt.js';
-import { ESTADOS_VIGENTES } from '../utils/roles.js';
+import { ESTADOS_VIGENTES, ROLES } from '../utils/roles.js';
 
 // `roles` va como text[]: el driver no sabe leer arreglos de un ENUM propio y
 // los devolveria como el texto crudo '{CONDUCTOR,PROPIETARIO}'.
@@ -127,6 +127,9 @@ export async function actualizarPerfil(idUsuario, cambios) {
     }
 
     if (cambios.roles !== undefined) {
+      if (actual.roles.includes(ROLES.ADMINISTRADOR)) {
+        throw ApiError.badRequest('El administrador no puede tener otros perfiles');
+      }
       valores.push(cambios.roles);
       sets.push(`roles = $${valores.length}::rol_usuario[]`);
 

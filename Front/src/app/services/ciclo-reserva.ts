@@ -29,6 +29,15 @@ export function ingresoHabilitado(reserva: Reserva, ahora = Date.now()): boolean
 }
 
 /**
+ * El propietario puede marcar ausente a mano una confirmada sin ingreso desde
+ * su inicio hasta su fin (mismo criterio que el backend). Antes del inicio
+ * todavia puede llegar; despues de la tolerancia lo hace el job igual.
+ */
+export function puedeMarcarAusente(reserva: Reserva, ahora = Date.now()): boolean {
+  return reserva.estado === 'CONFIRMADA' && ahora >= inicioDe(reserva) && ahora < finDe(reserva);
+}
+
+/**
  * Si el propietario puede avanzar la reserva en este momento. Una confirmada
  * solo habilita el ingreso dentro de su ventana; el resto de los pasos siempre.
  */

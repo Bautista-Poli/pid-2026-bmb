@@ -3,10 +3,12 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { rxResource } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import {
+  Boton,
   Cargando,
   EstadoVacio,
   Etiqueta,
   Icono,
+  Modal,
   NombreIcono,
   Tarjeta,
   TonoEtiqueta,
@@ -21,7 +23,7 @@ import {
   ReservaDetallada,
   TipoVehiculo,
 } from '@app/models';
-import { avanzarReserva, puedeAvanzar, rutaAcceso } from '@app/services/ciclo-reserva';
+import { avanzarReserva, puedeAvanzar, puedeMarcarAusente, rutaAcceso } from '@app/services/ciclo-reserva';
 import { AuthService } from '@app/services/auth.service';
 import { EstacionamientoService } from '@app/services/estacionamiento.service';
 import { ReservaService } from '@app/services/reserva.service';
@@ -73,7 +75,7 @@ const sinAcentos = (texto: string) =>
 @Component({
   selector: 'app-reservas',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, Tarjeta, Cargando, EstadoVacio, Etiqueta, Icono],
+  imports: [DatePipe, Tarjeta, Cargando, EstadoVacio, Etiqueta, Icono, Boton, Modal],
   templateUrl: './reservas.html',
 })
 export class Reservas {
@@ -196,6 +198,32 @@ export class Reservas {
       },
       error: (e: Error) => {
         this.procesandoId.set(null);
+        this.error.set(e.message);
+      },
+    });
+  }
+
+  /* ------------------------ ausente a mano (no-show) ------------------------ */
+
+  /** Reserva que se esta por marcar ausente: abre el modal de confirmacion. */
+  protected readonly aMarcarAusente = signal<ReservaDetallada | null>(null);
+  protected readonly puedeMarcarAusente = (reserva: ReservaDetallada) => puedeMarcarAusente(reserva);
+
+  protected marcarAusente(reserva: ReservaDetallada): void {
+    this.procesandoId.set(reserva.id);
+    this.aviso.set(null);
+    this.error.set(null);
+
+    this.reservas.marcarAusente(reserva.id).subscribe({
+      next: () => {
+        this.procesandoId.set(null);
+        this.aMarcarAusente.set(null);
+        this.aviso.set(`Marcaste ausente a ${reserva.vehiculo.patente}. La cochera quedó libre.`);
+        this.recurso.reload();
+      },
+      error: (e: Error) => {
+        this.procesandoId.set(null);
+        this.aMarcarAusente.set(null);
         this.error.set(e.message);
       },
     });

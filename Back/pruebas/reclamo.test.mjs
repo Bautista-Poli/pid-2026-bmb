@@ -193,3 +193,158 @@ describe('abrir un reclamo', () => {
     assert.equal(delConductor.datos.incidencias.length, 3);
   });
 });
+
+/* ---------------------- propuesta, aceptar, retirar ---------------------- */
+
+async function reclamoAbierto() {
+  const escenario = await escenarioReserva();
+  const { datos } = await reclamar(escenario.conductor, { id_reserva: escenario.reserva.id_reserva });
+  return { ...escenario, incidencia: datos.incidencia };
+}
+
+const proponer = (propietario, incidencia, monto_propuesto, extra = {}) =>
+  api('POST', `/incidencias/${incidencia.id_incidencia}/mensajes`, {
+    token: propietario.token,
+    body: { texto: 'Te ofrezco devolverte una parte.', monto_propuesto, ...extra },
+  });
+
+const aceptar = (conductor, incidencia, monto) =>
+  api('PATCH', `/incidencias/${incidencia.id_incidencia}/aceptar`, { token: conductor.token, body: { monto } });
+
+const retirar = (conductor, incidencia) =>
+  api('PATCH', `/incidencias/${incidencia.id_incidencia}/retirar`, { token: conductor.token });
+
+const denunciar = (usuario, incidencia) =>
+  api('PATCH', `/incidencias/${incidencia.id_incidencia}/denunciar`, {
+    token: usuario.token,
+    body: { motivo: 'No nos ponemos de acuerdo.' },
+  });
+
+const devolucionesDe = async (idIncidencia) =>
+  (
+    await query(
+      `SELECT monto::float AS monto, aplicada_por::text AS aplicada_por FROM devolucion WHERE id_incidencia = $1`,
+      [idIncidencia],
+    )
+  ).rows;
+
+describe('propuesta de devolucion', () => {
+  test('el propietario propone y vale la ultima', async () => {
+    const { propietario, incidencia } = await reclamoAbierto();
+
+    await proponer(propietario, incidencia, 1000);
+    const { estado, datos } = await proponer(propietario, incidencia, 1500);
+
+    assert.equal(estado, 201);
+    assert.equal(datos.incidencia.propuesta_vigente, 1500);
+    assert.equal(datos.incidencia.mensajes.at(-1).monto_propuesto, 1500);
+  });
+
+  test('no puede pasar el tope', async () => {
+    const { propietario, incidencia } = await reclamoAbierto();
+
+    assert.equal((await proponer(propietario, incidencia, 4001)).estado, 400);
+  });
+
+  test('solo el propietario, en el canal general y en un reclamo abierto', async () => {
+    const { propietario, conductor, incidencia, reserva, estacionamiento } = await reclamoAbierto();
+
+    assert.equal((await proponer(conductor, incidencia, 100)).estado, 400);
+    assert.equal((await proponer(propietario, incidencia, 100, { canal: 'PROPIETARIO' })).estado, 400);
+
+    const { rows } = await query(
+      `INSERT INTO incidencia (tipo, id_reserva, id_estacionamiento) VALUES ('AUTO_EXCEDIDO', $1, $2)
+       RETURNING id_incidencia`,
+      [reserva.id_reserva, estacionamiento.id_estacionamiento],
+    );
+    assert.equal((await proponer(propietario, rows[0], 100)).estado, 409);
+  });
+});
+
+describe('aceptar y retirar', () => {
+  test('aceptar aplica la devolucion y cierra el reclamo', async () => {
+    const { propietario, conductor, incidencia } = await reclamoAbierto();
+    await proponer(propietario, incidencia, 2000);
+
+    const { estado, datos } = await aceptar(conductor, incidencia, 2000);
+
+    assert.equal(estado, 200);
+    assert.equal(datos.incidencia.estado, 'RESUELTA');
+    assert.equal(datos.incidencia.devuelto, 2000);
+    assert.equal(datos.incidencia.tope, 2000);
+    assert.deepEqual(await devolucionesDe(incidencia.id_incidencia), [{ monto: 2000, aplicada_por: 'PROPIETARIO' }]);
+  });
+
+  test('aceptar $0 cierra sin devolucion', async () => {
+    const { propietario, conductor, incidencia } = await reclamoAbierto();
+    await proponer(propietario, incidencia, 0);
+
+    const { datos } = await aceptar(conductor, incidencia, 0);
+
+    assert.equal(datos.incidencia.estado, 'RESUELTA');
+    assert.deepEqual(await devolucionesDe(incidencia.id_incidencia), []);
+  });
+
+  test('sin propuesta, con otra propuesta o dos veces da 409', async () => {
+    const { propietario, conductor, incidencia } = await reclamoAbierto();
+
+    assert.equal((await aceptar(conductor, incidencia, 0)).estado, 409);
+
+    await proponer(propietario, incidencia, 1000);
+    await proponer(propietario, incidencia, 500);
+    const vieja = await aceptar(conductor, incidencia, 1000);
+    assert.equal(vieja.estado, 409);
+    assert.equal(motivo(vieja), 'El propietario cambió la propuesta');
+
+    assert.equal((await aceptar(conductor, incidencia, 500)).estado, 200);
+    assert.equal((await aceptar(conductor, incidencia, 500)).estado, 409);
+    assert.equal((await devolucionesDe(incidencia.id_incidencia)).length, 1);
+  });
+
+  test('retirar lo deja de solo lectura', async () => {
+    const { conductor, incidencia } = await reclamoAbierto();
+
+    const { estado, datos } = await retirar(conductor, incidencia);
+    assert.equal(estado, 200);
+    assert.equal(datos.incidencia.estado, 'RETIRADA');
+
+    const mensaje = await api('POST', `/incidencias/${incidencia.id_incidencia}/mensajes`, {
+      token: conductor.token,
+      body: { texto: 'Hola?' },
+    });
+    assert.equal(mensaje.estado, 409);
+    assert.equal((await denunciar(conductor, incidencia)).estado, 409);
+  });
+
+  test('denunciado ya no se acepta ni se retira', async () => {
+    const { propietario, conductor, incidencia } = await reclamoAbierto();
+    await proponer(propietario, incidencia, 1000);
+    await denunciar(propietario, incidencia);
+
+    assert.equal((await aceptar(conductor, incidencia, 1000)).estado, 409);
+    assert.equal((await retirar(conductor, incidencia)).estado, 409);
+  });
+
+  test('el propietario no puede marcar resuelto un reclamo', async () => {
+    const { propietario, incidencia } = await reclamoAbierto();
+
+    const respuesta = await api('PATCH', `/incidencias/${incidencia.id_incidencia}/resolver`, {
+      token: propietario.token,
+      body: {},
+    });
+
+    assert.equal(respuesta.estado, 409);
+    assert.equal(motivo(respuesta), 'Un reclamo lo cierra el conductor aceptando tu propuesta, o la moderación');
+  });
+
+  test('dos reclamos sucesivos no superan lo pagado', async () => {
+    const { propietario, conductor, reserva, incidencia } = await reclamoAbierto();
+    await proponer(propietario, incidencia, 3900);
+    await aceptar(conductor, incidencia, 3900);
+
+    const { datos } = await reclamar(conductor, { id_reserva: reserva.id_reserva });
+    assert.equal(datos.incidencia.tope, 100);
+    assert.equal((await proponer(propietario, datos.incidencia, 200)).estado, 400);
+    assert.equal((await proponer(propietario, datos.incidencia, 100)).estado, 201);
+  });
+});

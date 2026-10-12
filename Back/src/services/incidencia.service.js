@@ -22,7 +22,7 @@ import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
 import { ESTADOS_RESERVA, ROLES } from '../utils/roles.js';
 import { buscarAlternativa } from './cochera.service.js';
-import { asegurarDentroDelTope } from './devolucion.service.js';
+import { asegurarDentroDelTope, crearDevolucion } from './devolucion.service.js';
 
 export const TIPOS_INCIDENCIA = Object.freeze({
   AUTO_EXCEDIDO: 'AUTO_EXCEDIDO',
@@ -78,11 +78,13 @@ export const AVISO_AFECTADA_POR_EXCESO =
   'Tu cochera sigue ocupada por el vehiculo anterior y no habia otra libre. ' +
   'El estacionamiento te va a indicar donde estacionar.';
 
-async function agregarMensaje(ejecutor, idIncidencia, rolAutor, texto, idAutor = null, canal = CANALES.GENERAL) {
+export async function agregarMensaje(
+  ejecutor, idIncidencia, rolAutor, texto, idAutor = null, canal = CANALES.GENERAL, montoPropuesto = null,
+) {
   await ejecutor.query(
-    `INSERT INTO incidencia_mensaje (id_incidencia, id_autor, rol_autor, texto, canal)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [idIncidencia, idAutor, rolAutor, texto, canal],
+    `INSERT INTO incidencia_mensaje (id_incidencia, id_autor, rol_autor, texto, canal, monto_propuesto)
+     VALUES ($1, $2, $3, $4, $5, $6)`,
+    [idIncidencia, idAutor, rolAutor, texto, canal, montoPropuesto],
   );
 }
 
@@ -370,11 +372,22 @@ export async function obtener(usuario, idIncidencia) {
  * Escribe en un canal. En el GENERAL escriben propietario y conductor; en los
  * privados, cada parte solo en el suyo y solo despues de la denuncia.
  */
-export async function responder(usuario, idIncidencia, { texto, canal = CANALES.GENERAL }) {
+export async function responder(usuario, idIncidencia, { texto, canal = CANALES.GENERAL, monto_propuesto }) {
+  const propone = monto_propuesto !== undefined && monto_propuesto !== null;
+  if (propone && usuario.rol !== ROLES.PROPIETARIO) {
+    throw ApiError.badRequest('Solo el estacionamiento propone devoluciones');
+  }
+  if (propone && canal !== CANALES.GENERAL) {
+    throw ApiError.badRequest('La propuesta de devolucion va en el chat con el conductor');
+  }
   await withTransaction(async (client) => {
     const incidencia = await buscarParticipando(client, usuario, idIncidencia, { bloquear: true });
-    if (incidencia.estado === ESTADOS_INCIDENCIA.RESUELTA) {
-      throw ApiError.conflict('La incidencia ya esta resuelta');
+    asegurarNoCerrada(incidencia);
+    if (propone) {
+      if (incidencia.tipo !== TIPOS_INCIDENCIA.RECLAMO || incidencia.estado !== ESTADOS_INCIDENCIA.ABIERTA) {
+        throw ApiError.conflict('Solo se proponen devoluciones en un reclamo abierto');
+      }
+      await asegurarDentroDelTope(client, objetoDe(incidencia), monto_propuesto, 'La propuesta');
     }
     if (canal !== CANALES.GENERAL) {
       if (canal !== canalPrivadoDe(usuario)) throw ApiError.forbidden('No participas de ese chat');
@@ -382,7 +395,7 @@ export async function responder(usuario, idIncidencia, { texto, canal = CANALES.
         throw ApiError.conflict('El chat con la moderacion se abre cuando alguien denuncia la incidencia');
       }
     }
-    await agregarMensaje(client, idIncidencia, usuario.rol, texto, usuario.id, canal);
+    await agregarMensaje(client, idIncidencia, usuario.rol, texto, usuario.id, canal, propone ? monto_propuesto : null);
   });
   return obtener(usuario, idIncidencia);
 }
@@ -391,8 +404,9 @@ export async function responder(usuario, idIncidencia, { texto, canal = CANALES.
 export async function resolver(usuario, idIncidencia, { comentario } = {}) {
   await withTransaction(async (client) => {
     const incidencia = await buscarParticipando(client, usuario, idIncidencia, { bloquear: true });
-    if (incidencia.estado === ESTADOS_INCIDENCIA.RESUELTA) {
-      throw ApiError.conflict('La incidencia ya esta resuelta');
+    asegurarNoCerrada(incidencia);
+    if (incidencia.tipo === TIPOS_INCIDENCIA.RECLAMO) {
+      throw ApiError.conflict('Un reclamo lo cierra el conductor aceptando tu propuesta, o la moderación');
     }
     if (incidencia.estado === ESTADOS_INCIDENCIA.DENUNCIADA) {
       throw ApiError.conflict('La incidencia esta denunciada: la cierra la moderacion');
@@ -415,12 +429,9 @@ export async function resolver(usuario, idIncidencia, { comentario } = {}) {
 export async function denunciar(usuario, idIncidencia, { motivo }) {
   await withTransaction(async (client) => {
     const incidencia = await buscarParticipando(client, usuario, idIncidencia, { bloquear: true });
-    if (incidencia.estado !== ESTADOS_INCIDENCIA.ABIERTA) {
-      throw ApiError.conflict(
-        incidencia.estado === ESTADOS_INCIDENCIA.DENUNCIADA
-          ? 'La incidencia ya fue denunciada'
-          : 'La incidencia ya esta resuelta',
-      );
+    asegurarNoCerrada(incidencia);
+    if (incidencia.estado === ESTADOS_INCIDENCIA.DENUNCIADA) {
+      throw ApiError.conflict('La incidencia ya fue denunciada');
     }
 
     const propio = canalPrivadoDe(usuario);
@@ -449,6 +460,95 @@ export async function denunciar(usuario, idIncidencia, { motivo }) {
 }
 
 /* ----------------------------- reclamos ------------------------------- */
+
+/** RESUELTA y RETIRADA son finales: el hilo queda de solo lectura. */
+export function asegurarNoCerrada(incidencia) {
+  if (incidencia.estado === ESTADOS_INCIDENCIA.RESUELTA) throw ApiError.conflict('La incidencia ya esta resuelta');
+  if (incidencia.estado === ESTADOS_INCIDENCIA.RETIRADA) throw ApiError.conflict('El reclamo fue retirado');
+}
+
+/** La reserva o el abono de la incidencia, como lo piden las devoluciones. */
+export const objetoDe = (incidencia) => ({ idReserva: incidencia.id_reserva, idAbono: incidencia.id_abono });
+
+/** Bloquea la reserva o el abono: dos devoluciones a la vez no pasan el tope. */
+export async function bloquearObjeto(client, incidencia) {
+  if (incidencia.id_reserva) {
+    await client.query('SELECT 1 FROM reserva WHERE id_reserva = $1 FOR UPDATE', [incidencia.id_reserva]);
+  } else {
+    await client.query('SELECT 1 FROM abono WHERE id_abono = $1 FOR UPDATE', [incidencia.id_abono]);
+  }
+}
+
+/** La ultima propuesta, leida despues de bloquear la incidencia. */
+async function propuestaVigente(client, idIncidencia) {
+  const { rows } = await client.query(
+    `SELECT monto_propuesto FROM incidencia_mensaje
+      WHERE id_incidencia = $1 AND monto_propuesto IS NOT NULL
+      ORDER BY created_at DESC, id_mensaje DESC LIMIT 1`,
+    [idIncidencia],
+  );
+  return rows[0] ? Number(rows[0].monto_propuesto) : null;
+}
+
+/** Reclamo del conductor que todavia se puede aceptar o retirar. */
+async function reclamoEnCurso(client, usuario, idIncidencia) {
+  const incidencia = await buscarParticipando(client, usuario, idIncidencia, { bloquear: true });
+  if (incidencia.tipo !== TIPOS_INCIDENCIA.RECLAMO) throw ApiError.conflict('Esta incidencia no es un reclamo');
+  asegurarNoCerrada(incidencia);
+  if (incidencia.estado === ESTADOS_INCIDENCIA.DENUNCIADA) {
+    throw ApiError.conflict('El reclamo esta denunciado: lo resuelve la moderacion');
+  }
+  return incidencia;
+}
+
+const PESOS = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 2 });
+
+/**
+ * El conductor acepta la ultima propuesta del propietario. Manda el monto que
+ * vio: si el propietario la cambio mientras tanto, 409 (no se acepta otro numero).
+ */
+export async function aceptar(usuario, idIncidencia, { monto }) {
+  await withTransaction(async (client) => {
+    const incidencia = await reclamoEnCurso(client, usuario, idIncidencia);
+    const vigente = await propuestaVigente(client, idIncidencia);
+    if (vigente === null) throw ApiError.conflict('El propietario todavia no propuso una devolucion');
+    if (vigente !== monto) throw ApiError.conflict('El propietario cambió la propuesta');
+
+    await bloquearObjeto(client, incidencia);
+    if (vigente > 0) {
+      await crearDevolucion(client, {
+        idIncidencia,
+        ...objetoDe(incidencia),
+        monto: vigente,
+        aplicadaPor: ROLES.PROPIETARIO,
+      });
+    }
+    await agregarMensaje(
+      client, idIncidencia, SISTEMA,
+      vigente > 0
+        ? `El conductor acepto la propuesta: se devolvieron $${PESOS.format(vigente)}.`
+        : 'El conductor acepto la propuesta, sin devolucion.',
+    );
+    await client.query(
+      'UPDATE incidencia SET estado = $1, resuelta_at = now() WHERE id_incidencia = $2',
+      [ESTADOS_INCIDENCIA.RESUELTA, idIncidencia],
+    );
+  });
+  return obtener(usuario, idIncidencia);
+}
+
+/** El conductor retira su reclamo. */
+export async function retirar(usuario, idIncidencia) {
+  await withTransaction(async (client) => {
+    await reclamoEnCurso(client, usuario, idIncidencia);
+    await agregarMensaje(client, idIncidencia, SISTEMA, 'El conductor retiro el reclamo.');
+    await client.query(
+      'UPDATE incidencia SET estado = $1, resuelta_at = now() WHERE id_incidencia = $2',
+      [ESTADOS_INCIDENCIA.RETIRADA, idIncidencia],
+    );
+  });
+  return obtener(usuario, idIncidencia);
+}
 
 const HOY_LOCAL = `(now() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date`;
 const ESTADOS_RECLAMABLES = [

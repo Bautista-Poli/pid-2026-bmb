@@ -10,6 +10,8 @@ export function validarMensaje(body) {
       requerido: false,
       default: 'GENERAL',
     })
+    // Solo el propietario, en un reclamo: lo controla el servicio.
+    .numero('monto_propuesto', body.monto_propuesto, { min: 0, requerido: false })
     .resultado();
 }
 
@@ -36,4 +38,9 @@ export function validarReclamo(body) {
     .numero('monto_pedido', body.monto_pedido, { min: 0, requerido: false })
     .texto('texto', body.texto, { min: 20, max: MAX_TEXTO })
     .resultado();
+}
+
+/** `PATCH /incidencias/:id/aceptar`: el monto de la propuesta que vio el conductor. */
+export function validarAceptacion(body) {
+  return campos(body).numero('monto', body.monto, { min: 0 }).resultado();
 }

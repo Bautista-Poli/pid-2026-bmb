@@ -11,6 +11,7 @@ import bcrypt from 'bcrypt';
 
 import { pool } from '../config/database.js';
 import { config } from '../config/env.js';
+import { campos } from '../validators/helpers.js';
 
 const { values } = parseArgs({
   options: {
@@ -54,7 +55,18 @@ async function crearAdmin() {
     throw new Error('Faltan datos. Uso: npm run db:crear-admin -- --email X --nombre X --apellido X');
   }
 
-  const correo = email.trim().toLowerCase();
+  // Las mismas reglas que el registro: con un email sin formato no podria
+  // iniciar sesion (el login tambien lo valida).
+  const { valores, errores } = campos({ email, nombre, apellido })
+    .email('email', email)
+    .texto('nombre', nombre, { min: 2, max: 80 })
+    .texto('apellido', apellido, { min: 2, max: 80 })
+    .resultado();
+  if (errores.length > 0) {
+    throw new Error(errores.map((e) => `${e.campo} ${e.mensaje}`).join('; '));
+  }
+
+  const correo = valores.email;
   const { rows: existentes } = await pool.query('SELECT 1 FROM usuario WHERE email = $1', [correo]);
   if (existentes[0]) throw new Error(`Ya existe un usuario con el email ${correo}`);
 
@@ -75,7 +87,7 @@ async function crearAdmin() {
   await pool.query(
     `INSERT INTO usuario (nombre, apellido, email, password_hash, rol, roles)
      VALUES ($1, $2, $3, $4, 'ADMINISTRADOR', ARRAY['ADMINISTRADOR']::rol_usuario[])`,
-    [nombre.trim(), apellido.trim(), correo, hash],
+    [valores.nombre, valores.apellido, correo, hash],
   );
   console.log(`[crear-admin] listo: ${correo}`);
 }

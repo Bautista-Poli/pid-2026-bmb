@@ -25,6 +25,34 @@
   }
 </ng-template>
 
+<!-- Lo devuelto por reclamos y el acceso a abrir uno (o al que esta abierto). -->
+<ng-template #reclamo>
+  @if (r.devuelto > 0) {
+    <span class="num-tabular text-[12.5px] font-semibold text-exito">
+      Devuelto $ {{ r.devuelto.toLocaleString('es-AR') }}
+    </span>
+  }
+  @if (r.reclamoAbierto; as id) {
+    <a
+      class="inline-flex min-h-11 items-center rounded-boton px-3 text-[13px] font-semibold text-acento
+             transition-colors duration-160 ease-out hover:bg-acento-suave"
+      routerLink="/conductor/incidencias"
+      [queryParams]="{ id }"
+    >
+      Ver reclamo
+    </a>
+  } @else if (reclamable()) {
+    <button
+      type="button"
+      class="inline-flex min-h-11 items-center rounded-boton px-3 text-[13px] font-semibold text-plomo
+             transition-colors duration-160 ease-out hover:bg-lienzo hover:text-tinta"
+      (click)="reclamar.emit(r)"
+    >
+      Tengo un problema
+    </button>
+  }
+</ng-template>
+
 <ng-template #fecha>
   <div
     class="flex w-[58px] shrink-0 flex-col items-center rounded-control border border-borde
@@ -71,6 +99,11 @@
       </div>
     </div>
     <ng-container [ngTemplateOutlet]="aviso" />
+    @if (r.devuelto > 0 || r.reclamoAbierto || reclamable()) {
+      <div class="-my-2 flex flex-wrap items-center justify-end gap-1">
+        <ng-container [ngTemplateOutlet]="reclamo" />
+      </div>
+    }
   </div>
 } @else {
   <article
@@ -228,7 +261,8 @@
         }
       </p>
 
-      <div class="flex items-center gap-1">
+      <div class="flex flex-wrap items-center justify-end gap-1">
+        <ng-container [ngTemplateOutlet]="reclamo" />
         @if (conQr()) {
           <button
             type="button"

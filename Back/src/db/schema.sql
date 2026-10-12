@@ -717,3 +717,113 @@ DROP TRIGGER IF EXISTS reserva_cancelada_en ON reserva;
 CREATE TRIGGER reserva_cancelada_en
   BEFORE UPDATE OF estado ON reserva
   FOR EACH ROW EXECUTE FUNCTION marcar_cancelada_en();
+
+-- Reclamos y moderacion (Sprint 3). El conductor abre un RECLAMO (tipo de
+-- incidencia) sobre una reserva o un abono suyo; el propietario propone una
+-- devolucion en el hilo (monto_propuesto) y el conductor la acepta, o alguno
+-- denuncia y resuelve el administrador. Los literales 'RECLAMO' y 'RETIRADA' no
+-- se usan en este archivo (valores agregados en la misma transaccion): un
+-- reclamo es la incidencia con `abierta_por` (las del sistema no la tienen).
+ALTER TYPE tipo_incidencia   ADD VALUE IF NOT EXISTS 'RECLAMO';
+ALTER TYPE estado_incidencia ADD VALUE IF NOT EXISTS 'RETIRADA';
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'motivo_reclamo') THEN
+    CREATE TYPE motivo_reclamo AS ENUM
+      ('NO_HABIA_LUGAR', 'COBRO_INCORRECTO', 'DANO_AL_VEHICULO', 'MAL_SERVICIO', 'OTRO');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'resolucion_incidencia') THEN
+    CREATE TYPE resolucion_incidencia AS ENUM ('A_FAVOR_CONDUCTOR', 'A_FAVOR_PROPIETARIO');
+  END IF;
+END
+$$;
+
+ALTER TABLE incidencia ALTER COLUMN id_reserva DROP NOT NULL;
+ALTER TABLE incidencia
+  ADD COLUMN IF NOT EXISTS id_abono     UUID,
+  ADD COLUMN IF NOT EXISTS abierta_por  UUID,
+  ADD COLUMN IF NOT EXISTS motivo       motivo_reclamo,
+  ADD COLUMN IF NOT EXISTS monto_pedido DECIMAL(10, 2),
+  ADD COLUMN IF NOT EXISTS resuelta_por UUID,
+  ADD COLUMN IF NOT EXISTS resolucion   resolucion_incidencia;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'incidencia_abono_fk') THEN
+    ALTER TABLE incidencia ADD CONSTRAINT incidencia_abono_fk
+      FOREIGN KEY (id_abono) REFERENCES abono (id_abono) ON DELETE CASCADE;
+  END IF;
+  -- RESTRICT: `abierta_por` es lo que distingue un reclamo de una incidencia
+  -- del sistema; si quedara en NULL, el reclamo cambiaria de naturaleza.
+  IF EXISTS (SELECT 1 FROM pg_constraint
+              WHERE conname = 'incidencia_abierta_por_fk' AND confdeltype <> 'r') THEN
+    ALTER TABLE incidencia DROP CONSTRAINT incidencia_abierta_por_fk;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'incidencia_abierta_por_fk') THEN
+    ALTER TABLE incidencia ADD CONSTRAINT incidencia_abierta_por_fk
+      FOREIGN KEY (abierta_por) REFERENCES usuario (id_usuario) ON DELETE RESTRICT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'incidencia_resuelta_por_fk') THEN
+    ALTER TABLE incidencia ADD CONSTRAINT incidencia_resuelta_por_fk
+      FOREIGN KEY (resuelta_por) REFERENCES usuario (id_usuario) ON DELETE SET NULL;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'incidencia_un_objeto') THEN
+    ALTER TABLE incidencia ADD CONSTRAINT incidencia_un_objeto
+      CHECK ((id_reserva IS NULL) <> (id_abono IS NULL));
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'incidencia_monto_pedido_no_negativo') THEN
+    ALTER TABLE incidencia ADD CONSTRAINT incidencia_monto_pedido_no_negativo
+      CHECK (monto_pedido IS NULL OR monto_pedido >= 0);
+  END IF;
+END
+$$;
+
+-- La unica-por-tipo vale solo para las del sistema (el job); de reclamos puede
+-- haber varios por reserva, pero uno solo abierto o denunciado a la vez.
+ALTER TABLE incidencia DROP CONSTRAINT IF EXISTS incidencia_una_por_tipo;
+CREATE UNIQUE INDEX IF NOT EXISTS incidencia_sistema_una_por_tipo
+  ON incidencia (id_reserva, tipo) WHERE abierta_por IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS incidencia_reclamo_reserva_abierto
+  ON incidencia (id_reserva)
+  WHERE abierta_por IS NOT NULL AND id_reserva IS NOT NULL AND estado IN ('ABIERTA', 'DENUNCIADA');
+CREATE UNIQUE INDEX IF NOT EXISTS incidencia_reclamo_abono_abierto
+  ON incidencia (id_abono)
+  WHERE abierta_por IS NOT NULL AND id_abono IS NOT NULL AND estado IN ('ABIERTA', 'DENUNCIADA');
+
+-- Propuesta de devolucion del propietario en el hilo (vale la ultima).
+ALTER TABLE incidencia_mensaje
+  ADD COLUMN IF NOT EXISTS monto_propuesto DECIMAL(10, 2);
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'incidencia_mensaje_propuesta_no_negativa') THEN
+    ALTER TABLE incidencia_mensaje ADD CONSTRAINT incidencia_mensaje_propuesta_no_negativa
+      CHECK (monto_propuesto IS NULL OR monto_propuesto >= 0);
+  END IF;
+END
+$$;
+
+-- Devoluciones simuladas: las aplica la aceptacion de una propuesta
+-- (PROPIETARIO) o la resolucion de la moderacion (ADMINISTRADOR). Se descuentan
+-- de los ingresos del propietario.
+CREATE TABLE IF NOT EXISTS devolucion (
+  id_devolucion UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
+  id_incidencia UUID           NOT NULL,
+  id_reserva    UUID,
+  id_abono      UUID,
+  monto         DECIMAL(10, 2) NOT NULL,
+  aplicada_por  autor_mensaje  NOT NULL,
+  created_at    TIMESTAMPTZ    NOT NULL DEFAULT now(),
+  CONSTRAINT devolucion_incidencia_fk
+    FOREIGN KEY (id_incidencia) REFERENCES incidencia (id_incidencia) ON DELETE RESTRICT,
+  CONSTRAINT devolucion_reserva_fk
+    FOREIGN KEY (id_reserva) REFERENCES reserva (id_reserva) ON DELETE RESTRICT,
+  CONSTRAINT devolucion_abono_fk
+    FOREIGN KEY (id_abono) REFERENCES abono (id_abono) ON DELETE RESTRICT,
+  CONSTRAINT devolucion_monto_positivo CHECK (monto > 0),
+  CONSTRAINT devolucion_un_objeto CHECK ((id_reserva IS NULL) <> (id_abono IS NULL))
+);
+
+CREATE INDEX IF NOT EXISTS idx_devolucion_reserva ON devolucion (id_reserva) WHERE id_reserva IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_devolucion_abono   ON devolucion (id_abono)   WHERE id_abono IS NOT NULL;

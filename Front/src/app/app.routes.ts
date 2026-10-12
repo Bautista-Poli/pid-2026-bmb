@@ -201,6 +201,16 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'disputas',
+        title: 'Parkit · Disputas',
+        loadComponent: () => import('./pages/admin/disputas/disputas').then((m) => m.Disputas),
+      },
+      {
+        path: 'disputas/:incidenciaId',
+        title: 'Parkit · Disputa',
+        loadComponent: () => import('./pages/admin/disputa/disputa').then((m) => m.Disputa),
+      },
+      {
         path: 'perfil',
         title: 'Parkit · Mi perfil',
         loadComponent: () => import('./pages/perfil/perfil').then((m) => m.Perfil),

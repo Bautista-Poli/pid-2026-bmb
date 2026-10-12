@@ -34,8 +34,8 @@
   </header>
 
   @if (recurso.isLoading() && !recurso.value()) {
-    <div class="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-      @for (i of [1, 2, 3, 4, 5]; track i) {
+    <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+      @for (i of [1, 2, 3, 4, 5, 6]; track i) {
         <div class="esqueleto h-[118px] rounded-tarjeta"></div>
       }
     </div>
@@ -49,7 +49,7 @@
   } @else if (recurso.value(); as datos) {
     <div class="mt-6 flex flex-col gap-5 lg:gap-6" [class.opacity-60]="recurso.isLoading()">
       <!-- KPIs -->
-      <div class="aparece-en-cadena grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <div class="aparece-en-cadena grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
         @for (metrica of metricas(); track metrica.etiqueta) {
           <app-tarjeta-metrica
             [etiqueta]="metrica.etiqueta"
@@ -95,6 +95,9 @@
                 <h2 class="text-[15px] font-semibold text-tinta">Ingresos (simulados)</h2>
                 <p class="mt-0.5 text-[12px] text-plomo">
                   Total {{ pesos(datos.kpis.ingresos.valor) }}
+                  @if (datos.kpis.devoluciones.valor > 0) {
+                    (neto de {{ pesos(datos.kpis.devoluciones.valor) }} devueltos por reclamos)
+                  }
                   @if (datos.ingresosProyectados > 0) {
                     · {{ pesos(datos.ingresosProyectados) }} por cobrar de reservas confirmadas que vienen
                   }

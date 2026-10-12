@@ -99,7 +99,13 @@ const SELECT_DETALLE = `
          e.id_estacionamiento, e.nombre AS estacionamiento, e.direccion,
          r.modalidad, r.precio_total, r.motivo_reasignacion, r.codigo_acceso,
          r.id_abono, a.turno::text AS turno_abono,
-         u.nombre AS conductor_nombre, u.apellido AS conductor_apellido
+         u.nombre AS conductor_nombre, u.apellido AS conductor_apellido,
+         (SELECT COALESCE(SUM(d.monto), 0)::float FROM devolucion d
+           WHERE d.id_reserva = r.id_reserva) AS devuelto,
+         (SELECT i.id_incidencia FROM incidencia i
+           WHERE i.id_reserva = r.id_reserva AND i.abierta_por IS NOT NULL
+             AND i.estado IN ('ABIERTA', 'DENUNCIADA')
+           LIMIT 1) AS reclamo_abierto
     FROM reserva r
     JOIN vehiculo v        ON v.id_vehiculo = r.id_vehiculo
     JOIN cochera c         ON c.id_cochera = r.id_cochera

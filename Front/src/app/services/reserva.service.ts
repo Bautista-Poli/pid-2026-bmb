@@ -162,6 +162,11 @@ export class ReservaService {
     return this.transicion(id, 'egreso');
   }
 
+  /** `PATCH /api/reservas/:id/ausente`: no-show a mano, si el conductor avisó que no viene. */
+  marcarAusente(id: Id): Observable<Reserva> {
+    return this.transicion(id, 'ausente');
+  }
+
   /** `GET /api/reservas/acceso/:codigo`: que registraria el QR, sin registrar nada. */
   previaAcceso(codigo: string): Observable<AccesoReserva> {
     return this.http.get<AccesoReservaDto>(`${this.ruta}/acceso/${codigo}`).pipe(map(aAccesoReserva));
@@ -174,7 +179,7 @@ export class ReservaService {
       .pipe(map(aAccesoReserva));
   }
 
-  private transicion(id: Id, paso: 'confirmar' | 'ingreso' | 'egreso'): Observable<Reserva> {
+  private transicion(id: Id, paso: 'confirmar' | 'ingreso' | 'egreso' | 'ausente'): Observable<Reserva> {
     return this.http
       .patch<{ reserva: ReservaDto }>(`${this.ruta}/${id}/${paso}`, {})
       .pipe(map(({ reserva }) => aReserva(reserva)));

@@ -5,7 +5,7 @@
     @if (r.estado === 'ACTIVA') {
       <span class="size-1.5 rounded-full bg-current" aria-hidden="true"></span>
     }
-    {{ etiquetaEstado[r.estado] }}
+    {{ etiquetaEstado() }}
   </ui-etiqueta>
 </ng-template>
 
@@ -60,7 +60,7 @@
         <ng-container [ngTemplateOutlet]="estado" />
         <span
           class="num-tabular text-[13px] font-semibold"
-          [class]="r.estado === 'CANCELADA' ? 'text-humo line-through' : 'text-tinta'"
+          [class]="r.estado === 'CANCELADA' || r.estado === 'NO_SHOW' ? 'text-humo line-through' : 'text-tinta'"
         >
           @if (r.abono; as abono) {
             Abono · Turno {{ turnos[abono.turno].etiqueta.toLowerCase() }}

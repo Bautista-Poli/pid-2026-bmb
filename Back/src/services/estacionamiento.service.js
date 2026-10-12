@@ -537,7 +537,7 @@ export async function darDeBaja(idEstacionamiento, idPropietario) {
     if (!rows[0].activo) throw ApiError.conflict('El estacionamiento ya esta dado de baja');
 
     await client.query(
-      `UPDATE reserva r SET estado = 'CANCELADA'
+      `UPDATE reserva r SET estado = 'CANCELADA', cancelada_por = 'PROPIETARIO'
          FROM cochera c
         WHERE c.id_cochera = r.id_cochera
           AND c.id_estacionamiento = $1

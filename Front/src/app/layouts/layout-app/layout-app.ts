@@ -20,11 +20,13 @@ const NAVEGACION: Record<RolUsuario, ItemNavegacion[]> = {
     { ruta: '/conductor/mis-reservas', etiqueta: 'Mis reservas', icono: 'reservas' },
     { ruta: '/conductor/abonos', etiqueta: 'Abonos', icono: 'calendario' },
     { ruta: '/conductor/vehiculos', etiqueta: 'Vehículos', icono: 'auto' },
+    { ruta: '/conductor/incidencias', etiqueta: 'Incidencias', icono: 'alerta' },
   ],
   PROPIETARIO: [
     { ruta: '/propietario/tablero', etiqueta: 'Inicio', icono: 'inicio' },
     { ruta: '/propietario/reservas', etiqueta: 'Reservas', icono: 'reservas' },
     { ruta: '/propietario/estacionamientos', etiqueta: 'Estacionamientos', icono: 'estacionamiento' },
+    { ruta: '/propietario/incidencias', etiqueta: 'Incidencias', icono: 'alerta' },
     { ruta: '/propietario/perfil', etiqueta: 'Configuración', icono: 'configuracion' },
   ],
 };

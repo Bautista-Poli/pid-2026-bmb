@@ -31,6 +31,11 @@ export const registrarEgreso = asyncHandler(async (req, res) => {
   res.json({ reserva });
 });
 
+export const marcarAusente = asyncHandler(async (req, res) => {
+  const reserva = await reservaService.marcarAusente(req.params.id, req.usuario.id);
+  res.json({ reserva });
+});
+
 export const previaAcceso = asyncHandler(async (req, res) => {
   res.json(await reservaService.previaAcceso(req.usuario.id, req.params.codigo));
 });

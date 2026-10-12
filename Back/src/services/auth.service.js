@@ -180,14 +180,14 @@ export async function eliminarCuenta(idUsuario) {
 
     // Reservas futuras que hizo como conductor.
     await client.query(
-      `UPDATE reserva SET estado = 'CANCELADA'
+      `UPDATE reserva SET estado = 'CANCELADA', cancelada_por = 'CONDUCTOR'
         WHERE id_conductor = $1 AND estado = ANY($2::estado_reserva[]) AND fin > now()`,
       [idUsuario, ESTADOS_VIGENTES],
     );
 
     // Reservas futuras que recibio en sus cocheras.
     await client.query(
-      `UPDATE reserva r SET estado = 'CANCELADA'
+      `UPDATE reserva r SET estado = 'CANCELADA', cancelada_por = 'PROPIETARIO'
          FROM cochera c
          JOIN estacionamiento e ON e.id_estacionamiento = c.id_estacionamiento
         WHERE c.id_cochera = r.id_cochera

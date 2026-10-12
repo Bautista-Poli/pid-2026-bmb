@@ -510,6 +510,109 @@ $$;
 
 CREATE INDEX IF NOT EXISTS idx_reserva_abono ON reserva (id_abono) WHERE id_abono IS NOT NULL;
 
+-- No-show (Sprint 3): una reserva CONFIRMADA sin ingreso registrado pasada la
+-- tolerancia (TOLERANCIA_NO_SHOW_MS en reserva.service.js) pasa a NO_SHOW. No
+-- es vigente, asi que la cochera vuelve a estar disponible en el acto: no hay
+-- que tocar los EXCLUDE constraints, que solo miran PENDIENTE, CONFIRMADA y ACTIVA.
+ALTER TYPE estado_reserva ADD VALUE IF NOT EXISTS 'NO_SHOW';
+
+-- Quien cancelo la reserva (Sprint 3), para que el propietario distinga una
+-- cancelacion del conductor de una del sistema. SISTEMA = una PENDIENTE que el
+-- propietario no confirmo antes de su inicio (el front la muestra como
+-- "Vencida"). NULL = cancelada antes de existir esta columna (no se sabe).
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'origen_cancelacion') THEN
+    CREATE TYPE origen_cancelacion AS ENUM ('CONDUCTOR', 'PROPIETARIO', 'SISTEMA');
+  END IF;
+END
+$$;
+
+ALTER TABLE reserva
+  ADD COLUMN IF NOT EXISTS cancelada_por origen_cancelacion;
+
+-- Las canceladas por un bloqueo de cochera sin alternativa se reconocen por el aviso.
+UPDATE reserva SET cancelada_por = 'PROPIETARIO'
+ WHERE estado = 'CANCELADA' AND cancelada_por IS NULL AND motivo_reasignacion IS NOT NULL;
+
+-- Incidencias (Sprint 3). Problemas de una reserva que el propietario tiene
+-- que ver: un auto que se paso de su horario y sigue adentro (la cochera queda
+-- bloqueada hasta el egreso) o una reserva que no se pudo reasignar porque su
+-- cochera seguia ocupada. Cada una tiene un hilo de mensajes entre el
+-- propietario, el conductor de la reserva y (mas adelante) el administrador:
+-- el "ida y vuelta" que pidio el cliente. DENUNCIADA = escalada a la plataforma.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'tipo_incidencia') THEN
+    CREATE TYPE tipo_incidencia AS ENUM ('AUTO_EXCEDIDO', 'RESERVA_AFECTADA');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'estado_incidencia') THEN
+    CREATE TYPE estado_incidencia AS ENUM ('ABIERTA', 'DENUNCIADA', 'RESUELTA');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'autor_mensaje') THEN
+    CREATE TYPE autor_mensaje AS ENUM ('SISTEMA', 'PROPIETARIO', 'CONDUCTOR', 'ADMINISTRADOR');
+  END IF;
+END
+$$;
+
+CREATE TABLE IF NOT EXISTS incidencia (
+  id_incidencia      UUID              PRIMARY KEY DEFAULT gen_random_uuid(),
+  tipo               tipo_incidencia   NOT NULL,
+  estado             estado_incidencia NOT NULL DEFAULT 'ABIERTA',
+  id_reserva         UUID              NOT NULL,
+  id_estacionamiento UUID              NOT NULL,
+  created_at         TIMESTAMPTZ       NOT NULL DEFAULT now(),
+  denunciada_at      TIMESTAMPTZ,
+  resuelta_at        TIMESTAMPTZ,
+  CONSTRAINT incidencia_reserva_fk
+    FOREIGN KEY (id_reserva) REFERENCES reserva (id_reserva) ON DELETE CASCADE,
+  CONSTRAINT incidencia_estacionamiento_fk
+    FOREIGN KEY (id_estacionamiento) REFERENCES estacionamiento (id_estacionamiento) ON DELETE CASCADE,
+  -- El job corre cada minuto: una sola incidencia de cada tipo por reserva.
+  CONSTRAINT incidencia_una_por_tipo UNIQUE (id_reserva, tipo)
+);
+
+CREATE INDEX IF NOT EXISTS idx_incidencia_estacionamiento ON incidencia (id_estacionamiento, estado);
+
+CREATE TABLE IF NOT EXISTS incidencia_mensaje (
+  id_mensaje    UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+  id_incidencia UUID          NOT NULL,
+  id_autor      UUID,
+  rol_autor     autor_mensaje NOT NULL,
+  texto         VARCHAR(1000) NOT NULL,
+  -- clock_timestamp y no now(): dos mensajes de la misma transaccion tienen
+  -- que quedar en el orden en que se escribieron.
+  created_at    TIMESTAMPTZ   NOT NULL DEFAULT clock_timestamp(),
+  CONSTRAINT incidencia_mensaje_incidencia_fk
+    FOREIGN KEY (id_incidencia) REFERENCES incidencia (id_incidencia) ON DELETE CASCADE,
+  CONSTRAINT incidencia_mensaje_autor_fk
+    FOREIGN KEY (id_autor) REFERENCES usuario (id_usuario) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_incidencia_mensaje ON incidencia_mensaje (id_incidencia, created_at);
+
+-- Canales de la incidencia (Sprint 3). GENERAL: propietario y conductor
+-- arreglan entre ellos (la moderacion solo lee). PROPIETARIO / CONDUCTOR: chat
+-- privado de la moderacion con cada parte; existen recien cuando alguno
+-- denuncia (no llegaron a un acuerdo). Los mensajes anteriores son del GENERAL.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'canal_incidencia') THEN
+    CREATE TYPE canal_incidencia AS ENUM ('GENERAL', 'PROPIETARIO', 'CONDUCTOR');
+  END IF;
+END
+$$;
+
+ALTER TABLE incidencia_mensaje
+  ADD COLUMN IF NOT EXISTS canal canal_incidencia NOT NULL DEFAULT 'GENERAL';
+
+-- Quien denuncio: el propietario o el conductor de la reserva.
+ALTER TABLE incidencia
+  ADD COLUMN IF NOT EXISTS denunciada_por autor_mensaje;
+
+DROP INDEX IF EXISTS idx_incidencia_mensaje;
+CREATE INDEX IF NOT EXISTS idx_incidencia_mensaje_canal ON incidencia_mensaje (id_incidencia, canal, created_at);
+
 -- Aprobacion de estacionamientos (Sprint 3). Un Administrador de plataforma
 -- revisa cada estacionamiento antes de que aparezca en la busqueda. `publicado`
 -- sigue siendo la intencion del propietario; lo que se ve es publicado Y

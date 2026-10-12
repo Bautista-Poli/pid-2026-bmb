@@ -1,6 +1,10 @@
 // Servicio de Cloudinary: firma de subidas, carpetas y URLs. No usa la red
-// (CLOUDINARY_ENABLED=false apaga la verificacion contra su API).
+// (CLOUDINARY_ENABLED=false apaga la verificacion contra su API) y no depende
+// de credenciales reales: si faltan (p. ej. en CI) se usan unas de prueba.
 process.env.CLOUDINARY_ENABLED = 'false';
+process.env.CLOUDINARY_CLOUD_NAME ||= 'nube-de-prueba';
+process.env.CLOUDINARY_API_KEY ||= '000000000000000';
+process.env.CLOUDINARY_API_SECRET ||= 'secreto-de-prueba';
 
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
@@ -15,16 +19,21 @@ describe('cloudinary.service', () => {
     assert.equal(carpetaDe('estacionamientos', 'abc'), `${config.cloudinary.carpeta}/estacionamientos/abc`);
   });
 
-  test('la firma coincide con la del SDK y no expone el secreto', () => {
+  test('la firma es para un public_id nuevo de la carpeta y solo jpg, png o webp', () => {
     const carpeta = carpetaDe('vehiculos', 'v1');
     const firma = firmarSubida(carpeta);
 
-    assert.equal(firma.folder, carpeta);
+    assert.match(firma.publicId, new RegExp(`^${carpeta}/[A-Za-z0-9_-]+$`));
+    assert.notEqual(firmarSubida(carpeta).publicId, firma.publicId);
+    assert.equal(firma.allowedFormats, 'jpg,png,webp');
     assert.equal(firma.cloudName, config.cloudinary.cloudName);
     assert.equal(firma.apiKey, config.cloudinary.apiKey);
     assert.equal(
       firma.signature,
-      cloudinary.utils.api_sign_request({ folder: carpeta, timestamp: firma.timestamp }, config.cloudinary.apiSecret),
+      cloudinary.utils.api_sign_request(
+        { allowed_formats: firma.allowedFormats, public_id: firma.publicId, timestamp: firma.timestamp },
+        config.cloudinary.apiSecret,
+      ),
     );
     assert.ok(!JSON.stringify(firma).includes(config.cloudinary.apiSecret));
   });
@@ -37,6 +46,18 @@ describe('cloudinary.service', () => {
     });
     // Un prefijo parecido no alcanza: tiene que ser la carpeta entera.
     await assert.rejects(verificar(`${propia}0/foto1`, propia), { statusCode: 400 });
+  });
+
+  test('verificar rechaza rutas que salen de la carpeta aunque empiecen igual', async () => {
+    const propia = carpetaDe('estacionamientos', 'e1');
+    for (const truco of [
+      `${propia}/../e2/foto1`,
+      `${propia}/%2e%2e/e2/foto1`,
+      `${propia}/sub/foto1`,
+      `${propia}/`,
+    ]) {
+      await assert.rejects(verificar(truco, propia), { statusCode: 400 }, truco);
+    }
   });
 
   test('la url usa formato y calidad automaticos y respeta el ancho', () => {

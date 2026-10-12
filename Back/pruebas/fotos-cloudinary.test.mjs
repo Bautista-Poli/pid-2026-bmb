@@ -35,7 +35,7 @@ describe('fotos de estacionamientos', () => {
 
     const { estado, datos } = await api('POST', `${ruta}/fotos/firma`, { token: propietario.token });
     assert.equal(estado, 200);
-    assert.equal(datos.firma.folder, carpetaEst(id));
+    assert.ok(datos.firma.publicId.startsWith(`${carpetaEst(id)}/`));
     assert.ok(datos.firma.signature);
     assert.ok(!JSON.stringify(datos).includes(config.cloudinary.apiSecret));
   });
@@ -134,7 +134,7 @@ describe('foto del vehiculo', () => {
     const { estado, datos } = await api('POST', `${ruta}/foto/firma`, { token: conductor.token });
 
     assert.equal(estado, 200);
-    assert.equal(datos.firma.folder, carpetaVeh(vehiculo.id_vehiculo));
+    assert.ok(datos.firma.publicId.startsWith(`${carpetaVeh(vehiculo.id_vehiculo)}/`));
   });
 
   test('otro conductor no puede firmar ni cambiar la foto', async () => {

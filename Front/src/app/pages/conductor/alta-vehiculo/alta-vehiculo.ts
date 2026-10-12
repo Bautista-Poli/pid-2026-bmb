@@ -49,13 +49,27 @@ export class AltaVehiculo {
     this.foto = archivo;
   }
 
+  /**
+   * Si el vehiculo ya se creo y fallo la foto, volver a guardar solo reintenta
+   * la foto: crearlo de nuevo chocaria con su propia patente.
+   */
+  private creado: string | null = null;
+
   /** `POST /api/vehiculos`, la foto si se eligio una, y vuelta al listado. */
   protected guardar(datos: NuevoVehiculo): void {
     this.enviando.set(true);
     this.error.set(null);
 
+    if (this.creado) {
+      this.subirFotoYVolver(this.creado);
+      return;
+    }
+
     this.vehiculos.crear(datos).subscribe({
-      next: (vehiculo) => this.subirFotoYVolver(vehiculo.id),
+      next: (vehiculo) => {
+        this.creado = vehiculo.id;
+        this.subirFotoYVolver(vehiculo.id);
+      },
       error: (e: Error) => {
         this.enviando.set(false);
         this.error.set(e.message);
@@ -72,7 +86,10 @@ export class AltaVehiculo {
       next: () => this.volverAlListado(),
       error: (e: Error) => {
         this.enviando.set(false);
-        this.error.set(`Agregamos el vehículo, pero la foto no se pudo subir: ${e.message}`);
+        this.error.set(
+          `Agregamos el vehículo, pero la foto no se pudo subir (${e.message}). ` +
+            'Tocá de nuevo para reintentar, elegí otra foto o quitala para seguir sin foto.',
+        );
       },
     });
   }

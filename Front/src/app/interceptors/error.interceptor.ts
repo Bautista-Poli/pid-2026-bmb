@@ -19,6 +19,14 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
   const router = inject(Router);
 
+  // Las subidas van directo a Cloudinary (URL absoluta): sus errores no tienen
+  // que ver con la sesion de Parkit y su mensaje no es para mostrar tal cual.
+  if (/^https?:\/\//i.test(req.url)) {
+    return next(req).pipe(
+      catchError(() => throwError(() => new Error('No pudimos subir la foto. Probá de nuevo en un rato.'))),
+    );
+  }
+
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
       if (error.status === 401 && auth.estaAutenticado()) {

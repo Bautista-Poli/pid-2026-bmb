@@ -23,6 +23,10 @@ export { query };
 process.env.GEOCODING_ENABLED = 'false';
 // Ni a Cloudinary: se prueba la logica propia (carpetas, firma), no su API.
 process.env.CLOUDINARY_ENABLED = 'false';
+// Sin credenciales (p. ej. en CI) se firma con unas de prueba: la firma es local.
+process.env.CLOUDINARY_CLOUD_NAME ||= 'nube-de-prueba';
+process.env.CLOUDINARY_API_KEY ||= '000000000000000';
+process.env.CLOUDINARY_API_SECRET ||= 'secreto-de-prueba';
 
 /** Contrasena de todos los usuarios de prueba. */
 export const PASSWORD = 'prueba1234';

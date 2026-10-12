@@ -8,7 +8,9 @@ export interface FirmaSubida {
   apiKey: string;
   timestamp: number;
   signature: string;
-  folder: string;
+  /** El nombre que va a tener la foto: la firma solo sirve para este. */
+  publicId: string;
+  allowedFormats: string;
 }
 
 /**
@@ -28,7 +30,8 @@ export class CloudinaryService {
     cuerpo.append('api_key', firma.apiKey);
     cuerpo.append('timestamp', String(firma.timestamp));
     cuerpo.append('signature', firma.signature);
-    cuerpo.append('folder', firma.folder);
+    cuerpo.append('public_id', firma.publicId);
+    cuerpo.append('allowed_formats', firma.allowedFormats);
 
     return this.http
       .post<{ public_id: string }>(`https://api.cloudinary.com/v1_1/${firma.cloudName}/image/upload`, cuerpo, {

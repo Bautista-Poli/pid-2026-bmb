@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Reserva } from '@app/models';
-import { avanzarReserva, ingresoHabilitado, puedeAvanzar, reservaEnJuego } from './ciclo-reserva';
+import {
+  avanzarReserva,
+  ingresoHabilitado,
+  puedeAvanzar,
+  puedeMarcarAusente,
+  reservaEnJuego,
+} from './ciclo-reserva';
 
 const reserva = (datos: Partial<Reserva>) =>
   ({ estado: 'CONFIRMADA', modalidad: 'HORA', ...datos }) as Reserva;
@@ -154,5 +160,32 @@ describe('tolerancia de no-show', () => {
   it('funciona como callback de filter (no toma el indice como hora)', () => {
     ahora('2026-09-14T10:10:00-03:00');
     expect([confirmada].filter(reservaEnJuego)).toHaveLength(1);
+  });
+});
+
+describe('marcar ausente a mano', () => {
+  const confirmada = reserva({
+    estado: 'CONFIRMADA',
+    fecha: '2026-09-14',
+    horaDesde: '10:00',
+    fechaHasta: '2026-09-14',
+    horaHasta: '12:00',
+  });
+  const a = (instante: string) => Date.parse(instante);
+
+  it('no antes del inicio: todavia puede llegar', () => {
+    expect(puedeMarcarAusente(confirmada, a('2026-09-14T09:59:00-03:00'))).toBe(false);
+  });
+
+  it('desde el inicio hasta el fin de la franja', () => {
+    expect(puedeMarcarAusente(confirmada, a('2026-09-14T10:00:00-03:00'))).toBe(true);
+    expect(puedeMarcarAusente(confirmada, a('2026-09-14T11:30:00-03:00'))).toBe(true);
+    expect(puedeMarcarAusente(confirmada, a('2026-09-14T12:00:00-03:00'))).toBe(false);
+  });
+
+  it('solo una confirmada (no pendiente ni en curso)', () => {
+    const ahora = a('2026-09-14T10:05:00-03:00');
+    expect(puedeMarcarAusente({ ...confirmada, estado: 'PENDIENTE' }, ahora)).toBe(false);
+    expect(puedeMarcarAusente({ ...confirmada, estado: 'ACTIVA' }, ahora)).toBe(false);
   });
 });

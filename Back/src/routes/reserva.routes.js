@@ -21,6 +21,8 @@ router.patch('/:id/cancelar', ...soloConductor, reservaController.cancelar);
 router.patch('/:id/confirmar', ...soloPropietario, reservaController.confirmar);
 router.patch('/:id/ingreso', ...soloPropietario, reservaController.registrarIngreso);
 router.patch('/:id/egreso', ...soloPropietario, reservaController.registrarEgreso);
+// No-show a mano, si el conductor avisó que no viene (el automatico lo hace el job).
+router.patch('/:id/ausente', ...soloPropietario, reservaController.marcarAusente);
 
 // El operador escanea (o tipea) el QR de la reserva al entrar y al salir.
 router.get('/acceso/:codigo', ...soloPropietario, reservaController.previaAcceso);

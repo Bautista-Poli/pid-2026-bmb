@@ -510,6 +510,31 @@ export async function confirmar(idReserva, idPropietario) {
 }
 
 /**
+ * El propietario marca a mano que el conductor no va a venir (p. ej. avisó),
+ * sin esperar a que venza la tolerancia. Solo sobre una CONFIRMADA sin
+ * ingreso y desde su `inicio`: antes todavía puede llegar, y si no viene lo
+ * que corresponde es que el conductor cancele. Libera la cochera igual que el
+ * no-show automatico.
+ */
+export async function marcarAusente(idReserva, idPropietario) {
+  return withTransaction(async (client) => {
+    const reserva = await bloquearReservaDelPropietario(client, idReserva, idPropietario);
+
+    if (reserva.estado !== ESTADOS_RESERVA.CONFIRMADA) {
+      throw ApiError.conflict('Solo se marca ausente una reserva confirmada sin ingreso');
+    }
+    if (Date.now() < reserva.inicio.getTime()) {
+      throw ApiError.conflict(
+        `La reserva empieza a las ${HORA_LOCAL.format(reserva.inicio)}; hasta entonces se puede marcar ausente`,
+      );
+    }
+
+    await cambiarEstado(client, reserva, ESTADOS_RESERVA.NO_SHOW);
+    return obtenerDetalle(client, idReserva);
+  });
+}
+
+/**
  * Un egreso pegado al ingreso es casi seguro un doble escaneo del QR (o una
  * recarga de la pantalla), no un auto que entro y salio: se rechaza. Solo
  * aplica a la entrada por codigo; los botones del propietario no lo usan.

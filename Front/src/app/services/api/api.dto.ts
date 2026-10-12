@@ -1,4 +1,11 @@
-import { EstadoAbono, EstadoCochera, ModalidadReserva, RolUsuario, TurnoAbono } from '@app/models';
+import {
+  EstadoAbono,
+  EstadoAprobacion,
+  EstadoCochera,
+  ModalidadReserva,
+  RolUsuario,
+  TurnoAbono,
+} from '@app/models';
 
 /*
  * Forma exacta de las respuestas de la API de Express (snake_case, tal cual
@@ -49,6 +56,11 @@ export interface CocheraDto {
   bloqueada_hasta: string | null;
 }
 
+/** `GET /api/admin/estacionamientos`: el estacionamiento con su propietario. */
+export interface EstacionamientoEnRevisionDto extends EstacionamientoDto {
+  propietario: { nombre: string; apellido: string; email: string; telefono: string | null };
+}
+
 export interface EstacionamientoDto {
   id_estacionamiento: string;
   id_propietario: string;
@@ -74,6 +86,9 @@ export interface EstacionamientoDto {
   cubierto: boolean;
   publicado: boolean;
   activo: boolean;
+  estado_aprobacion: EstadoAprobacion;
+  motivo_rechazo: string | null;
+  enviado_en: string;
   cocheras_activas?: number;
   cocheras_libres?: number;
   /** Solo con `incluir_no_disponibles`: si tiene lugar para el tipo y esta abierto en ese momento. */

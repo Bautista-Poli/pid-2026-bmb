@@ -29,6 +29,10 @@ const NAVEGACION: Record<RolUsuario, ItemNavegacion[]> = {
     { ruta: '/propietario/incidencias', etiqueta: 'Incidencias', icono: 'alerta' },
     { ruta: '/propietario/perfil', etiqueta: 'Configuración', icono: 'configuracion' },
   ],
+  ADMINISTRADOR: [
+    { ruta: '/admin/pendientes', etiqueta: 'Revisión', icono: 'estacionamiento' },
+    { ruta: '/admin/perfil', etiqueta: 'Configuración', icono: 'configuracion' },
+  ],
 };
 
 /**
@@ -56,7 +60,8 @@ export class LayoutApp {
   private readonly router = inject(Router);
 
   protected readonly usuario = this.auth.usuario;
-  protected readonly esPropietario = computed(() => this.auth.rol() === 'PROPIETARIO');
+  /** Propietario y administrador usan la barra lateral; el conductor, la barra de arriba. */
+  protected readonly usaBarraLateral = computed(() => this.auth.rol() !== 'CONDUCTOR');
 
   protected readonly items = computed(() => {
     const rol = this.auth.rol();

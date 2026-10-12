@@ -4,7 +4,7 @@
 // que estadistica.service.js: todo en SQL, consultas en paralelo, dias en hora
 // argentina. Ver docs/.../dashboard-administrador-design.md.
 import { query } from '../config/database.js';
-import { desdeDia, hastaDia, redondear } from './estadistica.service.js';
+import { COBRADAS, ZONA, anteriorA, desdeDia, hastaDia, numero, redondear } from './estadistica.service.js';
 
 const LIMITE_LISTA = 5;
 const LIMITE_PROBLEMATICOS = 20;
@@ -178,20 +178,131 @@ async function problematicos(desde, hasta) {
     .slice(0, LIMITE_PROBLEMATICOS);
 }
 
+/* ------------------------------ actividad ------------------------------- */
+
+/**
+ * Ingresos netos por estacionamiento en el periodo, como los del propietario:
+ * reservas cobradas (sin las de abono) + abonos vendidos - devoluciones.
+ */
+const INGRESOS_POR_ESTACIONAMIENTO = `
+  SELECT id_estacionamiento, SUM(monto) AS monto FROM (
+    SELECT c.id_estacionamiento, r.precio_total AS monto
+      FROM reserva r JOIN cochera c ON c.id_cochera = r.id_cochera
+     WHERE ${EN_PERIODO('r.inicio')} AND r.estado IN ${COBRADAS} AND r.modalidad <> 'ABONO'
+    UNION ALL
+    SELECT a.id_estacionamiento, a.precio_total
+      FROM abono a WHERE ${EN_PERIODO('a.created_at')}
+    UNION ALL
+    SELECT i.id_estacionamiento, -d.monto
+      FROM devolucion d JOIN incidencia i ON i.id_incidencia = d.id_incidencia
+     WHERE ${EN_PERIODO('d.created_at')}
+  ) movimientos
+  GROUP BY 1`;
+
+/** Los numeros de un periodo (se usan tambien para el periodo anterior). */
+async function kpisDe(desde, hasta) {
+  const { rows } = await query(
+    `SELECT
+       (SELECT COUNT(*) FROM usuario WHERE ${EN_PERIODO('created_at')} AND 'CONDUCTOR' = ANY(roles))::int AS conductores,
+       (SELECT COUNT(*) FROM usuario WHERE ${EN_PERIODO('created_at')} AND 'PROPIETARIO' = ANY(roles))::int AS propietarios,
+       (SELECT COUNT(*) FROM estacionamiento
+         WHERE estado_aprobacion = 'APROBADO' AND ${EN_PERIODO('revisado_en')})::int AS aprobados,
+       (SELECT COUNT(*) FROM reserva WHERE ${EN_PERIODO('inicio')})::int AS reservas,
+       (SELECT COUNT(*) FROM reserva WHERE ${EN_PERIODO('inicio')} AND estado = 'CANCELADA')::int AS canceladas,
+       (SELECT COALESCE(SUM(monto), 0) FROM (${INGRESOS_POR_ESTACIONAMIENTO}) x) AS volumen,
+       (SELECT COALESCE(SUM(monto), 0) FROM devolucion WHERE ${EN_PERIODO('created_at')}) AS devoluciones`,
+    [desde, hasta],
+  );
+  const f = rows[0];
+  return {
+    conductoresNuevos: f.conductores,
+    propietariosNuevos: f.propietarios,
+    estacionamientosAprobados: f.aprobados,
+    reservas: f.reservas,
+    volumen: numero(f.volumen),
+    devoluciones: numero(f.devoluciones),
+    tasaCancelacion: f.reservas > 0 ? redondear(f.canceladas / f.reservas, 4) : 0,
+  };
+}
+
+/** Una fila por dia del periodo (tambien los dias sin reservas), por estado. */
+async function reservasPorDia(desde, hasta) {
+  const { rows } = await query(
+    `WITH dias AS (SELECT $1::date + i AS fecha FROM generate_series(0, $2::date - $1::date) i),
+     r AS (
+       SELECT (inicio AT TIME ZONE ${ZONA})::date AS fecha, estado::text AS estado
+         FROM reserva WHERE ${EN_PERIODO('inicio')}
+     )
+     SELECT d.fecha::text AS fecha,
+            COUNT(r.*) FILTER (WHERE r.estado = 'FINALIZADA')::int AS finalizadas,
+            COUNT(r.*) FILTER (WHERE r.estado = 'ACTIVA')::int AS en_curso,
+            COUNT(r.*) FILTER (WHERE r.estado = 'CONFIRMADA')::int AS confirmadas,
+            COUNT(r.*) FILTER (WHERE r.estado = 'PENDIENTE')::int AS pendientes,
+            COUNT(r.*) FILTER (WHERE r.estado = 'CANCELADA')::int AS canceladas,
+            COUNT(r.*) FILTER (WHERE r.estado = 'NO_SHOW')::int AS ausentes
+       FROM dias d LEFT JOIN r ON r.fecha = d.fecha
+      GROUP BY d.fecha ORDER BY d.fecha`,
+    [desde, hasta],
+  );
+  return rows.map((f) => ({
+    fecha: f.fecha,
+    finalizadas: f.finalizadas,
+    enCurso: f.en_curso,
+    confirmadas: f.confirmadas,
+    pendientes: f.pendientes,
+    canceladas: f.canceladas,
+    ausentes: f.ausentes,
+  }));
+}
+
+/** Los 5 estacionamientos con mas reservas y con mas ingresos netos del periodo. */
+async function rankings(desde, hasta) {
+  const ranking = (subconsulta) =>
+    query(
+      `SELECT e.id_estacionamiento AS id, e.nombre, x.valor
+         FROM (${subconsulta}) x JOIN estacionamiento e ON e.id_estacionamiento = x.id_estacionamiento
+        WHERE x.valor > 0
+        ORDER BY x.valor DESC, e.nombre
+        LIMIT $3`,
+      [desde, hasta, LIMITE_LISTA],
+    );
+  const [{ rows: porReservas }, { rows: porIngresos }] = await Promise.all([
+    ranking(`SELECT id_estacionamiento, COUNT(*) AS valor FROM (${RESERVAS}) r GROUP BY 1`),
+    ranking(`SELECT id_estacionamiento, monto AS valor FROM (${INGRESOS_POR_ESTACIONAMIENTO}) i`),
+  ]);
+  const aFila = (f) => ({ id: f.id, nombre: f.nombre, valor: numero(f.valor) });
+  return { topPorReservas: porReservas.map(aFila), topPorIngresos: porIngresos.map(aFila) };
+}
+
+async function actividad(desde, hasta) {
+  const previo = anteriorA(desde, hasta);
+  const [ahora, antes, porDia, tops] = await Promise.all([
+    kpisDe(desde, hasta),
+    kpisDe(previo.desde, previo.hasta),
+    reservasPorDia(desde, hasta),
+    rankings(desde, hasta),
+  ]);
+  const kpis = Object.fromEntries(
+    Object.keys(ahora).map((clave) => [clave, { valor: ahora[clave], anterior: antes[clave] }]),
+  );
+  return { kpis, reservasPorDia: porDia, ...tops };
+}
+
 /* ------------------------------------------------------------------------ */
 
 export async function estadisticas({ desde, hasta }) {
-  const [revisar, enDisputa, enBloqueos, conProblemas] = await Promise.all([
+  const [revisar, enDisputa, enBloqueos, conProblemas, deLaPlataforma] = await Promise.all([
     pendientes(),
     disputas(),
     bloqueos(desde, hasta),
     problematicos(desde, hasta),
+    actividad(desde, hasta),
   ]);
   return {
     periodo: { desde, hasta },
     pendientes: revisar,
     disputas: enDisputa,
     conflictos: { bloqueos: enBloqueos, problematicos: conProblemas },
-    actividad: null,
+    actividad: deLaPlataforma,
   };
 }

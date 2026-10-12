@@ -21,6 +21,8 @@ export { query };
 
 // Las pruebas no geocodifican: no dependen de la red ni del cupo de Nominatim.
 process.env.GEOCODING_ENABLED = 'false';
+// Ni a Cloudinary: se prueba la logica propia (carpetas, firma), no su API.
+process.env.CLOUDINARY_ENABLED = 'false';
 
 /** Contrasena de todos los usuarios de prueba. */
 export const PASSWORD = 'prueba1234';

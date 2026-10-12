@@ -3,6 +3,7 @@ import express, { Router } from 'express';
 import * as abonoController from '../controllers/abono.controller.js';
 import * as estacionamientoController from '../controllers/estacionamiento.controller.js';
 import { authenticate, authenticateOpcional, requireRole } from '../middlewares/auth.js';
+import { LIMITE_FIRMAS, limitarPorUsuario } from '../middlewares/limite.js';
 import { validate } from '../middlewares/validate.js';
 import { ROLES } from '../utils/roles.js';
 import { validarCambiosPlanAbono, validarPlanAbono } from '../validators/abono.validator.js';
@@ -23,9 +24,10 @@ const router = Router();
 const soloPropietario = [authenticate, requireRole(ROLES.PROPIETARIO)];
 
 /**
- * La foto se sube como body crudo: el archivo tal cual, con su tipo en el
- * Content-Type. Va montado solo en esta ruta -- el express.json() global de
- * app.js no la toca porque solo parsea application/json.
+ * Las fotos llegan como JSON `{ public_id }` (ya subidas a Cloudinary) o, por
+ * compatibilidad con el front anterior, como body crudo: el archivo tal cual,
+ * con su tipo en el Content-Type. El parser crudo va montado solo en estas
+ * rutas; el express.json() global de app.js se ocupa del JSON.
  */
 const imagen = express.raw({ type: ['image/jpeg', 'image/png', 'image/webp'], limit: '2mb' });
 
@@ -74,6 +76,14 @@ router.delete('/:id', ...soloPropietario, estacionamientoController.darDeBaja);
 
 router.put('/:id/foto', ...soloPropietario, imagen, estacionamientoController.guardarFoto);
 router.delete('/:id/foto', ...soloPropietario, estacionamientoController.borrarFoto);
+
+// Firma para subir una foto directo a Cloudinary (despues se manda su public_id).
+router.post(
+  '/:id/fotos/firma',
+  ...soloPropietario,
+  limitarPorUsuario(LIMITE_FIRMAS),
+  estacionamientoController.firmarFoto,
+);
 
 // Galeria: `/:id/foto` es la portada; estas suman y sacan el resto de las fotos.
 router.post('/:id/fotos', ...soloPropietario, imagen, estacionamientoController.agregarFoto);

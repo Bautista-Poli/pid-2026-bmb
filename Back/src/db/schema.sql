@@ -669,3 +669,31 @@ $$;
 
 CREATE INDEX IF NOT EXISTS idx_estacionamiento_aprobacion
   ON estacionamiento (estado_aprobacion, enviado_en);
+
+-- Fotos en Cloudinary (Sprint 3). Las fotos nuevas guardan el `public_id` de
+-- Cloudinary en vez de los bytes; las viejas siguen con sus bytes hasta que
+-- las mueva el script db:migrar-fotos-cloudinary. Cada fila tiene una de las dos.
+ALTER TABLE estacionamiento_imagen
+  ADD COLUMN IF NOT EXISTS public_id VARCHAR(200),
+  ALTER COLUMN mime  DROP NOT NULL,
+  ALTER COLUMN bytes DROP NOT NULL;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'estacionamiento_imagen_con_origen') THEN
+    ALTER TABLE estacionamiento_imagen ADD CONSTRAINT estacionamiento_imagen_con_origen
+      CHECK (public_id IS NOT NULL OR bytes IS NOT NULL);
+  END IF;
+END
+$$;
+
+-- Foto propia del vehiculo (opcional). Sin ella el front usa la de catalogo.
+ALTER TABLE vehiculo
+  ADD COLUMN IF NOT EXISTS foto_public_id VARCHAR(200);
+
+-- Una foto de Cloudinary pertenece a un solo lugar: si quedara en dos filas,
+-- borrar una dejaria a la otra apuntando a una imagen que ya no existe.
+CREATE UNIQUE INDEX IF NOT EXISTS estacionamiento_imagen_public_id_unico
+  ON estacionamiento_imagen (public_id) WHERE public_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS vehiculo_foto_public_id_unico
+  ON vehiculo (foto_public_id) WHERE foto_public_id IS NOT NULL;

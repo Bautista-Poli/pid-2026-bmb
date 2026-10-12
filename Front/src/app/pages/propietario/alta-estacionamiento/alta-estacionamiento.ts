@@ -24,6 +24,8 @@ export class AltaEstacionamiento {
 
   protected readonly enviando = signal(false);
   protected readonly error = signal<string | null>(null);
+  /** Porcentaje de la subida de la foto en curso, o `null`. */
+  protected readonly progresoFoto = signal<number | null>(null);
   // Se completa si el estacionamiento se creo pero la foto no se pudo subir:
   // ya existe, asi que no tiene sentido bloquear al propietario por la foto.
   protected readonly avisoFoto = signal<Id | null>(null);
@@ -58,7 +60,7 @@ export class AltaEstacionamiento {
       return;
     }
 
-    this.estacionamientos.subirFoto(id, this.foto).subscribe({
+    this.estacionamientos.subirFoto(id, this.foto, (porcentaje) => this.progresoFoto.set(porcentaje)).subscribe({
       next: () => {
         this.enviando.set(false);
         this.irACocheras(id);
@@ -66,6 +68,7 @@ export class AltaEstacionamiento {
       error: () => {
         // El estacionamiento ya quedo creado: se deja elegir si reintentar
         // (desde Editar) o seguir igual, en vez de perder la navegacion.
+        this.progresoFoto.set(null);
         this.enviando.set(false);
         this.avisoFoto.set(id);
       },

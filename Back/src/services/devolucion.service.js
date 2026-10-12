@@ -6,6 +6,12 @@ import { ApiError } from '../utils/ApiError.js';
 const redondear = (valor) => Math.round(valor * 100) / 100;
 
 /**
+ * Lo que se cobro de una reserva `r`: una cancelada o ausente no se cobra (el
+ * dashboard tampoco la cuenta como ingreso), asi que no hay nada que devolver.
+ */
+export const PAGADO_RESERVA = `CASE WHEN r.estado IN ('CANCELADA', 'NO_SHOW') THEN 0 ELSE r.precio_total END`;
+
+/**
  * Lo pagado, lo ya devuelto y lo que queda por devolver. El llamador que va a
  * devolver tiene que tener bloqueada la reserva/abono (FOR UPDATE) para que
  * dos devoluciones simultaneas no pasen el tope.
@@ -13,7 +19,7 @@ const redondear = (valor) => Math.round(valor * 100) / 100;
 export async function topeDe(ejecutor, { idReserva = null, idAbono = null }) {
   const { rows } = await ejecutor.query(
     `SELECT COALESCE(
-              (SELECT precio_total FROM reserva WHERE id_reserva = $1),
+              (SELECT ${PAGADO_RESERVA} FROM reserva r WHERE r.id_reserva = $1),
               (SELECT precio_total FROM abono WHERE id_abono = $2),
               0) AS pagado,
             (SELECT COALESCE(SUM(monto), 0) FROM devolucion

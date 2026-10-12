@@ -382,3 +382,19 @@ describe('la reserva y el abono muestran el reclamo y lo devuelto', () => {
     assert.equal((await mio()).devuelto, 5000);
   });
 });
+
+describe('reservas canceladas', () => {
+  test('no se cobraron: se pueden reclamar pero no hay nada para devolver', async () => {
+    const { propietario, conductor, reserva } = await escenarioReserva();
+    await query(`UPDATE reserva SET estado = 'CANCELADA', cancelada_por = 'PROPIETARIO' WHERE id_reserva = $1`, [
+      reserva.id_reserva,
+    ]);
+
+    const { estado, datos } = await reclamar(conductor, { id_reserva: reserva.id_reserva });
+    assert.equal(estado, 201);
+    assert.equal(datos.incidencia.pagado, 0);
+    assert.equal(datos.incidencia.tope, 0);
+    assert.equal((await proponer(propietario, datos.incidencia, 100)).estado, 400);
+    assert.equal((await proponer(propietario, datos.incidencia, 0)).estado, 201);
+  });
+});

@@ -62,7 +62,8 @@ export class MisReservas {
       tipo: 'reserva',
       id: reserva.id,
       descripcion: `${reserva.estacionamiento.nombre} · ${reserva.fecha.split('-').reverse().join('/')} ${reserva.horaDesde}`,
-      tope: Math.max(0, reserva.precioTotal - reserva.devuelto),
+      // Una cancelada o ausente no se cobro: se puede reclamar, pero no hay nada para devolver.
+      tope: ['CANCELADA', 'NO_SHOW'].includes(reserva.estado) ? 0 : Math.max(0, reserva.precioTotal - reserva.devuelto),
     });
   }
 

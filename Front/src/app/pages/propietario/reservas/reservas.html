@@ -160,8 +160,8 @@
                     $ {{ reserva.precioTotal.toLocaleString('es-AR') }}
                   </td>
                   <td class="px-3 py-3.5">
-                    <ui-etiqueta [tono]="tonoEstado[reserva.estado]">
-                      {{ etiquetaEstado[reserva.estado] }}
+                    <ui-etiqueta [tono]="tonoEstado(reserva)">
+                      {{ etiquetaEstado(reserva) }}
                     </ui-etiqueta>
                   </td>
                   <td class="py-3.5 pr-6 pl-3 text-right">
@@ -182,7 +182,20 @@
                         }
                         {{ paso }}
                       </button>
-                    } @else {
+                    }
+                    @if (puedeMarcarAusente(reserva)) {
+                      <button
+                        type="button"
+                        class="ml-1.5 inline-flex items-center rounded-boton px-3 py-1.5 text-[12px] font-semibold
+                               whitespace-nowrap text-ocupada transition-colors duration-160 hover:bg-ocupada/10
+                               disabled:opacity-60"
+                        [disabled]="procesandoId() === reserva.id"
+                        (click)="aMarcarAusente.set(reserva)"
+                      >
+                        Marcar ausente
+                      </button>
+                    }
+                    @if (!pasoDe(reserva) && !puedeMarcarAusente(reserva)) {
                       <span class="text-humo">—</span>
                     }
                   </td>
@@ -215,8 +228,8 @@
                     }
                   </p>
                 </div>
-                <ui-etiqueta [tono]="tonoEstado[reserva.estado]">
-                  {{ etiquetaEstado[reserva.estado] }}
+                <ui-etiqueta [tono]="tonoEstado(reserva)">
+                  {{ etiquetaEstado(reserva) }}
                 </ui-etiqueta>
               </div>
 
@@ -241,6 +254,17 @@
                     {{ paso }}
                   </button>
                 }
+                @if (puedeMarcarAusente(reserva)) {
+                  <button
+                    type="button"
+                    class="inline-flex items-center rounded-boton px-3 py-1.5 text-[12px] font-semibold
+                           text-ocupada disabled:opacity-60"
+                    [disabled]="procesandoId() === reserva.id"
+                    (click)="aMarcarAusente.set(reserva)"
+                  >
+                    Marcar ausente
+                  </button>
+                }
               </div>
             </li>
           }
@@ -251,3 +275,26 @@
     }
   </div>
 </div>
+
+<ui-modal titulo="Marcar ausente" [abierto]="aMarcarAusente() !== null" (cerrado)="aMarcarAusente.set(null)">
+  @if (aMarcarAusente(); as reserva) {
+    <div class="flex flex-col gap-4">
+      <p class="text-[13.5px] text-grafito">
+        La reserva de <strong class="text-tinta">{{ reserva.vehiculo.patente }}</strong>
+        ({{ reserva.horaDesde }} - {{ reserva.horaHasta }}) queda como <strong class="text-tinta">Ausente</strong>
+        y la cochera {{ reserva.cochera?.identificador ?? '' }} vuelve a estar disponible. No se puede deshacer.
+      </p>
+      <p class="text-[12.5px] text-plomo">
+        Usalo si el conductor avisó que no viene. Si no hacés nada, pasa a Ausente sola a los 15 minutos del inicio.
+      </p>
+      <ui-boton
+        variante="peligro"
+        [bloque]="true"
+        [cargando]="procesandoId() === reserva.id"
+        (presionado)="marcarAusente(reserva)"
+      >
+        Marcar ausente
+      </ui-boton>
+    </div>
+  }
+</ui-modal>

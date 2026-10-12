@@ -40,7 +40,8 @@ export type NombreIcono =
   | 'edificio'
   | 'candado'
   | 'ojo'
-  | 'ojo-tachado';
+  | 'ojo-tachado'
+  | 'alerta';
 
 /**
  * Icono de linea sobre un lienzo de 24x24. Todos comparten estilo (trazo de
@@ -236,6 +237,11 @@ export type NombreIcono =
           <path d="M6.5 7.6C3.9 9.4 2.5 12 2.5 12S6 18.5 12 18.5a9 9 0 0 0 4.6-1.2" />
           <path d="M10 10a2.8 2.8 0 0 0 4 4" />
           <path d="M3.5 3.5l17 17" />
+        }
+        @case ('alerta') {
+          <path d="M10.3 4.2 2.9 17.3A2 2 0 0 0 4.6 20.3h14.8a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0Z" />
+          <path d="M12 9.5v4.2" />
+          <path d="M12 16.9h.01" />
         }
       }
     </svg>

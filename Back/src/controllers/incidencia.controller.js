@@ -21,3 +21,7 @@ export const resolver = asyncHandler(async (req, res) => {
 export const denunciar = asyncHandler(async (req, res) => {
   res.json({ incidencia: await incidenciaService.denunciar(req.usuario, req.params.id, req.body) });
 });
+
+export const abrirReclamo = asyncHandler(async (req, res) => {
+  res.status(201).json({ incidencia: await incidenciaService.abrirReclamo(req.usuario, req.body) });
+});

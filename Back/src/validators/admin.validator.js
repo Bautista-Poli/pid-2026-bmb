@@ -53,7 +53,7 @@ export function validarMensajeModeracion(body) {
 export function validarResolucionModeracion(body) {
   const resultado = campos(body)
     .enumerado('resolucion', body.resolucion, ['A_FAVOR_CONDUCTOR', 'A_FAVOR_PROPIETARIO'])
-    .numero('monto', body.monto, { min: 0, requerido: false })
+    .numero('monto', body.monto, { min: 0, decimales: 2, requerido: false })
     .texto('fundamento', body.fundamento, { min: 20, max: 1000 })
     .resultado();
   const { resolucion, monto } = resultado.valores;

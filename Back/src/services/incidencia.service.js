@@ -259,8 +259,10 @@ export const SELECT_INCIDENCIA = `
          e.id_estacionamiento, e.nombre AS estacionamiento, e.id_propietario,
          i.motivo::text AS motivo, i.monto_pedido, i.resolucion::text AS resolucion,
          COALESCE(${PAGADO_RESERVA}, a.precio_total) AS pagado,
-         (SELECT COALESCE(SUM(d.monto), 0) FROM devolucion d
-           WHERE d.id_reserva = i.id_reserva OR d.id_abono = i.id_abono) AS devuelto,
+         CASE WHEN i.id_reserva IS NOT NULL
+              THEN (SELECT COALESCE(SUM(d.monto), 0) FROM devolucion d WHERE d.id_reserva = i.id_reserva)
+              ELSE (SELECT COALESCE(SUM(d.monto), 0) FROM devolucion d WHERE d.id_abono = i.id_abono)
+         END AS devuelto,
          (SELECT m.monto_propuesto FROM incidencia_mensaje m
            WHERE m.id_incidencia = i.id_incidencia AND m.monto_propuesto IS NOT NULL
            ORDER BY m.created_at DESC, m.id_mensaje DESC LIMIT 1) AS propuesta_vigente
@@ -333,7 +335,7 @@ export async function listar(usuario) {
 async function buscarParticipando(ejecutor, usuario, idIncidencia, { bloquear = false } = {}) {
   const { rows } = await ejecutor.query(
     `${SELECT_INCIDENCIA} WHERE i.id_incidencia = $1 AND ${filtroParticipante(usuario, 2)}
-     ${bloquear ? 'FOR UPDATE OF i' : ''}`,
+     ${bloquear ? 'FOR NO KEY UPDATE OF i' : ''}`,
     [idIncidencia, usuario.id],
   );
   if (!rows[0]) throw ApiError.notFound('La incidencia no existe');

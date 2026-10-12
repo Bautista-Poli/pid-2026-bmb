@@ -398,3 +398,46 @@ describe('reservas canceladas', () => {
     assert.equal((await proponer(propietario, datos.incidencia, 0)).estado, 201);
   });
 });
+
+describe('montos y concurrencia', () => {
+  test('los montos tienen hasta 2 decimales', async () => {
+    const { propietario, conductor, reserva, incidencia } = await reclamoAbierto();
+
+    const propuesta = await proponer(propietario, incidencia, 10.555);
+    assert.equal(propuesta.estado, 400);
+    assert.match(JSON.stringify(propuesta.datos), /2 decimales/);
+    assert.equal((await reclamar(conductor, { id_reserva: reserva.id_reserva, monto_pedido: 0.001 })).estado, 400);
+    assert.equal((await aceptar(conductor, incidencia, 1.234)).estado, 400);
+    assert.equal((await proponer(propietario, incidencia, 10.5)).estado, 201);
+  });
+
+  test('dos aceptaciones a la vez: una sola devolucion', async () => {
+    const { propietario, conductor, incidencia } = await reclamoAbierto();
+    await proponer(propietario, incidencia, 1000);
+
+    const respuestas = await Promise.all([aceptar(conductor, incidencia, 1000), aceptar(conductor, incidencia, 1000)]);
+
+    assert.deepEqual(respuestas.map((r) => r.estado).sort(), [200, 409]);
+    assert.equal((await devolucionesDe(incidencia.id_incidencia)).length, 1);
+  });
+
+  test('aceptar y denunciar a la vez: gana uno solo', async () => {
+    const { propietario, conductor, incidencia } = await reclamoAbierto();
+    await proponer(propietario, incidencia, 1000);
+
+    const [aceptada, denunciada] = await Promise.all([aceptar(conductor, incidencia, 1000), denunciar(propietario, incidencia)]);
+
+    assert.deepEqual([aceptada.estado, denunciada.estado].sort(), [200, 409]);
+    const { rows } = await query('SELECT estado::text AS estado FROM incidencia WHERE id_incidencia = $1', [
+      incidencia.id_incidencia,
+    ]);
+    assert.equal(rows[0].estado, aceptada.estado === 200 ? 'RESUELTA' : 'DENUNCIADA');
+  });
+
+  test('el autor de un reclamo no se puede borrar mientras exista el reclamo', async () => {
+    const { rows } = await query(
+      `SELECT confdeltype FROM pg_constraint WHERE conname = 'incidencia_abierta_por_fk'`,
+    );
+    assert.equal(rows[0].confdeltype, 'r');
+  });
+});

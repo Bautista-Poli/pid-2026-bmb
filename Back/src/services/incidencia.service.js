@@ -71,7 +71,7 @@ async function crearIncidencia(client, { tipo, idReserva, idEstacionamiento, men
   const { rows } = await client.query(
     `INSERT INTO incidencia (tipo, id_reserva, id_estacionamiento)
      VALUES ($1, $2, $3)
-     ON CONFLICT (id_reserva, tipo) DO NOTHING
+     ON CONFLICT (id_reserva, tipo) WHERE abierta_por IS NULL DO NOTHING
      RETURNING id_incidencia`,
     [tipo, idReserva, idEstacionamiento],
   );

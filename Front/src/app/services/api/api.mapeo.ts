@@ -274,6 +274,7 @@ export function aReserva(dto: ReservaDto): ReservaDetallada {
     modalidad: dto.modalidad === 'ABONO' ? 'HORA' : dto.modalidad,
     abono: dto.id_abono && dto.turno_abono ? { id: dto.id_abono, turno: dto.turno_abono } : null,
     estado: dto.estado,
+    canceladaPor: dto.cancelada_por ?? null,
     precioTotal: dto.precio_total,
     creadaEn: dto.created_at,
     ingresoEn: dto.ingreso_real,

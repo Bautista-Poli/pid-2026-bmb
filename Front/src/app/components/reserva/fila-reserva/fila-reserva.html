@@ -18,7 +18,7 @@
     </div>
 
     <div class="flex shrink-0 items-center gap-2">
-      <ui-etiqueta [tono]="tonoEstado()">{{ etiquetaEstado[reserva().estado] }}</ui-etiqueta>
+      <ui-etiqueta [tono]="tonoEstado()">{{ etiquetaEstado() }}</ui-etiqueta>
       @if (permiteGestionar() && paso(); as etiqueta) {
         <ui-boton
           variante="primario"

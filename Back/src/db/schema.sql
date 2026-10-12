@@ -509,3 +509,28 @@ END
 $$;
 
 CREATE INDEX IF NOT EXISTS idx_reserva_abono ON reserva (id_abono) WHERE id_abono IS NOT NULL;
+
+-- No-show (Sprint 3): una reserva CONFIRMADA sin ingreso registrado pasada la
+-- tolerancia (TOLERANCIA_NO_SHOW_MS en reserva.service.js) pasa a NO_SHOW. No
+-- es vigente, asi que la cochera vuelve a estar disponible en el acto: no hay
+-- que tocar los EXCLUDE constraints, que solo miran PENDIENTE, CONFIRMADA y ACTIVA.
+ALTER TYPE estado_reserva ADD VALUE IF NOT EXISTS 'NO_SHOW';
+
+-- Quien cancelo la reserva (Sprint 3), para que el propietario distinga una
+-- cancelacion del conductor de una del sistema. SISTEMA = una PENDIENTE que el
+-- propietario no confirmo antes de su inicio (el front la muestra como
+-- "Vencida"). NULL = cancelada antes de existir esta columna (no se sabe).
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'origen_cancelacion') THEN
+    CREATE TYPE origen_cancelacion AS ENUM ('CONDUCTOR', 'PROPIETARIO', 'SISTEMA');
+  END IF;
+END
+$$;
+
+ALTER TABLE reserva
+  ADD COLUMN IF NOT EXISTS cancelada_por origen_cancelacion;
+
+-- Las canceladas por un bloqueo de cochera sin alternativa se reconocen por el aviso.
+UPDATE reserva SET cancelada_por = 'PROPIETARIO'
+ WHERE estado = 'CANCELADA' AND cancelada_por IS NULL AND motivo_reasignacion IS NOT NULL;

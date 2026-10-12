@@ -5,7 +5,10 @@ import { avanzarReserva, ingresoHabilitado, puedeAvanzar, reservaEnJuego } from 
 const reserva = (datos: Partial<Reserva>) =>
   ({ estado: 'CONFIRMADA', modalidad: 'HORA', ...datos }) as Reserva;
 
+// Con el auto adentro (ACTIVA): una CONFIRMADA sin ingreso deja de estar en
+// juego al vencer la tolerancia, y estas pruebas miran el cruce de medianoche.
 const jornada = reserva({
+  estado: 'ACTIVA',
   modalidad: 'JORNADA',
   fecha: '2026-09-14',
   horaDesde: '08:00',
@@ -14,6 +17,7 @@ const jornada = reserva({
 });
 
 const estadia = reserva({
+  estado: 'ACTIVA',
   modalidad: 'ESTADIA',
   fecha: '2026-09-14',
   horaDesde: '18:00',
@@ -51,6 +55,7 @@ describe('reservaEnJuego', () => {
 
   it('una reserva por hora del mismo dia se comporta como siempre', () => {
     const porHora = reserva({
+      estado: 'ACTIVA',
       fecha: '2026-09-14',
       horaDesde: '10:00',
       fechaHasta: '2026-09-14',
@@ -84,10 +89,10 @@ describe('ingreso por franja', () => {
     expect(ingresoHabilitado(porHora)).toBe(true);
   });
 
-  it('se cierra al llegar al fin de la franja', () => {
-    ahora('2026-09-14T11:59:59-03:00');
+  it('se cierra al vencer la tolerancia de 15 min', () => {
+    ahora('2026-09-14T10:15:00-03:00');
     expect(ingresoHabilitado(porHora)).toBe(true);
-    ahora('2026-09-14T12:00:00-03:00');
+    ahora('2026-09-14T10:15:01-03:00');
     expect(ingresoHabilitado(porHora)).toBe(false);
   });
 
@@ -108,5 +113,46 @@ describe('ingreso por franja', () => {
     const servicio = { registrarIngreso: vi.fn() } as never;
     const paso = avanzarReserva(servicio, { ...porHora, vehiculo: { patente: 'AB 123 CD' } } as never);
     expect(paso).toBeNull();
+  });
+});
+
+describe('tolerancia de no-show', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  const ahora = (instante: string) => vi.setSystemTime(new Date(instante));
+
+  const confirmada = reserva({
+    estado: 'CONFIRMADA',
+    fecha: '2026-09-14',
+    horaDesde: '10:00',
+    fechaHasta: '2026-09-14',
+    horaHasta: '12:00',
+  });
+
+  it('una confirmada sin ingreso sigue en juego dentro de la tolerancia', () => {
+    ahora('2026-09-14T10:10:00-03:00');
+    expect(reservaEnJuego(confirmada)).toBe(true);
+  });
+
+  it('pasada la tolerancia deja de estar en juego aunque la franja siga', () => {
+    ahora('2026-09-14T10:20:00-03:00');
+    expect(reservaEnJuego(confirmada)).toBe(false);
+    expect(puedeAvanzar(confirmada)).toBe(false);
+  });
+
+  it('una ACTIVA sigue en juego pasada la tolerancia', () => {
+    ahora('2026-09-14T10:20:00-03:00');
+    expect(reservaEnJuego({ ...confirmada, estado: 'ACTIVA' })).toBe(true);
+  });
+
+  it('una NO_SHOW nunca esta en juego', () => {
+    ahora('2026-09-14T10:05:00-03:00');
+    expect(reservaEnJuego({ ...confirmada, estado: 'NO_SHOW' })).toBe(false);
+  });
+
+  it('funciona como callback de filter (no toma el indice como hora)', () => {
+    ahora('2026-09-14T10:10:00-03:00');
+    expect([confirmada].filter(reservaEnJuego)).toHaveLength(1);
   });
 });

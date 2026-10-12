@@ -9,6 +9,16 @@ export const ESTADOS_RESERVA = Object.freeze({
   ACTIVA: 'ACTIVA',
   CANCELADA: 'CANCELADA',
   FINALIZADA: 'FINALIZADA',
+  // El vehiculo no llego dentro de la tolerancia: la cochera se libera.
+  NO_SHOW: 'NO_SHOW',
+});
+
+// Quien cancelo una reserva (columna `cancelada_por`). SISTEMA: una PENDIENTE
+// que el propietario no confirmo antes de su inicio.
+export const ORIGENES_CANCELACION = Object.freeze({
+  CONDUCTOR: 'CONDUCTOR',
+  PROPIETARIO: 'PROPIETARIO',
+  SISTEMA: 'SISTEMA',
 });
 
 // Estados que ocupan la cochera: son los que se controlan por solapamiento.

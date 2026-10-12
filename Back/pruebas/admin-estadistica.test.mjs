@@ -173,48 +173,80 @@ describe('para revisar', () => {
 
 /* ------------------------------ conflictos ------------------------------ */
 
-const problematicoDe = (e, x) => e.conflictos.problematicos.find((p) => p.id === x.estacionamiento.id_estacionamiento);
+// En una semana de 2001 no escribe nadie mas: la lista de problematicos es exacta.
+const SEMANA_PROBLEMAS = { desde: '2001-07-01', hasta: '2001-07-07' };
+const DIA_PROBLEMAS = '2001-07-03';
+const problematicos = async () => (await stats(SEMANA_PROBLEMAS)).e.conflictos.problematicos;
+const problematicoDe = async (x) =>
+  (await problematicos()).find((p) => p.id === x.estacionamiento.id_estacionamiento);
 
 describe('estacionamientos problematicos', () => {
+  const fecha = DIA_PROBLEMAS;
+
   test('menos de 5 reservas no alcanza aunque cancele mucho', async () => {
     const x = await escenario();
-    await x.reserva();
-    for (let i = 0; i < 3; i++) await x.reserva({ estado: 'CANCELADA', canceladaPor: 'PROPIETARIO' });
+    await x.reserva({ fecha });
+    for (let i = 0; i < 3; i++) await x.reserva({ fecha, estado: 'CANCELADA', canceladaPor: 'PROPIETARIO' });
 
-    assert.equal(problematicoDe((await stats()).e, x), undefined);
+    assert.equal(await problematicoDe(x), undefined);
   });
 
   test('cancelaciones del propietario y del sistema por encima del 30 %', async () => {
     const x = await escenario();
-    for (let i = 0; i < 3; i++) await x.reserva();
-    await x.reserva({ estado: 'CANCELADA', canceladaPor: 'PROPIETARIO' });
-    await x.reserva({ estado: 'CANCELADA', canceladaPor: 'SISTEMA' });
+    for (let i = 0; i < 3; i++) await x.reserva({ fecha });
+    await x.reserva({ fecha, estado: 'CANCELADA', canceladaPor: 'PROPIETARIO' });
+    await x.reserva({ fecha, estado: 'CANCELADA', canceladaPor: 'SISTEMA' });
 
-    const p = problematicoDe((await stats()).e, x);
-    assert.deepEqual(p.razones, ['CANCELACIONES']);
-    assert.equal(p.tasaCancelacion, 0.4);
-    assert.equal(p.reservas, 5);
-    assert.equal(p.propietario, 'Prueba Parkit');
+    assert.deepEqual(await problematicoDe(x), {
+      id: x.estacionamiento.id_estacionamiento,
+      nombre: x.estacionamiento.nombre,
+      propietario: 'Prueba Parkit',
+      reservas: 5,
+      tasaCancelacion: 0.4,
+      reclamos: 0,
+      razones: ['CANCELACIONES'],
+    });
   });
 
   test('las que cancela el conductor no cuentan', async () => {
     const x = await escenario();
-    for (let i = 0; i < 2; i++) await x.reserva();
-    for (let i = 0; i < 3; i++) await x.reserva({ estado: 'CANCELADA', canceladaPor: 'CONDUCTOR' });
+    for (let i = 0; i < 2; i++) await x.reserva({ fecha });
+    for (let i = 0; i < 3; i++) await x.reserva({ fecha, estado: 'CANCELADA', canceladaPor: 'CONDUCTOR' });
 
-    assert.equal(problematicoDe((await stats()).e, x), undefined);
+    assert.equal(await problematicoDe(x), undefined);
   });
 
   test('dos reclamos abiertos o perdidos', async () => {
     const x = await escenario();
     const ids = [];
-    for (let i = 0; i < 5; i++) ids.push(await x.reserva());
-    await x.incidencia('RECLAMO', ids[0], { abiertaPor: x.conductor.id, motivo: 'OTRO' });
-    await x.incidencia('RECLAMO', ids[1], { abiertaPor: x.conductor.id, motivo: 'OTRO' });
+    for (let i = 0; i < 5; i++) ids.push(await x.reserva({ fecha }));
+    const creadaEn = instante(fecha, 22);
+    await x.incidencia('RECLAMO', ids[0], { abiertaPor: x.conductor.id, motivo: 'OTRO', creadaEn });
+    await x.incidencia('RECLAMO', ids[1], { abiertaPor: x.conductor.id, motivo: 'OTRO', creadaEn });
 
-    const p = problematicoDe((await stats()).e, x);
+    const p = await problematicoDe(x);
     assert.deepEqual(p.razones, ['RECLAMOS']);
     assert.equal(p.reclamos, 2);
+  });
+
+  test('un estacionamiento dado de baja no aparece', async () => {
+    const x = await escenario();
+    for (let i = 0; i < 5; i++) await x.reserva({ fecha, estado: 'CANCELADA', canceladaPor: 'PROPIETARIO' });
+    await query('UPDATE estacionamiento SET activo = false WHERE id_estacionamiento = $1', [
+      x.estacionamiento.id_estacionamiento,
+    ]);
+
+    assert.equal(await problematicoDe(x), undefined);
+  });
+
+  test('con dos razones va primero, y los empates por tasa', async () => {
+    const lista = await problematicos();
+    const clave = (p) => [p.razones.length, p.tasaCancelacion];
+    for (let i = 1; i < lista.length; i++) {
+      const [razonesA, tasaA] = clave(lista[i - 1]);
+      const [razonesB, tasaB] = clave(lista[i]);
+      assert.ok(razonesA > razonesB || (razonesA === razonesB && tasaA >= tasaB));
+    }
   });
 });
 
@@ -325,4 +357,16 @@ describe('actividad', () => {
     assert.equal(kpis.reservas.anterior, 1);
     assert.equal(kpis.volumen.anterior, 500);
   });
+});
+
+test('bloqueos empatados se ordenan por nombre', async () => {
+  const SEMANA = { desde: '2001-08-01', hasta: '2001-08-07' };
+  const fecha = '2001-08-03';
+  const a = await escenario();
+  const b = await escenario();
+  await a.reserva({ fecha, motivoReasignacion: 'Reasignada' });
+  await b.reserva({ fecha, motivoReasignacion: 'Reasignada' });
+
+  const nombres = (await stats(SEMANA)).e.conflictos.bloqueos.porEstacionamiento.map((x) => x.nombre);
+  assert.deepEqual(nombres, [a.estacionamiento.nombre, b.estacionamiento.nombre].sort((x, y) => x.localeCompare(y)));
 });

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, linkedSignal } from '@angular/core';
 import { rxResource, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { BarraDia, BarrasDia, TarjetaMetrica, TonoMetrica } from '@app/components/estadistica';
@@ -7,6 +7,7 @@ import {
   ETIQUETA_MOTIVO_RECLAMO,
   ETIQUETA_RAZON_PROBLEMATICO,
   ETIQUETA_TIPO_INCIDENCIA,
+  EstadisticasAdmin,
   MotivoReclamo,
   TipoIncidencia,
 } from '@app/models';
@@ -76,6 +77,16 @@ export class Tablero {
     stream: ({ params }) => this.admin.estadisticas(params.desde, params.hasta),
   });
 
+  /**
+   * Lo que se muestra: el ultimo resultado. Al cambiar de periodo el recurso
+   * vuelve a vacio mientras carga; asi la pagina no colapsa al esqueleto (y el
+   * chip con el foco no se destruye): se atenua hasta que llega lo nuevo.
+   */
+  protected readonly datos = linkedSignal<EstadisticasAdmin | undefined, EstadisticasAdmin | undefined>({
+    source: () => this.recurso.value(),
+    computation: (nuevo, previo) => nuevo ?? previo?.value,
+  });
+
   /** "Reclamo · No había lugar" o "Auto excedido". */
   protected tituloDisputa(tipo: string, motivo: string | null): string {
     const nombre = ETIQUETA_TIPO_INCIDENCIA[tipo as TipoIncidencia] ?? tipo;
@@ -83,7 +94,7 @@ export class Tablero {
   }
 
   protected readonly metricas = computed<Metrica[]>(() => {
-    const datos = this.recurso.value();
+    const datos = this.datos();
     if (!datos) return [];
     const k = datos.actividad.kpis;
     return [
@@ -98,7 +109,7 @@ export class Tablero {
   });
 
   protected readonly barrasReservas = computed<BarraDia[]>(() =>
-    (this.recurso.value()?.actividad.reservasPorDia ?? []).map((d) => {
+    (this.datos()?.actividad.reservasPorDia ?? []).map((d) => {
       const partes = TRAMOS_RESERVAS.filter((t) => d[t.clave] > 0).map((t) => `${t.etiqueta} ${d[t.clave]}`);
       return {
         clave: d.fecha,
@@ -112,7 +123,7 @@ export class Tablero {
   protected readonly hayReservas = computed(() => this.barrasReservas().some((b) => b.tramos.some((t) => t.valor > 0)));
 
   protected readonly totalBloqueos = computed(() => {
-    const b = this.recurso.value()?.conflictos.bloqueos;
+    const b = this.datos()?.conflictos.bloqueos;
     return b ? b.reasignadas + b.canceladas + b.autosExcedidos + b.sinCochera : 0;
   });
 

@@ -45,15 +45,21 @@ export interface Variacion {
 /**
  * Comparacion contra el periodo anterior. `sube` dice si es una buena noticia:
  * en las tasas de cancelacion o ausentes, bajar es mejorar (`menosEsMejor`).
+ * Las tasas (de 0 a 1) se comparan en puntos porcentuales (`puntos`): de 40 %
+ * a 50 % es "+10 pp", no "+25 %".
  */
-export function variacion(valor: number, anterior: number, { menosEsMejor = false } = {}): Variacion {
-  if (anterior === 0) return { sube: null, texto: '—' };
-  const porcentaje = Math.round(((valor - anterior) / anterior) * 100);
-  if (porcentaje === 0) return { sube: null, texto: 'Igual que el período anterior' };
+export function variacion(
+  valor: number,
+  anterior: number,
+  { menosEsMejor = false, puntos = false } = {},
+): Variacion {
+  if (!puntos && anterior === 0) return { sube: null, texto: '—' };
+  const cambio = Math.round(puntos ? (valor - anterior) * 100 : ((valor - anterior) / anterior) * 100);
+  if (cambio === 0) return { sube: null, texto: 'Igual que el período anterior' };
 
-  const signo = porcentaje > 0 ? '+' : '−';
+  const signo = cambio > 0 ? '+' : '−';
   return {
-    sube: menosEsMejor ? porcentaje < 0 : porcentaje > 0,
-    texto: `${signo}${Math.abs(porcentaje)} % vs. período anterior`,
+    sube: menosEsMejor ? cambio < 0 : cambio > 0,
+    texto: `${signo}${Math.abs(cambio)} ${puntos ? 'pp' : '%'} vs. período anterior`,
   };
 }

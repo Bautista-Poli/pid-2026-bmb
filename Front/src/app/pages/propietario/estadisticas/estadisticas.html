@@ -21,12 +21,12 @@
           class="rounded-control border border-borde bg-papel px-3.5 py-2.5 text-[13px] text-grafito
                  shadow-tarjeta focus:border-acento focus:outline-none"
           aria-label="Estacionamiento"
-          [value]="estacionamientoId()"
           (change)="elegirEstacionamiento($event)"
         >
-          <option value="">Todos los estacionamientos</option>
+          <!-- [selected] en cada opcion: un [value] en el select se aplica antes de que existan. -->
+          <option value="" [selected]="!estacionamientoId()">Todos los estacionamientos</option>
           @for (lote of recursoEstacionamientos.value(); track lote.id) {
-            <option [value]="lote.id">{{ lote.nombre }}</option>
+            <option [value]="lote.id" [selected]="lote.id === estacionamientoId()">{{ lote.nombre }}</option>
           }
         </select>
       }

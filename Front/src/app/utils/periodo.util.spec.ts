@@ -34,4 +34,12 @@ describe('variacion', () => {
   it('en las tasas, menos es mejor si se pide', () => {
     expect(variacion(0.1, 0.2, { menosEsMejor: true })).toEqual({ sube: true, texto: '−50 % vs. período anterior' });
   });
+
+  it('las tasas se comparan en puntos porcentuales, aun desde 0', () => {
+    expect(variacion(0.5, 0.4, { puntos: true })).toEqual({ sube: true, texto: '+10 pp vs. período anterior' });
+    expect(variacion(0.14, 0, { puntos: true, menosEsMejor: true })).toEqual({
+      sube: false,
+      texto: '+14 pp vs. período anterior',
+    });
+  });
 });

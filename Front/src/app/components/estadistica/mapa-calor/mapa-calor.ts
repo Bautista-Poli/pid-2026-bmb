@@ -38,7 +38,8 @@ const HORAS = Array.from({ length: 24 }, (_, hora) => hora);
             <th class="w-9"><span class="sr-only">Día</span></th>
             @for (hora of horas; track hora) {
               <th class="num-tabular text-[10px] font-normal text-humo" scope="col">
-                {{ hora % 3 === 0 ? hora : '' }}
+                <span aria-hidden="true">{{ hora % 3 === 0 ? hora : '' }}</span>
+                <span class="sr-only">{{ hora }}:00</span>
               </th>
             }
           </tr>
@@ -53,7 +54,9 @@ const HORAS = Array.from({ length: 24 }, (_, hora) => hora);
                   class="h-6 rounded-[3px] bg-borde-sutil"
                   [style.background-color]="cantidad > 0 ? color(cantidad) : null"
                   [attr.title]="dia.etiqueta + ' ' + hora + ':00 · ' + cantidad + (cantidad === 1 ? ' reserva' : ' reservas')"
-                ></td>
+                >
+                  <span class="sr-only">{{ cantidad }}</span>
+                </td>
               }
             </tr>
           }

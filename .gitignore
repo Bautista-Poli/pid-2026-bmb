@@ -5,3 +5,6 @@ docs/superpowers/
 .env
 .env.*
 !.env.example
+
+# Espacio de trabajo local de superpowers (registros, credenciales de prueba).
+.superpowers/

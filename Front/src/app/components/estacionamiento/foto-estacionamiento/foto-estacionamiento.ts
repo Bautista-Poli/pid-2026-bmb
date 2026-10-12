@@ -7,16 +7,17 @@ import {
   output,
   signal,
 } from '@angular/core';
-import { Boton, Miniatura } from '@app/components/ui';
+import { Boton, Miniatura, NombreIcono } from '@app/components/ui';
 
-/** Lo que acepta el endpoint de subida (`estacionamiento.routes.js`). */
+/** Lo que acepta Cloudinary. Antes de subir se achica (utils/imagen.util.ts). */
 const TIPOS = ['image/jpeg', 'image/png', 'image/webp'];
-const MAXIMO_BYTES = 2 * 1024 * 1024;
+const MAXIMO_MB = 10;
 
 /**
- * Elige la foto del estacionamiento y la muestra en vista previa.
+ * Elige una foto (de un estacionamiento o de un vehiculo) y la muestra en
+ * vista previa.
  *
- * No sube nada: para subir hace falta el id del estacionamiento, que en el alta
+ * No sube nada: para subir hace falta el id del recurso, que en el alta
  * recien existe despues del POST. Emite el archivo elegido (o `null` para
  * sacar la foto que ya estaba) y decide la pagina cuando mandarlo.
  */
@@ -29,13 +30,17 @@ const MAXIMO_BYTES = 2 * 1024 * 1024;
 export class FotoEstacionamiento {
   private readonly destroyRef = inject(DestroyRef);
 
-  /** Foto ya guardada, si el estacionamiento tiene una. */
+  /** Foto ya guardada, si tiene una. */
   readonly fotoActual = input<string | null>(null);
+  readonly etiqueta = input('Foto del estacionamiento');
+  /** Lo que se ve en el recuadro mientras no hay foto. */
+  readonly icono = input<NombreIcono>('estacionamiento');
 
   /** El archivo elegido, o `null` para quitar la foto guardada. */
   readonly cambio = output<File | null>();
 
   protected readonly tiposAceptados = TIPOS.join(',');
+  protected readonly maximoMb = MAXIMO_MB;
   protected readonly error = signal<string | null>(null);
 
   /** URL local del archivo elegido; hay que revocarla a mano. */
@@ -60,8 +65,8 @@ export class FotoEstacionamiento {
     // Se valida antes de mandar para no gastar una subida entera en vano.
     if (!TIPOS.includes(archivo.type)) {
       this.error.set('La foto tiene que ser JPG, PNG o WEBP.');
-    } else if (archivo.size > MAXIMO_BYTES) {
-      this.error.set('La foto no puede pasar los 2 MB.');
+    } else if (archivo.size > MAXIMO_MB * 1024 * 1024) {
+      this.error.set(`La foto no puede pasar los ${MAXIMO_MB} MB.`);
     } else {
       this.error.set(null);
       this.revocar();

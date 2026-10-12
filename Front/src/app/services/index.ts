@@ -5,3 +5,4 @@ export * from './vehiculo.service';
 export * from './reserva.service';
 export * from './abono.service';
 export * from './admin.service';
+export * from './cloudinary.service';

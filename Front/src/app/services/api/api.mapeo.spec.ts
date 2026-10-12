@@ -1,6 +1,6 @@
 import { NuevaReserva, NuevoEstacionamiento } from '@app/models';
-import { EstacionamientoDto, ReservaDto } from './api.dto';
-import { aAbono, aEstacionamiento, aPayloadEstacionamiento, aPayloadReserva, aReserva } from './api.mapeo';
+import { EstacionamientoDto, ReservaDto, VehiculoDto } from './api.dto';
+import { aAbono, aEstacionamiento, aPayloadEstacionamiento, aPayloadReserva, aReserva, aVehiculo } from './api.mapeo';
 
 const BASE: NuevoEstacionamiento = {
   nombre: 'Cochera Centro',
@@ -63,6 +63,33 @@ describe('aEstacionamiento', () => {
     expect(estacionamiento.estadoAprobacion).toBe('RECHAZADO');
     expect(estacionamiento.motivoRechazo).toBe('Faltan fotos del frente');
     expect(estacionamiento.enviadoEn).toBe('2026-10-10T12:00:00Z');
+  });
+});
+
+describe('aVehiculo', () => {
+  const dto: VehiculoDto = {
+    id_vehiculo: 'v1',
+    id_conductor: 'u1',
+    id_tipo_vehiculo: 1,
+    patente: 'AB123CD',
+    marca: null,
+    modelo: null,
+    color: null,
+    predeterminado: false,
+    activo: true,
+    foto_url: 'https://res.cloudinary.com/demo/image/upload/auto.jpg',
+  };
+
+  it('mapea la foto propia del vehiculo', () => {
+    expect(aVehiculo(dto).foto).toBe('https://res.cloudinary.com/demo/image/upload/auto.jpg');
+    expect(aVehiculo({ ...dto, foto_url: null }).foto).toBeNull();
+  });
+
+  it('mapea la miniatura de la foto propia', () => {
+    expect(aVehiculo({ ...dto, foto_miniatura_url: 'https://res.cloudinary.com/demo/w_240/auto.jpg' }).fotoMiniatura).toBe(
+      'https://res.cloudinary.com/demo/w_240/auto.jpg',
+    );
+    expect(aVehiculo({ ...dto, foto_miniatura_url: null }).fotoMiniatura).toBeNull();
   });
 });
 

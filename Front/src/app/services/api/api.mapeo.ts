@@ -233,6 +233,8 @@ export function aVehiculo(dto: VehiculoDto): Vehiculo {
     tipo: TIPO_POR_ID[dto.id_tipo_vehiculo],
     predeterminado: dto.predeterminado,
     activo: dto.activo,
+    foto: dto.foto_url ?? null,
+    fotoMiniatura: dto.foto_miniatura_url ?? null,
   };
 }
 

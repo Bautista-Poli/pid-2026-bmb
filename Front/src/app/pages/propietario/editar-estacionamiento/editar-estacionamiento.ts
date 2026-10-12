@@ -35,6 +35,8 @@ export class EditarEstacionamiento {
   protected readonly publicando = signal(false);
   protected readonly borrando = signal(false);
   protected readonly error = signal<string | null>(null);
+  /** Porcentaje de la subida de la foto en curso, o `null`. */
+  protected readonly progresoFoto = signal<number | null>(null);
   protected readonly aviso = signal<string | null>(null);
 
   // `undefined` = no se toco la foto en este envio, `null` = se pidio
@@ -76,12 +78,13 @@ export class EditarEstacionamiento {
 
     const id = this.estacionamientoId();
     const pedido = this.foto
-      ? this.estacionamientos.subirFoto(id, this.foto)
+      ? this.estacionamientos.subirFoto(id, this.foto, (porcentaje) => this.progresoFoto.set(porcentaje))
       : this.estacionamientos.borrarFoto(id);
 
     pedido.subscribe({
       next: () => this.volverAlListado(),
       error: (e: Error) => {
+        this.progresoFoto.set(null);
         this.enviando.set(false);
         this.error.set(`Guardamos los datos, pero la foto no se pudo actualizar: ${e.message}`);
       },

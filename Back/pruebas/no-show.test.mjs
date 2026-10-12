@@ -247,3 +247,51 @@ describe('quien cancelo la reserva', () => {
     assert.equal(reserva.cancelada_por, null);
   });
 });
+
+describe('ausente a mano', () => {
+  const marcar = (usuario, reserva) =>
+    api('PATCH', `/reservas/${reserva.id_reserva}/ausente`, { token: usuario.token });
+
+  test('ya empezada y sin ingreso: el propietario la marca NO_SHOW y libera la cochera', async () => {
+    const { propietario, estacionamiento, reserva } = await escenario();
+    await empezoHace(reserva.id_reserva, 2);
+    assert.equal(await libresAhora(estacionamiento), 0);
+
+    const { estado, datos } = await marcar(propietario, reserva);
+
+    assert.equal(estado, 200);
+    assert.equal(datos.reserva.estado, 'NO_SHOW');
+    assert.equal(await libresAhora(estacionamiento), 1);
+  });
+
+  test('antes del inicio no se puede (todavia puede llegar)', async () => {
+    const { propietario, reserva } = await escenario();
+
+    const intento = await marcar(propietario, reserva);
+
+    assert.equal(intento.estado, 409);
+    assert.match(motivo(intento), /empieza a las/i);
+    assert.equal(await estadoDe(reserva.id_reserva), 'CONFIRMADA');
+  });
+
+  test('con el auto adentro (ACTIVA) no se puede', async () => {
+    const { propietario, reserva } = await escenario();
+    await empezoHace(reserva.id_reserva, 2);
+    await acceder(propietario, reserva.codigo_acceso);
+
+    const intento = await marcar(propietario, reserva);
+
+    assert.equal(intento.estado, 409);
+    assert.equal(await estadoDe(reserva.id_reserva), 'ACTIVA');
+  });
+
+  test('ni el conductor ni otro propietario pueden marcarla', async () => {
+    const { conductor, reserva } = await escenario();
+    await empezoHace(reserva.id_reserva, 2);
+    const otro = await crearUsuario({ rol: 'PROPIETARIO' });
+
+    assert.equal((await marcar(conductor, reserva)).estado, 403);
+    assert.equal((await marcar(otro, reserva)).estado, 403);
+    assert.equal(await estadoDe(reserva.id_reserva), 'CONFIRMADA');
+  });
+});

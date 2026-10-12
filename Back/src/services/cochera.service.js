@@ -1,7 +1,7 @@
 import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
 import { ESTADOS_COCHERA, ESTADOS_RESERVA, ESTADOS_VIGENTES } from '../utils/roles.js';
-import { sinSolapamiento } from '../utils/solapamiento.js';
+import { finEfectivo, sinSolapamiento } from '../utils/solapamiento.js';
 import { asegurarPropiedad } from './estacionamiento.service.js';
 
 const VIOLACION_UNIQUE = '23505';
@@ -224,7 +224,7 @@ export async function reactivar(idEstacionamiento, idPropietario, idCochera) {
 }
 
 /** Otra cochera libre del mismo estacionamiento, mismo tipo de vehiculo, para esa franja exacta. */
-async function buscarAlternativa(client, idEstacionamiento, idCocheraOriginal, idTipoVehiculo, inicio, fin) {
+export async function buscarAlternativa(client, idEstacionamiento, idCocheraOriginal, idTipoVehiculo, inicio, fin) {
   const { rows: candidatas } = await client.query(
     `SELECT c.id_cochera
        FROM cochera c
@@ -284,7 +284,7 @@ export async function bloquear(idEstacionamiento, idPropietario, idCochera, { mo
       `SELECT r.id_reserva, r.estado, r.inicio, r.fin, v.id_tipo_vehiculo
          FROM reserva r
          JOIN vehiculo v ON v.id_vehiculo = r.id_vehiculo
-        WHERE r.id_cochera = $1 AND r.estado = ANY($2::estado_reserva[]) AND r.fin > now()
+        WHERE r.id_cochera = $1 AND r.estado = ANY($2::estado_reserva[]) AND ${finEfectivo('r')} > now()
         FOR UPDATE OF r`,
       [idCochera, ESTADOS_VIGENTES],
     );

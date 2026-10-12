@@ -28,6 +28,7 @@ import {
   filtrarLugares,
   normalizar,
 } from '@app/services/georef.service';
+import { opcionesHora } from '@app/utils/horario-semana.util';
 
 const DIAS: { dia: DiaSemana; etiqueta: string }[] = [
   { dia: 'LUNES', etiqueta: 'Lunes' },
@@ -87,6 +88,8 @@ export class FormularioEstacionamiento {
   readonly fotoElegida = output<File | null>();
 
   protected readonly dias = DIAS;
+  /** Selector de hora en 24 h (el `type="time"` nativo sale en AM/PM segun el idioma del sistema). */
+  protected readonly horas = opcionesHora;
 
   /**
    * `undefined` = no se toco la foto, `null` = se pidio quitarla, `File` = se

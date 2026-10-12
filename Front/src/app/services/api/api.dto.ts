@@ -170,3 +170,42 @@ export interface AbonoDto {
   estado: EstadoAbono;
   created_at: string;
 }
+
+export interface IncidenciaDto {
+  id_incidencia: string;
+  tipo: 'AUTO_EXCEDIDO' | 'RESERVA_AFECTADA';
+  estado: 'ABIERTA' | 'DENUNCIADA' | 'RESUELTA';
+  created_at: string;
+  denunciada_at: string | null;
+  denunciada_por: 'PROPIETARIO' | 'CONDUCTOR' | null;
+  resuelta_at: string | null;
+  id_reserva: string;
+  inicio: string;
+  fin: string;
+  estado_reserva: EstadoReservaDto;
+  egreso_real: string | null;
+  id_conductor: string;
+  conductor_nombre: string;
+  conductor_apellido: string;
+  patente: string;
+  cochera: string;
+  id_estacionamiento: string;
+  estacionamiento: string;
+  cantidad_mensajes: number;
+  ultimo_mensaje: string | null;
+}
+
+export interface MensajeIncidenciaDto {
+  id_mensaje: string;
+  canal: 'GENERAL' | 'PROPIETARIO' | 'CONDUCTOR';
+  rol_autor: 'SISTEMA' | 'PROPIETARIO' | 'CONDUCTOR' | 'ADMINISTRADOR';
+  texto: string;
+  created_at: string;
+  autor_nombre: string | null;
+  autor_apellido: string | null;
+}
+
+export interface IncidenciaDetalladaDto extends IncidenciaDto {
+  canales: ('GENERAL' | 'PROPIETARIO' | 'CONDUCTOR')[];
+  mensajes: MensajeIncidenciaDto[];
+}

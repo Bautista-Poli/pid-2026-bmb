@@ -114,7 +114,13 @@ const SELECT_ABONO = `
          a.turno::text AS turno, a.cupos_totales, a.precio_total,
          a.desde::text AS desde, a.hasta::text AS hasta, a.estado::text AS estado, a.created_at,
          (SELECT COUNT(*)::int FROM reserva r
-           WHERE r.id_abono = a.id_abono AND r.estado <> 'CANCELADA') AS cupos_usados
+           WHERE r.id_abono = a.id_abono AND r.estado <> 'CANCELADA') AS cupos_usados,
+         (SELECT COALESCE(SUM(d.monto), 0)::float FROM devolucion d
+           WHERE d.id_abono = a.id_abono) AS devuelto,
+         (SELECT i.id_incidencia FROM incidencia i
+           WHERE i.id_abono = a.id_abono AND i.abierta_por IS NOT NULL
+             AND i.estado IN ('ABIERTA', 'DENUNCIADA')
+           LIMIT 1) AS reclamo_abierto
     FROM abono a
     JOIN estacionamiento e ON e.id_estacionamiento = a.id_estacionamiento
     JOIN usuario u         ON u.id_usuario = a.id_conductor

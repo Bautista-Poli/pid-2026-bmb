@@ -348,3 +348,37 @@ describe('aceptar y retirar', () => {
     assert.equal((await proponer(propietario, datos.incidencia, 100)).estado, 201);
   });
 });
+
+describe('la reserva y el abono muestran el reclamo y lo devuelto', () => {
+  test('reserva: reclamo abierto y, al aceptar, lo devuelto', async () => {
+    const { propietario, conductor, reserva, incidencia } = await reclamoAbierto();
+    const mia = async () =>
+      (await api('GET', '/reservas', { token: conductor.token })).datos.reservas.find(
+        (r) => r.id_reserva === reserva.id_reserva,
+      );
+
+    assert.equal((await mia()).reclamo_abierto, incidencia.id_incidencia);
+    assert.equal((await mia()).devuelto, 0);
+
+    await proponer(propietario, incidencia, 2000);
+    await aceptar(conductor, incidencia, 2000);
+
+    assert.equal((await mia()).reclamo_abierto, null);
+    assert.equal((await mia()).devuelto, 2000);
+  });
+
+  test('abono: igual', async () => {
+    const { propietario, conductor, abono } = await escenarioAbono();
+    const { datos } = await reclamar(conductor, { id_abono: abono.id_abono });
+    const mio = async () =>
+      (await api('GET', '/abonos', { token: conductor.token })).datos.abonos.find((a) => a.id_abono === abono.id_abono);
+
+    assert.equal((await mio()).reclamo_abierto, datos.incidencia.id_incidencia);
+
+    await proponer(propietario, datos.incidencia, 5000);
+    await aceptar(conductor, datos.incidencia, 5000);
+
+    assert.equal((await mio()).reclamo_abierto, null);
+    assert.equal((await mio()).devuelto, 5000);
+  });
+});

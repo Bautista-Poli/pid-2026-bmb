@@ -89,6 +89,10 @@ export interface Reserva {
   codigoAcceso: string;
   /** Con que abono se hizo, o null si se pago aparte. */
   abono: { id: Id; turno: TurnoAbono } | null;
+  /** Lo devuelto por reclamos (simulado). */
+  devuelto: number;
+  /** El reclamo abierto o denunciado sobre esta reserva, si hay. */
+  reclamoAbierto: Id | null;
 }
 
 /**

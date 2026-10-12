@@ -115,15 +115,31 @@ async function ingresosPorDia(parametros) {
           AND a.created_at >= ${desdeDia('$2')}
           AND a.created_at <  ${hastaDia('$3')}
         GROUP BY 1
+     ),
+     devoluciones AS (
+       SELECT (dv.created_at AT TIME ZONE ${ZONA})::date AS fecha, SUM(dv.monto) AS monto
+         FROM devolucion dv
+         JOIN incidencia i ON i.id_incidencia = dv.id_incidencia
+        WHERE i.id_estacionamiento IN (${ESTACIONAMIENTOS})
+          AND dv.created_at >= ${desdeDia('$2')}
+          AND dv.created_at <  ${hastaDia('$3')}
+        GROUP BY 1
      )
-     SELECT d.fecha::text AS fecha, COALESCE(r.monto, 0) AS reservas, COALESCE(a.monto, 0) AS abonos
+     SELECT d.fecha::text AS fecha, COALESCE(r.monto, 0) AS reservas, COALESCE(a.monto, 0) AS abonos,
+            COALESCE(dv.monto, 0) AS devoluciones
        FROM dias d
        LEFT JOIN reservas r ON r.fecha = d.fecha
        LEFT JOIN abonos a ON a.fecha = d.fecha
+       LEFT JOIN devoluciones dv ON dv.fecha = d.fecha
       ORDER BY d.fecha`,
     parametros,
   );
-  return rows.map((r) => ({ fecha: r.fecha, reservas: numero(r.reservas), abonos: numero(r.abonos) }));
+  return rows.map((r) => ({
+    fecha: r.fecha,
+    reservas: numero(r.reservas),
+    abonos: numero(r.abonos),
+    devoluciones: numero(r.devoluciones),
+  }));
 }
 
 /** Reservas por (dia de semana, hora local) que ocupan cada hora; sin canceladas ni ausentes. */
@@ -202,7 +218,9 @@ function kpisDe({ horas, ingresos, totales }) {
   const ofrecidas = horas.reduce((suma, d) => suma + d.horasOfrecidas, 0);
   return {
     ocupacion: ofrecidas > 0 ? usadas / ofrecidas : 0,
-    ingresos: ingresos.reduce((suma, d) => suma + d.reservas + d.abonos, 0),
+    // Netos: lo devuelto por reclamos se descuenta el dia en que se devolvio.
+    ingresos: ingresos.reduce((suma, d) => suma + d.reservas + d.abonos - d.devoluciones, 0),
+    devoluciones: ingresos.reduce((suma, d) => suma + d.devoluciones, 0),
     reservas: totales.total,
     tasaCancelacion: tasa(totales.canceladas, totales.total),
     ausentes: totales.ausentes,

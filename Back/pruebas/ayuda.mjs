@@ -243,6 +243,12 @@ async function borrarDatosDePrueba() {
   const usuarios = 'SELECT id_usuario FROM usuario WHERE email LIKE $1';
   const propios = `SELECT id_estacionamiento FROM estacionamiento WHERE id_propietario IN (${usuarios})`;
 
+  // Las devoluciones no se borran en cascada (RESTRICT): van primero.
+  await query(
+    `DELETE FROM devolucion
+      WHERE id_incidencia IN (SELECT id_incidencia FROM incidencia WHERE id_estacionamiento IN (${propios}))`,
+    [deLaSuite],
+  );
   await query(
     `DELETE FROM reserva
       WHERE id_conductor IN (${usuarios})

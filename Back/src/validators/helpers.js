@@ -62,10 +62,17 @@ export function campos(datos) {
     },
 
     numero(campo, valor, opciones = {}) {
-      const { min = -Infinity, max = Infinity } = opciones;
+      const { min = -Infinity, max = Infinity, decimales } = opciones;
       return procesar(campo, valor, opciones, (bruto) => {
         const numero = Number(bruto);
         if (!Number.isFinite(numero)) return fallar(campo, 'debe ser un numero');
+        // Montos: la base guarda 2 decimales y redondearia en silencio.
+        if (decimales !== undefined) {
+          const escalado = numero * 10 ** decimales;
+          if (Math.abs(escalado - Math.round(escalado)) > 1e-9) {
+            return fallar(campo, `admite hasta ${decimales} decimales`);
+          }
+        }
         if (numero < min) return fallar(campo, `no puede ser menor a ${min}`);
         if (numero > max) return fallar(campo, `no puede ser mayor a ${max}`);
         valores[campo] = numero;

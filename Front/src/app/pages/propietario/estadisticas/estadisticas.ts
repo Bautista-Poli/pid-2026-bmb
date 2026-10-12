@@ -80,13 +80,15 @@ export class Estadisticas {
   protected readonly metricas = computed<Metrica[]>(() => {
     const datos = this.recurso.value();
     if (!datos) return [];
-    const { ocupacion, ingresos, reservas, tasaCancelacion, ausentes } = datos.kpis;
+    const { ocupacion, ingresos, reservas, tasaCancelacion, ausentes, devoluciones } = datos.kpis;
     return [
       { etiqueta: 'Ocupación', valor: porciento(ocupacion.valor), icono: 'estacionamiento', tono: 'azul', variacion: variacion(ocupacion.valor, ocupacion.anterior, { puntos: true }) },
       { etiqueta: 'Ingresos', valor: pesos(ingresos.valor), icono: 'moneda', tono: 'verde', variacion: variacion(ingresos.valor, ingresos.anterior) },
       { etiqueta: 'Reservas', valor: String(reservas.valor), icono: 'reservas', tono: 'violeta', variacion: variacion(reservas.valor, reservas.anterior) },
       { etiqueta: 'Cancelaciones', valor: porciento(tasaCancelacion.valor), icono: 'cerrar', tono: 'ambar', variacion: variacion(tasaCancelacion.valor, tasaCancelacion.anterior, { menosEsMejor: true, puntos: true }) },
       { etiqueta: 'Ausentes', valor: String(ausentes.valor), icono: 'alerta', tono: 'rojo', variacion: variacion(ausentes.valor, ausentes.anterior, { menosEsMejor: true }) },
+      // Lo devuelto por reclamos: ya esta descontado de Ingresos.
+      { etiqueta: 'Devoluciones', valor: pesos(devoluciones.valor), icono: 'moneda', tono: 'rojo', variacion: variacion(devoluciones.valor, devoluciones.anterior, { menosEsMejor: true }) },
     ];
   });
 
@@ -110,7 +112,9 @@ export class Estadisticas {
         { valor: d.reservas, clase: 'bg-exito', etiqueta: 'reservas' },
         { valor: d.abonos, clase: 'bg-violet-500', etiqueta: 'abonos' },
       ],
-      detalle: `${diaYMes(d.fecha)} · Reservas ${pesos(d.reservas)} · Abonos ${pesos(d.abonos)}`,
+      detalle:
+        `${diaYMes(d.fecha)} · Reservas ${pesos(d.reservas)} · Abonos ${pesos(d.abonos)}` +
+        (d.devoluciones > 0 ? ` · − ${pesos(d.devoluciones)} devuelto` : ''),
     })),
   );
 

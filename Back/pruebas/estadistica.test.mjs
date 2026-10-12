@@ -91,7 +91,7 @@ async function escenario({ horarios = ABIERTO_8_A_20 } = {}) {
       canceladaPor = null,
       canceladaEn = null,
     }) => {
-      await query(
+      return query(
         `INSERT INTO reserva (id_conductor, id_vehiculo, id_cochera, inicio, fin, estado, precio_total,
                               modalidad, cancelada_por)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
@@ -101,6 +101,7 @@ async function escenario({ horarios = ABIERTO_8_A_20 } = {}) {
         if (canceladaEn) {
           await query('UPDATE reserva SET cancelada_en = $2 WHERE id_reserva = $1', [creada[0].id_reserva, canceladaEn]);
         }
+        return creada[0].id_reserva;
       });
     },
   };
@@ -153,7 +154,7 @@ describe('estadisticas del propietario', () => {
     await e.reserva({ cochera: 0, inicio: instante(D, '14:00'), fin: instante(D, '15:00'), precio: 0, modalidad: 'ABONO' });
 
     const { datos } = await estadisticas(e.propietario.token, { desde: D, hasta: D });
-    assert.deepEqual(datos.ingresosPorDia, [{ fecha: D, reservas: 5000, abonos: 0 }]);
+    assert.deepEqual(datos.ingresosPorDia, [{ fecha: D, reservas: 5000, abonos: 0, devoluciones: 0 }]);
     assert.equal(datos.kpis.ingresos.valor, 5000);
     // La ausente no ocupo la cochera: 1 + 1 + 1 (la del abono) horas usadas.
     assert.equal(datos.ocupacionPorDia[0].horasUsadas, 3);
@@ -172,6 +173,27 @@ describe('estadisticas del propietario', () => {
     const { datos } = await estadisticas(e.propietario.token, { desde: hoy, hasta: hoy });
     assert.equal(datos.ingresosPorDia[0].abonos, 30000);
     assert.equal(datos.kpis.ingresos.valor, 30000);
+  });
+
+  test('las devoluciones se descuentan de los ingresos el dia en que se hicieron', async () => {
+    const e = await escenario();
+    const idReserva = await e.reserva({ inicio: instante(D, '08:00'), fin: instante(D, '11:00'), precio: 3000 });
+    const { rows } = await query(
+      `INSERT INTO incidencia (tipo, id_reserva, id_estacionamiento) VALUES ('AUTO_EXCEDIDO', $1, $2)
+       RETURNING id_incidencia`,
+      [idReserva, e.estacionamiento.id_estacionamiento],
+    );
+    await query(
+      `INSERT INTO devolucion (id_incidencia, id_reserva, monto, aplicada_por, created_at)
+       VALUES ($1, $2, 1000, 'ADMINISTRADOR', $3)`,
+      [rows[0].id_incidencia, idReserva, instante(D, '15:00')],
+    );
+
+    const { datos } = await estadisticas(e.propietario.token, { desde: D, hasta: D });
+    assert.deepEqual(datos.ingresosPorDia, [{ fecha: D, reservas: 3000, abonos: 0, devoluciones: 1000 }]);
+    assert.equal(datos.kpis.ingresos.valor, 2000);
+    assert.equal(datos.kpis.devoluciones.valor, 1000);
+    assert.equal(datos.kpis.devoluciones.anterior, 0);
   });
 
   test('demanda por dia de la semana y hora, con la hora pico', async () => {

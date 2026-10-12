@@ -16,15 +16,15 @@ import { ApiError } from '../utils/ApiError.js';
  *   - Ingresos: FINALIZADA y ACTIVA (las de abono valen 0) + abonos vendidos.
  */
 
-const ZONA = `'America/Argentina/Buenos_Aires'`;
-const DIA = 86_400_000;
+export const ZONA = `'America/Argentina/Buenos_Aires'`;
+export const DIA = 86_400_000;
 
 const OCUPAN = `('PENDIENTE', 'CONFIRMADA', 'ACTIVA', 'FINALIZADA')`;
-const COBRADAS = `('FINALIZADA', 'ACTIVA')`;
+export const COBRADAS = `('FINALIZADA', 'ACTIVA')`;
 
 /** Inicio de un dia local (`$n::date`) como instante. */
-const desdeDia = (parametro) => `(${parametro}::date)::timestamp AT TIME ZONE ${ZONA}`;
-const hastaDia = (parametro) => `(${parametro}::date + 1)::timestamp AT TIME ZONE ${ZONA}`;
+export const desdeDia = (parametro) => `(${parametro}::date)::timestamp AT TIME ZONE ${ZONA}`;
+export const hastaDia = (parametro) => `(${parametro}::date + 1)::timestamp AT TIME ZONE ${ZONA}`;
 
 /**
  * Estacionamientos que entran en el calculo: los del propietario, o uno solo.
@@ -46,8 +46,8 @@ const RESERVAS = `
 // Fechas puras (date + entero): no dependen de la zona horaria de la sesion.
 const DIAS = `SELECT $2::date + i AS fecha FROM generate_series(0, $3::date - $2::date) i`;
 
-const numero = (valor) => Number(valor ?? 0);
-const redondear = (valor, decimales = 2) => Math.round(valor * 10 ** decimales) / 10 ** decimales;
+export const numero = (valor) => Number(valor ?? 0);
+export const redondear = (valor, decimales = 2) => Math.round(valor * 10 ** decimales) / 10 ** decimales;
 
 /**
  * Por cada dia, la ventana de atencion de cada cochera activa: [apertura,
@@ -239,7 +239,7 @@ async function periodo(idPropietario, desde, hasta, idEstacionamiento, { conDema
 }
 
 /** El periodo inmediatamente anterior, del mismo largo. */
-function anteriorA(desde, hasta) {
+export function anteriorA(desde, hasta) {
   const largo = (Date.parse(hasta) - Date.parse(desde)) / DIA + 1;
   const iso = (ms) => new Date(ms).toISOString().slice(0, 10);
   return { desde: iso(Date.parse(desde) - largo * DIA), hasta: iso(Date.parse(desde) - DIA) };

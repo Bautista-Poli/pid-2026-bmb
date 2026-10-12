@@ -55,9 +55,10 @@ export async function cerrarApi() {
  * `middlewares/auth.js`), asi que `token` aca es el par `nombre=valor` de esa
  * cookie (lo que devuelve `cookieDeSesion`), no el JWT crudo.
  */
-export async function api(metodo, ruta, { token, body, raw, contentType } = {}) {
+export async function api(metodo, ruta, { token, body, raw, contentType, redirect = 'follow' } = {}) {
   const respuesta = await fetch(`${base}${ruta}`, {
     method: metodo,
+    redirect,
     headers: {
       ...(raw ? { 'Content-Type': contentType } : body ? { 'Content-Type': 'application/json' } : {}),
       ...(token ? { Cookie: token } : {}),

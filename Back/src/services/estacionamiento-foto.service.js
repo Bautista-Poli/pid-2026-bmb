@@ -1,55 +1,78 @@
 import { query } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
+import * as cloudinary from './cloudinary.service.js';
 import { asegurarPropiedad } from './estacionamiento.service.js';
 
 /**
- * Las fotos del estacionamiento, subidas por su propietario. Los bytes viven
- * en la base (tabla `estacionamiento_imagen`) y no en disco porque el
- * filesystem del PaaS es efimero.
+ * Las fotos del estacionamiento, subidas por su propietario. Son una galeria
+ * ordenada: la de menor `orden` es la portada, la que se ve en los listados.
+ * Las funciones "de portada" mantienen andando la API de una sola foto
+ * (`/:id/foto`) que usa el formulario del propietario.
  *
- * Son una galeria ordenada: la de menor `orden` es la portada, la que se ve en
- * los listados. Las funciones "de portada" mantienen andando la API de una
- * sola foto (`/:id/foto`) que usa el formulario del propietario.
+ * Cada foto viene de uno de dos lados (`imagen`):
+ *   - `{ publicId }`: ya esta en Cloudinary (el navegador subio con una firma
+ *     de `firmar`). Es el camino normal.
+ *   - `{ mime, bytes }`: los bytes van a la base, como antes de Cloudinary. Se
+ *     deja un deploy mas para no romper un front viejo cacheado.
  */
 
-/** Tope de fotos por estacionamiento: cada una puede pesar hasta 2 MB en la base. */
+/** Tope de fotos por estacionamiento. */
 export const MAX_FOTOS = 10;
 
+const COLUMNAS = 'id_imagen, mime, bytes, public_id, actualizada';
+
 const PORTADA = `
-  SELECT id_imagen, mime, bytes, actualizada
+  SELECT ${COLUMNAS}
     FROM estacionamiento_imagen
    WHERE id_estacionamiento = $1
    ORDER BY orden, actualizada
    LIMIT 1`;
 
-/** La portada con sus bytes, o `null` si el estacionamiento no tiene fotos. */
+/** Firma para que el navegador suba una foto a la carpeta del estacionamiento. */
+export async function firmar(idEstacionamiento, idPropietario) {
+  await asegurarPropiedad(idEstacionamiento, idPropietario);
+  return cloudinary.firmarSubida(cloudinary.carpetaDe('estacionamientos', idEstacionamiento));
+}
+
+/** `{ mime, bytes, public_id }` listo para guardar, verificando la carpeta si es de Cloudinary. */
+async function normalizar(idEstacionamiento, imagen) {
+  if (imagen.publicId) {
+    await cloudinary.verificar(imagen.publicId, cloudinary.carpetaDe('estacionamientos', idEstacionamiento));
+    return { mime: null, bytes: null, public_id: imagen.publicId };
+  }
+  return { mime: imagen.mime, bytes: imagen.bytes, public_id: null };
+}
+
+/** La portada (con sus bytes o su public_id), o `null` si no hay fotos. */
 export async function obtenerPortada(idEstacionamiento) {
   const { rows } = await query(PORTADA, [idEstacionamiento]);
   return rows[0] ?? null;
 }
 
 /** Reemplaza la portada, o la crea si todavia no hay fotos. */
-export async function guardarPortada(idEstacionamiento, idPropietario, mime, bytes) {
+export async function guardarPortada(idEstacionamiento, idPropietario, imagen) {
   await asegurarPropiedad(idEstacionamiento, idPropietario);
+  const nueva = await normalizar(idEstacionamiento, imagen);
 
   const portada = await obtenerPortada(idEstacionamiento);
   if (!portada) {
     const { rows } = await query(
-      `INSERT INTO estacionamiento_imagen (id_estacionamiento, orden, mime, bytes)
-       VALUES ($1, 0, $2, $3)
+      `INSERT INTO estacionamiento_imagen (id_estacionamiento, orden, mime, bytes, public_id)
+       VALUES ($1, 0, $2, $3, $4)
        RETURNING id_imagen, actualizada`,
-      [idEstacionamiento, mime, bytes],
+      [idEstacionamiento, nueva.mime, nueva.bytes, nueva.public_id],
     );
     return rows[0];
   }
 
   const { rows } = await query(
     `UPDATE estacionamiento_imagen
-        SET mime = $2, bytes = $3, actualizada = now()
+        SET mime = $2, bytes = $3, public_id = $4, actualizada = now()
       WHERE id_imagen = $1
       RETURNING id_imagen, actualizada`,
-    [portada.id_imagen, mime, bytes],
+    [portada.id_imagen, nueva.mime, nueva.bytes, nueva.public_id],
   );
+  if (portada.public_id !== nueva.public_id) await cloudinary.borrar(portada.public_id);
   return rows[0];
 }
 
@@ -60,13 +83,14 @@ export async function borrarPortada(idEstacionamiento, idPropietario) {
   const portada = await obtenerPortada(idEstacionamiento);
   if (portada) {
     await query('DELETE FROM estacionamiento_imagen WHERE id_imagen = $1', [portada.id_imagen]);
+    await cloudinary.borrar(portada.public_id);
   }
 }
 
-/** Una foto de la galeria con sus bytes, o `null` si no es de ese estacionamiento. */
+/** Una foto de la galeria, o `null` si no es de ese estacionamiento. */
 export async function obtener(idEstacionamiento, idImagen) {
   const { rows } = await query(
-    `SELECT mime, bytes, actualizada
+    `SELECT ${COLUMNAS}
        FROM estacionamiento_imagen
       WHERE id_estacionamiento = $1 AND id_imagen = $2`,
     [idEstacionamiento, idImagen],
@@ -75,19 +99,22 @@ export async function obtener(idEstacionamiento, idImagen) {
 }
 
 /** Suma una foto al final de la galeria. */
-export async function agregar(idEstacionamiento, idPropietario, mime, bytes) {
+export async function agregar(idEstacionamiento, idPropietario, imagen) {
   await asegurarPropiedad(idEstacionamiento, idPropietario);
+  const nueva = await normalizar(idEstacionamiento, imagen);
 
   const { rows } = await query(
-    `INSERT INTO estacionamiento_imagen (id_estacionamiento, orden, mime, bytes)
-     SELECT $1::uuid, COALESCE(MAX(orden) + 1, 0), $2::varchar, $3::bytea
+    `INSERT INTO estacionamiento_imagen (id_estacionamiento, orden, mime, bytes, public_id)
+     SELECT $1::uuid, COALESCE(MAX(orden) + 1, 0), $2::varchar, $3::bytea, $4::varchar
        FROM estacionamiento_imagen
       WHERE id_estacionamiento = $1::uuid
-     HAVING COUNT(*) < $4::int
+     HAVING COUNT(*) < $5::int
      RETURNING id_imagen, orden, actualizada`,
-    [idEstacionamiento, mime, bytes, MAX_FOTOS],
+    [idEstacionamiento, nueva.mime, nueva.bytes, nueva.public_id, MAX_FOTOS],
   );
   if (!rows[0]) {
+    // La foto ya esta subida a Cloudinary: si no entra, no se deja huerfana.
+    await cloudinary.borrar(nueva.public_id);
     throw ApiError.conflict(`El estacionamiento ya tiene ${MAX_FOTOS} fotos, borra alguna primero`);
   }
   return rows[0];
@@ -97,8 +124,11 @@ export async function agregar(idEstacionamiento, idPropietario, mime, bytes) {
 export async function borrar(idEstacionamiento, idPropietario, idImagen) {
   await asegurarPropiedad(idEstacionamiento, idPropietario);
 
-  await query('DELETE FROM estacionamiento_imagen WHERE id_estacionamiento = $1 AND id_imagen = $2', [
-    idEstacionamiento,
-    idImagen,
-  ]);
+  const { rows } = await query(
+    `DELETE FROM estacionamiento_imagen
+      WHERE id_estacionamiento = $1 AND id_imagen = $2
+      RETURNING public_id`,
+    [idEstacionamiento, idImagen],
+  );
+  await cloudinary.borrar(rows[0]?.public_id);
 }

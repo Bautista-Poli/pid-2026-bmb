@@ -16,6 +16,7 @@ import { ETIQUETA_ROL, iniciales, nombreCorto, RolUsuario, Usuario } from '@app/
 const PERFIL_SEGUN_ROL: Record<RolUsuario, string> = {
   CONDUCTOR: '/conductor/perfil',
   PROPIETARIO: '/propietario/perfil',
+  ADMINISTRADOR: '/admin/perfil',
 };
 
 /**

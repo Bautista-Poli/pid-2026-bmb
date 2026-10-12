@@ -1,10 +1,12 @@
 import { FechaHoraISO, Id } from './api.model';
 
-export type RolUsuario = 'CONDUCTOR' | 'PROPIETARIO';
+/** ADMINISTRADOR es un usuario aparte: no se registra ni se combina con los otros perfiles. */
+export type RolUsuario = 'CONDUCTOR' | 'PROPIETARIO' | 'ADMINISTRADOR';
 
 export const ETIQUETA_ROL: Record<RolUsuario, string> = {
   CONDUCTOR: 'Conductor',
   PROPIETARIO: 'Propietario',
+  ADMINISTRADOR: 'Administrador',
 };
 
 export interface Usuario {

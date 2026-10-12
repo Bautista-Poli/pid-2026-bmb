@@ -108,6 +108,9 @@ export function aEstacionamiento(dto: EstacionamientoDto): Estacionamiento {
     fotos: urlsDeGaleria(dto),
     publicado: dto.publicado,
     activo: dto.activo,
+    estadoAprobacion: dto.estado_aprobacion,
+    motivoRechazo: dto.motivo_rechazo ?? null,
+    enviadoEn: dto.enviado_en,
   };
 }
 

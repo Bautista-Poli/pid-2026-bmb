@@ -1,6 +1,6 @@
 import { NuevaReserva, NuevoEstacionamiento } from '@app/models';
-import { ReservaDto } from './api.dto';
-import { aAbono, aPayloadEstacionamiento, aPayloadReserva, aReserva } from './api.mapeo';
+import { EstacionamientoDto, ReservaDto } from './api.dto';
+import { aAbono, aEstacionamiento, aPayloadEstacionamiento, aPayloadReserva, aReserva } from './api.mapeo';
 
 const BASE: NuevoEstacionamiento = {
   nombre: 'Cochera Centro',
@@ -25,6 +25,44 @@ describe('aPayloadEstacionamiento', () => {
     expect(payload.tarifa_hora).toBeNull();
     expect(payload.tarifa_estadia).toBe(5000);
     expect(payload.tarifa_jornada).toBeNull();
+  });
+});
+
+describe('aEstacionamiento', () => {
+  const dto: EstacionamientoDto = {
+    id_estacionamiento: 'e1',
+    id_propietario: 'p1',
+    nombre: 'Cochera Centro',
+    descripcion: null,
+    direccion: 'Av. Belgrano 1240',
+    calle: 'Av. Belgrano',
+    numero: '1240',
+    ciudad: 'CABA',
+    provincia: 'Buenos Aires',
+    codigo_postal: null,
+    barrio_zona: null,
+    latitud: null,
+    longitud: null,
+    telefono_contacto: null,
+    email_contacto: null,
+    tarifa_hora: 1000,
+    tarifa_estadia: null,
+    tarifa_jornada: null,
+    politica_cancelacion_horas: null,
+    cubierto: false,
+    publicado: true,
+    activo: true,
+    estado_aprobacion: 'RECHAZADO',
+    motivo_rechazo: 'Faltan fotos del frente',
+    enviado_en: '2026-10-10T12:00:00Z',
+  };
+
+  it('mapea el estado de aprobacion y el motivo de rechazo', () => {
+    const estacionamiento = aEstacionamiento(dto);
+
+    expect(estacionamiento.estadoAprobacion).toBe('RECHAZADO');
+    expect(estacionamiento.motivoRechazo).toBe('Faltan fotos del frente');
+    expect(estacionamiento.enviadoEn).toBe('2026-10-10T12:00:00Z');
   });
 });
 

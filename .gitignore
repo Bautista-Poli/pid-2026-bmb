@@ -1,0 +1,10 @@
+# Specs y planes de trabajo locales (superpowers): no se suben al repo.
+docs/superpowers/
+
+# Variables de entorno y sus copias locales: tienen credenciales.
+.env
+.env.*
+!.env.example
+
+# Espacio de trabajo local de superpowers (registros, credenciales de prueba).
+.superpowers/

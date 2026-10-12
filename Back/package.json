@@ -12,6 +12,8 @@
     "dev": "node --watch --env-file=.env src/index.js",
     "db:migrate": "node --env-file=.env src/db/migrate.js",
     "db:migrate:prod": "node src/db/migrate.js",
+    "db:crear-admin": "node --env-file=.env src/db/crear-admin.js",
+    "db:crear-admin:prod": "node src/db/crear-admin.js",
     "db:geocodificar": "node --env-file=.env src/db/geocodificar.js",
     "db:mover-reserva": "node --env-file=.env src/db/mover-reserva.js",
     "test": "node --test --env-file=.env \"pruebas/*.test.mjs\"",

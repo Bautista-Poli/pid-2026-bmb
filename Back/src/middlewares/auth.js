@@ -46,6 +46,19 @@ export async function authenticate(req, _res, next) {
   }
 }
 
+/**
+ * Para rutas publicas que muestran mas si hay sesion (p. ej. el dueno ve su
+ * estacionamiento todavia sin aprobar). Sin cookie, o con una que no sirve,
+ * sigue como anonimo en vez de responder 401.
+ */
+export function authenticateOpcional(req, res, next) {
+  if (!req.cookies?.[COOKIE_SESION]) return next();
+  return authenticate(req, res, (error) => {
+    if (error instanceof ApiError && error.statusCode === 401) return next();
+    return next(error);
+  });
+}
+
 /** Restringe la ruta a los roles indicados. Usar siempre despues de authenticate. */
 export function requireRole(...roles) {
   return (req, _res, next) => {

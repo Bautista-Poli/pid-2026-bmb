@@ -133,3 +133,59 @@ describe('aprobar y rechazar', () => {
     }
   });
 });
+
+describe('el perfil de administrador es aparte', () => {
+  const registro = (rol) =>
+    api('POST', '/auth/register', {
+      body: {
+        nombre: 'Prueba',
+        apellido: 'Parkit',
+        email: `${crypto.randomUUID()}@admin.prueba.parkit`,
+        password: 'prueba1234',
+        rol,
+      },
+    });
+
+  test('registrarse como ADMINISTRADOR da 400', async () => {
+    const respuesta = await registro('ADMINISTRADOR');
+    assert.equal(respuesta.estado, 400);
+  });
+
+  test('un propietario no puede agregarse ADMINISTRADOR', async () => {
+    const propietario = await nuevoPropietario();
+    const respuesta = await api('PATCH', '/auth/me', {
+      token: propietario.token,
+      body: { roles: ['PROPIETARIO', 'ADMINISTRADOR'] },
+    });
+    assert.equal(respuesta.estado, 400);
+
+    const { rows } = await query('SELECT roles::text[] AS roles FROM usuario WHERE id_usuario = $1', [propietario.id]);
+    assert.deepEqual(rows[0].roles, ['PROPIETARIO']);
+  });
+
+  test('un admin no puede agregarse otro perfil', async () => {
+    const admin = await crearAdmin();
+    const respuesta = await api('PATCH', '/auth/me', {
+      token: admin.token,
+      body: { roles: ['PROPIETARIO'] },
+    });
+    assert.equal(respuesta.estado, 400);
+    assert.match(motivo(respuesta), /administrador no puede tener otros perfiles/);
+  });
+
+  test('un admin no puede cambiar su sesion a otro perfil', async () => {
+    const admin = await crearAdmin();
+    const respuesta = await api('POST', '/auth/rol', { token: admin.token, body: { rol: 'PROPIETARIO' } });
+    assert.ok([400, 403].includes(respuesta.estado));
+
+    const yo = await api('GET', '/auth/me', { token: admin.token });
+    assert.equal(yo.datos.usuario.rol, 'ADMINISTRADOR');
+  });
+
+  test('el admin puede editar su nombre sin tocar perfiles', async () => {
+    const admin = await crearAdmin();
+    const respuesta = await api('PATCH', '/auth/me', { token: admin.token, body: { nombre: 'Admina' } });
+    assert.equal(respuesta.estado, 200);
+    assert.deepEqual(respuesta.datos.usuario.roles, ['ADMINISTRADOR']);
+  });
+});

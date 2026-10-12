@@ -25,6 +25,7 @@ const NAVEGACION: Record<RolUsuario, ItemNavegacion[]> = {
   PROPIETARIO: [
     { ruta: '/propietario/tablero', etiqueta: 'Inicio', icono: 'inicio' },
     { ruta: '/propietario/reservas', etiqueta: 'Reservas', icono: 'reservas' },
+    { ruta: '/propietario/estadisticas', etiqueta: 'Estadísticas', icono: 'tablero', enTabs: false },
     { ruta: '/propietario/estacionamientos', etiqueta: 'Estacionamientos', icono: 'estacionamiento' },
     { ruta: '/propietario/incidencias', etiqueta: 'Incidencias', icono: 'alerta' },
     { ruta: '/propietario/perfil', etiqueta: 'Configuración', icono: 'configuracion' },
@@ -67,6 +68,9 @@ export class LayoutApp {
     const rol = this.auth.rol();
     return rol ? NAVEGACION[rol] : [];
   });
+
+  /** Los de la tab bar mobile: los que no estan marcados `enTabs: false`. */
+  protected readonly itemsTabs = computed(() => this.items().filter((item) => item.enTabs !== false));
 
   /** Perfil al que se puede pasar; `null` si el usuario tiene uno solo. */
   protected readonly rolAlternativo = computed<RolUsuario | null>(() => {

@@ -188,6 +188,11 @@ export const routes: Routes = [
     loadComponent: () => import('./layouts/layout-app/layout-app').then((m) => m.LayoutApp),
     children: [
       {
+        path: 'tablero',
+        title: 'Parkit · Panel de administración',
+        loadComponent: () => import('./pages/admin/tablero/tablero').then((m) => m.Tablero),
+      },
+      {
         path: 'pendientes',
         title: 'Parkit · Revisión de estacionamientos',
         loadComponent: () => import('./pages/admin/pendientes/pendientes').then((m) => m.Pendientes),
@@ -215,7 +220,7 @@ export const routes: Routes = [
         title: 'Parkit · Mi perfil',
         loadComponent: () => import('./pages/perfil/perfil').then((m) => m.Perfil),
       },
-      { path: '', pathMatch: 'full', redirectTo: 'pendientes' },
+      { path: '', pathMatch: 'full', redirectTo: 'tablero' },
     ],
   },
 

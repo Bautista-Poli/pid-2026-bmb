@@ -4,7 +4,9 @@ import { Observable, map } from 'rxjs';
 import {
   EstacionamientoEnRevision,
   EstadoAprobacion,
+  EstadisticasAdmin,
   EstadoIncidencia,
+  FechaISO,
   FechaHoraISO,
   Id,
   Incidencia,
@@ -89,5 +91,12 @@ export class AdminService {
     return this.http
       .patch<{ incidencia: IncidenciaModeradaDto }>(`/admin/incidencias/${id}/resolver`, datos)
       .pipe(map(({ incidencia }) => aIncidenciaModerada(incidencia)));
+  }
+
+  /** `GET /api/admin/estadisticas`: para revisar, conflictos y actividad del periodo. */
+  estadisticas(desde: FechaISO, hasta: FechaISO): Observable<EstadisticasAdmin> {
+    return this.http
+      .get<{ estadisticas: EstadisticasAdmin }>('/admin/estadisticas', { params: { desde, hasta } })
+      .pipe(map(({ estadisticas }) => estadisticas));
   }
 }

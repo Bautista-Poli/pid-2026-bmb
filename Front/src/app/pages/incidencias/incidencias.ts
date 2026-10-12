@@ -8,6 +8,7 @@ import {
   signal,
 } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
+import { ActivatedRoute } from '@angular/router';
 import {
   Boton,
   Cargando,
@@ -23,6 +24,8 @@ import {
   CanalIncidencia,
   ETIQUETA_AUTOR,
   ETIQUETA_ESTADO_INCIDENCIA,
+  ETIQUETA_MOTIVO_RECLAMO,
+  ETIQUETA_RESOLUCION,
   ETIQUETA_TIPO_INCIDENCIA,
   EstadoIncidencia,
   Id,
@@ -40,6 +43,10 @@ const TONO_ESTADO: Record<EstadoIncidencia, TonoEtiqueta> = {
   RETIRADA: 'neutro',
 };
 
+type Accion = 'RESOLVER' | 'DENUNCIAR' | 'ACEPTAR' | 'RETIRAR';
+
+const PESOS = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 2 });
+
 /** Cada cuanto se refrescan la lista y el hilo: es un ida y vuelta entre personas. */
 const REFRESCO_MS = 20_000;
 
@@ -51,6 +58,10 @@ const REFRESCO_MS = 20_000;
  * conductor (la moderacion solo lee) y, si alguno denuncia, uno privado de
  * cada parte con la moderacion. El propietario la marca resuelta mientras no
  * este denunciada; denunciar lo puede cualquiera de los dos.
+ *
+ * Reclamos (los abre el conductor): el propietario no los cierra, propone una
+ * devolucion en el chat general y el conductor la acepta o retira el reclamo.
+ * `?id=` abre una incidencia (asi llega el conductor despues de reclamar).
  */
 @Component({
   selector: 'app-incidencias',
@@ -65,6 +76,9 @@ export class Incidencias {
   protected readonly etiquetaTipo = ETIQUETA_TIPO_INCIDENCIA;
   protected readonly etiquetaEstado = ETIQUETA_ESTADO_INCIDENCIA;
   protected readonly tonoEstado = TONO_ESTADO;
+  protected readonly etiquetaMotivo = ETIQUETA_MOTIVO_RECLAMO;
+  protected readonly etiquetaResolucion = ETIQUETA_RESOLUCION;
+  protected readonly pesos = (monto: number) => `$ ${PESOS.format(monto)}`;
 
   protected readonly esPropietario = computed(() => this.auth.rol() === 'PROPIETARIO');
 
@@ -74,7 +88,7 @@ export class Incidencias {
   });
 
   protected readonly abiertas = computed(
-    () => this.recursoLista.value().filter((i) => i.estado !== 'RESUELTA').length,
+    () => this.recursoLista.value().filter((i) => i.estado === 'ABIERTA' || i.estado === 'DENUNCIADA').length,
   );
 
   protected readonly seleccionId = signal<Id | null>(null);
@@ -106,12 +120,35 @@ export class Incidencias {
   protected readonly enviando = signal(false);
   protected readonly error = signal<string | null>(null);
 
-  /** Modales del propietario. */
-  protected readonly accion = signal<'RESOLVER' | 'DENUNCIAR' | null>(null);
+  /** Devolucion que el propietario propone junto con su mensaje (solo en un reclamo abierto). */
+  protected readonly montoPropuesto = signal<number | null>(null);
+
+  /** El propietario puede proponer: reclamo abierto, en el chat con el conductor. */
+  protected readonly puedeProponer = computed(() => {
+    const incidencia = this.detalle();
+    return (
+      this.esPropietario() &&
+      incidencia?.tipo === 'RECLAMO' &&
+      incidencia.estado === 'ABIERTA' &&
+      this.canal() === 'GENERAL'
+    );
+  });
+
+  /** La propuesta escrita supera lo que queda por devolver. */
+  protected readonly propuestaExcedida = computed(() => {
+    const monto = this.montoPropuesto();
+    return monto !== null && monto > (this.detalle()?.tope ?? 0);
+  });
+
+  /** Modales de las acciones. */
+  protected readonly accion = signal<Accion | null>(null);
   protected readonly textoAccion = signal('');
   protected readonly procesando = signal(false);
 
   constructor() {
+    const id = inject(ActivatedRoute).snapshot.queryParamMap.get('id');
+    if (id) this.seleccionId.set(id);
+
     const reloj = setInterval(() => {
       this.recursoLista.reload();
       if (this.seleccionId()) this.recursoDetalle.reload();
@@ -123,6 +160,7 @@ export class Incidencias {
     this.seleccionId.set(incidencia.id);
     this.canal.set('GENERAL');
     this.borrador.set('');
+    this.montoPropuesto.set(null);
     this.error.set(null);
   }
 
@@ -145,16 +183,24 @@ export class Incidencias {
     return (evento.target as HTMLTextAreaElement).value;
   }
 
+  /** Vacio = sin propuesta. */
+  protected leerMonto(evento: Event): void {
+    const valor = (evento.target as HTMLInputElement).value;
+    this.montoPropuesto.set(valor === '' ? null : Number(valor));
+  }
+
   protected enviar(incidencia: IncidenciaDetallada): void {
     const texto = this.borrador().trim();
-    if (!texto || this.enviando()) return;
+    if (!texto || this.enviando() || this.propuestaExcedida()) return;
 
+    const monto = this.puedeProponer() ? (this.montoPropuesto() ?? undefined) : undefined;
     this.enviando.set(true);
     this.error.set(null);
-    this.incidencias.responder(incidencia.id, texto, this.canal()).subscribe({
+    this.incidencias.responder(incidencia.id, texto, this.canal(), monto).subscribe({
       next: (actualizada) => {
         this.enviando.set(false);
         this.borrador.set('');
+        this.montoPropuesto.set(null);
         this.recursoDetalle.set(actualizada);
         this.recursoLista.reload();
       },
@@ -165,7 +211,7 @@ export class Incidencias {
     });
   }
 
-  protected abrirAccion(accion: 'RESOLVER' | 'DENUNCIAR'): void {
+  protected abrirAccion(accion: Accion): void {
     this.textoAccion.set('');
     this.error.set(null);
     this.accion.set(accion);
@@ -181,10 +227,14 @@ export class Incidencias {
     if (!accion || !this.accionValida() || this.procesando()) return;
 
     const texto = this.textoAccion().trim();
-    const llamada =
-      accion === 'RESOLVER'
-        ? this.incidencias.resolver(incidencia.id, texto || undefined)
-        : this.incidencias.denunciar(incidencia.id, texto);
+    const llamadas = {
+      RESOLVER: () => this.incidencias.resolver(incidencia.id, texto || undefined),
+      DENUNCIAR: () => this.incidencias.denunciar(incidencia.id, texto),
+      // Se manda la propuesta que el conductor tiene en pantalla: si cambio, la API da 409.
+      ACEPTAR: () => this.incidencias.aceptar(incidencia.id, incidencia.propuestaVigente ?? 0),
+      RETIRAR: () => this.incidencias.retirar(incidencia.id),
+    };
+    const llamada = llamadas[accion]();
 
     this.procesando.set(true);
     llamada.subscribe({
@@ -199,6 +249,8 @@ export class Incidencias {
       error: (e: Error) => {
         this.procesando.set(false);
         this.error.set(e.message);
+        // Si el propietario cambio la propuesta, se trae la nueva para que la vea.
+        if (accion === 'ACEPTAR') this.recursoDetalle.reload();
       },
     });
   }

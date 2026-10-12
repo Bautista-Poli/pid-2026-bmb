@@ -75,8 +75,10 @@
                 <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-[3px] bg-acento/20"></span> Libres</span>
               </div>
             </div>
-            @if (hayOcupacion()) {
+            @if (hayOcupacion() && datos.kpis.ocupacion.valor > 0) {
               <app-barras-dia [barras]="barrasOcupacion()" descripcion="Ocupación por día del período" />
+            } @else if (hayOcupacion()) {
+              <p class="py-8 text-center text-[13px] text-plomo">Tus cocheras no tuvieron reservas en este período.</p>
             } @else {
               <p class="py-8 text-center text-[13px] text-plomo">
                 Sin horarios de atención cargados: no hay horas para medir.
@@ -94,7 +96,7 @@
                 <p class="mt-0.5 text-[12px] text-plomo">
                   Total {{ pesos(datos.kpis.ingresos.valor) }}
                   @if (datos.ingresosProyectados > 0) {
-                    · {{ pesos(datos.ingresosProyectados) }} por cobrar de reservas confirmadas
+                    · {{ pesos(datos.ingresosProyectados) }} por cobrar de reservas confirmadas que vienen
                   }
                 </p>
               </div>

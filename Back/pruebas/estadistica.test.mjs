@@ -238,7 +238,8 @@ describe('estadisticas del propietario', () => {
       hasta: D,
       id_estacionamiento: otro.estacionamiento.id_estacionamiento,
     });
-    assert.ok([403, 404].includes(ajeno.estado));
+    // 404 y no 403: no se confirma que exista un estacionamiento de otro.
+    assert.equal(ajeno.estado, 404);
   });
 
   test('trae los KPIs del periodo anterior de igual largo', async () => {
@@ -312,6 +313,18 @@ describe('estadisticas del propietario', () => {
 
     const { datos } = await estadisticas(e.propietario.token, { desde: D, hasta: D });
     assert.equal(datos.cancelaciones.anticipacionPromedioHoras, 2);
+  });
+
+  test('por cobrar: las confirmadas que todavia no empezaron, aunque sean despues del periodo', async () => {
+    const e = await escenario();
+    const manana = franja('09:00', '11:00', 1);
+    const enUnaSemana = franja('09:00', '10:00', 7);
+    await e.reserva({ cochera: 0, ...manana, estado: 'CONFIRMADA', precio: 3000 });
+    await e.reserva({ cochera: 1, ...enUnaSemana, estado: 'CONFIRMADA', precio: 1500 });
+    await e.reserva({ cochera: 0, ...enUnaSemana, estado: 'CANCELADA', precio: 999 });
+
+    const { datos } = await estadisticas(e.propietario.token, { desde: D, hasta: D });
+    assert.equal(datos.ingresosProyectados, 4500);
   });
 
   test('validaciones y permisos', async () => {

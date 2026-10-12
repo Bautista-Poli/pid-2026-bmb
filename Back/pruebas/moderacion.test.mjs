@@ -199,3 +199,36 @@ describe('resolver', () => {
     assert.equal(datos.incidencia.estado, 'RESUELTA');
   });
 });
+
+test('el monto de la resolucion tiene hasta 2 decimales', async () => {
+  const { incidencia } = await disputa();
+
+  const respuesta = await resolver(admin, incidencia, { resolucion: 'A_FAVOR_CONDUCTOR', monto: 0.001 });
+
+  assert.equal(respuesta.estado, 400);
+  assert.match(JSON.stringify(respuesta.datos), /2 decimales/);
+});
+
+test('resolver y registrar el egreso a la vez no se traban', async () => {
+  const { propietario, reserva, estacionamiento } = await disputa({ denunciar: false });
+  // El auto esta adentro y se excedio: hay una AUTO_EXCEDIDO denunciada.
+  await query(
+    `UPDATE reserva SET estado = 'ACTIVA', inicio = now() - interval '3 hours', fin = now() - interval '1 hour',
+            ingreso_real = now() - interval '3 hours' WHERE id_reserva = $1`,
+    [reserva.id_reserva],
+  );
+  const { rows } = await query(
+    `INSERT INTO incidencia (tipo, id_reserva, id_estacionamiento) VALUES ('AUTO_EXCEDIDO', $1, $2)
+     RETURNING id_incidencia`,
+    [reserva.id_reserva, estacionamiento.id_estacionamiento],
+  );
+  await denunciarComo(propietario, rows[0]);
+
+  const [resuelta, egreso] = await Promise.all([
+    resolver(admin, rows[0], { resolucion: 'A_FAVOR_PROPIETARIO' }),
+    api('PATCH', `/reservas/${reserva.id_reserva}/egreso`, { token: propietario.token }),
+  ]);
+
+  assert.equal(resuelta.estado, 200);
+  assert.equal(egreso.estado, 200);
+});

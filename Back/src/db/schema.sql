@@ -754,9 +754,15 @@ BEGIN
     ALTER TABLE incidencia ADD CONSTRAINT incidencia_abono_fk
       FOREIGN KEY (id_abono) REFERENCES abono (id_abono) ON DELETE CASCADE;
   END IF;
+  -- RESTRICT: `abierta_por` es lo que distingue un reclamo de una incidencia
+  -- del sistema; si quedara en NULL, el reclamo cambiaria de naturaleza.
+  IF EXISTS (SELECT 1 FROM pg_constraint
+              WHERE conname = 'incidencia_abierta_por_fk' AND confdeltype <> 'r') THEN
+    ALTER TABLE incidencia DROP CONSTRAINT incidencia_abierta_por_fk;
+  END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'incidencia_abierta_por_fk') THEN
     ALTER TABLE incidencia ADD CONSTRAINT incidencia_abierta_por_fk
-      FOREIGN KEY (abierta_por) REFERENCES usuario (id_usuario) ON DELETE SET NULL;
+      FOREIGN KEY (abierta_por) REFERENCES usuario (id_usuario) ON DELETE RESTRICT;
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'incidencia_resuelta_por_fk') THEN
     ALTER TABLE incidencia ADD CONSTRAINT incidencia_resuelta_por_fk

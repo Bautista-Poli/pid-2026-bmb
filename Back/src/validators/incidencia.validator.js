@@ -11,7 +11,7 @@ export function validarMensaje(body) {
       default: 'GENERAL',
     })
     // Solo el propietario, en un reclamo: lo controla el servicio.
-    .numero('monto_propuesto', body.monto_propuesto, { min: 0, requerido: false })
+    .numero('monto_propuesto', body.monto_propuesto, { min: 0, decimales: 2, requerido: false })
     .resultado();
 }
 
@@ -35,12 +35,12 @@ export function validarReclamo(body) {
     .uuid('id_reserva', body.id_reserva, { requerido: false })
     .uuid('id_abono', body.id_abono, { requerido: false })
     .enumerado('motivo', body.motivo, MOTIVOS)
-    .numero('monto_pedido', body.monto_pedido, { min: 0, requerido: false })
+    .numero('monto_pedido', body.monto_pedido, { min: 0, decimales: 2, requerido: false })
     .texto('texto', body.texto, { min: 20, max: MAX_TEXTO })
     .resultado();
 }
 
 /** `PATCH /incidencias/:id/aceptar`: el monto de la propuesta que vio el conductor. */
 export function validarAceptacion(body) {
-  return campos(body).numero('monto', body.monto, { min: 0 }).resultado();
+  return campos(body).numero('monto', body.monto, { min: 0, decimales: 2 }).resultado();
 }

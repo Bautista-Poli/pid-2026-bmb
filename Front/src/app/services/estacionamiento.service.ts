@@ -48,6 +48,13 @@ export class EstacionamientoService {
       .pipe(map(({ estacionamientos }) => estacionamientos.map(aEstacionamiento)));
   }
 
+  /** `PATCH /api/estacionamientos/:id/reenviar-revision`: un rechazado vuelve a la cola. */
+  reenviarRevision(id: Id): Observable<Estacionamiento> {
+    return this.http
+      .patch<{ estacionamiento: EstacionamientoDto }>(`${this.ruta}/${id}/reenviar-revision`, {})
+      .pipe(map(({ estacionamiento }) => aEstacionamiento(estacionamiento)));
+  }
+
   /** `POST /api/estacionamientos` */
   crear(datos: NuevoEstacionamiento): Observable<Estacionamiento> {
     return this.http

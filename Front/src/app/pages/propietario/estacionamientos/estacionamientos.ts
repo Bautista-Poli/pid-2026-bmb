@@ -1,5 +1,5 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import {
@@ -11,7 +11,7 @@ import {
   Miniatura,
   Tarjeta,
 } from '@app/components/ui';
-import { direccionCorta, Estacionamiento } from '@app/models';
+import { direccionCorta, Estacionamiento, Id } from '@app/models';
 import { resumenTarifas } from '@app/utils/tarifa.util';
 import { AuthService } from '@app/services/auth.service';
 import { EstacionamientoService } from '@app/services/estacionamiento.service';
@@ -49,6 +49,25 @@ export class Estacionamientos {
     stream: () => this.estacionamientos.listarDelPropietario(),
     defaultValue: [] as Estacionamiento[],
   });
+
+  protected readonly reenviandoId = signal<Id | null>(null);
+  protected readonly errorReenvio = signal<{ id: Id; mensaje: string } | null>(null);
+
+  /** Un rechazado vuelve a la cola del administrador en el momento, sin esperar. */
+  protected reenviar(estacionamiento: Estacionamiento): void {
+    this.reenviandoId.set(estacionamiento.id);
+    this.errorReenvio.set(null);
+    this.estacionamientos.reenviarRevision(estacionamiento.id).subscribe({
+      next: () => {
+        this.reenviandoId.set(null);
+        this.recurso.reload();
+      },
+      error: (e: Error) => {
+        this.reenviandoId.set(null);
+        this.errorReenvio.set({ id: estacionamiento.id, mensaje: e.message });
+      },
+    });
+  }
 
   /** "$1.200 / hora", o el resumen de tarifas si no cobra por hora. */
   protected precio(estacionamiento: Estacionamiento): string {

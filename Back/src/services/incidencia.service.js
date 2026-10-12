@@ -14,15 +14,33 @@
 //
 // Mientras esta ABIERTA, el propietario la marca RESUELTA. Cualquiera de los
 // dos la puede DENUNCIAR: desde ahi la cierra la moderacion.
+//
+// RECLAMO: lo abre el conductor sobre una reserva o un abono suyo. El
+// propietario no lo cierra: propone una devolucion en el hilo y el conductor
+// la acepta (o lo retira); si no se ponen de acuerdo, se denuncia.
 import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
 import { ESTADOS_RESERVA, ROLES } from '../utils/roles.js';
 import { buscarAlternativa } from './cochera.service.js';
+import { asegurarDentroDelTope } from './devolucion.service.js';
 
 export const TIPOS_INCIDENCIA = Object.freeze({
   AUTO_EXCEDIDO: 'AUTO_EXCEDIDO',
   RESERVA_AFECTADA: 'RESERVA_AFECTADA',
+  // Lo abre el conductor sobre una reserva o un abono suyo.
+  RECLAMO: 'RECLAMO',
 });
+
+export const MOTIVOS_RECLAMO = Object.freeze([
+  'NO_HABIA_LUGAR',
+  'COBRO_INCORRECTO',
+  'DANO_AL_VEHICULO',
+  'MAL_SERVICIO',
+  'OTRO',
+]);
+
+// Pasado este plazo desde el fin de la reserva (o del abono) ya no se reclama.
+export const DIAS_PARA_RECLAMAR = 15;
 
 export const CANALES = Object.freeze({
   GENERAL: 'GENERAL',
@@ -34,6 +52,8 @@ export const ESTADOS_INCIDENCIA = Object.freeze({
   ABIERTA: 'ABIERTA',
   DENUNCIADA: 'DENUNCIADA',
   RESUELTA: 'RESUELTA',
+  // El conductor retiro su reclamo.
+  RETIRADA: 'RETIRADA',
 });
 
 const SISTEMA = 'SISTEMA';
@@ -222,25 +242,55 @@ export async function registrarEgresoEnIncidencia(client, idReserva, egreso = ne
 
 /* ------------------------------ API ----------------------------------- */
 
-const SELECT_INCIDENCIA = `
+// Una incidencia es sobre una reserva o (solo los reclamos) sobre un abono: el
+// conductor es el de cualquiera de los dos. Los montos salen como texto de pg
+// y se pasan a numero en `conMontos`.
+const CONDUCTOR = 'COALESCE(r.id_conductor, a.id_conductor)';
+
+export const SELECT_INCIDENCIA = `
   SELECT i.id_incidencia, i.tipo::text AS tipo, i.estado::text AS estado,
          i.created_at, i.denunciada_at, i.resuelta_at, i.denunciada_por::text AS denunciada_por,
          i.id_reserva, r.inicio, r.fin, r.estado::text AS estado_reserva, r.egreso_real,
-         r.id_conductor, u.nombre AS conductor_nombre, u.apellido AS conductor_apellido,
+         i.id_abono, a.desde::text AS abono_desde, a.hasta::text AS abono_hasta, a.turno::text AS abono_turno,
+         ${CONDUCTOR} AS id_conductor, u.nombre AS conductor_nombre, u.apellido AS conductor_apellido,
          v.patente, c.identificador AS cochera,
-         e.id_estacionamiento, e.nombre AS estacionamiento, e.id_propietario
+         e.id_estacionamiento, e.nombre AS estacionamiento, e.id_propietario,
+         i.motivo::text AS motivo, i.monto_pedido, i.resolucion::text AS resolucion,
+         COALESCE(r.precio_total, a.precio_total) AS pagado,
+         (SELECT COALESCE(SUM(d.monto), 0) FROM devolucion d
+           WHERE d.id_reserva = i.id_reserva OR d.id_abono = i.id_abono) AS devuelto,
+         (SELECT m.monto_propuesto FROM incidencia_mensaje m
+           WHERE m.id_incidencia = i.id_incidencia AND m.monto_propuesto IS NOT NULL
+           ORDER BY m.created_at DESC, m.id_mensaje DESC LIMIT 1) AS propuesta_vigente
     FROM incidencia i
-    JOIN reserva r         ON r.id_reserva = i.id_reserva
-    JOIN usuario u         ON u.id_usuario = r.id_conductor
-    JOIN vehiculo v        ON v.id_vehiculo = r.id_vehiculo
-    JOIN cochera c         ON c.id_cochera = r.id_cochera
+    LEFT JOIN reserva r    ON r.id_reserva = i.id_reserva
+    LEFT JOIN abono a      ON a.id_abono = i.id_abono
+    JOIN usuario u         ON u.id_usuario = ${CONDUCTOR}
+    LEFT JOIN vehiculo v   ON v.id_vehiculo = r.id_vehiculo
+    LEFT JOIN cochera c    ON c.id_cochera = r.id_cochera
     JOIN estacionamiento e ON e.id_estacionamiento = i.id_estacionamiento
 `;
+
+const aNumero = (valor) => (valor === null || valor === undefined ? null : Number(valor));
+
+/** Montos como numeros y el tope (lo pagado menos lo ya devuelto). */
+export function conMontos(fila) {
+  const pagado = aNumero(fila.pagado) ?? 0;
+  const devuelto = aNumero(fila.devuelto) ?? 0;
+  return {
+    ...fila,
+    monto_pedido: aNumero(fila.monto_pedido),
+    propuesta_vigente: aNumero(fila.propuesta_vigente),
+    pagado,
+    devuelto,
+    tope: Math.round(Math.max(0, pagado - devuelto) * 100) / 100,
+  };
+}
 
 /** Quien participa: el propietario del estacionamiento y el conductor de la reserva. */
 function filtroParticipante(usuario, primerParametro) {
   if (usuario.rol === ROLES.PROPIETARIO) return `e.id_propietario = $${primerParametro}`;
-  if (usuario.rol === ROLES.CONDUCTOR) return `r.id_conductor = $${primerParametro}`;
+  if (usuario.rol === ROLES.CONDUCTOR) return `${CONDUCTOR} = $${primerParametro}`;
   throw ApiError.forbidden('Tu perfil no tiene incidencias');
 }
 
@@ -274,7 +324,7 @@ export async function listar(usuario) {
       ORDER BY ${ORDEN_ESTADO}, x.created_at DESC`,
     [usuario.id, privado],
   );
-  return rows;
+  return rows.map(conMontos);
 }
 
 /** La incidencia si el usuario participa; si no, 404 (no se revela que existe). */
@@ -285,7 +335,7 @@ async function buscarParticipando(ejecutor, usuario, idIncidencia, { bloquear = 
     [idIncidencia, usuario.id],
   );
   if (!rows[0]) throw ApiError.notFound('La incidencia no existe');
-  return rows[0];
+  return conMontos(rows[0]);
 }
 
 /** La incidencia con los mensajes de los canales que ve el usuario. */
@@ -293,6 +343,7 @@ async function conMensajes(ejecutor, usuario, incidencia) {
   const canales = canalesVisibles(usuario, incidencia);
   const { rows } = await ejecutor.query(
     `SELECT m.id_mensaje, m.canal::text AS canal, m.rol_autor::text AS rol_autor, m.texto, m.created_at,
+            m.monto_propuesto,
             u.nombre AS autor_nombre, u.apellido AS autor_apellido
        FROM incidencia_mensaje m
        LEFT JOIN usuario u ON u.id_usuario = m.id_autor
@@ -306,7 +357,7 @@ async function conMensajes(ejecutor, usuario, incidencia) {
     cantidad_mensajes: rows.length,
     ultimo_mensaje: rows.at(-1)?.texto ?? null,
     canales,
-    mensajes: rows,
+    mensajes: rows.map((m) => ({ ...m, monto_propuesto: aNumero(m.monto_propuesto) })),
   };
 }
 
@@ -393,6 +444,86 @@ export async function denunciar(usuario, idIncidencia, { motivo }) {
       `UPDATE incidencia SET estado = $1, denunciada_at = now(), denunciada_por = $2 WHERE id_incidencia = $3`,
       [ESTADOS_INCIDENCIA.DENUNCIADA, usuario.rol, idIncidencia],
     );
+  });
+  return obtener(usuario, idIncidencia);
+}
+
+/* ----------------------------- reclamos ------------------------------- */
+
+const HOY_LOCAL = `(now() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date`;
+const ESTADOS_RECLAMABLES = [
+  ESTADOS_RESERVA.CONFIRMADA,
+  ESTADOS_RESERVA.ACTIVA,
+  ESTADOS_RESERVA.FINALIZADA,
+  ESTADOS_RESERVA.CANCELADA,
+];
+const FUERA_DE_PLAZO = 'Pasaron más de 15 días; ya no se puede reclamar';
+
+/** La reserva o el abono del conductor, bloqueado; 404 si no es suyo. */
+async function objetoReclamado(client, idConductor, { id_reserva: idReserva, id_abono: idAbono }) {
+  if (idReserva) {
+    const { rows } = await client.query(
+      `SELECT r.id_conductor, r.estado::text AS estado, r.id_abono, c.id_estacionamiento,
+              r.fin < now() - make_interval(days => $2) AS vencida
+         FROM reserva r JOIN cochera c ON c.id_cochera = r.id_cochera
+        WHERE r.id_reserva = $1
+        FOR UPDATE OF r`,
+      [idReserva, DIAS_PARA_RECLAMAR],
+    );
+    const reserva = rows[0];
+    if (!reserva || reserva.id_conductor !== idConductor) throw ApiError.notFound('La reserva no existe');
+    if (reserva.id_abono) {
+      throw ApiError.conflict('Esta reserva es parte de un abono; hacé el reclamo sobre el abono');
+    }
+    if (!ESTADOS_RECLAMABLES.includes(reserva.estado)) {
+      throw ApiError.conflict('Esta reserva no se puede reclamar');
+    }
+    if (reserva.vencida) throw ApiError.conflict(FUERA_DE_PLAZO);
+    return { idReserva, idAbono: null, idEstacionamiento: reserva.id_estacionamiento };
+  }
+
+  const { rows } = await client.query(
+    `SELECT id_conductor, id_estacionamiento, hasta < ${HOY_LOCAL} - $2::int AS vencido
+       FROM abono WHERE id_abono = $1
+       FOR UPDATE`,
+    [idAbono, DIAS_PARA_RECLAMAR],
+  );
+  const abono = rows[0];
+  if (!abono || abono.id_conductor !== idConductor) throw ApiError.notFound('El abono no existe');
+  if (abono.vencido) throw ApiError.conflict(FUERA_DE_PLAZO);
+  return { idReserva: null, idAbono, idEstacionamiento: abono.id_estacionamiento };
+}
+
+/** El conductor abre un reclamo; la descripcion es el primer mensaje del hilo. */
+export async function abrirReclamo(usuario, datos) {
+  const idIncidencia = await withTransaction(async (client) => {
+    const objeto = await objetoReclamado(client, usuario.id, datos);
+    if (datos.monto_pedido !== undefined) {
+      await asegurarDentroDelTope(client, objeto, datos.monto_pedido, 'El monto pedido');
+    }
+
+    let rows;
+    try {
+      ({ rows } = await client.query(
+        `INSERT INTO incidencia (tipo, id_reserva, id_abono, id_estacionamiento, abierta_por, motivo, monto_pedido)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         RETURNING id_incidencia`,
+        [
+          TIPOS_INCIDENCIA.RECLAMO,
+          objeto.idReserva,
+          objeto.idAbono,
+          objeto.idEstacionamiento,
+          usuario.id,
+          datos.motivo,
+          datos.monto_pedido ?? null,
+        ],
+      ));
+    } catch (error) {
+      if (error.code === '23505') throw ApiError.conflict('Ya tenés un reclamo abierto sobre esto');
+      throw error;
+    }
+    await agregarMensaje(client, rows[0].id_incidencia, usuario.rol, datos.texto, usuario.id);
+    return rows[0].id_incidencia;
   });
   return obtener(usuario, idIncidencia);
 }

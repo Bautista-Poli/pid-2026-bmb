@@ -22,3 +22,18 @@ export function validarDenuncia(body) {
 export function validarResolucion(body) {
   return campos(body).texto('comentario', body.comentario, { max: MAX_TEXTO, requerido: false }).resultado();
 }
+
+const MOTIVOS = ['NO_HABIA_LUGAR', 'COBRO_INCORRECTO', 'DANO_AL_VEHICULO', 'MAL_SERVICIO', 'OTRO'];
+
+/** `POST /incidencias/reclamos`: sobre una reserva o un abono (uno de los dos). */
+export function validarReclamo(body) {
+  const unoSolo = Boolean(body.id_reserva) !== Boolean(body.id_abono);
+  return campos(body)
+    .verificar(unoSolo, 'id_reserva', 'indica la reserva o el abono (uno de los dos)')
+    .uuid('id_reserva', body.id_reserva, { requerido: false })
+    .uuid('id_abono', body.id_abono, { requerido: false })
+    .enumerado('motivo', body.motivo, MOTIVOS)
+    .numero('monto_pedido', body.monto_pedido, { min: 0, requerido: false })
+    .texto('texto', body.texto, { min: 20, max: MAX_TEXTO })
+    .resultado();
+}

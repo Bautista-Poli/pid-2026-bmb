@@ -4,7 +4,12 @@ import * as incidenciaController from '../controllers/incidencia.controller.js';
 import { authenticate, requireRole } from '../middlewares/auth.js';
 import { validate } from '../middlewares/validate.js';
 import { ROLES } from '../utils/roles.js';
-import { validarDenuncia, validarMensaje, validarResolucion } from '../validators/incidencia.validator.js';
+import {
+  validarDenuncia,
+  validarMensaje,
+  validarReclamo,
+  validarResolucion,
+} from '../validators/incidencia.validator.js';
 
 const router = Router();
 
@@ -12,6 +17,10 @@ const router = Router();
 // de la reserva (el servicio filtra por participante segun el perfil activo).
 const participante = [authenticate, requireRole(ROLES.PROPIETARIO, ROLES.CONDUCTOR)];
 const soloPropietario = [authenticate, requireRole(ROLES.PROPIETARIO)];
+const soloConductor = [authenticate, requireRole(ROLES.CONDUCTOR)];
+
+// El conductor abre un reclamo sobre una reserva o un abono suyo.
+router.post('/reclamos', ...soloConductor, validate(validarReclamo), incidenciaController.abrirReclamo);
 
 router.get('/', ...participante, incidenciaController.listar);
 router.get('/:id', ...participante, incidenciaController.obtener);

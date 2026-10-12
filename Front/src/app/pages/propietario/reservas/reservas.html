@@ -160,8 +160,8 @@
                     $ {{ reserva.precioTotal.toLocaleString('es-AR') }}
                   </td>
                   <td class="px-3 py-3.5">
-                    <ui-etiqueta [tono]="tonoEstado[reserva.estado]">
-                      {{ etiquetaEstado[reserva.estado] }}
+                    <ui-etiqueta [tono]="tonoEstado(reserva)">
+                      {{ etiquetaEstado(reserva) }}
                     </ui-etiqueta>
                   </td>
                   <td class="py-3.5 pr-6 pl-3 text-right">
@@ -215,8 +215,8 @@
                     }
                   </p>
                 </div>
-                <ui-etiqueta [tono]="tonoEstado[reserva.estado]">
-                  {{ etiquetaEstado[reserva.estado] }}
+                <ui-etiqueta [tono]="tonoEstado(reserva)">
+                  {{ etiquetaEstado(reserva) }}
                 </ui-etiqueta>
               </div>
 

@@ -11,7 +11,8 @@ export type EstadoReservaDto =
   | 'CONFIRMADA'
   | 'ACTIVA'
   | 'CANCELADA'
-  | 'FINALIZADA';
+  | 'FINALIZADA'
+  | 'NO_SHOW';
 
 export interface UsuarioDto {
   id_usuario: string;
@@ -103,6 +104,7 @@ export interface ReservaDto {
   inicio: string;
   fin: string;
   estado: EstadoReservaDto;
+  cancelada_por: 'CONDUCTOR' | 'PROPIETARIO' | 'SISTEMA' | null;
   created_at: string;
   ingreso_real: string | null;
   egreso_real: string | null;

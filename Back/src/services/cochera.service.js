@@ -185,7 +185,7 @@ export async function darDeBaja(idEstacionamiento, idPropietario, idCochera) {
     if (!existentes[0].activo) throw ApiError.conflict('La cochera ya esta dada de baja');
 
     await client.query(
-      `UPDATE reserva SET estado = 'CANCELADA'
+      `UPDATE reserva SET estado = 'CANCELADA', cancelada_por = 'PROPIETARIO'
         WHERE id_cochera = $1 AND estado = ANY($2::estado_reserva[]) AND fin > now()`,
       [idCochera, ESTADOS_VIGENTES],
     );
@@ -322,7 +322,7 @@ export async function bloquear(idEstacionamiento, idPropietario, idCochera, { mo
     }
     for (const reserva of sinAlternativa) {
       await client.query(
-        "UPDATE reserva SET estado = 'CANCELADA', motivo_reasignacion = $1 WHERE id_reserva = $2",
+        "UPDATE reserva SET estado = 'CANCELADA', cancelada_por = 'PROPIETARIO', motivo_reasignacion = $1 WHERE id_reserva = $2",
         [AVISO_CANCELADA_SIN_ALTERNATIVA, reserva.id_reserva],
       );
     }

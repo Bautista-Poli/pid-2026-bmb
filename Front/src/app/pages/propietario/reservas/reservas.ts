@@ -14,7 +14,8 @@ import {
 import {
   EstadoReserva,
   Estacionamiento,
-  ETIQUETA_ESTADO_RESERVA,
+  esVencida,
+  etiquetaReserva,
   ETIQUETA_TIPO_VEHICULO,
   Id,
   ReservaDetallada,
@@ -34,7 +35,8 @@ const SECCIONES: { clave: string; titulo: string; estados: EstadoReserva[] }[] =
   { clave: 'ACTIVAS', titulo: 'Activas', estados: ['CONFIRMADA', 'ACTIVA'] },
   { clave: 'PENDIENTES', titulo: 'Pendientes', estados: ['PENDIENTE'] },
   { clave: 'FINALIZADAS', titulo: 'Finalizadas', estados: ['FINALIZADA'] },
-  { clave: 'CANCELADAS', titulo: 'Canceladas', estados: ['CANCELADA'] },
+  { clave: 'NO_SHOW', titulo: 'Ausentes', estados: ['NO_SHOW'] },
+  { clave: 'CANCELADAS', titulo: 'Canceladas y vencidas', estados: ['CANCELADA'] },
 ];
 
 const TONO_ESTADO: Record<EstadoReserva, TonoEtiqueta> = {
@@ -43,6 +45,7 @@ const TONO_ESTADO: Record<EstadoReserva, TonoEtiqueta> = {
   ACTIVA: 'exito',
   FINALIZADA: 'neutro',
   CANCELADA: 'peligro',
+  NO_SHOW: 'peligro',
 };
 
 const ICONO_VEHICULO: Record<TipoVehiculo, NombreIcono> = {
@@ -79,9 +82,12 @@ export class Reservas {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
 
-  protected readonly etiquetaEstado = ETIQUETA_ESTADO_RESERVA;
+  protected readonly etiquetaEstado = etiquetaReserva;
   protected readonly etiquetaTipo = ETIQUETA_TIPO_VEHICULO;
-  protected readonly tonoEstado = TONO_ESTADO;
+  /** Vencida (no la confirmaste a tiempo) en amarillo, distinta de una cancelacion. */
+  protected tonoEstado(reserva: ReservaDetallada): TonoEtiqueta {
+    return esVencida(reserva) ? 'aviso' : TONO_ESTADO[reserva.estado];
+  }
   protected readonly iconoVehiculo = ICONO_VEHICULO;
   protected readonly pasos = PASOS;
   protected readonly desdeFechaISO = desdeFechaISO;

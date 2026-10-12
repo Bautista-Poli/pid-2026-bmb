@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
+import { Observable } from 'rxjs';
 import { FormularioVehiculo, FotoVehiculo } from '@app/components/vehiculo';
 import { Boton, Cargando, EstadoVacio, Tarjeta } from '@app/components/ui';
 import { descripcionVehiculo, Id, NuevoVehiculo } from '@app/models';
@@ -36,6 +37,30 @@ export class EditarVehiculo {
   protected readonly borrando = signal(false);
   protected readonly error = signal<string | null>(null);
 
+  // `undefined` = no se toco la foto, `null` = se pidio sacarla, `File` = una nueva.
+  private foto: File | null | undefined;
+
+  protected elegirFoto(archivo: File | null): void {
+    this.foto = archivo;
+  }
+
+  private guardarFoto(id: Id): void {
+    if (this.foto === undefined) {
+      this.volverAlListado();
+      return;
+    }
+    const pedido: Observable<unknown> = this.foto
+      ? this.vehiculos.subirFoto(id, this.foto)
+      : this.vehiculos.borrarFoto(id);
+    pedido.subscribe({
+      next: () => this.volverAlListado(),
+      error: (e: Error) => {
+        this.enviando.set(false);
+        this.error.set(`Guardamos los datos, pero la foto no se pudo actualizar: ${e.message}`);
+      },
+    });
+  }
+
   /** `PATCH /api/vehiculos/:id` */
   protected guardar(cambios: NuevoVehiculo): void {
     const vehiculo = this.recurso.value();
@@ -45,7 +70,7 @@ export class EditarVehiculo {
     this.error.set(null);
 
     this.vehiculos.actualizar(vehiculo, cambios).subscribe({
-      next: () => this.volverAlListado(),
+      next: () => this.guardarFoto(vehiculo.id),
       error: (e: Error) => {
         this.enviando.set(false);
         this.error.set(e.message);

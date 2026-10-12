@@ -1,6 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, map } from 'rxjs';
+import { Observable, from, map, switchMap } from 'rxjs';
 import {
   Estacionamiento,
   FiltrosEstacionamiento,
@@ -9,6 +9,8 @@ import {
   OrdenEstacionamiento,
 } from '@app/models';
 import { EstacionamientoDto } from './api/api.dto';
+import { CloudinaryService, FirmaSubida } from './cloudinary.service';
+import { achicarImagen } from '@app/utils/imagen.util';
 import { estadoDisponibilidad } from '@app/utils/disponibilidad.util';
 import { distanciaKm } from '@app/utils/distancia.util';
 import { aInstante } from '@app/utils/fecha.util';
@@ -21,6 +23,7 @@ export const LIMITE_BUSQUEDA = 100;
 @Injectable({ providedIn: 'root' })
 export class EstacionamientoService {
   private readonly http = inject(HttpClient);
+  private readonly cloudinary = inject(CloudinaryService);
   private readonly ruta = '/estacionamientos';
 
   /** `GET /api/estacionamientos` */
@@ -87,13 +90,18 @@ export class EstacionamientoService {
   }
 
   /**
-   * `PUT /api/estacionamientos/:id/foto`
-   *
-   * El body es el archivo crudo: `HttpClient` manda el `File` tal cual y usa su
-   * `type` como Content-Type, que es lo que espera el `express.raw()` de la API.
+   * Portada del estacionamiento, via Cloudinary: la API firma
+   * (`POST .../fotos/firma`), el navegador achica y sube directo, y la API
+   * guarda el `public_id` (`PUT .../foto`).
    */
   subirFoto(id: Id, archivo: File): Observable<void> {
-    return this.http.put<void>(`${this.ruta}/${id}/foto`, archivo);
+    return this.http.post<{ firma: FirmaSubida }>(`${this.ruta}/${id}/fotos/firma`, {}).pipe(
+      switchMap(({ firma }) =>
+        from(achicarImagen(archivo)).pipe(switchMap((imagen) => this.cloudinary.subir(imagen, firma))),
+      ),
+      switchMap((publicId) => this.http.put<void>(`${this.ruta}/${id}/foto`, { public_id: publicId })),
+      map(() => undefined),
+    );
   }
 
   /** `DELETE /api/estacionamientos/:id/foto` */

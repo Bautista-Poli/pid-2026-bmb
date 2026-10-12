@@ -10,10 +10,11 @@ import {
   sumarDias,
 } from '../utils/horario.js';
 import { ESTADOS_COCHERA, ESTADOS_RESERVA, ESTADOS_VIGENTES, ORIGENES_CANCELACION } from '../utils/roles.js';
-import { sinSolapamiento } from '../utils/solapamiento.js';
+import { finEfectivo, sinSolapamiento } from '../utils/solapamiento.js';
 import { CAMPOS_TARIFA, HORAS_POR_MODALIDAD, MODALIDADES, precioDeReserva } from '../utils/tarifas.js';
 import { ORDEN_NATURAL } from './cochera.service.js';
 import { validarAbonoParaReservar } from './abono.service.js';
+import { registrarEgresoEnIncidencia } from './incidencia.service.js';
 import { asegurarPropiedad } from './estacionamiento.service.js';
 
 const VIOLACION_EXCLUSION = '23P01';
@@ -25,10 +26,9 @@ const MODALIDAD_ABONO = 'ABONO';
 // El vehiculo puede llegar hasta 30 minutos antes de su franja.
 const MARGEN_INGRESO_MS = 30 * 60 * 1000;
 
-// Vencimientos automaticos (job de src/jobs/vencimientos.job.js): una
-// PENDIENTE sin confirmar se cancela apenas empieza su franja, y una ACTIVA
-// sin egreso registrado se cierra sola pasado este margen desde `fin`.
-export const MARGEN_CIERRE_AUTOMATICO_MS = 30 * 60 * 1000;
+// Una ACTIVA no se cierra sola: mientras el auto no egrese, la cochera queda
+// bloqueada (ver finEfectivo en utils/solapamiento.js) y, pasado el margen, se
+// abre una incidencia AUTO_EXCEDIDO para el propietario (incidencia.service.js).
 
 // Tolerancia de llegada: una CONFIRMADA sin ingreso a los 15 minutos de su
 // `inicio` pasa a NO_SHOW y la cochera vuelve a estar disponible. Desde ese
@@ -262,13 +262,13 @@ async function bloquearCochera(client, idCochera, vehiculo, inicio, fin) {
   }
 
   const { rows: solapadas } = await client.query(
-    `SELECT id_reserva, inicio, fin, estado
-       FROM reserva
-      WHERE id_cochera = $1
-        AND estado = ANY($2::estado_reserva[])
-        AND inicio < $4
-        AND fin > $3
-      ORDER BY inicio
+    `SELECT r.id_reserva, r.inicio, r.fin, r.estado
+       FROM reserva r
+      WHERE r.id_cochera = $1
+        AND r.estado = ANY($2::estado_reserva[])
+        AND r.inicio < $4
+        AND ${finEfectivo('r')} > $3
+      ORDER BY r.inicio
       LIMIT 1`,
     [idCochera, ESTADOS_VIGENTES, inicio, fin],
   );
@@ -466,13 +466,13 @@ export async function cancelar(idReserva, idConductor) {
 
      PENDIENTE -> CONFIRMADA -> (ingreso) ACTIVA -> (egreso) FINALIZADA
 
-   Ademas hay tres transiciones automaticas (src/jobs/vencimientos.job.js):
-   una PENDIENTE que nunca se confirmo se cancela sola al empezar su franja,
+   Ademas hay dos transiciones automaticas (src/jobs/vencimientos.job.js):
+   una PENDIENTE que nunca se confirmo se cancela sola al empezar su franja, y
    una CONFIRMADA sin ingreso pasa a NO_SHOW a los TOLERANCIA_NO_SHOW_MS de
-   `inicio` (y libera la cochera), y una ACTIVA sin egreso registrado se
-   cierra sola a los MARGEN_CIERRE_AUTOMATICO_MS de `fin`. Todas las
-   transiciones, manuales y automaticas, pasan por cambiarEstado() /
-   TRANSICIONES arriba.
+   `inicio` (y libera la cochera). Una ACTIVA sin egreso registrado, en cambio,
+   no se cierra sola: la cochera queda bloqueada hasta el egreso y se abre una
+   incidencia (incidencia.service.js). Todas las transiciones, manuales y
+   automaticas, pasan por cambiarEstado() / TRANSICIONES arriba.
 -------------------------------------------------------------------------- */
 
 /** Bloquea la reserva y verifica que la cochera sea de un estacionamiento propio. */
@@ -579,6 +579,8 @@ async function aplicarEgreso(client, reserva) {
 
   await client.query('UPDATE reserva SET egreso_real = now() WHERE id_reserva = $1', [reserva.id_reserva]);
   await cambiarEstado(client, reserva, ESTADOS_RESERVA.FINALIZADA);
+  // Si se habia excedido, queda constancia en su incidencia.
+  await registrarEgresoEnIncidencia(client, reserva.id_reserva);
 }
 
 /** Llego el vehiculo: se guarda la hora y la cochera pasa a OCUPADA. */
@@ -893,29 +895,4 @@ export async function vencerNoPresentadas() {
     if (proceso) noPresentadas += 1;
   }
   return noPresentadas;
-}
-
-/** ACTIVA sin egreso registrado, vencida hace mas de MARGEN_CIERRE_AUTOMATICO_MS: se finaliza sola. */
-export async function vencerActivasSinEgreso() {
-  const { rows } = await query(
-    `SELECT id_reserva FROM reserva
-      WHERE estado = $1 AND fin <= now() - make_interval(secs => $2::float / 1000)`,
-    [ESTADOS_RESERVA.ACTIVA, MARGEN_CIERRE_AUTOMATICO_MS],
-  );
-
-  let finalizadas = 0;
-  for (const { id_reserva } of rows) {
-    const proceso = await withTransaction(async (client) => {
-      const { rows: filas } = await client.query(
-        `SELECT id_reserva, id_cochera, estado FROM reserva WHERE id_reserva = $1 AND estado = $2 FOR UPDATE`,
-        [id_reserva, ESTADOS_RESERVA.ACTIVA],
-      );
-      if (!filas[0]) return false;
-      await client.query('UPDATE reserva SET egreso_real = now() WHERE id_reserva = $1', [id_reserva]);
-      await cambiarEstado(client, filas[0], ESTADOS_RESERVA.FINALIZADA);
-      return true;
-    });
-    if (proceso) finalizadas += 1;
-  }
-  return finalizadas;
 }

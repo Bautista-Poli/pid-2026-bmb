@@ -1,4 +1,7 @@
 import {
+  Incidencia,
+  IncidenciaDetallada,
+  MensajeIncidencia,
   Abono,
   AccesoReserva,
   Cochera,
@@ -24,7 +27,7 @@ import {
   Vehiculo,
 } from '@app/models';
 import { aInstante, DIAS_POR_NUMERO, partesLocales } from '@app/utils/fecha.util';
-import { AbonoDto, AccesoReservaDto, CocheraDto, EstacionamientoDto, EstadoReservaDto, FranjaDto, HorarioDto, PlanAbonoDto, ReservaDto, UsuarioDto, VehiculoDto } from './api.dto';
+import { AbonoDto, AccesoReservaDto, IncidenciaDetalladaDto, IncidenciaDto, MensajeIncidenciaDto, CocheraDto, EstacionamientoDto, EstadoReservaDto, FranjaDto, HorarioDto, PlanAbonoDto, ReservaDto, UsuarioDto, VehiculoDto } from './api.dto';
 
 /*
  * Traduccion entre la API (snake_case, ids de catalogo, instantes ISO) y los
@@ -374,5 +377,50 @@ export function aPayloadReservaConAbono(datos: NuevaReservaConAbono) {
     id_vehiculo: datos.vehiculoId,
     inicio: aInstante(datos.fecha, datos.horaDesde),
     fin: aInstante(datos.fecha, datos.horaHasta),
+  };
+}
+
+export function aIncidencia(dto: IncidenciaDto): Incidencia {
+  return {
+    id: dto.id_incidencia,
+    tipo: dto.tipo,
+    estado: dto.estado,
+    creadaEn: dto.created_at,
+    denunciadaEn: dto.denunciada_at,
+    denunciadaPor: dto.denunciada_por ?? null,
+    resueltaEn: dto.resuelta_at,
+    reserva: {
+      id: dto.id_reserva,
+      inicio: dto.inicio,
+      fin: dto.fin,
+      estado: dto.estado_reserva,
+      egresoEn: dto.egreso_real,
+    },
+    conductor: { id: dto.id_conductor, nombre: `${dto.conductor_nombre} ${dto.conductor_apellido}`.trim() },
+    patente: dto.patente,
+    cochera: dto.cochera,
+    estacionamiento: { id: dto.id_estacionamiento, nombre: dto.estacionamiento },
+    cantidadMensajes: dto.cantidad_mensajes,
+    ultimoMensaje: dto.ultimo_mensaje,
+  };
+}
+
+export function aMensajeIncidencia(dto: MensajeIncidenciaDto): MensajeIncidencia {
+  const autor = [dto.autor_nombre, dto.autor_apellido].filter(Boolean).join(' ');
+  return {
+    id: dto.id_mensaje,
+    canal: dto.canal ?? 'GENERAL',
+    rolAutor: dto.rol_autor,
+    autor: autor || null,
+    texto: dto.texto,
+    creadoEn: dto.created_at,
+  };
+}
+
+export function aIncidenciaDetallada(dto: IncidenciaDetalladaDto): IncidenciaDetallada {
+  return {
+    ...aIncidencia(dto),
+    canales: dto.canales ?? ['GENERAL'],
+    mensajes: dto.mensajes.map(aMensajeIncidencia),
   };
 }

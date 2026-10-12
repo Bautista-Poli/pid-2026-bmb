@@ -68,3 +68,23 @@ export function resumenSemana(horarios: FranjaAtencion[]): string[] {
     return `${dias} · ${texto}`;
   });
 }
+
+/** Horas de los selectores de apertura y cierre: cada 30 minutos de 00:00 a 23:30, mas 23:59 (fin del dia). */
+export const HORAS_DEL_DIA: readonly string[] = [
+  ...Array.from({ length: 48 }, (_, i) => {
+    const horas = String(Math.floor(i / 2)).padStart(2, '0');
+    return `${horas}:${i % 2 === 0 ? '00' : '30'}`;
+  }),
+  '23:59',
+];
+
+/**
+ * Opciones del selector de hora, en formato 24 h. Si el valor guardado no cae
+ * en la grilla (p. ej. 08:45, cargado antes), se suma en su lugar para no
+ * perderlo al editar.
+ */
+export function opcionesHora(actual?: string | null): string[] {
+  const valor = actual?.slice(0, 5);
+  if (!valor || HORAS_DEL_DIA.includes(valor)) return [...HORAS_DEL_DIA];
+  return [...HORAS_DEL_DIA, valor].sort();
+}

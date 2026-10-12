@@ -37,6 +37,7 @@ const TONO_ESTADO: Record<EstadoIncidencia, TonoEtiqueta> = {
   ABIERTA: 'aviso',
   DENUNCIADA: 'peligro',
   RESUELTA: 'neutro',
+  RETIRADA: 'neutro',
 };
 
 /** Cada cuanto se refrescan la lista y el hilo: es un ida y vuelta entre personas. */

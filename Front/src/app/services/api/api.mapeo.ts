@@ -1,6 +1,8 @@
 import {
   Incidencia,
   IncidenciaDetallada,
+  IncidenciaModerada,
+  NuevoReclamo,
   MensajeIncidencia,
   Abono,
   AccesoReserva,
@@ -27,7 +29,7 @@ import {
   Vehiculo,
 } from '@app/models';
 import { aInstante, DIAS_POR_NUMERO, partesLocales } from '@app/utils/fecha.util';
-import { AbonoDto, AccesoReservaDto, IncidenciaDetalladaDto, IncidenciaDto, MensajeIncidenciaDto, CocheraDto, EstacionamientoDto, EstadoReservaDto, FranjaDto, HorarioDto, PlanAbonoDto, ReservaDto, UsuarioDto, VehiculoDto } from './api.dto';
+import { AbonoDto, AccesoReservaDto, IncidenciaDetalladaDto, IncidenciaDto, IncidenciaModeradaDto, MensajeIncidenciaDto, CocheraDto, EstacionamientoDto, EstadoReservaDto, FranjaDto, HorarioDto, PlanAbonoDto, ReservaDto, UsuarioDto, VehiculoDto } from './api.dto';
 
 /*
  * Traduccion entre la API (snake_case, ids de catalogo, instantes ISO) y los
@@ -289,6 +291,8 @@ export function aReserva(dto: ReservaDto): ReservaDetallada {
     egresoEn: dto.egreso_real,
     motivoReasignacion: dto.motivo_reasignacion,
     codigoAcceso: dto.codigo_acceso,
+    devuelto: dto.devuelto ?? 0,
+    reclamoAbierto: dto.reclamo_abierto ?? null,
     estacionamiento: {
       id: dto.id_estacionamiento,
       nombre: dto.estacionamiento,
@@ -373,6 +377,8 @@ export function aAbono(dto: AbonoDto): Abono {
     desde: dto.desde,
     hasta: dto.hasta,
     estado: dto.estado,
+    devuelto: dto.devuelto ?? 0,
+    reclamoAbierto: dto.reclamo_abierto ?? null,
   };
 }
 
@@ -394,19 +400,33 @@ export function aIncidencia(dto: IncidenciaDto): Incidencia {
     denunciadaEn: dto.denunciada_at,
     denunciadaPor: dto.denunciada_por ?? null,
     resueltaEn: dto.resuelta_at,
-    reserva: {
-      id: dto.id_reserva,
-      inicio: dto.inicio,
-      fin: dto.fin,
-      estado: dto.estado_reserva,
-      egresoEn: dto.egreso_real,
-    },
+    reserva:
+      dto.id_reserva && dto.inicio && dto.fin && dto.estado_reserva
+        ? {
+            id: dto.id_reserva,
+            inicio: dto.inicio,
+            fin: dto.fin,
+            estado: dto.estado_reserva,
+            egresoEn: dto.egreso_real,
+          }
+        : null,
+    abono:
+      dto.id_abono && dto.abono_desde && dto.abono_hasta && dto.abono_turno
+        ? { id: dto.id_abono, desde: dto.abono_desde, hasta: dto.abono_hasta, turno: dto.abono_turno }
+        : null,
     conductor: { id: dto.id_conductor, nombre: `${dto.conductor_nombre} ${dto.conductor_apellido}`.trim() },
     patente: dto.patente,
     cochera: dto.cochera,
     estacionamiento: { id: dto.id_estacionamiento, nombre: dto.estacionamiento },
-    cantidadMensajes: dto.cantidad_mensajes,
-    ultimoMensaje: dto.ultimo_mensaje,
+    cantidadMensajes: dto.cantidad_mensajes ?? 0,
+    ultimoMensaje: dto.ultimo_mensaje ?? null,
+    motivo: dto.motivo ?? null,
+    montoPedido: dto.monto_pedido ?? null,
+    propuestaVigente: dto.propuesta_vigente ?? null,
+    pagado: dto.pagado ?? 0,
+    devuelto: dto.devuelto ?? 0,
+    tope: dto.tope ?? 0,
+    resolucion: dto.resolucion ?? null,
   };
 }
 
@@ -419,6 +439,7 @@ export function aMensajeIncidencia(dto: MensajeIncidenciaDto): MensajeIncidencia
     autor: autor || null,
     texto: dto.texto,
     creadoEn: dto.created_at,
+    montoPropuesto: dto.monto_propuesto ?? null,
   };
 }
 
@@ -427,5 +448,31 @@ export function aIncidenciaDetallada(dto: IncidenciaDetalladaDto): IncidenciaDet
     ...aIncidencia(dto),
     canales: dto.canales ?? ['GENERAL'],
     mensajes: dto.mensajes.map(aMensajeIncidencia),
+  };
+}
+
+export function aIncidenciaModerada(dto: IncidenciaModeradaDto): IncidenciaModerada {
+  const r = dto.resumen ?? {};
+  return {
+    ...aIncidenciaDetallada(dto),
+    resumen: {
+      inicio: r.inicio,
+      fin: r.fin,
+      ingresoEn: r.ingreso_real,
+      egresoEn: r.egreso_real,
+      estadoReserva: r.estado_reserva,
+      canceladaPor: r.cancelada_por,
+      desde: r.desde,
+      hasta: r.hasta,
+    },
+  };
+}
+
+export function aPayloadReclamo(datos: NuevoReclamo) {
+  return {
+    ...(datos.reservaId ? { id_reserva: datos.reservaId } : { id_abono: datos.abonoId }),
+    motivo: datos.motivo,
+    ...(datos.montoPedido !== undefined ? { monto_pedido: datos.montoPedido } : {}),
+    texto: datos.texto,
   };
 }

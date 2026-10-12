@@ -96,6 +96,12 @@ export const routes: Routes = [
         title: 'Parkit · Mi perfil',
         loadComponent: () => import('./pages/perfil/perfil').then((m) => m.Perfil),
       },
+      {
+        // Problemas de una reserva (auto excedido, reserva sin cochera) con su hilo de mensajes.
+        path: 'incidencias',
+        title: 'Parkit · Incidencias',
+        loadComponent: () => import('./pages/incidencias/incidencias').then((m) => m.Incidencias),
+      },
       { path: '', pathMatch: 'full', redirectTo: 'explorar' },
     ],
   },
@@ -157,6 +163,12 @@ export const routes: Routes = [
         path: 'perfil',
         title: 'Parkit · Mi perfil',
         loadComponent: () => import('./pages/perfil/perfil').then((m) => m.Perfil),
+      },
+      {
+        // Problemas de una reserva (auto excedido, reserva sin cochera) con su hilo de mensajes.
+        path: 'incidencias',
+        title: 'Parkit · Incidencias',
+        loadComponent: () => import('./pages/incidencias/incidencias').then((m) => m.Incidencias),
       },
       { path: '', pathMatch: 'full', redirectTo: 'tablero' },
     ],

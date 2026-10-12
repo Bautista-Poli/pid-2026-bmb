@@ -1,5 +1,5 @@
 import { FranjaAtencion } from '@app/models';
-import { estadoApertura, resumenSemana } from './horario-semana.util';
+import { estadoApertura, resumenSemana, opcionesHora } from './horario-semana.util';
 
 const habiles: FranjaAtencion[] = ['LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES'].map(
   (dia) => ({ dia, desde: '08:00', hasta: '20:00' }) as FranjaAtencion,
@@ -46,5 +46,23 @@ describe('resumenSemana', () => {
 
   it('sin horarios lo avisa', () => {
     expect(resumenSemana([])).toEqual(['Sin horario cargado']);
+  });
+});
+
+describe('opcionesHora', () => {
+  it('va de 00:00 a 23:59 en formato 24 h, cada 30 minutos', () => {
+    const horas = opcionesHora();
+    expect(horas[0]).toBe('00:00');
+    expect(horas[1]).toBe('00:30');
+    expect(horas).toContain('13:00');
+    expect(horas.at(-2)).toBe('23:30');
+    expect(horas.at(-1)).toBe('23:59');
+    expect(horas).toHaveLength(49);
+  });
+
+  it('conserva un valor guardado que no esta en la grilla, en orden', () => {
+    const horas = opcionesHora('08:45:00');
+    expect(horas).toContain('08:45');
+    expect(horas.indexOf('08:45')).toBe(horas.indexOf('08:30') + 1);
   });
 });

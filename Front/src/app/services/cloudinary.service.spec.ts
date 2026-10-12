@@ -9,7 +9,8 @@ const firma: FirmaSubida = {
   apiKey: '123',
   timestamp: 1700000000,
   signature: 'firma-abc',
-  folder: 'parkit-dev/vehiculos/v1',
+  publicId: 'parkit-dev/vehiculos/v1/abc',
+  allowedFormats: 'jpg,png,webp',
 };
 
 describe('CloudinaryService', () => {
@@ -41,7 +42,9 @@ describe('CloudinaryService', () => {
     expect(cuerpo.get('api_key')).toBe('123');
     expect(cuerpo.get('timestamp')).toBe('1700000000');
     expect(cuerpo.get('signature')).toBe('firma-abc');
-    expect(cuerpo.get('folder')).toBe('parkit-dev/vehiculos/v1');
+    expect(cuerpo.get('public_id')).toBe('parkit-dev/vehiculos/v1/abc');
+    expect(cuerpo.get('allowed_formats')).toBe('jpg,png,webp');
+    expect(cuerpo.get('folder')).toBeNull();
     expect(cuerpo.get('file')).toBeInstanceOf(Blob);
 
     pedido.flush({ public_id: 'parkit-dev/vehiculos/v1/abc' });

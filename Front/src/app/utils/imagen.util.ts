@@ -22,7 +22,11 @@ export async function achicarImagen(archivo: Blob, ladoMax = LADO_MAXIMO): Promi
   lienzo.getContext('2d')?.drawImage(imagen, 0, 0, lienzo.width, lienzo.height);
   imagen.close();
 
-  // WEBP conserva la transparencia de los PNG; si el navegador no lo soporta, devuelve PNG.
-  const achicada = await new Promise<Blob | null>((resolver) => lienzo.toBlob(resolver, 'image/webp', 0.85));
-  return achicada ?? archivo;
+  // WEBP conserva la transparencia de los PNG. Safari no lo codifica y
+  // devolveria un PNG pesadisimo: en ese caso se usa JPEG.
+  const comoBlob = (tipo: string) =>
+    new Promise<Blob | null>((resolver) => lienzo.toBlob(resolver, tipo, 0.85));
+  const webp = await comoBlob('image/webp');
+  if (webp?.type === 'image/webp') return webp;
+  return (await comoBlob('image/jpeg')) ?? archivo;
 }

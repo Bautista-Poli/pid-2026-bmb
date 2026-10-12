@@ -131,7 +131,9 @@ async function bloqueos(desde, hasta) {
     canceladas: suma('canceladas'),
     autosExcedidos: suma('autosExcedidos'),
     sinCochera: suma('sinCochera'),
-    porEstacionamiento: porEstacionamiento.sort((a, b) => total(b) - total(a)).slice(0, LIMITE_LISTA),
+    porEstacionamiento: porEstacionamiento
+      .sort((a, b) => total(b) - total(a) || a.nombre.localeCompare(b.nombre))
+      .slice(0, LIMITE_LISTA),
   };
 }
 
@@ -207,10 +209,11 @@ async function kpisDe(desde, hasta) {
        (SELECT COUNT(*) FROM usuario WHERE ${EN_PERIODO('created_at')} AND 'PROPIETARIO' = ANY(roles))::int AS propietarios,
        (SELECT COUNT(*) FROM estacionamiento
          WHERE estado_aprobacion = 'APROBADO' AND ${EN_PERIODO('revisado_en')})::int AS aprobados,
-       (SELECT COUNT(*) FROM reserva WHERE ${EN_PERIODO('inicio')})::int AS reservas,
-       (SELECT COUNT(*) FROM reserva WHERE ${EN_PERIODO('inicio')} AND estado = 'CANCELADA')::int AS canceladas,
+       r.reservas, r.canceladas,
        (SELECT COALESCE(SUM(monto), 0) FROM (${INGRESOS_POR_ESTACIONAMIENTO}) x) AS volumen,
-       (SELECT COALESCE(SUM(monto), 0) FROM devolucion WHERE ${EN_PERIODO('created_at')}) AS devoluciones`,
+       (SELECT COALESCE(SUM(monto), 0) FROM devolucion WHERE ${EN_PERIODO('created_at')}) AS devoluciones
+       FROM (SELECT COUNT(*)::int AS reservas, COUNT(*) FILTER (WHERE estado = 'CANCELADA')::int AS canceladas
+               FROM reserva WHERE ${EN_PERIODO('inicio')}) r`,
     [desde, hasta],
   );
   const f = rows[0];

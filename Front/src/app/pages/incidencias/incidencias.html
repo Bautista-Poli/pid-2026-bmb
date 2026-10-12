@@ -102,8 +102,8 @@
                     </p>
                     <p class="num-tabular mt-0.5 text-[12.5px] text-plomo">
                       {{ incidencia.estacionamiento.nombre }} · reserva de
-                      {{ incidencia.reserva.inicio | date: 'd MMM HH:mm' }} a {{ incidencia.reserva.fin | date: 'HH:mm' }}
-                      @if (incidencia.reserva.egresoEn; as egreso) {
+                      {{ incidencia.reserva?.inicio | date: 'd MMM HH:mm' }} a {{ incidencia.reserva?.fin | date: 'HH:mm' }}
+                      @if (incidencia.reserva?.egresoEn; as egreso) {
                         · salió {{ egreso | date: 'd MMM HH:mm' }}
                       } @else if (incidencia.tipo === 'AUTO_EXCEDIDO') {
                         · <span class="font-semibold text-aviso">sigue adentro</span>

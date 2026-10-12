@@ -21,14 +21,16 @@ export interface EstadisticasPropietario {
   kpis: {
     /** De 0 a 1. */
     ocupacion: ValorComparado;
+    /** Netos: ya descuentan las devoluciones. */
     ingresos: ValorComparado;
+    devoluciones: ValorComparado;
     reservas: ValorComparado;
     /** De 0 a 1. */
     tasaCancelacion: ValorComparado;
     ausentes: ValorComparado;
   };
   ocupacionPorDia: { fecha: FechaISO; horasUsadas: number; horasOfrecidas: number }[];
-  ingresosPorDia: { fecha: FechaISO; reservas: number; abonos: number }[];
+  ingresosPorDia: { fecha: FechaISO; reservas: number; abonos: number; devoluciones: number }[];
   ingresosProyectados: number;
   /** Reservas que ocupan cada hora. `diaSemana`: 0 = domingo. */
   demanda: { diaSemana: number; hora: number; reservas: number }[];

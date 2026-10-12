@@ -1,15 +1,24 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
-import { EstacionamientoEnRevision, EstadoAprobacion, FechaHoraISO, Id } from '@app/models';
-import { EstacionamientoEnRevisionDto } from './api/api.dto';
-import { aEstacionamiento } from './api/api.mapeo';
+import {
+  EstacionamientoEnRevision,
+  EstadoAprobacion,
+  EstadoIncidencia,
+  FechaHoraISO,
+  Id,
+  Incidencia,
+  IncidenciaModerada,
+  ResolucionIncidencia,
+} from '@app/models';
+import { EstacionamientoEnRevisionDto, IncidenciaDto, IncidenciaModeradaDto } from './api/api.dto';
+import { aEstacionamiento, aIncidencia, aIncidenciaModerada } from './api/api.mapeo';
 
 function aEnRevision(dto: EstacionamientoEnRevisionDto): EstacionamientoEnRevision {
   return { ...aEstacionamiento(dto), propietario: dto.propietario };
 }
 
-/** Acceso a `/api/admin`: revision de estacionamientos por el administrador. */
+/** Acceso a `/api/admin`: revision de estacionamientos y moderacion de incidencias. */
 @Injectable({ providedIn: 'root' })
 export class AdminService {
   private readonly http = inject(HttpClient);
@@ -49,5 +58,36 @@ export class AdminService {
         enviado_en: enviadoEn,
       })
       .pipe(map(({ estacionamiento }) => aEnRevision(estacionamiento)));
+  }
+
+  /** `GET /api/admin/incidencias?estado=`: por defecto las denunciadas, la mas vieja primero. */
+  incidencias(estado: EstadoIncidencia = 'DENUNCIADA'): Observable<Incidencia[]> {
+    return this.http
+      .get<{ incidencias: IncidenciaDto[] }>('/admin/incidencias', { params: { estado } })
+      .pipe(map(({ incidencias }) => incidencias.map(aIncidencia)));
+  }
+
+  /** `GET /api/admin/incidencias/:id`: los tres chats y el resumen. */
+  incidencia(id: Id): Observable<IncidenciaModerada> {
+    return this.http
+      .get<{ incidencia: IncidenciaModeradaDto }>(`/admin/incidencias/${id}`)
+      .pipe(map(({ incidencia }) => aIncidenciaModerada(incidencia)));
+  }
+
+  /** `POST /api/admin/incidencias/:id/mensajes`: solo en los chats privados con cada parte. */
+  escribir(id: Id, texto: string, canal: 'PROPIETARIO' | 'CONDUCTOR'): Observable<IncidenciaModerada> {
+    return this.http
+      .post<{ incidencia: IncidenciaModeradaDto }>(`/admin/incidencias/${id}/mensajes`, { texto, canal })
+      .pipe(map(({ incidencia }) => aIncidenciaModerada(incidencia)));
+  }
+
+  /** `PATCH /api/admin/incidencias/:id/resolver`: a favor del conductor lleva el monto a devolver. */
+  resolverIncidencia(
+    id: Id,
+    datos: { resolucion: ResolucionIncidencia; monto?: number; fundamento: string },
+  ): Observable<IncidenciaModerada> {
+    return this.http
+      .patch<{ incidencia: IncidenciaModeradaDto }>(`/admin/incidencias/${id}/resolver`, datos)
+      .pipe(map(({ incidencia }) => aIncidenciaModerada(incidencia)));
   }
 }

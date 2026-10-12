@@ -1,6 +1,7 @@
 import { Router } from 'express';
 
 import abonoRoutes from './abono.routes.js';
+import adminRoutes from './admin.routes.js';
 import authRoutes from './auth.routes.js';
 import estacionamientoRoutes from './estacionamiento.routes.js';
 import reservaRoutes from './reserva.routes.js';
@@ -15,5 +16,6 @@ router.use('/estacionamientos', estacionamientoRoutes);
 router.use('/vehiculos', vehiculoRoutes);
 router.use('/reservas', reservaRoutes);
 router.use('/abonos', abonoRoutes);
+router.use('/admin', adminRoutes);
 
 export default router;

@@ -1,5 +1,5 @@
 import { query } from '../config/database.js';
-import { asegurarPropiedad } from './estacionamiento.service.js';
+import { ApiError } from '../utils/ApiError.js';
 
 /**
  * Estadisticas del propietario para un periodo de dias locales (hora
@@ -145,7 +145,7 @@ async function demanda(parametros) {
   return rows.map((r) => ({ diaSemana: r.dia_semana, hora: r.hora, reservas: r.reservas }));
 }
 
-/** Totales del periodo: reservas, canceladas por origen, ausentes, proyectados. */
+/** Totales del periodo: reservas, canceladas por origen, ausentes y anticipacion. */
 async function conteos(parametros) {
   const { rows } = await query(
     `SELECT COUNT(*)::int AS total,
@@ -158,12 +158,40 @@ async function conteos(parametros) {
             AVG(EXTRACT(EPOCH FROM (inicio - cancelada_en)) / 3600)
               FILTER (WHERE estado = 'CANCELADA' AND cancelada_por = 'CONDUCTOR'
                         AND cancelada_en < inicio AND id_abono IS NULL)
-              AS anticipacion,
-            COALESCE(SUM(precio_total) FILTER (WHERE estado = 'CONFIRMADA' AND inicio > now()), 0) AS proyectados
+              AS anticipacion
        FROM (${RESERVAS}) r`,
     parametros,
   );
   return rows[0];
+}
+
+/**
+ * Lo que falta cobrar: reservas CONFIRMADAS que todavia no empezaron, sean del
+ * periodo o posteriores (el periodo siempre termina hoy, asi que limitarlo
+ * dejaria afuera casi todo). Las de abono valen 0.
+ */
+async function porCobrar(idPropietario, idEstacionamiento) {
+  const { rows } = await query(
+    `SELECT COALESCE(SUM(r.precio_total), 0) AS monto
+       FROM reserva r
+       JOIN cochera c ON c.id_cochera = r.id_cochera
+       JOIN estacionamiento e ON e.id_estacionamiento = c.id_estacionamiento
+      WHERE e.id_propietario = $1
+        AND ($2::uuid IS NULL OR e.id_estacionamiento = $2::uuid)
+        AND r.estado = 'CONFIRMADA'
+        AND r.inicio > now()`,
+    [idPropietario, idEstacionamiento ?? null],
+  );
+  return numero(rows[0].monto);
+}
+
+/** 404 si el estacionamiento no es del propietario: no se confirma que exista uno ajeno. */
+async function asegurarPropio(idEstacionamiento, idPropietario) {
+  const { rows } = await query(
+    'SELECT 1 FROM estacionamiento WHERE id_estacionamiento = $1 AND id_propietario = $2',
+    [idEstacionamiento, idPropietario],
+  );
+  if (!rows[0]) throw ApiError.notFound('Estacionamiento no encontrado');
 }
 
 const tasa = (parte, total) => (total > 0 ? redondear(parte / total, 4) : 0);
@@ -200,12 +228,13 @@ function anteriorA(desde, hasta) {
 }
 
 export async function delPropietario(idPropietario, { desde, hasta, id_estacionamiento: idEstacionamiento }) {
-  if (idEstacionamiento) await asegurarPropiedad(idEstacionamiento, idPropietario);
+  if (idEstacionamiento) await asegurarPropio(idEstacionamiento, idPropietario);
 
   const previo = anteriorA(desde, hasta);
-  const [actual, anterior] = await Promise.all([
+  const [actual, anterior, proyectados] = await Promise.all([
     periodo(idPropietario, desde, hasta, idEstacionamiento, { conDemanda: true }),
     periodo(idPropietario, previo.desde, previo.hasta, idEstacionamiento),
+    porCobrar(idPropietario, idEstacionamiento),
   ]);
   const { celdas } = actual;
 
@@ -223,7 +252,7 @@ export async function delPropietario(idPropietario, { desde, hasta, id_estaciona
     kpis,
     ocupacionPorDia: actual.horas,
     ingresosPorDia: actual.ingresos,
-    ingresosProyectados: numero(totales.proyectados),
+    ingresosProyectados: proyectados,
     demanda: celdas,
     horaPico: pico ? { diaSemana: pico.diaSemana, hora: pico.hora } : null,
     cancelaciones: {

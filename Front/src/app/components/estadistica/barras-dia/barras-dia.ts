@@ -68,17 +68,15 @@ const ALTO_PX = 180;
 export class BarrasDia {
   readonly barras = input.required<BarraDia[]>();
   readonly descripcion = input('Gráfico de barras por día');
-  /** Si se pasa, las barras se miden contra este maximo (p. ej. horas ofrecidas). */
-  readonly maximo = input<number | null>(null);
 
   protected readonly alto = ALTO_PX;
 
   private readonly mayor = computed(() => {
     const totales = this.barras().map((b) => b.tramos.reduce((suma, t) => suma + t.valor, 0));
-    return this.maximo() ?? Math.max(0, ...totales);
+    return Math.max(0, ...totales);
   });
 
-  /** Cada cuantas barras se escribe la etiqueta: con 30 dias, una por semana. */
+  /** Cada cuantas barras se escribe la etiqueta: hasta 10 etiquetas (con 30 dias, cada 3). */
   protected readonly salto = computed(() => Math.max(1, Math.ceil(this.barras().length / 10)));
 
   protected porcentaje(barra: BarraDia): number {

@@ -11,13 +11,7 @@
           />
         </span>
         <div class="min-w-0">
-          <a
-            class="inline-flex items-center gap-1.5 rounded-boton text-[12.5px] font-medium text-plomo
-                   transition-colors duration-160 ease-out hover:text-acento"
-            routerLink="/propietario/estacionamientos"
-          >
-            ← Estacionamientos
-          </a>
+          <p class="text-[12.5px] font-medium text-plomo">Cocheras</p>
           <h1 class="mt-1.5 truncate text-[24px] leading-tight font-semibold tracking-[-0.02em] text-tinta lg:text-[28px]">
             {{ recursoEstacionamiento.value()?.nombre ?? 'Cocheras' }}
           </h1>
@@ -28,11 +22,24 @@
           }
         </div>
       </div>
-      <ui-boton variante="primario" (presionado)="abrirAlta()">
-        <ui-icono nombre="mas" [tamano]="16" />
-        Agregar cocheras
-      </ui-boton>
+      @if (idActivo()) {
+        <ui-boton variante="primario" (presionado)="abrirAlta()">
+          <ui-icono nombre="mas" [tamano]="16" />
+          Agregar cocheras
+        </ui-boton>
+      }
     </header>
+
+    <!-- Cambio entre estacionamientos -->
+    @if (recursoEstacionamientos.value().length > 1) {
+      <div class="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Elegir estacionamiento">
+        @for (lote of recursoEstacionamientos.value(); track lote.id) {
+          <ui-chip [activo]="lote.id === idActivo()" (alternar)="irA(lote.id)">
+            {{ lote.nombre }}
+          </ui-chip>
+        }
+      </div>
+    }
 
     <!-- Resumen -->
     @if (!recursoCocheras.isLoading() && recursoCocheras.value().length > 0) {
@@ -87,7 +94,16 @@
       </p>
     }
 
-    @if (recursoCocheras.isLoading()) {
+    @if (!recursoEstacionamientos.isLoading() && recursoEstacionamientos.value().length === 0) {
+      <ui-estado-vacio
+        titulo="Todavía no cargaste estacionamientos"
+        descripcion="Cargá el primero y después sumale las cocheras."
+      >
+        <ui-boton variante="primario" routerLink="/propietario/estacionamientos/nuevo">
+          Cargar estacionamiento
+        </ui-boton>
+      </ui-estado-vacio>
+    } @else if (recursoEstacionamientos.isLoading() || recursoCocheras.isLoading()) {
       <ui-cargando [cantidad]="2" />
     } @else if (recursoCocheras.error(); as error) {
       <ui-estado-vacio titulo="No pudimos cargar las cocheras" [descripcion]="error.message">

@@ -827,3 +827,7 @@ CREATE TABLE IF NOT EXISTS devolucion (
 
 CREATE INDEX IF NOT EXISTS idx_devolucion_reserva ON devolucion (id_reserva) WHERE id_reserva IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_devolucion_abono   ON devolucion (id_abono)   WHERE id_abono IS NOT NULL;
+
+-- Dashboard del administrador (Sprint 3): sus consultas filtran reservas de toda
+-- la plataforma por `inicio`; el indice por cochera no sirve para eso.
+CREATE INDEX IF NOT EXISTS idx_reserva_inicio ON reserva (inicio);

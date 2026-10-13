@@ -19,6 +19,8 @@ export { query };
 
 // Las pruebas no geocodifican: no dependen de la red ni del cupo de Nominatim.
 process.env.GEOCODING_ENABLED = 'false';
+// Las fotos de las pruebas quedan en la base: no suben nada a Cloudinary.
+process.env.CLOUDINARY_ENABLED = 'false';
 
 /** Contrasena de todos los usuarios de prueba. */
 export const PASSWORD = 'prueba1234';

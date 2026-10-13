@@ -39,6 +39,22 @@ export const config = {
   // arranca apagado para no depender de la red ni gastar el cupo del servicio.
   // `habilitada` se lee en cada uso (getter) para que las pruebas puedan apagarla
   // despues de importar la app.
+  // Fotos de los estacionamientos en Cloudinary. Si faltan credenciales (o las
+  // pruebas lo apagan) las fotos se guardan en la base, como antes.
+  // `habilitado` se lee en cada uso, igual que en geocodificacion.
+  cloudinary: {
+    cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+    apiKey: process.env.CLOUDINARY_API_KEY,
+    apiSecret: process.env.CLOUDINARY_API_SECRET,
+    carpeta: process.env.CLOUDINARY_FOLDER || 'parkit/estacionamientos',
+    get habilitado() {
+      return (
+        (process.env.CLOUDINARY_ENABLED ?? 'true') === 'true' &&
+        Boolean(this.cloudName && this.apiKey && this.apiSecret)
+      );
+    },
+  },
+
   geocodificacion: {
     get habilitada() {
       return (process.env.GEOCODING_ENABLED ?? (nodeEnv === 'test' ? 'false' : 'true')) === 'true';

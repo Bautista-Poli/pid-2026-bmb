@@ -147,11 +147,23 @@ export const routes: Routes = [
             (m) => m.EditarEstacionamiento,
           ),
       },
+      // Cocheras tiene su propio menu. Sin id muestra el primer estacionamiento;
+      // el selector de arriba cambia de estacionamiento dentro de la misma pantalla.
+      {
+        path: 'cocheras',
+        pathMatch: 'full',
+        title: 'Parkit · Cocheras',
+        loadComponent: () => import('./pages/propietario/cocheras/cocheras').then((m) => m.Cocheras),
+      },
+      {
+        path: 'cocheras/:estacionamientoId',
+        title: 'Parkit · Cocheras',
+        loadComponent: () => import('./pages/propietario/cocheras/cocheras').then((m) => m.Cocheras),
+      },
+      // Direccion vieja, por si quedo en algun enlace o favorito.
       {
         path: 'estacionamientos/:estacionamientoId/cocheras',
-        title: 'Parkit · Cocheras',
-        loadComponent: () =>
-          import('./pages/propietario/cocheras/cocheras').then((m) => m.Cocheras),
+        redirectTo: 'cocheras/:estacionamientoId',
       },
       {
         path: 'perfil',

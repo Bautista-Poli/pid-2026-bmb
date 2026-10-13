@@ -36,7 +36,7 @@
               <!-- Foto -->
               <a
                 class="shrink-0 self-start sm:self-center"
-                [routerLink]="['/propietario/estacionamientos', estacionamiento.id, 'cocheras']"
+                [routerLink]="['/propietario/estacionamientos', estacionamiento.id, 'editar']"
                 tabindex="-1"
                 aria-hidden="true"
               >
@@ -54,7 +54,7 @@
                     <h2 class="truncate text-[15.5px] leading-tight font-semibold text-tinta">
                       <a
                         class="hover:text-acento"
-                        [routerLink]="['/propietario/estacionamientos', estacionamiento.id, 'cocheras']"
+                        [routerLink]="['/propietario/estacionamientos', estacionamiento.id, 'editar']"
                       >
                         {{ estacionamiento.nombre }}
                       </a>
@@ -90,12 +90,6 @@
                   <ng-container *ngTemplateOutlet="estado; context: { $implicit: estacionamiento }" />
                 </span>
                 <div class="flex items-center gap-2">
-                  <ui-boton
-                    tamano="sm"
-                    [routerLink]="['/propietario/estacionamientos', estacionamiento.id, 'cocheras']"
-                  >
-                    Cocheras
-                  </ui-boton>
                   <ui-boton
                     tamano="sm"
                     variante="fantasma"

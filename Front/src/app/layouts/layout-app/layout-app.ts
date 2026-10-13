@@ -25,7 +25,7 @@ const NAVEGACION: Record<RolUsuario, ItemNavegacion[]> = {
     { ruta: '/propietario/tablero', etiqueta: 'Inicio', icono: 'inicio' },
     { ruta: '/propietario/reservas', etiqueta: 'Reservas', icono: 'reservas' },
     { ruta: '/propietario/estacionamientos', etiqueta: 'Estacionamientos', icono: 'estacionamiento' },
-    { ruta: '/propietario/perfil', etiqueta: 'Configuración', icono: 'configuracion' },
+    { ruta: '/propietario/cocheras', etiqueta: 'Cocheras', icono: 'auto' },
   ],
 };
 

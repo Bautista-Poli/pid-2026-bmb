@@ -115,10 +115,17 @@ export const listarReservas = asyncHandler(async (req, res) => {
   res.json({ reservas });
 });
 
-/** Manda los bytes de una foto con cache corto y ETag por version. */
+/**
+ * Una foto de Cloudinary se sirve con un redirect a su URL. Una guardada en la
+ * base manda sus bytes con cache corto y ETag por version.
+ */
 function enviarFoto(res, foto) {
-  res.type(foto.mime);
   res.set('Cache-Control', 'public, max-age=300');
+  if (foto.url) {
+    res.redirect(302, foto.url);
+    return;
+  }
+  res.type(foto.mime);
   res.set('ETag', `W/"${foto.actualizada.getTime()}"`);
   res.send(foto.bytes);
 }

@@ -19,8 +19,8 @@ import { EstacionamientoService } from '@app/services/estacionamiento.service';
 /**
  * Pantalla `/propietario/estacionamientos` · rol PROPIETARIO
  *
- * Los estacionamientos propios. Desde aca se entra a cargar cocheras, a
- * editarlos o a dar de alta uno nuevo.
+ * Los estacionamientos propios: sus datos, su publicacion y su edicion. Las
+ * cocheras se administran desde el menu Cocheras.
  */
 @Component({
   selector: 'app-estacionamientos',

@@ -395,6 +395,14 @@ CREATE TABLE IF NOT EXISTS estacionamiento_imagen (
 CREATE INDEX IF NOT EXISTS idx_estacionamiento_imagen_orden
   ON estacionamiento_imagen (id_estacionamiento, orden);
 
+-- Las fotos nuevas viven en Cloudinary: la fila guarda su public_id (para
+-- borrarla) y su URL (para servirla), y `bytes` queda vacio. Las anteriores
+-- siguen con sus bytes en la base.
+ALTER TABLE estacionamiento_imagen
+  ADD COLUMN IF NOT EXISTS cloudinary_id VARCHAR(200),
+  ADD COLUMN IF NOT EXISTS url VARCHAR(500),
+  ALTER COLUMN bytes DROP NOT NULL;
+
 INSERT INTO estacionamiento_imagen (id_estacionamiento, orden, mime, bytes, actualizada)
 SELECT f.id_estacionamiento, 0, f.mime, f.bytes, f.actualizada
   FROM estacionamiento_foto f

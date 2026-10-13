@@ -78,6 +78,6 @@ export class AltaEstacionamiento {
   }
 
   private irACocheras(id: Id): void {
-    void this.router.navigate(['/propietario/estacionamientos', id, 'cocheras']);
+    void this.router.navigate(['/propietario/cocheras', id]);
   }
 }

@@ -12,6 +12,7 @@ import {
   validarRechazo,
   validarResolucionModeracion,
 } from '../validators/admin.validator.js';
+import { validarPeriodo } from '../validators/estadistica.validator.js';
 
 const router = Router();
 
@@ -40,5 +41,8 @@ router.patch(
   validate(validarResolucionModeracion),
   adminController.resolverIncidencia,
 );
+
+// Dashboard: lo que hay para revisar, conflictos y actividad de la plataforma.
+router.get('/estadisticas', validate(validarPeriodo, 'query'), adminController.estadisticas);
 
 export default router;

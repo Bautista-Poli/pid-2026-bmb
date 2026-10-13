@@ -1,0 +1,277 @@
+<div class="aparece mx-auto w-full max-w-[1240px] px-5 pt-5 pb-8 lg:px-9 lg:pt-8 lg:pb-11">
+  <header>
+    <p class="eyebrow">Administración</p>
+    <h1 class="titulo-vista mt-1.5">Panel de la plataforma</h1>
+    <p class="mt-1 text-[13.5px] text-plomo">Lo que espera una decisión, los conflictos y la actividad general.</p>
+  </header>
+
+  @if (!datos() && recurso.isLoading()) {
+    <div class="mt-6 grid gap-4 lg:grid-cols-2">
+      <div class="esqueleto h-[220px] rounded-tarjeta"></div>
+      <div class="esqueleto h-[220px] rounded-tarjeta"></div>
+    </div>
+    <div class="mt-5"><ui-cargando [cantidad]="2" /></div>
+  } @else if (!datos() && recurso.error(); as e) {
+    <div class="mt-6">
+      <ui-estado-vacio titulo="No pudimos cargar el panel" [descripcion]="e.message">
+        <ui-boton (presionado)="recurso.reload()">Reintentar</ui-boton>
+      </ui-estado-vacio>
+    </div>
+  } @else if (datos(); as datos) {
+    <!-- Para revisar: estado actual, no depende del periodo -->
+    <section class="mt-6 flex flex-col gap-3" aria-labelledby="titulo-revisar">
+      <h2 id="titulo-revisar" class="eyebrow eyebrow-neutro">Para revisar</h2>
+      <div class="grid gap-4 lg:grid-cols-2">
+        <ui-tarjeta relleno="lg">
+          <div class="flex flex-col gap-3">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <p class="text-[13px] text-plomo">Estacionamientos por aprobar</p>
+                <p class="num-tabular mt-0.5 text-[28px] leading-tight font-semibold text-tinta">{{ datos.pendientes.enCola }}</p>
+                @if (datos.pendientes.masAntiguoDesde; as desde) {
+                  <p class="text-[12.5px] text-baja">El más antiguo espera {{ haceCuanto(desde) }}</p>
+                }
+              </div>
+              <a routerLink="/admin/pendientes" class="text-[12.5px] font-semibold text-acento">Ver todos</a>
+            </div>
+            @if (datos.pendientes.primeros.length === 0) {
+              <p class="py-4 text-center text-[13px] text-plomo">No hay estacionamientos para revisar.</p>
+            } @else {
+              <ul class="flex flex-col divide-y divide-borde-sutil">
+                @for (e of datos.pendientes.primeros; track e.id) {
+                  <li>
+                    <a
+                      class="flex items-center justify-between gap-3 py-2.5 hover:text-acento"
+                      [routerLink]="['/admin/estacionamientos', e.id]"
+                    >
+                      <span class="min-w-0">
+                        <span class="block truncate text-[13.5px] font-semibold text-tinta">{{ e.nombre }}</span>
+                        <span class="block truncate text-[12px] text-plomo">{{ e.propietario }}</span>
+                      </span>
+                      <span class="shrink-0 text-[12px] text-humo">{{ haceCuanto(e.enviadoEn) }}</span>
+                    </a>
+                  </li>
+                }
+              </ul>
+            }
+            @if (datos.pendientes.rechazadosSinReenviar > 0) {
+              <a
+                routerLink="/admin/pendientes"
+                [queryParams]="{ estado: 'RECHAZADO' }"
+                class="text-[12.5px] text-plomo hover:text-acento"
+              >
+                {{ datos.pendientes.rechazadosSinReenviar }} rechazados esperando que el propietario los corrija
+              </a>
+            }
+          </div>
+        </ui-tarjeta>
+
+        <ui-tarjeta relleno="lg">
+          <div class="flex flex-col gap-3">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <p class="text-[13px] text-plomo">Disputas pendientes</p>
+                <p class="num-tabular mt-0.5 text-[28px] leading-tight font-semibold text-tinta">{{ datos.disputas.denunciadas }}</p>
+                @if (datos.disputas.masAntiguaDesde; as desde) {
+                  <p class="text-[12.5px] text-baja">La más antigua espera {{ haceCuanto(desde) }}</p>
+                }
+              </div>
+              <a routerLink="/admin/disputas" class="text-[12.5px] font-semibold text-acento">Ver todas</a>
+            </div>
+            @if (datos.disputas.primeras.length === 0) {
+              <p class="py-4 text-center text-[13px] text-plomo">No hay disputas pendientes.</p>
+            } @else {
+              <ul class="flex flex-col divide-y divide-borde-sutil">
+                @for (d of datos.disputas.primeras; track d.id) {
+                  <li>
+                    <a class="flex items-center justify-between gap-3 py-2.5" [routerLink]="['/admin/disputas', d.id]">
+                      <span class="min-w-0">
+                        <span class="block truncate text-[13.5px] font-semibold text-tinta">{{ tituloDisputa(d.tipo, d.motivo) }}</span>
+                        <span class="block truncate text-[12px] text-plomo">{{ d.estacionamiento }}</span>
+                      </span>
+                      <span class="shrink-0 text-[12px] text-humo">{{ haceCuanto(d.denunciadaEn) }}</span>
+                    </a>
+                  </li>
+                }
+              </ul>
+            }
+            @if (datos.disputas.reclamosEnConversacion > 0) {
+              <p class="text-[12.5px] text-plomo">
+                {{ datos.disputas.reclamosEnConversacion }}
+                {{ datos.disputas.reclamosEnConversacion === 1 ? 'reclamo sigue' : 'reclamos siguen' }} en conversación entre las partes
+              </p>
+            }
+          </div>
+        </ui-tarjeta>
+      </div>
+    </section>
+
+    <!-- Periodo: los chips no se destruyen mientras carga el periodo nuevo -->
+    <div class="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <h2 class="text-[17px] font-semibold text-tinta">Conflictos y actividad</h2>
+      <div class="flex gap-2 overflow-x-auto pb-1 sm:pb-0">
+        @for (opcion of periodos; track opcion.tipo) {
+          <ui-chip [activo]="opcion.tipo === periodo()" (alternar)="elegirPeriodo(opcion.tipo)">
+            {{ opcion.etiqueta }}
+          </ui-chip>
+        }
+      </div>
+    </div>
+    @if (recurso.error(); as e) {
+      <p class="mt-3 text-[13px] text-ocupada" role="alert">
+        No pudimos cargar este período: {{ e.message }}
+        <button type="button" class="ml-1 font-semibold underline" (click)="recurso.reload()">Reintentar</button>
+      </p>
+    }
+
+    <div class="mt-4 flex flex-col gap-5 lg:gap-6" [class.opacity-60]="recurso.isLoading()">
+      <!-- Conflictos -->
+      <div class="grid gap-5 lg:gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+        <ui-tarjeta relleno="lg">
+          <div class="flex flex-col gap-4">
+            <div>
+              <h3 class="text-[15px] font-semibold text-tinta">Cocheras bloqueadas</h3>
+              <p class="mt-0.5 text-[12px] text-plomo">Autos que se pasaron de su horario y lo que provocaron</p>
+            </div>
+            <dl class="num-tabular grid grid-cols-2 gap-3 text-[13px]">
+              <div><dt class="text-plomo">Autos excedidos</dt><dd class="text-[20px] font-semibold text-tinta">{{ datos.conflictos.bloqueos.autosExcedidos }}</dd></div>
+              <div><dt class="text-plomo">Reservas reasignadas</dt><dd class="text-[20px] font-semibold text-tinta">{{ datos.conflictos.bloqueos.reasignadas }}</dd></div>
+              <div><dt class="text-plomo">Sin cochera</dt><dd class="text-[20px] font-semibold text-tinta">{{ datos.conflictos.bloqueos.sinCochera }}</dd></div>
+              <div><dt class="text-plomo">Canceladas</dt><dd class="text-[20px] font-semibold text-tinta">{{ datos.conflictos.bloqueos.canceladas }}</dd></div>
+            </dl>
+            @if (totalBloqueos() > 0) {
+              <div class="overflow-x-auto">
+                <table class="num-tabular w-full text-[12.5px]">
+                  <caption class="sr-only">Bloqueos por estacionamiento</caption>
+                  <thead>
+                    <tr class="text-left text-plomo">
+                      <th class="py-1.5 pr-2 font-medium">Estacionamiento</th>
+                      <th class="px-1.5 py-1.5 text-right font-medium">
+                        <abbr title="Autos excedidos" aria-hidden="true">Exc.</abbr><span class="sr-only">Autos excedidos</span>
+                      </th>
+                      <th class="px-1.5 py-1.5 text-right font-medium">
+                        <abbr title="Reasignadas" aria-hidden="true">Reas.</abbr><span class="sr-only">Reasignadas</span>
+                      </th>
+                      <th class="px-1.5 py-1.5 text-right font-medium">
+                        <abbr title="Sin cochera" aria-hidden="true">S/coch.</abbr><span class="sr-only">Sin cochera</span>
+                      </th>
+                      <th class="py-1.5 pl-1.5 text-right font-medium">
+                        <abbr title="Canceladas" aria-hidden="true">Canc.</abbr><span class="sr-only">Canceladas</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (b of datos.conflictos.bloqueos.porEstacionamiento; track b.id) {
+                      <tr class="border-t border-borde-sutil text-tinta">
+                        <td class="max-w-[180px] truncate py-1.5 pr-2">{{ b.nombre }}</td>
+                        <td class="px-1.5 py-1.5 text-right">{{ b.autosExcedidos }}</td>
+                        <td class="px-1.5 py-1.5 text-right">{{ b.reasignadas }}</td>
+                        <td class="px-1.5 py-1.5 text-right">{{ b.sinCochera }}</td>
+                        <td class="py-1.5 pl-1.5 text-right">{{ b.canceladas }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            } @else {
+              <p class="text-[13px] text-plomo">No hubo cocheras bloqueadas en este período.</p>
+            }
+          </div>
+        </ui-tarjeta>
+
+        <ui-tarjeta relleno="lg">
+          <div class="flex flex-col gap-4">
+            <div>
+              <h3 class="text-[15px] font-semibold text-tinta">Estacionamientos con problemas</h3>
+              <p class="mt-0.5 text-[12px] text-plomo">
+                Con 5 reservas o más: cancelan más del 30 % por su lado o juntan 2 reclamos o más
+              </p>
+            </div>
+            @if (datos.conflictos.problematicos.length === 0) {
+              <p class="py-6 text-center text-[13px] text-plomo">Ningún estacionamiento con problemas en este período.</p>
+            } @else {
+              <ul class="flex flex-col divide-y divide-borde-sutil">
+                @for (p of datos.conflictos.problematicos; track p.id) {
+                  <li class="flex flex-wrap items-center justify-between gap-2 py-2.5">
+                    <div class="min-w-0">
+                      <p class="truncate text-[13.5px] font-semibold text-tinta">{{ p.nombre }}</p>
+                      <p class="num-tabular text-[12px] text-plomo">
+                        {{ p.propietario }} · {{ p.reservas }} reservas · cancela {{ porciento(p.tasaCancelacion) }} ·
+                        {{ p.reclamos }} {{ p.reclamos === 1 ? 'reclamo' : 'reclamos' }}
+                      </p>
+                    </div>
+                    <div class="flex gap-1.5">
+                      @for (razon of p.razones; track razon) {
+                        <span class="rounded-full bg-ocupada/10 px-2.5 py-1 text-[11.5px] font-semibold text-ocupada">
+                          {{ etiquetaRazon[razon] }}
+                        </span>
+                      }
+                    </div>
+                  </li>
+                }
+              </ul>
+            }
+          </div>
+        </ui-tarjeta>
+      </div>
+
+      <!-- Actividad -->
+      <div class="aparece-en-cadena grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+        @for (metrica of metricas(); track metrica.etiqueta) {
+          <app-tarjeta-metrica
+            [etiqueta]="metrica.etiqueta"
+            [valor]="metrica.valor"
+            [icono]="metrica.icono"
+            [tono]="metrica.tono"
+            [variacion]="metrica.variacion"
+          />
+        }
+      </div>
+
+      <ui-tarjeta relleno="lg">
+        <div class="flex flex-col gap-4">
+          <div>
+            <h3 class="text-[15px] font-semibold text-tinta">Reservas por día</h3>
+            <p class="mt-0.5 text-[12px] text-plomo">Todas las reservas de la plataforma, por estado</p>
+          </div>
+          <div class="flex flex-wrap gap-x-4 gap-y-1.5 text-[12px] text-plomo">
+            @for (t of tramosReservas; track t.clave) {
+              <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-[3px]" [class]="t.clase"></span> {{ t.etiqueta }}</span>
+            }
+          </div>
+          @if (hayReservas()) {
+            <app-barras-dia [barras]="barrasReservas()" descripcion="Reservas por día de la plataforma" />
+          } @else {
+            <p class="py-8 text-center text-[13px] text-plomo">No hubo reservas en este período.</p>
+          }
+        </div>
+      </ui-tarjeta>
+
+      <div class="grid gap-5 lg:gap-6 lg:grid-cols-2">
+        @for (ranking of [
+          { titulo: 'Más reservas', filas: datos.actividad.topPorReservas, plata: false },
+          { titulo: 'Más ingresos', filas: datos.actividad.topPorIngresos, plata: true }
+        ]; track ranking.titulo) {
+          <ui-tarjeta relleno="lg">
+            <div class="flex flex-col gap-3">
+              <h3 class="text-[15px] font-semibold text-tinta">{{ ranking.titulo }}</h3>
+              @if (ranking.filas.length === 0) {
+                <p class="py-4 text-center text-[13px] text-plomo">Sin datos en este período.</p>
+              } @else {
+                <ol class="flex flex-col divide-y divide-borde-sutil">
+                  @for (fila of ranking.filas; track fila.id; let i = $index) {
+                    <li class="num-tabular flex items-center gap-3 py-2 text-[13px]">
+                      <span class="w-4 text-humo">{{ i + 1 }}</span>
+                      <span class="min-w-0 flex-1 truncate text-tinta">{{ fila.nombre }}</span>
+                      <span class="font-semibold text-tinta">{{ ranking.plata ? pesos(fila.valor) : fila.valor }}</span>
+                    </li>
+                  }
+                </ol>
+              }
+            </div>
+          </ui-tarjeta>
+        }
+      </div>
+    </div>
+  }
+</div>

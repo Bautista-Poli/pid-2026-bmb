@@ -1,3 +1,4 @@
+import * as adminEstadisticaService from '../services/admin-estadistica.service.js';
 import * as adminService from '../services/admin.service.js';
 import * as moderacionService from '../services/moderacion.service.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
@@ -37,4 +38,8 @@ export const escribirEnIncidencia = asyncHandler(async (req, res) => {
 
 export const resolverIncidencia = asyncHandler(async (req, res) => {
   res.json({ incidencia: await moderacionService.resolver(req.usuario, req.params.id, req.body) });
+});
+
+export const estadisticas = asyncHandler(async (req, res) => {
+  res.json({ estadisticas: await adminEstadisticaService.estadisticas(req.query) });
 });

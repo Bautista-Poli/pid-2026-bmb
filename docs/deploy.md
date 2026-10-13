@@ -10,6 +10,39 @@
 Se deploya **a mano con la CLI** (no se publica solo con cada push): Vercel y
 Railway no tienen acceso a la organización `uca-argentina` de GitHub.
 
+## Repositorios: original y fork
+
+Hay dos repos y tienen que quedar iguales:
+
+- `origin` → `uca-argentina/pid-2026-bmb` (el original del equipo).
+- `fork` → `Bautista-Poli/pid-2026-bmb` (fork que usa Vercel para deployar el front).
+
+**Regla: cada commit, push o merge se hace en los dos repositorios.** Por eso
+`origin` está configurado para que `git push` vaya a los dos a la vez (dos
+URLs de push, ver abajo). No hace falta correr nada aparte.
+
+- `git push` → sube a `origin` y a `fork`.
+- `git pull` / `git fetch` → traen de `origin`.
+- Un merge en `development` (o en cualquier rama) se hace local y después `git push`.
+- Para pasar lo que hay en `origin` al fork sin haber hecho nada local:
+  `git push fork origin/main:refs/heads/main origin/development:refs/heads/development`
+  (después de `git fetch origin`).
+
+Si el push falla en uno de los dos, el otro puede haber quedado subido: revisar
+los dos y repetir el que falló. Si `origin` reescribe su historia (force push),
+el fork hay que sincronizarlo también con el comando de arriba y, si hace falta,
+con `--force` (solo sobre el fork).
+
+**Configuración** (ya está hecha en el clon local; reproducirla en otra máquina):
+
+```bash
+git remote add fork https://github.com/Bautista-Poli/pid-2026-bmb.git
+git remote set-url --push origin https://github.com/uca-argentina/pid-2026-bmb.git
+git remote set-url --add --push origin https://github.com/Bautista-Poli/pid-2026-bmb.git
+```
+
+Verificar con `git remote -v`: `origin` tiene dos líneas `(push)`.
+
 ## Cómo se conectan
 
 - El front llama siempre a `/api/...` (ruta relativa). En Vercel, `Front/vercel.json`

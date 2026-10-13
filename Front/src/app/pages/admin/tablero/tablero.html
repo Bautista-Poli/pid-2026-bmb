@@ -5,19 +5,19 @@
     <p class="mt-1 text-[13.5px] text-plomo">Lo que espera una decisión, los conflictos y la actividad general.</p>
   </header>
 
-  @if (recurso.isLoading() && !recurso.value()) {
+  @if (!datos() && recurso.isLoading()) {
     <div class="mt-6 grid gap-4 lg:grid-cols-2">
       <div class="esqueleto h-[220px] rounded-tarjeta"></div>
       <div class="esqueleto h-[220px] rounded-tarjeta"></div>
     </div>
     <div class="mt-5"><ui-cargando [cantidad]="2" /></div>
-  } @else if (recurso.error(); as e) {
+  } @else if (!datos() && recurso.error(); as e) {
     <div class="mt-6">
       <ui-estado-vacio titulo="No pudimos cargar el panel" [descripcion]="e.message">
         <ui-boton (presionado)="recurso.reload()">Reintentar</ui-boton>
       </ui-estado-vacio>
     </div>
-  } @else if (recurso.value(); as datos) {
+  } @else if (datos(); as datos) {
     <!-- Para revisar: estado actual, no depende del periodo -->
     <section class="mt-6 flex flex-col gap-3" aria-labelledby="titulo-revisar">
       <h2 id="titulo-revisar" class="eyebrow eyebrow-neutro">Para revisar</h2>
@@ -106,7 +106,7 @@
       </div>
     </section>
 
-    <!-- Periodo -->
+    <!-- Periodo: los chips no se destruyen mientras carga el periodo nuevo -->
     <div class="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <h2 class="text-[17px] font-semibold text-tinta">Conflictos y actividad</h2>
       <div class="flex gap-2 overflow-x-auto pb-1 sm:pb-0">
@@ -117,6 +117,12 @@
         }
       </div>
     </div>
+    @if (recurso.error(); as e) {
+      <p class="mt-3 text-[13px] text-ocupada" role="alert">
+        No pudimos cargar este período: {{ e.message }}
+        <button type="button" class="ml-1 font-semibold underline" (click)="recurso.reload()">Reintentar</button>
+      </p>
+    }
 
     <div class="mt-4 flex flex-col gap-5 lg:gap-6" [class.opacity-60]="recurso.isLoading()">
       <!-- Conflictos -->
@@ -140,10 +146,18 @@
                   <thead>
                     <tr class="text-left text-plomo">
                       <th class="py-1.5 pr-2 font-medium">Estacionamiento</th>
-                      <th class="px-1.5 py-1.5 text-right font-medium" title="Autos excedidos">Exc.</th>
-                      <th class="px-1.5 py-1.5 text-right font-medium" title="Reasignadas">Reas.</th>
-                      <th class="px-1.5 py-1.5 text-right font-medium" title="Sin cochera">Sin</th>
-                      <th class="py-1.5 pl-1.5 text-right font-medium" title="Canceladas">Canc.</th>
+                      <th class="px-1.5 py-1.5 text-right font-medium">
+                        <abbr title="Autos excedidos" aria-hidden="true">Exc.</abbr><span class="sr-only">Autos excedidos</span>
+                      </th>
+                      <th class="px-1.5 py-1.5 text-right font-medium">
+                        <abbr title="Reasignadas" aria-hidden="true">Reas.</abbr><span class="sr-only">Reasignadas</span>
+                      </th>
+                      <th class="px-1.5 py-1.5 text-right font-medium">
+                        <abbr title="Sin cochera" aria-hidden="true">S/coch.</abbr><span class="sr-only">Sin cochera</span>
+                      </th>
+                      <th class="py-1.5 pl-1.5 text-right font-medium">
+                        <abbr title="Canceladas" aria-hidden="true">Canc.</abbr><span class="sr-only">Canceladas</span>
+                      </th>
                     </tr>
                   </thead>
                   <tbody>

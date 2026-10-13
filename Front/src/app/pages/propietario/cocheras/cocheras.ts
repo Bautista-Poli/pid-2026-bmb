@@ -3,17 +3,20 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  effect,
   inject,
   input,
   signal,
+  untracked,
 } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { Observable, forkJoin } from 'rxjs';
 import {
   Boton,
   Cargando,
+  Chip,
   EstadoVacio,
   Etiqueta,
   Icono,
@@ -26,6 +29,7 @@ import {
   Cochera,
   direccionCorta,
   EstadoCochera,
+  Estacionamiento,
   ETIQUETA_ESTADO_COCHERA,
   ETIQUETA_TIPO_VEHICULO,
   Id,
@@ -33,6 +37,7 @@ import {
   ReservaDetallada,
   TipoVehiculo,
 } from '@app/models';
+import { AuthService } from '@app/services/auth.service';
 import { reservaEnJuego } from '@app/services/ciclo-reserva';
 import { CocheraService } from '@app/services/cochera.service';
 import { EstacionamientoService } from '@app/services/estacionamiento.service';
@@ -105,9 +110,10 @@ interface CeldaPrevia {
 }
 
 /**
- * Pantalla `/propietario/estacionamientos/:estacionamientoId/cocheras` · rol PROPIETARIO
+ * Pantalla `/propietario/cocheras` (y `/propietario/cocheras/:estacionamientoId`) · rol PROPIETARIO
  *
- * Plano de cocheras por planta. Tocar un lugar abre su ficha al costado (en
+ * Plano de cocheras por planta. Arriba, un selector para pasar entre los
+ * estacionamientos del propietario. Tocar un lugar abre su ficha al costado (en
  * mobile, una hoja desde abajo); con Shift / Ctrl / Cmd se eligen varios y se
  * editan juntos. El alta por cantidad vive en un modal con vista previa.
  */
@@ -120,6 +126,7 @@ interface CeldaPrevia {
     RouterLink,
     Boton,
     Cargando,
+    Chip,
     EstadoVacio,
     Etiqueta,
     Icono,
@@ -133,8 +140,11 @@ export class Cocheras {
   private readonly cocheras = inject(CocheraService);
   private readonly reservas = inject(ReservaService);
   private readonly fb = inject(FormBuilder);
+  private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
 
-  readonly estacionamientoId = input.required<Id>();
+  /** Desde la ruta con id; sin id, la pantalla muestra el primer estacionamiento. */
+  readonly estacionamientoId = input<Id>();
 
   protected readonly tipos = TIPOS;
   protected readonly iconoTipo = ICONO_TIPO;
@@ -147,20 +157,51 @@ export class Cocheras {
   protected readonly direccionCorta = direccionCorta;
   protected readonly desdeFechaISO = desdeFechaISO;
 
+  /* ---------------------------- estacionamientos ---------------------------- */
+
+  protected readonly recursoEstacionamientos = rxResource({
+    params: () => this.auth.usuario()?.id,
+    stream: () => this.estacionamientos.listarDelPropietario(),
+    defaultValue: [] as Estacionamiento[],
+  });
+
+  /** El estacionamiento que se muestra: el de la ruta, o el primero si no hay ninguno. */
+  protected readonly idActivo = computed<Id | undefined>(
+    () => this.estacionamientoId() ?? this.recursoEstacionamientos.value()[0]?.id,
+  );
+
+  /** Cambia de estacionamiento: la ruta con id recarga la pantalla con el nuevo. */
+  protected irA(id: Id): void {
+    void this.router.navigate(['/propietario/cocheras', id]);
+  }
+
+  /** Al cambiar de estacionamiento no arrastramos la seleccion ni los formularios. */
+  private readonly alCambiarEstacionamiento = effect(() => {
+    this.idActivo();
+    untracked(() => {
+      this.seleccion.set([]);
+      this.plantaElegida.set(null);
+      this.reiniciarMasivo();
+      this.formulario.reset();
+      this.aviso.set(null);
+      this.error.set(null);
+    });
+  });
+
   protected readonly recursoEstacionamiento = rxResource({
-    params: () => this.estacionamientoId(),
+    params: () => this.idActivo(),
     stream: ({ params }) => this.estacionamientos.obtener(params),
   });
 
   protected readonly recursoCocheras = rxResource({
-    params: () => this.estacionamientoId(),
+    params: () => this.idActivo(),
     stream: ({ params }) => this.cocheras.listarPorEstacionamiento(params),
     defaultValue: [] as Cochera[],
   });
 
   /** Reservas del estacionamiento, para las "proximas reservas" de cada cochera. */
   protected readonly recursoReservas = rxResource({
-    params: () => this.estacionamientoId(),
+    params: () => this.idActivo(),
     stream: ({ params }) => this.reservas.listarPorEstacionamiento(params),
     defaultValue: [] as ReservaDetallada[],
   });
@@ -651,7 +692,10 @@ export class Cocheras {
     this.enviando.set(true);
     this.errorAlta.set(null);
 
-    this.cocheras.crearLote(this.estacionamientoId(), lotes).subscribe({
+    const idActivo = this.idActivo();
+    if (!idActivo) return;
+
+    this.cocheras.crearLote(idActivo, lotes).subscribe({
       next: (creadas) => {
         this.enviando.set(false);
         this.agregando.set(false);

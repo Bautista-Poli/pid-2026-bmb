@@ -268,7 +268,7 @@
                 <h2 class="text-[15px] font-semibold text-tinta">Estado de cocheras</h2>
                 <a
                   class="text-[12.5px] font-medium text-acento hover:text-acento-fuerte"
-                  [routerLink]="['/propietario/estacionamientos', estacionamiento.id, 'cocheras']"
+                  [routerLink]="['/propietario/cocheras', estacionamiento.id]"
                 >
                   Gestionar
                 </a>
@@ -294,7 +294,7 @@
               <ui-cargando [cantidad]="1" />
             } @else if (recursoCocheras.value().length === 0) {
               <ui-estado-vacio titulo="Este estacionamiento no tiene cocheras cargadas">
-                <ui-boton [routerLink]="['/propietario/estacionamientos', estacionamiento.id, 'cocheras']">
+                <ui-boton [routerLink]="['/propietario/cocheras', estacionamiento.id]">
                   Cargar cocheras
                 </ui-boton>
               </ui-estado-vacio>

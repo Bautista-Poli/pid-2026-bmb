@@ -7,8 +7,17 @@
 | Base de datos | Neon, proyecto `ParkIt`, branch `production` | — |
 | Fotos | Cloudinary, carpeta `parkit/` | — |
 
-Se deploya **a mano con la CLI** (no se publica solo con cada push): Vercel y
-Railway no tienen acceso a la organización `uca-argentina` de GitHub.
+**Producción sale de la rama `main` del fork** (`Bautista-Poli/pid-2026-bmb`).
+Vercel y Railway están conectados a ese repo y deployan solos al recibir un push
+a `main`:
+
+- **Front (Vercel):** cualquier push a `main` que cambie algo del front dispara
+  el deploy. Un push a `development` solo genera un Preview (URL de prueba).
+- **Back (Railway):** solo se deploya cuando cambia `Back/` (Root Directory `/Back`
+  y Watch Paths `/Back/**`). Un cambio solo en `Front/` no toca el back.
+
+La CLI (`npx vercel --prod`, `npx @railway/cli up`) queda como plan B, por si
+hay que deployar sin pasar por Git (ver "Publicar cambios").
 
 ## Repositorios: original y fork
 
@@ -56,21 +65,31 @@ Verificar con `git remote -v`: `origin` tiene dos líneas `(push)`.
 
 ## Publicar cambios
 
-### 1. Dejar el código listo
+### 1. Llevar el cambio a `main`
 
-La CLI sube **la carpeta tal como está**, no lo que hay en GitHub. Antes de
-deployar, pararse en la rama a publicar, actualizada y sin cambios a medias:
+Los cambios van a `development` por PR o merge, como siempre. Para publicar, se
+mergea `development` a `main` y se hace push (va a los dos repos):
 
 ```bash
-git checkout development
+git checkout main
 git pull
-git status   # que no haya nada sin commitear que no se quiera publicar
+git merge --no-ff development
+git push
 ```
 
-### 2. Deployar lo que cambió
+Eso dispara los deploys de Vercel y Railway (si hubo cambios en `Front/` o en
+`Back/`, respectivamente). Antes, que `development` esté limpio y probado.
 
-Si cambiaron los dos, **primero el back**, así el front nuevo no llama a
-endpoints que todavía no existen.
+**Ojo con el orden si cambiaron los dos:** el back tiene que estar arriba antes
+que el front nuevo, así el front no llama a endpoints que todavía no existen. Si
+Railway termina después que Vercel, esperar a que el deploy del back esté
+"Active" antes de dar por publicado el front.
+
+### 2. Plan B: deploy a mano con la CLI
+
+Solo si hace falta publicar sin pasar por `main`. La CLI sube **la carpeta tal
+como está**, no lo que hay en GitHub, así que antes hay que pararse en la rama
+a publicar y verificar que no haya nada sin commitear.
 
 **Back** (`Back/`):
 
@@ -107,6 +126,14 @@ vinculada al proyecto (`Front/.vercel/`).
 
 ## Configuración
 
+- **Vercel** (proyecto `parkit` → Settings): Git conectado a `Bautista-Poli/pid-2026-bmb`,
+  **Production Branch** `main`, **Root Directory** `Front`.
+- **Railway** (proyecto `ingenious-heart` → servicio → Settings → Source): repo
+  `Bautista-Poli/pid-2026-bmb`, **Branch connected to production** `main`,
+  **Root Directory** `/Back`, **Watch Paths** `/Back/**`. **No** poner Start Command:
+  el arranque lo define `Back/railway.json`.
+- **Acceso de deploy:** los miembros del equipo se invitan a Railway (People del
+  workspace) y a Vercel (team), con permiso para deployar.
 - **Variables del back:** en Railway → servicio → Variables. Son las mismas de
   `Back/.env.example`, con `NODE_ENV=production` y **sin** `PORT` (Railway pone el
   suyo). Si cambia la URL del back, actualizarla en `Front/vercel.json`.

@@ -25,8 +25,10 @@ async function migrar() {
   let respetadas = 0;
   for (const { id_imagen: idImagen, id_estacionamiento: idEstacionamiento } of pendientes) {
     // Los bytes se leen de a una foto, para no traer todas a memoria juntas.
+    // `actualizada` viaja como texto: un Date de JS la redondea a milisegundos y
+    // la de Postgres tiene microsegundos, asi la comparacion de abajo nunca daria.
     const { rows } = await pool.query(
-      'SELECT bytes, actualizada FROM estacionamiento_imagen WHERE id_imagen = $1',
+      'SELECT bytes, actualizada::text AS actualizada FROM estacionamiento_imagen WHERE id_imagen = $1',
       [idImagen],
     );
     try {
@@ -34,7 +36,7 @@ async function migrar() {
       // Si mientras se subia el propietario cambio la foto, se respeta la suya.
       const { rowCount } = await pool.query(
         `UPDATE estacionamiento_imagen SET public_id = $2, bytes = NULL, mime = NULL
-          WHERE id_imagen = $1 AND public_id IS NULL AND actualizada = $3`,
+          WHERE id_imagen = $1 AND public_id IS NULL AND actualizada = $3::timestamptz`,
         [idImagen, publicId, rows[0].actualizada],
       );
       if (rowCount === 0) {

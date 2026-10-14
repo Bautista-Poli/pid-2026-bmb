@@ -18,13 +18,24 @@ const NAVEGACION: Record<RolUsuario, ItemNavegacion[]> = {
   CONDUCTOR: [
     { ruta: '/conductor/explorar', etiqueta: 'Explorar', icono: 'explorar' },
     { ruta: '/conductor/mis-reservas', etiqueta: 'Mis reservas', icono: 'reservas' },
+    { ruta: '/conductor/abonos', etiqueta: 'Abonos', icono: 'calendario' },
     { ruta: '/conductor/vehiculos', etiqueta: 'Vehículos', icono: 'auto' },
+    { ruta: '/conductor/incidencias', etiqueta: 'Incidencias', icono: 'alerta' },
   ],
   PROPIETARIO: [
     { ruta: '/propietario/tablero', etiqueta: 'Inicio', icono: 'inicio' },
     { ruta: '/propietario/reservas', etiqueta: 'Reservas', icono: 'reservas' },
+    { ruta: '/propietario/estadisticas', etiqueta: 'Estadísticas', icono: 'tablero', enTabs: false },
     { ruta: '/propietario/estacionamientos', etiqueta: 'Estacionamientos', icono: 'estacionamiento' },
+    { ruta: '/propietario/incidencias', etiqueta: 'Incidencias', icono: 'alerta' },
     { ruta: '/propietario/perfil', etiqueta: 'Configuración', icono: 'configuracion' },
+    { ruta: '/propietario/cocheras', etiqueta: 'Cocheras', icono: 'auto' },
+  ],
+  ADMINISTRADOR: [
+    { ruta: '/admin/tablero', etiqueta: 'Inicio', icono: 'inicio' },
+    { ruta: '/admin/pendientes', etiqueta: 'Revisión', icono: 'estacionamiento' },
+    { ruta: '/admin/disputas', etiqueta: 'Disputas', icono: 'alerta' },
+    { ruta: '/admin/perfil', etiqueta: 'Configuración', icono: 'configuracion' },
   ],
 };
 
@@ -53,12 +64,16 @@ export class LayoutApp {
   private readonly router = inject(Router);
 
   protected readonly usuario = this.auth.usuario;
-  protected readonly esPropietario = computed(() => this.auth.rol() === 'PROPIETARIO');
+  /** Propietario y administrador usan la barra lateral; el conductor, la barra de arriba. */
+  protected readonly usaBarraLateral = computed(() => this.auth.rol() !== 'CONDUCTOR');
 
   protected readonly items = computed(() => {
     const rol = this.auth.rol();
     return rol ? NAVEGACION[rol] : [];
   });
+
+  /** Los de la tab bar mobile: los que no estan marcados `enTabs: false`. */
+  protected readonly itemsTabs = computed(() => this.items().filter((item) => item.enTabs !== false));
 
   /** Perfil al que se puede pasar; `null` si el usuario tiene uno solo. */
   protected readonly rolAlternativo = computed<RolUsuario | null>(() => {

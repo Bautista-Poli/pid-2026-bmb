@@ -7,3 +7,4 @@ export * from './elegir-momento/elegir-momento';
 export * from './mapa-estacionamientos/mapa-estacionamientos';
 export * from './detalle-estacionamiento/detalle-estacionamiento';
 export * from './galeria-fotos/galeria-fotos';
+export * from './planes-abono/planes-abono';

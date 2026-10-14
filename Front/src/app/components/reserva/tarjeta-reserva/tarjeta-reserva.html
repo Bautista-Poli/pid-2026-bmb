@@ -5,7 +5,7 @@
     @if (r.estado === 'ACTIVA') {
       <span class="size-1.5 rounded-full bg-current" aria-hidden="true"></span>
     }
-    {{ etiquetaEstado[r.estado] }}
+    {{ etiquetaEstado() }}
   </ui-etiqueta>
 </ng-template>
 
@@ -22,6 +22,34 @@
     >
       {{ motivo }}
     </p>
+  }
+</ng-template>
+
+<!-- Lo devuelto por reclamos y el acceso a abrir uno (o al que esta abierto). -->
+<ng-template #reclamo>
+  @if (r.devuelto > 0) {
+    <span class="num-tabular text-[12.5px] font-semibold text-exito">
+      Devuelto $ {{ r.devuelto.toLocaleString('es-AR') }}
+    </span>
+  }
+  @if (r.reclamoAbierto; as id) {
+    <a
+      class="inline-flex min-h-11 items-center rounded-boton px-3 text-[13px] font-semibold text-acento
+             transition-colors duration-160 ease-out hover:bg-acento-suave"
+      routerLink="/conductor/incidencias"
+      [queryParams]="{ id }"
+    >
+      Ver reclamo
+    </a>
+  } @else if (reclamable()) {
+    <button
+      type="button"
+      class="inline-flex min-h-11 items-center rounded-boton px-3 text-[13px] font-semibold text-plomo
+             transition-colors duration-160 ease-out hover:bg-lienzo hover:text-tinta"
+      (click)="reclamar.emit(r)"
+    >
+      Tengo un problema
+    </button>
   }
 </ng-template>
 
@@ -60,13 +88,22 @@
         <ng-container [ngTemplateOutlet]="estado" />
         <span
           class="num-tabular text-[13px] font-semibold"
-          [class]="r.estado === 'CANCELADA' ? 'text-humo line-through' : 'text-tinta'"
+          [class]="r.estado === 'CANCELADA' || r.estado === 'NO_SHOW' ? 'text-humo line-through' : 'text-tinta'"
         >
-          $ {{ r.precioTotal.toLocaleString('es-AR') }}
+          @if (r.abono; as abono) {
+            Abono · Turno {{ turnos[abono.turno].etiqueta.toLowerCase() }}
+          } @else {
+            $ {{ r.precioTotal.toLocaleString('es-AR') }}
+          }
         </span>
       </div>
     </div>
     <ng-container [ngTemplateOutlet]="aviso" />
+    @if (r.devuelto > 0 || r.reclamoAbierto || reclamable()) {
+      <div class="-my-2 flex flex-wrap items-center justify-end gap-1">
+        <ng-container [ngTemplateOutlet]="reclamo" />
+      </div>
+    }
   </div>
 } @else {
   <article
@@ -213,30 +250,48 @@
       [class]="margen()"
     >
       <p class="flex items-baseline gap-2">
-        <span class="num-tabular text-[17px] font-semibold text-tinta">
-          $ {{ r.precioTotal.toLocaleString('es-AR') }}
-        </span>
-        <span class="text-[12.5px] text-plomo">{{ etiquetaModalidad[r.modalidad] }}</span>
+        @if (r.abono; as abono) {
+          <span class="text-[15px] font-semibold text-tinta">Abono</span>
+          <span class="text-[12.5px] text-plomo">Turno {{ turnos[abono.turno].etiqueta.toLowerCase() }}</span>
+        } @else {
+          <span class="num-tabular text-[17px] font-semibold text-tinta">
+            $ {{ r.precioTotal.toLocaleString('es-AR') }}
+          </span>
+          <span class="text-[12.5px] text-plomo">{{ etiquetaModalidad[r.modalidad] }}</span>
+        }
       </p>
 
-      @if (cancelable()) {
-        <button
-          type="button"
-          class="inline-flex min-h-11 items-center gap-2 rounded-boton px-3 text-[13px] font-semibold
-                 text-ocupada transition-colors duration-160 ease-out hover:bg-ocupada/8
-                 disabled:pointer-events-none disabled:opacity-50"
-          [disabled]="cancelando()"
-          (click)="cancelar.emit(r)"
-        >
-          @if (cancelando()) {
-            <span
-              class="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent"
-              aria-hidden="true"
-            ></span>
-          }
-          Cancelar
-        </button>
-      }
+      <div class="flex flex-wrap items-center justify-end gap-1">
+        <ng-container [ngTemplateOutlet]="reclamo" />
+        @if (conQr()) {
+          <button
+            type="button"
+            class="inline-flex min-h-11 items-center gap-2 rounded-boton px-3 text-[13px] font-semibold
+                   text-acento transition-colors duration-160 ease-out hover:bg-acento-suave"
+            (click)="verQr.emit(r)"
+          >
+            Ver QR
+          </button>
+        }
+        @if (cancelable()) {
+          <button
+            type="button"
+            class="inline-flex min-h-11 items-center gap-2 rounded-boton px-3 text-[13px] font-semibold
+                   text-ocupada transition-colors duration-160 ease-out hover:bg-ocupada/8
+                   disabled:pointer-events-none disabled:opacity-50"
+            [disabled]="cancelando()"
+            (click)="cancelar.emit(r)"
+          >
+            @if (cancelando()) {
+              <span
+                class="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent"
+                aria-hidden="true"
+              ></span>
+            }
+            Cancelar
+          </button>
+        }
+      </div>
     </footer>
   </article>
 }

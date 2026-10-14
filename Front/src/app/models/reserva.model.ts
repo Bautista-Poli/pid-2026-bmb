@@ -1,3 +1,4 @@
+import { TurnoAbono } from './abono.model';
 import { FechaHoraISO, FechaISO, HoraHHmm, Id } from './api.model';
 import { Cochera } from './cochera.model';
 import { Estacionamiento } from './estacionamiento.model';
@@ -9,7 +10,9 @@ export type EstadoReserva =
   | 'CONFIRMADA'
   | 'ACTIVA'
   | 'FINALIZADA'
-  | 'CANCELADA';
+  | 'CANCELADA'
+  /** El vehiculo no llego dentro de la tolerancia: la cochera se libero. */
+  | 'NO_SHOW';
 
 export const ETIQUETA_ESTADO_RESERVA: Record<EstadoReserva, string> = {
   PENDIENTE: 'Pendiente',
@@ -17,7 +20,42 @@ export const ETIQUETA_ESTADO_RESERVA: Record<EstadoReserva, string> = {
   ACTIVA: 'En curso',
   FINALIZADA: 'Finalizada',
   CANCELADA: 'Cancelada',
+  NO_SHOW: 'Ausente',
 };
+
+/**
+ * Quien cancelo la reserva. SISTEMA: estaba PENDIENTE y el propietario no la
+ * confirmo antes de su inicio. null: no se cancelo, o se cancelo antes de que
+ * se guardara el dato.
+ */
+export type OrigenCancelacion = 'CONDUCTOR' | 'PROPIETARIO' | 'SISTEMA';
+
+/** Pendiente que el propietario no confirmo a tiempo: la cancelo el sistema. */
+export function esVencida(reserva: Pick<Reserva, 'estado' | 'canceladaPor'>): boolean {
+  return reserva.estado === 'CANCELADA' && reserva.canceladaPor === 'SISTEMA';
+}
+
+/**
+ * Texto del estado, distinguiendo quien cancelo: el propietario tiene que
+ * saber si fue el conductor, el estacionamiento o el sistema (Vencida).
+ * `vista` es quien mira: al conductor no se le dice "por el conductor".
+ */
+export function etiquetaReserva(
+  reserva: Pick<Reserva, 'estado' | 'canceladaPor'>,
+  vista: 'CONDUCTOR' | 'PROPIETARIO' = 'PROPIETARIO',
+): string {
+  if (reserva.estado !== 'CANCELADA') return ETIQUETA_ESTADO_RESERVA[reserva.estado];
+  switch (reserva.canceladaPor) {
+    case 'SISTEMA':
+      return 'Vencida';
+    case 'CONDUCTOR':
+      return vista === 'CONDUCTOR' ? 'Cancelada' : 'Cancelada por el conductor';
+    case 'PROPIETARIO':
+      return vista === 'PROPIETARIO' ? 'Cancelada por vos' : 'Cancelada por el estacionamiento';
+    default:
+      return 'Cancelada';
+  }
+}
 
 /** Reserva transaccional: Conductor + Vehiculo + Cochera + franja horaria. */
 export interface Reserva {
@@ -38,6 +76,8 @@ export interface Reserva {
   fechaHasta: FechaISO;
   modalidad: ModalidadReserva;
   estado: EstadoReserva;
+  /** Solo en una CANCELADA: quien la cancelo (ver `etiquetaReserva`). */
+  canceladaPor: OrigenCancelacion | null;
   precioTotal: number;
   creadaEn: FechaHoraISO;
   /** Horas reales que registra el propietario. */
@@ -45,6 +85,14 @@ export interface Reserva {
   egresoEn: FechaHoraISO | null;
   /** Aviso cuando el bloqueo de la cochera original la reasignó o, sin alternativa, la canceló. */
   motivoReasignacion: string | null;
+  /** Codigo del QR de la reserva: lo muestra el conductor y lo escanea el operador. */
+  codigoAcceso: string;
+  /** Con que abono se hizo, o null si se pago aparte. */
+  abono: { id: Id; turno: TurnoAbono } | null;
+  /** Lo devuelto por reclamos (simulado). */
+  devuelto: number;
+  /** El reclamo abierto o denunciado sobre esta reserva, si hay. */
+  reclamoAbierto: Id | null;
 }
 
 /**
@@ -119,4 +167,13 @@ export const ESTADOS_ACTIVOS: EstadoReserva[] = ['PENDIENTE', 'CONFIRMADA', 'ACT
 
 export function esReservaActiva(reserva: Reserva): boolean {
   return ESTADOS_ACTIVOS.includes(reserva.estado);
+}
+
+/** Lo que registra el QR de la reserva segun su estado. */
+export type AccionAcceso = 'INGRESO' | 'EGRESO';
+
+/** Vista previa (`GET /reservas/acceso/:codigo`) y resultado (`POST /reservas/acceso`). */
+export interface AccesoReserva {
+  accion: AccionAcceso;
+  reserva: ReservaDetallada;
 }

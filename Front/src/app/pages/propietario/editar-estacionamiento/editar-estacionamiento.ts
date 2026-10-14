@@ -1,10 +1,11 @@
 import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
-import { FormularioEstacionamiento } from '@app/components/estacionamiento';
+import { FormularioEstacionamiento, PlanesAbono } from '@app/components/estacionamiento';
 import { Boton, Cargando, EstadoVacio } from '@app/components/ui';
 import { Id, NuevoEstacionamiento } from '@app/models';
 import { EstacionamientoService } from '@app/services/estacionamiento.service';
+import { vuelveARevision } from '@app/utils/aprobacion.util';
 
 /**
  * Pantalla `/propietario/estacionamientos/:estacionamientoId/editar` · rol PROPIETARIO
@@ -15,7 +16,7 @@ import { EstacionamientoService } from '@app/services/estacionamiento.service';
 @Component({
   selector: 'app-editar-estacionamiento',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, FormularioEstacionamiento, Boton, Cargando, EstadoVacio],
+  imports: [RouterLink, FormularioEstacionamiento, PlanesAbono, Boton, Cargando, EstadoVacio],
   templateUrl: './editar-estacionamiento.html',
 })
 export class EditarEstacionamiento {
@@ -34,6 +35,8 @@ export class EditarEstacionamiento {
   protected readonly publicando = signal(false);
   protected readonly borrando = signal(false);
   protected readonly error = signal<string | null>(null);
+  /** Porcentaje de la subida de la foto en curso, o `null`. */
+  protected readonly progresoFoto = signal<number | null>(null);
   protected readonly aviso = signal<string | null>(null);
 
   // `undefined` = no se toco la foto en este envio, `null` = se pidio
@@ -46,6 +49,15 @@ export class EditarEstacionamiento {
 
   /** `PATCH /api/estacionamientos/:id` con el formulario completo, y la foto si se toco. */
   protected guardar(datos: NuevoEstacionamiento): void {
+    const actual = this.recurso.value();
+    if (actual && vuelveARevision(actual, datos)) {
+      const seguro = confirm(
+        'Cambiaste el nombre o la dirección. Esto lo vuelve a mandar a revisión y deja de ' +
+          'verse en la búsqueda hasta que lo aprueben. Tus reservas no cambian. ¿Guardar igual?',
+      );
+      if (!seguro) return;
+    }
+
     this.enviando.set(true);
     this.error.set(null);
 
@@ -66,12 +78,13 @@ export class EditarEstacionamiento {
 
     const id = this.estacionamientoId();
     const pedido = this.foto
-      ? this.estacionamientos.subirFoto(id, this.foto)
+      ? this.estacionamientos.subirFoto(id, this.foto, (porcentaje) => this.progresoFoto.set(porcentaje))
       : this.estacionamientos.borrarFoto(id);
 
     pedido.subscribe({
       next: () => this.volverAlListado(),
       error: (e: Error) => {
+        this.progresoFoto.set(null);
         this.enviando.set(false);
         this.error.set(`Guardamos los datos, pero la foto no se pudo actualizar: ${e.message}`);
       },
@@ -93,9 +106,11 @@ export class EditarEstacionamiento {
         this.publicando.set(false);
         this.recurso.set(actualizado);
         this.aviso.set(
-          publicado
-            ? 'El estacionamiento vuelve a aparecer en la búsqueda.'
-            : 'El estacionamiento ya no aparece en la búsqueda.',
+          !publicado
+            ? 'El estacionamiento ya no aparece en la búsqueda.'
+            : actualizado.estadoAprobacion === 'APROBADO'
+              ? 'El estacionamiento vuelve a aparecer en la búsqueda.'
+              : 'Queda publicado: se va a ver en la búsqueda cuando lo aprueben.',
         );
       },
       error: (e: Error) => {

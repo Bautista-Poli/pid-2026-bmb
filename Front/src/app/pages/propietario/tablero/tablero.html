@@ -7,6 +7,9 @@
       </h1>
       <p class="mt-1 text-[13.5px] text-plomo">
         Acá tenés un resumen de la actividad de tus estacionamientos.
+        <a class="font-medium text-acento hover:text-acento-fuerte" routerLink="/propietario/estadisticas">
+          Ver estadísticas
+        </a>
       </p>
     </div>
     <span
@@ -16,6 +19,7 @@
       <ui-icono nombre="calendario" [tamano]="16" class="text-plomo" />
       <span class="inline-block first-letter:uppercase">{{ hoy | date: 'EEE, d MMM y' }}</span>
     </span>
+    <app-ingresar-codigo />
   </header>
 
   @if (recursoEstacionamientos.isLoading()) {
@@ -224,10 +228,10 @@
                   </div>
 
                   <div class="flex shrink-0 flex-col items-end gap-1.5">
-                    <ui-etiqueta [tono]="tonoEstado[reserva.estado]">
-                      {{ etiquetaEstado[reserva.estado] }}
+                    <ui-etiqueta [tono]="tonoEstado(reserva)">
+                      {{ etiquetaEstado(reserva) }}
                     </ui-etiqueta>
-                    @if (pasos[reserva.estado]; as paso) {
+                    @if (pasoDe(reserva); as paso) {
                       <button
                         type="button"
                         class="text-[11.5px] font-semibold text-acento hover:text-acento-fuerte
@@ -264,7 +268,7 @@
                 <h2 class="text-[15px] font-semibold text-tinta">Estado de cocheras</h2>
                 <a
                   class="text-[12.5px] font-medium text-acento hover:text-acento-fuerte"
-                  [routerLink]="['/propietario/estacionamientos', estacionamiento.id, 'cocheras']"
+                  [routerLink]="['/propietario/cocheras', estacionamiento.id]"
                 >
                   Gestionar
                 </a>
@@ -290,7 +294,7 @@
               <ui-cargando [cantidad]="1" />
             } @else if (recursoCocheras.value().length === 0) {
               <ui-estado-vacio titulo="Este estacionamiento no tiene cocheras cargadas">
-                <ui-boton [routerLink]="['/propietario/estacionamientos', estacionamiento.id, 'cocheras']">
+                <ui-boton [routerLink]="['/propietario/cocheras', estacionamiento.id]">
                   Cargar cocheras
                 </ui-boton>
               </ui-estado-vacio>

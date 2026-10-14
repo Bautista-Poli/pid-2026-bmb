@@ -12,6 +12,8 @@ process.env.NODE_ENV ??= 'test';
 
 import { once } from 'node:events';
 
+import bcrypt from 'bcrypt';
+
 import app from '../src/app.js';
 import { pool, query } from '../src/config/database.js';
 
@@ -19,6 +21,12 @@ export { query };
 
 // Las pruebas no geocodifican: no dependen de la red ni del cupo de Nominatim.
 process.env.GEOCODING_ENABLED = 'false';
+// Ni a Cloudinary: se prueba la logica propia (carpetas, firma), no su API.
+process.env.CLOUDINARY_ENABLED = 'false';
+// Sin credenciales (p. ej. en CI) se firma con unas de prueba: la firma es local.
+process.env.CLOUDINARY_CLOUD_NAME ||= 'nube-de-prueba';
+process.env.CLOUDINARY_API_KEY ||= '000000000000000';
+process.env.CLOUDINARY_API_SECRET ||= 'secreto-de-prueba';
 
 /** Contrasena de todos los usuarios de prueba. */
 export const PASSWORD = 'prueba1234';
@@ -51,9 +59,10 @@ export async function cerrarApi() {
  * `middlewares/auth.js`), asi que `token` aca es el par `nombre=valor` de esa
  * cookie (lo que devuelve `cookieDeSesion`), no el JWT crudo.
  */
-export async function api(metodo, ruta, { token, body, raw, contentType } = {}) {
+export async function api(metodo, ruta, { token, body, raw, contentType, redirect = 'follow' } = {}) {
   const respuesta = await fetch(`${base}${ruta}`, {
     method: metodo,
+    redirect,
     headers: {
       ...(raw ? { 'Content-Type': contentType } : body ? { 'Content-Type': 'application/json' } : {}),
       ...(token ? { Cookie: token } : {}),
@@ -105,16 +114,47 @@ export async function crearUsuario({ rol = 'CONDUCTOR', roles } = {}) {
   return usuario;
 }
 
+/**
+ * Administrador de plataforma. No hay endpoint para crearlo (lo hace el script
+ * `db:crear-admin`), asi que se inserta directo y despues se inicia sesion.
+ */
+export async function crearAdmin() {
+  const email = `${crypto.randomUUID()}@${dominio}`;
+  const passwordHash = await bcrypt.hash(PASSWORD, 4);
+
+  const { rows } = await query(
+    `INSERT INTO usuario (nombre, apellido, email, password_hash, rol, roles)
+     VALUES ('Admin', 'Parkit', $1, $2, 'ADMINISTRADOR', ARRAY['ADMINISTRADOR']::rol_usuario[])
+     RETURNING id_usuario`,
+    [email, passwordHash],
+  );
+
+  const login = await api('POST', '/auth/login', { body: { email, password: PASSWORD } });
+  return { id: rows[0].id_usuario, email, token: cookieDeSesion(login) };
+}
+
+/** Aprueba un estacionamiento sin pasar por el administrador. */
+export function aprobarDirecto(idEstacionamiento) {
+  return query(
+    `UPDATE estacionamiento SET estado_aprobacion = 'APROBADO' WHERE id_estacionamiento = $1`,
+    [idEstacionamiento],
+  );
+}
+
 /** Cambia el perfil activo y devuelve la cookie de sesion nueva. */
 export async function cambiarRol(token, rol) {
   const respuesta = await api('POST', '/auth/rol', { token, body: { rol } });
   return cookieDeSesion(respuesta);
 }
 
-/** Estacionamiento publicado, abierto toda la semana, con `cocheras` cocheras. */
+/**
+ * Estacionamiento publicado, abierto toda la semana, con `cocheras` cocheras.
+ * Por defecto queda aprobado (como si el administrador ya lo hubiera revisado),
+ * para que las suites que no prueban la aprobacion puedan buscarlo y reservar.
+ */
 export async function crearEstacionamiento(
   token,
-  { cocheras = 1, tipo = 1, horarios, tarifas = { tarifa_hora: 1000 } } = {},
+  { cocheras = 1, tipo = 1, horarios, tarifas = { tarifa_hora: 1000 }, aprobado = true } = {},
 ) {
   const alta = await api('POST', '/estacionamientos', {
     token,
@@ -137,6 +177,11 @@ export async function crearEstacionamiento(
   });
 
   const estacionamiento = alta.datos.estacionamiento;
+
+  if (aprobado) {
+    await aprobarDirecto(estacionamiento.id_estacionamiento);
+    estacionamiento.estado_aprobacion = 'APROBADO';
+  }
 
   for (let i = 1; i <= cocheras; i++) {
     await api('POST', `/estacionamientos/${estacionamiento.id_estacionamiento}/cocheras`, {
@@ -198,12 +243,23 @@ async function borrarDatosDePrueba() {
   const usuarios = 'SELECT id_usuario FROM usuario WHERE email LIKE $1';
   const propios = `SELECT id_estacionamiento FROM estacionamiento WHERE id_propietario IN (${usuarios})`;
 
+  // Las devoluciones no se borran en cascada (RESTRICT): van primero.
+  await query(
+    `DELETE FROM devolucion
+      WHERE id_incidencia IN (SELECT id_incidencia FROM incidencia WHERE id_estacionamiento IN (${propios}))`,
+    [deLaSuite],
+  );
   await query(
     `DELETE FROM reserva
       WHERE id_conductor IN (${usuarios})
          OR id_cochera IN (SELECT id_cochera FROM cochera WHERE id_estacionamiento IN (${propios}))`,
     [deLaSuite],
   );
+  await query(
+    `DELETE FROM abono WHERE id_conductor IN (${usuarios}) OR id_estacionamiento IN (${propios})`,
+    [deLaSuite],
+  );
+  await query(`DELETE FROM plan_abono WHERE id_estacionamiento IN (${propios})`, [deLaSuite]);
   await query(`DELETE FROM vehiculo WHERE id_conductor IN (${usuarios})`, [deLaSuite]);
   await query(`DELETE FROM horario WHERE id_estacionamiento IN (${propios})`, [deLaSuite]);
   await query(`DELETE FROM cochera WHERE id_estacionamiento IN (${propios})`, [deLaSuite]);

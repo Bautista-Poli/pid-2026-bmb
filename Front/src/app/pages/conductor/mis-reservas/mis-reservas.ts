@@ -1,8 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { DatePipe } from '@angular/common';
-import { RouterLink } from '@angular/router';
-import { TarjetaReserva } from '@app/components/reserva';
+import { Router, RouterLink } from '@angular/router';
+import { AbrirReclamo, ObjetoReclamo } from '@app/components/reclamo';
+import { QrReserva, TarjetaReserva } from '@app/components/reserva';
 import { Boton, Cargando, Chip, EstadoVacio, Modal, Tarjeta } from '@app/components/ui';
 import { Id, ReservaDetallada } from '@app/models';
 import { reservaEnJuego } from '@app/services/ciclo-reserva';
@@ -32,11 +33,12 @@ const inicioDe = (reserva: ReservaDetallada) =>
 @Component({
   selector: 'app-mis-reservas',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TarjetaReserva, Tarjeta, Chip, Cargando, EstadoVacio, Boton, Modal, RouterLink, DatePipe],
+  imports: [TarjetaReserva, QrReserva, AbrirReclamo, Tarjeta, Chip, Cargando, EstadoVacio, Boton, Modal, RouterLink, DatePipe],
   templateUrl: './mis-reservas.html',
 })
 export class MisReservas {
   private readonly reservas = inject(ReservaService);
+  private readonly router = inject(Router);
 
   protected readonly pestania = signal<Pestania>('VIGENTES');
 
@@ -50,6 +52,26 @@ export class MisReservas {
   protected readonly errorCancelar = signal<string | null>(null);
   /** Confirmacion visible: la reserva cancelada se va a Historial. */
   protected readonly aviso = signal<string | null>(null);
+  /** Reserva cuyo QR se esta mostrando: mientras no sea null, el modal esta abierto. */
+  protected readonly conQrAbierto = signal<ReservaDetallada | null>(null);
+  /** Reserva sobre la que el conductor abre un reclamo: mientras no sea null, el modal esta abierto. */
+  protected readonly aReclamar = signal<ObjetoReclamo | null>(null);
+
+  protected pedirReclamo(reserva: ReservaDetallada): void {
+    this.aReclamar.set({
+      tipo: 'reserva',
+      id: reserva.id,
+      descripcion: `${reserva.estacionamiento.nombre} · ${reserva.fecha.split('-').reverse().join('/')} ${reserva.horaDesde}`,
+      // Una cancelada o ausente no se cobro: se puede reclamar, pero no hay nada para devolver.
+      tope: ['CANCELADA', 'NO_SHOW'].includes(reserva.estado) ? 0 : Math.max(0, reserva.precioTotal - reserva.devuelto),
+    });
+  }
+
+  /** Abierto el reclamo, se sigue en su hilo. */
+  protected verReclamo(id: Id): void {
+    this.aReclamar.set(null);
+    this.router.navigate(['/conductor/incidencias'], { queryParams: { id } });
+  }
 
   protected readonly recurso = rxResource({
     stream: () => this.reservas.listarMisReservas(),

@@ -1,7 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
-import { EstadoReserva, ETIQUETA_ESTADO_RESERVA, ETIQUETA_MODALIDAD, ReservaDetallada } from '@app/models';
-import { reservaEnJuego } from '@app/services/ciclo-reserva';
+import { EstadoReserva, ETIQUETA_MODALIDAD, esVencida, etiquetaReserva, ReservaDetallada } from '@app/models';
+import { puedeAvanzar, reservaEnJuego } from '@app/services/ciclo-reserva';
 import { desdeFechaISO } from '@app/utils/fecha.util';
 import { Boton, Etiqueta, TonoEtiqueta } from '@app/components/ui';
 
@@ -12,6 +12,7 @@ const TONO_ESTADO: Record<EstadoReserva, TonoEtiqueta> = {
   ACTIVA: 'exito',
   FINALIZADA: 'neutro',
   CANCELADA: 'peligro',
+  NO_SHOW: 'peligro',
 };
 
 /** Que puede hacer el propietario segun como este la reserva. */
@@ -48,10 +49,13 @@ export class FilaReserva {
   readonly cancelar = output<ReservaDetallada>();
   readonly avanzar = output<ReservaDetallada>();
 
-  protected readonly etiquetaEstado = ETIQUETA_ESTADO_RESERVA;
+  protected readonly etiquetaEstado = computed(() => etiquetaReserva(this.reserva(), this.vista()));
   protected readonly etiquetaModalidad = ETIQUETA_MODALIDAD;
   protected readonly activa = computed(() => reservaEnJuego(this.reserva()));
-  protected readonly tonoEstado = computed(() => TONO_ESTADO[this.reserva().estado]);
+  // Vencida (el propietario no confirmo a tiempo) va en amarillo: no es culpa del conductor.
+  protected readonly tonoEstado = computed(() =>
+    esVencida(this.reserva()) ? 'aviso' : TONO_ESTADO[this.reserva().estado],
+  );
 
   protected readonly titulo = computed(() => {
     const reserva = this.reserva();
@@ -62,8 +66,10 @@ export class FilaReserva {
 
   protected readonly fecha = computed(() => desdeFechaISO(this.reserva().fecha));
 
-  /** El unico paso que le queda al propietario, o null si no hay nada que hacer. */
-  protected readonly paso = computed(() => PASOS[this.reserva().estado]);
+  /** El unico paso que le queda al propietario, o null si no hay nada que hacer hoy. */
+  protected readonly paso = computed(() =>
+    puedeAvanzar(this.reserva()) ? (PASOS[this.reserva().estado] ?? null) : null,
+  );
 
   /** El conductor no puede cancelar una reserva que ya arranco. */
   protected readonly cancelable = computed(

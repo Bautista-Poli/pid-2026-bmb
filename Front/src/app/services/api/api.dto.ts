@@ -1,4 +1,12 @@
-import { EstadoCochera, ModalidadReserva, RolUsuario } from '@app/models';
+import { MotivoReclamo, ResolucionIncidencia } from '@app/models';
+import {
+  EstadoAbono,
+  EstadoAprobacion,
+  EstadoCochera,
+  ModalidadReserva,
+  RolUsuario,
+  TurnoAbono,
+} from '@app/models';
 
 /*
  * Forma exacta de las respuestas de la API de Express (snake_case, tal cual
@@ -11,7 +19,8 @@ export type EstadoReservaDto =
   | 'CONFIRMADA'
   | 'ACTIVA'
   | 'CANCELADA'
-  | 'FINALIZADA';
+  | 'FINALIZADA'
+  | 'NO_SHOW';
 
 export interface UsuarioDto {
   id_usuario: string;
@@ -48,6 +57,11 @@ export interface CocheraDto {
   bloqueada_hasta: string | null;
 }
 
+/** `GET /api/admin/estacionamientos`: el estacionamiento con su propietario. */
+export interface EstacionamientoEnRevisionDto extends EstacionamientoDto {
+  propietario: { nombre: string; apellido: string; email: string; telefono: string | null };
+}
+
 export interface EstacionamientoDto {
   id_estacionamiento: string;
   id_propietario: string;
@@ -73,6 +87,9 @@ export interface EstacionamientoDto {
   cubierto: boolean;
   publicado: boolean;
   activo: boolean;
+  estado_aprobacion: EstadoAprobacion;
+  motivo_rechazo: string | null;
+  enviado_en: string;
   cocheras_activas?: number;
   cocheras_libres?: number;
   /** Solo con `incluir_no_disponibles`: si tiene lugar para el tipo y esta abierto en ese momento. */
@@ -95,6 +112,9 @@ export interface VehiculoDto {
   color: string | null;
   predeterminado: boolean;
   activo: boolean;
+  /** URL de la foto propia en Cloudinary, o `null`. */
+  foto_url?: string | null;
+  foto_miniatura_url?: string | null;
 }
 
 export interface ReservaDto {
@@ -103,6 +123,7 @@ export interface ReservaDto {
   inicio: string;
   fin: string;
   estado: EstadoReservaDto;
+  cancelada_por: 'CONDUCTOR' | 'PROPIETARIO' | 'SISTEMA' | null;
   created_at: string;
   ingreso_real: string | null;
   egreso_real: string | null;
@@ -119,8 +140,18 @@ export interface ReservaDto {
   estacionamiento: string;
   direccion: string;
   precio_total: number;
-  modalidad: ModalidadReserva;
+  modalidad: ModalidadReserva | 'ABONO';
   motivo_reasignacion: string | null;
+  codigo_acceso: string;
+  id_abono: string | null;
+  turno_abono: TurnoAbono | null;
+  devuelto?: number;
+  reclamo_abierto?: string | null;
+}
+
+export interface AccesoReservaDto {
+  accion: 'INGRESO' | 'EGRESO';
+  reserva: ReservaDto;
 }
 
 export interface FranjaDto {
@@ -131,4 +162,98 @@ export interface FranjaDto {
   motivo: string | null;
   fecha_hasta?: string;
   causa?: 'HORARIO' | 'PASADO' | 'SIN_LUGAR' | null;
+}
+
+export interface PlanAbonoDto {
+  id_plan: string;
+  id_estacionamiento: string;
+  turno: TurnoAbono;
+  cupos: number;
+  precio: number;
+  activo: boolean;
+}
+
+export interface AbonoDto {
+  id_abono: string;
+  id_conductor: string;
+  conductor_nombre: string;
+  conductor_apellido: string;
+  id_estacionamiento: string;
+  estacionamiento: string;
+  id_plan: string;
+  turno: TurnoAbono;
+  cupos_totales: number;
+  cupos_usados: number;
+  cupos_restantes: number;
+  precio_total: number;
+  desde: string;
+  hasta: string;
+  estado: EstadoAbono;
+  created_at: string;
+  devuelto?: number;
+  reclamo_abierto?: string | null;
+}
+
+export interface IncidenciaDto {
+  id_incidencia: string;
+  tipo: 'AUTO_EXCEDIDO' | 'RESERVA_AFECTADA' | 'RECLAMO';
+  estado: 'ABIERTA' | 'DENUNCIADA' | 'RESUELTA' | 'RETIRADA';
+  created_at: string;
+  denunciada_at: string | null;
+  denunciada_por: 'PROPIETARIO' | 'CONDUCTOR' | null;
+  resuelta_at: string | null;
+  id_reserva: string | null;
+  inicio: string | null;
+  fin: string | null;
+  estado_reserva: EstadoReservaDto | null;
+  egreso_real: string | null;
+  id_abono: string | null;
+  abono_desde: string | null;
+  abono_hasta: string | null;
+  abono_turno: TurnoAbono | null;
+  id_conductor: string;
+  conductor_nombre: string;
+  conductor_apellido: string;
+  patente: string | null;
+  cochera: string | null;
+  id_estacionamiento: string;
+  estacionamiento: string;
+  cantidad_mensajes?: number;
+  ultimo_mensaje?: string | null;
+  motivo: MotivoReclamo | null;
+  monto_pedido: number | null;
+  propuesta_vigente: number | null;
+  pagado: number;
+  devuelto: number;
+  tope: number;
+  resolucion: ResolucionIncidencia | null;
+}
+
+export interface MensajeIncidenciaDto {
+  id_mensaje: string;
+  canal: 'GENERAL' | 'PROPIETARIO' | 'CONDUCTOR';
+  rol_autor: 'SISTEMA' | 'PROPIETARIO' | 'CONDUCTOR' | 'ADMINISTRADOR';
+  texto: string;
+  created_at: string;
+  autor_nombre: string | null;
+  autor_apellido: string | null;
+  monto_propuesto: number | null;
+}
+
+export interface IncidenciaDetalladaDto extends IncidenciaDto {
+  canales: ('GENERAL' | 'PROPIETARIO' | 'CONDUCTOR')[];
+  mensajes: MensajeIncidenciaDto[];
+}
+
+export interface IncidenciaModeradaDto extends IncidenciaDetalladaDto {
+  resumen: {
+    inicio?: string;
+    fin?: string;
+    ingreso_real?: string | null;
+    egreso_real?: string | null;
+    estado_reserva?: EstadoReservaDto;
+    cancelada_por?: 'CONDUCTOR' | 'PROPIETARIO' | 'SISTEMA' | null;
+    desde?: string;
+    hasta?: string;
+  };
 }

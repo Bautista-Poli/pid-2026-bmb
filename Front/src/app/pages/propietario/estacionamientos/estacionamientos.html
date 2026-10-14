@@ -36,7 +36,7 @@
               <!-- Foto -->
               <a
                 class="shrink-0 self-start sm:self-center"
-                [routerLink]="['/propietario/estacionamientos', estacionamiento.id, 'cocheras']"
+                [routerLink]="['/propietario/estacionamientos', estacionamiento.id, 'editar']"
                 tabindex="-1"
                 aria-hidden="true"
               >
@@ -54,7 +54,7 @@
                     <h2 class="truncate text-[15.5px] leading-tight font-semibold text-tinta">
                       <a
                         class="hover:text-acento"
-                        [routerLink]="['/propietario/estacionamientos', estacionamiento.id, 'cocheras']"
+                        [routerLink]="['/propietario/estacionamientos', estacionamiento.id, 'editar']"
                       >
                         {{ estacionamiento.nombre }}
                       </a>
@@ -82,6 +82,32 @@
                     <span class="num-tabular">{{ precio(estacionamiento) }}</span>
                   </li>
                 </ul>
+
+                @if (estacionamiento.activo && estacionamiento.estadoAprobacion === 'RECHAZADO') {
+                  <div
+                    class="mt-3.5 flex flex-col items-start gap-2.5 rounded-control border border-ocupada/25
+                           bg-ocupada/5 px-4 py-3"
+                  >
+                    <p class="text-[12.5px] text-ocupada">
+                      <span class="font-semibold">Motivo del rechazo:</span> {{ estacionamiento.motivoRechazo }}
+                    </p>
+                    <ui-boton
+                      tamano="sm"
+                      variante="primario"
+                      [cargando]="reenviandoId() === estacionamiento.id"
+                      (presionado)="reenviar(estacionamiento)"
+                    >
+                      Reenviar a revisión
+                    </ui-boton>
+                  </div>
+                } @else if (estacionamiento.activo && estacionamiento.estadoAprobacion === 'PENDIENTE') {
+                  <p class="mt-3 text-[12px] text-plomo">
+                    Lo está revisando Parkit. Va a aparecer en la búsqueda cuando lo aprueben.
+                  </p>
+                }
+                @if (errorReenvio()?.id === estacionamiento.id) {
+                  <p class="mt-2 text-[12.5px] text-ocupada" role="alert">{{ errorReenvio()?.mensaje }}</p>
+                }
               </div>
 
               <!-- Estado + acciones -->
@@ -90,12 +116,6 @@
                   <ng-container *ngTemplateOutlet="estado; context: { $implicit: estacionamiento }" />
                 </span>
                 <div class="flex items-center gap-2">
-                  <ui-boton
-                    tamano="sm"
-                    [routerLink]="['/propietario/estacionamientos', estacionamiento.id, 'cocheras']"
-                  >
-                    Cocheras
-                  </ui-boton>
                   <ui-boton
                     tamano="sm"
                     variante="fantasma"
@@ -117,6 +137,10 @@
 <ng-template #estado let-estacionamiento>
   @if (!estacionamiento.activo) {
     <ui-etiqueta tono="peligro">Dado de baja</ui-etiqueta>
+  } @else if (estacionamiento.estadoAprobacion === 'RECHAZADO') {
+    <ui-etiqueta tono="peligro">Rechazado</ui-etiqueta>
+  } @else if (estacionamiento.estadoAprobacion === 'PENDIENTE') {
+    <ui-etiqueta tono="aviso">Pendiente de aprobación</ui-etiqueta>
   } @else if (estacionamiento.publicado) {
     <ui-etiqueta tono="exito">Activo</ui-etiqueta>
   } @else {

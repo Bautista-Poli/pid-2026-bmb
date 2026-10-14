@@ -1,8 +1,9 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { CeldaCochera, LeyendaCocheras } from '@app/components/cochera';
+import { IngresarCodigo } from '@app/components/reserva';
 import {
   Boton,
   Cargando,
@@ -20,14 +21,15 @@ import {
   EstadoCochera,
   EstadoReserva,
   ESTADOS_COCHERA_ORDEN,
-  ETIQUETA_ESTADO_RESERVA,
+  esVencida,
+  etiquetaReserva,
   ETIQUETA_TIPO_VEHICULO,
   Id,
   ReservaDetallada,
   TipoVehiculo,
 } from '@app/models';
 import { AuthService } from '@app/services/auth.service';
-import { avanzarReserva } from '@app/services/ciclo-reserva';
+import { avanzarReserva, puedeAvanzar, rutaAcceso } from '@app/services/ciclo-reserva';
 import { CocheraService } from '@app/services/cochera.service';
 import { EstacionamientoService } from '@app/services/estacionamiento.service';
 import { ReservaService } from '@app/services/reserva.service';
@@ -73,6 +75,7 @@ const TONO_ESTADO: Record<EstadoReserva, TonoEtiqueta> = {
   ACTIVA: 'exito',
   FINALIZADA: 'neutro',
   CANCELADA: 'peligro',
+  NO_SHOW: 'peligro',
 };
 
 const ICONO_VEHICULO: Record<TipoVehiculo, NombreIcono> = {
@@ -112,6 +115,7 @@ const pesos = (monto: number) => `$ ${monto.toLocaleString('es-AR')}`;
     EstadoVacio,
     Etiqueta,
     Icono,
+    IngresarCodigo,
   ],
   templateUrl: './tablero.html',
 })
@@ -120,6 +124,7 @@ export class Tablero {
   private readonly cocheras = inject(CocheraService);
   private readonly reservas = inject(ReservaService);
   private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
 
   protected readonly hoy = new Date();
   private readonly hoyISO = aFechaISO(this.hoy);
@@ -127,10 +132,18 @@ export class Tablero {
 
   protected readonly estados = ESTADOS_COCHERA_ORDEN;
   protected readonly etiquetaTipo = ETIQUETA_TIPO_VEHICULO;
-  protected readonly etiquetaEstado = ETIQUETA_ESTADO_RESERVA;
-  protected readonly tonoEstado = TONO_ESTADO;
+  protected readonly etiquetaEstado = etiquetaReserva;
+  /** Vencida (no la confirmaste a tiempo) en amarillo, distinta de una cancelacion. */
+  protected tonoEstado(reserva: ReservaDetallada): TonoEtiqueta {
+    return esVencida(reserva) ? 'aviso' : TONO_ESTADO[reserva.estado];
+  }
   protected readonly iconoVehiculo = ICONO_VEHICULO;
   protected readonly pasos = PASOS;
+
+  /** El boton del paso siguiente, o null si hoy no corresponde (p. ej. ingreso fuera de la ventana). */
+  protected pasoDe(reserva: ReservaDetallada): string | null {
+    return puedeAvanzar(reserva) ? (PASOS[reserva.estado] ?? null) : null;
+  }
   protected readonly claseTono = CLASE_TONO;
 
   protected readonly nombre = computed(() => this.auth.usuario()?.nombre ?? '');
@@ -151,8 +164,9 @@ export class Tablero {
     defaultValue: [] as ReservaDetallada[],
   });
 
+  /** Las que ocuparon (u ocupan) una cochera: sin canceladas ni no-shows, que no se cobran. */
   private readonly vigentes = computed(() =>
-    this.recursoReservas.value().filter((r) => r.estado !== 'CANCELADA'),
+    this.recursoReservas.value().filter((r) => r.estado !== 'CANCELADA' && r.estado !== 'NO_SHOW'),
   );
 
   private readonly delDia = (fecha: string) => this.vigentes().filter((r) => r.fecha === fecha);
@@ -285,8 +299,14 @@ export class Tablero {
     this.cocheraAbierta.update((actual) => (actual?.id === cochera.id ? null : cochera));
   }
 
-  /** Ciclo de la reserva desde el panel: mismos pasos que "Reservas". */
+  /** Ciclo de la reserva desde el panel: confirmar, o ingreso y egreso por la pantalla de acceso. */
   protected avanzar(reserva: ReservaDetallada): void {
+    const ruta = rutaAcceso(reserva);
+    if (ruta) {
+      void this.router.navigate(ruta);
+      return;
+    }
+
     const paso = avanzarReserva(this.reservas, reserva);
     if (!paso) return;
 

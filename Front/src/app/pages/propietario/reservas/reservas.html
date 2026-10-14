@@ -65,35 +65,17 @@
             </button>
           }
         </div>
-      </div>
-    </header>
 
-    <!-- Pestañas -->
-    <nav class="-mb-1 flex gap-1 overflow-x-auto border-b border-borde" aria-label="Estado de la reserva">
-      @for (item of pestanas; track item.valor) {
         <button
           type="button"
-          class="relative flex shrink-0 items-center gap-2 px-3.5 pt-1 pb-3 text-[13px] font-medium
-                 transition-colors duration-160
-                 after:absolute after:inset-x-2 after:-bottom-px after:h-[2px] after:rounded-full"
-          [class]="
-            pestana() === item.valor
-              ? 'text-acento font-semibold after:bg-acento'
-              : 'text-plomo hover:text-tinta after:bg-transparent'
-          "
-          [attr.aria-pressed]="pestana() === item.valor"
-          (click)="pestana.set(item.valor)"
+          class="rounded-boton px-2.5 py-2 text-[12.5px] font-medium text-plomo hover:bg-borde-sutil hover:text-tinta"
+          [attr.aria-pressed]="verCanceladas()"
+          (click)="verCanceladas.set(!verCanceladas())"
         >
-          {{ item.etiqueta }}
-          <span
-            class="num-tabular rounded-full px-1.5 py-px text-[11px]"
-            [class]="pestana() === item.valor ? 'bg-acento-suave text-acento' : 'bg-borde-sutil text-plomo'"
-          >
-            {{ conteos()[item.valor] }}
-          </span>
+          {{ verCanceladas() ? 'Ocultar canceladas' : 'Ver canceladas' }}
         </button>
-      }
-    </nav>
+      </div>
+    </header>
 
     @if (aviso(); as mensaje) {
       <p
@@ -120,12 +102,20 @@
         titulo="Sin reservas por ahora"
         descripcion="Las reservas que reciban tus cocheras aparecen acá."
       />
-    } @else if (visibles().length === 0) {
+    } @else if (secciones().length === 0) {
       <ui-estado-vacio
         titulo="No hay reservas que coincidan"
-        descripcion="Probá con otra pestaña o cambiá los filtros."
+        descripcion="Probá cambiando los filtros."
       />
     } @else {
+      @for (seccion of secciones(); track seccion.clave) {
+      <section class="flex flex-col gap-3" [attr.aria-label]="seccion.titulo">
+        <h2 class="flex items-center gap-2 text-[14px] font-semibold text-tinta">
+          {{ seccion.titulo }}
+          <span class="num-tabular rounded-full bg-borde-sutil px-1.5 py-px text-[11px] text-plomo">
+            {{ seccion.reservas.length }}
+          </span>
+        </h2>
       <ui-tarjeta relleno="ninguno" [recortar]="true">
         <!-- Desktop: tabla -->
         <div class="hidden overflow-x-auto lg:block">
@@ -142,7 +132,7 @@
               </tr>
             </thead>
             <tbody class="aparece-en-cadena">
-              @for (reserva of visibles(); track reserva.id) {
+              @for (reserva of seccion.reservas; track reserva.id) {
                 <tr
                   class="border-t border-borde-sutil text-[12.5px] text-grafito transition-colors
                          duration-160 first:border-t-0 hover:bg-lienzo"
@@ -170,12 +160,12 @@
                     $ {{ reserva.precioTotal.toLocaleString('es-AR') }}
                   </td>
                   <td class="px-3 py-3.5">
-                    <ui-etiqueta [tono]="tonoEstado[reserva.estado]">
-                      {{ etiquetaEstado[reserva.estado] }}
+                    <ui-etiqueta [tono]="tonoEstado(reserva)">
+                      {{ etiquetaEstado(reserva) }}
                     </ui-etiqueta>
                   </td>
                   <td class="py-3.5 pr-6 pl-3 text-right">
-                    @if (pasos[reserva.estado]; as paso) {
+                    @if (pasoDe(reserva); as paso) {
                       <button
                         type="button"
                         class="inline-flex items-center gap-1.5 rounded-boton bg-acento-suave px-3 py-1.5
@@ -192,7 +182,20 @@
                         }
                         {{ paso }}
                       </button>
-                    } @else {
+                    }
+                    @if (puedeMarcarAusente(reserva)) {
+                      <button
+                        type="button"
+                        class="ml-1.5 inline-flex items-center rounded-boton px-3 py-1.5 text-[12px] font-semibold
+                               whitespace-nowrap text-ocupada transition-colors duration-160 hover:bg-ocupada/10
+                               disabled:opacity-60"
+                        [disabled]="procesandoId() === reserva.id"
+                        (click)="aMarcarAusente.set(reserva)"
+                      >
+                        Marcar ausente
+                      </button>
+                    }
+                    @if (!pasoDe(reserva) && !puedeMarcarAusente(reserva)) {
                       <span class="text-humo">—</span>
                     }
                   </td>
@@ -204,7 +207,7 @@
 
         <!-- Mobile: lista -->
         <ul class="aparece-en-cadena lg:hidden">
-          @for (reserva of visibles(); track reserva.id) {
+          @for (reserva of seccion.reservas; track reserva.id) {
             <li class="flex flex-col gap-3 border-t border-borde-sutil px-4 py-4 first:border-t-0">
               <div class="flex items-start gap-3">
                 <span class="grid size-10 shrink-0 place-items-center rounded-full bg-acento-suave text-acento">
@@ -225,8 +228,8 @@
                     }
                   </p>
                 </div>
-                <ui-etiqueta [tono]="tonoEstado[reserva.estado]">
-                  {{ etiquetaEstado[reserva.estado] }}
+                <ui-etiqueta [tono]="tonoEstado(reserva)">
+                  {{ etiquetaEstado(reserva) }}
                 </ui-etiqueta>
               </div>
 
@@ -234,7 +237,7 @@
                 <span class="num-tabular text-[13px] font-semibold text-tinta">
                   $ {{ reserva.precioTotal.toLocaleString('es-AR') }}
                 </span>
-                @if (pasos[reserva.estado]; as paso) {
+                @if (pasoDe(reserva); as paso) {
                   <button
                     type="button"
                     class="inline-flex items-center gap-1.5 rounded-boton bg-acento px-3 py-1.5 text-[12px]
@@ -251,11 +254,47 @@
                     {{ paso }}
                   </button>
                 }
+                @if (puedeMarcarAusente(reserva)) {
+                  <button
+                    type="button"
+                    class="inline-flex items-center rounded-boton px-3 py-1.5 text-[12px] font-semibold
+                           text-ocupada disabled:opacity-60"
+                    [disabled]="procesandoId() === reserva.id"
+                    (click)="aMarcarAusente.set(reserva)"
+                  >
+                    Marcar ausente
+                  </button>
+                }
               </div>
             </li>
           }
         </ul>
       </ui-tarjeta>
+      </section>
+      }
     }
   </div>
 </div>
+
+<ui-modal titulo="Marcar ausente" [abierto]="aMarcarAusente() !== null" (cerrado)="aMarcarAusente.set(null)">
+  @if (aMarcarAusente(); as reserva) {
+    <div class="flex flex-col gap-4">
+      <p class="text-[13.5px] text-grafito">
+        La reserva de <strong class="text-tinta">{{ reserva.vehiculo.patente }}</strong>
+        ({{ reserva.horaDesde }} - {{ reserva.horaHasta }}) queda como <strong class="text-tinta">Ausente</strong>
+        y la cochera {{ reserva.cochera?.identificador ?? '' }} vuelve a estar disponible. No se puede deshacer.
+      </p>
+      <p class="text-[12.5px] text-plomo">
+        Usalo si el conductor avisó que no viene. Si no hacés nada, pasa a Ausente sola a los 15 minutos del inicio.
+      </p>
+      <ui-boton
+        variante="peligro"
+        [bloque]="true"
+        [cargando]="procesandoId() === reserva.id"
+        (presionado)="marcarAusente(reserva)"
+      >
+        Marcar ausente
+      </ui-boton>
+    </div>
+  }
+</ui-modal>

@@ -1,7 +1,9 @@
 import { ROLES } from '../utils/roles.js';
 import { campos } from './helpers.js';
 
-const PERFILES = Object.values(ROLES);
+// Los perfiles que cualquiera puede elegir. El de administrador no: lo crea el
+// script db:crear-admin y no se combina con los demas.
+const PERFILES = [ROLES.CONDUCTOR, ROLES.PROPIETARIO];
 
 export function validarRegistro(body) {
   return campos(body)

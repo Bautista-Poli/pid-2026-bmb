@@ -1,0 +1,191 @@
+<div class="aparece mx-auto w-full max-w-[1240px] px-5 pt-5 pb-8 lg:px-9 lg:pt-8 lg:pb-11">
+  <header class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div>
+      <p class="eyebrow">Propietario</p>
+      <h1 class="titulo-vista mt-1.5">Estadísticas</h1>
+      <p class="mt-1 text-[13.5px] text-plomo">
+        Cómo les fue a tus estacionamientos, comparado con el período anterior.
+      </p>
+    </div>
+
+    <div class="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+      <div class="flex gap-2 overflow-x-auto pb-1 sm:pb-0">
+        @for (opcion of periodos; track opcion.tipo) {
+          <ui-chip [activo]="opcion.tipo === periodo()" (alternar)="elegirPeriodo(opcion.tipo)">
+            {{ opcion.etiqueta }}
+          </ui-chip>
+        }
+      </div>
+      @if (recursoEstacionamientos.value().length > 1) {
+        <select
+          class="rounded-control border border-borde bg-papel px-3.5 py-2.5 text-[13px] text-grafito
+                 shadow-tarjeta focus:border-acento focus:outline-none"
+          aria-label="Estacionamiento"
+          (change)="elegirEstacionamiento($event)"
+        >
+          <!-- [selected] en cada opcion: un [value] en el select se aplica antes de que existan. -->
+          <option value="" [selected]="!estacionamientoId()">Todos los estacionamientos</option>
+          @for (lote of recursoEstacionamientos.value(); track lote.id) {
+            <option [value]="lote.id" [selected]="lote.id === estacionamientoId()">{{ lote.nombre }}</option>
+          }
+        </select>
+      }
+    </div>
+  </header>
+
+  @if (recurso.isLoading() && !recurso.value()) {
+    <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+      @for (i of [1, 2, 3, 4, 5, 6]; track i) {
+        <div class="esqueleto h-[118px] rounded-tarjeta"></div>
+      }
+    </div>
+    <div class="mt-5"><ui-cargando [cantidad]="2" /></div>
+  } @else if (recurso.error(); as e) {
+    <div class="mt-6">
+      <ui-estado-vacio titulo="No pudimos cargar las estadísticas" [descripcion]="e.message">
+        <ui-boton (presionado)="recurso.reload()">Reintentar</ui-boton>
+      </ui-estado-vacio>
+    </div>
+  } @else if (recurso.value(); as datos) {
+    <div class="mt-6 flex flex-col gap-5 lg:gap-6" [class.opacity-60]="recurso.isLoading()">
+      <!-- KPIs -->
+      <div class="aparece-en-cadena grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+        @for (metrica of metricas(); track metrica.etiqueta) {
+          <app-tarjeta-metrica
+            [etiqueta]="metrica.etiqueta"
+            [valor]="metrica.valor"
+            [icono]="metrica.icono"
+            [tono]="metrica.tono"
+            [variacion]="metrica.variacion"
+          />
+        }
+      </div>
+
+      <div class="grid gap-5 lg:gap-6 xl:grid-cols-2">
+        <!-- Ocupacion -->
+        <ui-tarjeta relleno="lg">
+          <div class="flex flex-col gap-4">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 class="text-[15px] font-semibold text-tinta">Ocupación por día</h2>
+                <p class="mt-0.5 text-[12px] text-plomo">Horas reservadas sobre las horas que abren tus cocheras</p>
+              </div>
+              <div class="flex items-center gap-4 text-[12px] text-plomo">
+                <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-[3px] bg-acento"></span> Usadas</span>
+                <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-[3px] bg-acento/20"></span> Libres</span>
+              </div>
+            </div>
+            @if (hayOcupacion() && datos.kpis.ocupacion.valor > 0) {
+              <app-barras-dia [barras]="barrasOcupacion()" descripcion="Ocupación por día del período" />
+            } @else if (hayOcupacion()) {
+              <p class="py-8 text-center text-[13px] text-plomo">Tus cocheras no tuvieron reservas en este período.</p>
+            } @else {
+              <p class="py-8 text-center text-[13px] text-plomo">
+                Sin horarios de atención cargados: no hay horas para medir.
+              </p>
+            }
+          </div>
+        </ui-tarjeta>
+
+        <!-- Ingresos -->
+        <ui-tarjeta relleno="lg">
+          <div class="flex flex-col gap-4">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 class="text-[15px] font-semibold text-tinta">Ingresos (simulados)</h2>
+                <p class="mt-0.5 text-[12px] text-plomo">
+                  Total {{ pesos(datos.kpis.ingresos.valor) }}
+                  @if (datos.kpis.devoluciones.valor > 0) {
+                    (neto de {{ pesos(datos.kpis.devoluciones.valor) }} devueltos por reclamos)
+                  }
+                  @if (datos.ingresosProyectados > 0) {
+                    · {{ pesos(datos.ingresosProyectados) }} por cobrar de reservas confirmadas que vienen
+                  }
+                </p>
+              </div>
+              <div class="flex items-center gap-4 text-[12px] text-plomo">
+                <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-[3px] bg-exito"></span> Reservas</span>
+                <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-[3px] bg-violet-500"></span> Abonos</span>
+              </div>
+            </div>
+            @if (hayIngresos()) {
+              <app-barras-dia [barras]="barrasIngresos()" descripcion="Ingresos por día del período" />
+            } @else {
+              <p class="py-8 text-center text-[13px] text-plomo">Todavía no hubo ingresos en este período.</p>
+            }
+          </div>
+        </ui-tarjeta>
+      </div>
+
+      <div class="grid gap-5 lg:gap-6 xl:grid-cols-[1.6fr_1fr]">
+        <!-- Demanda -->
+        <ui-tarjeta relleno="lg">
+          <div class="flex flex-col gap-4">
+            <div>
+              <h2 class="text-[15px] font-semibold text-tinta">Demanda por horario</h2>
+              <p class="mt-0.5 text-[12px] text-plomo">
+                @if (horaPico(); as pico) {
+                  Hora pico: <span class="font-semibold text-tinta">{{ pico }}</span>
+                } @else {
+                  Cuántas reservas ocupan cada hora de la semana
+                }
+              </p>
+            </div>
+            @if (datos.demanda.length > 0) {
+              <app-mapa-calor [celdas]="datos.demanda" />
+            } @else {
+              <p class="py-8 text-center text-[13px] text-plomo">Sin reservas en este período.</p>
+            }
+          </div>
+        </ui-tarjeta>
+
+        <!-- Cancelaciones y ausentes -->
+        <ui-tarjeta relleno="lg">
+          <div class="flex flex-col gap-4">
+            <div>
+              <h2 class="text-[15px] font-semibold text-tinta">Cancelaciones y ausentes</h2>
+              <p class="mt-0.5 text-[12px] text-plomo">
+                {{ datos.cancelaciones.total }} canceladas ({{ porciento(datos.kpis.tasaCancelacion.valor) }}) ·
+                {{ datos.ausentes.total }} ausentes ({{ porciento(datos.ausentes.tasa) }})
+              </p>
+            </div>
+
+            @if (datos.cancelaciones.total === 0) {
+              <p class="py-4 text-center text-[13px] text-plomo">No hubo cancelaciones en este período.</p>
+            } @else {
+              <ul class="flex flex-col gap-3">
+                @for (origen of origenes; track origen) {
+                  <li class="flex flex-col gap-1">
+                    <div class="flex justify-between text-[12.5px]">
+                      <span class="text-grafito">{{ etiquetaOrigen[origen] }}</span>
+                      <span class="num-tabular font-semibold text-tinta">{{ datos.cancelaciones.porOrigen[origen] }}</span>
+                    </div>
+                    <div class="h-2 overflow-hidden rounded-full bg-borde-sutil">
+                      <div class="h-full rounded-full bg-baja" [style.width.%]="anchoOrigen(datos, origen)"></div>
+                    </div>
+                  </li>
+                }
+              </ul>
+              @if (datos.cancelaciones.anticipacionPromedioHoras !== null) {
+                <p class="text-[12px] text-plomo">
+                  Los conductores cancelan en promedio
+                  <span class="num-tabular font-semibold text-tinta">{{ datos.cancelaciones.anticipacionPromedioHoras }} h</span>
+                  antes del inicio.
+                </p>
+              }
+            }
+          </div>
+        </ui-tarjeta>
+      </div>
+
+      @if (datos.kpis.reservas.valor === 0) {
+        <ui-estado-vacio
+          titulo="No hubo reservas en este período"
+          descripcion="Probá con un período más largo o revisá que tus estacionamientos estén publicados y aprobados."
+        >
+          <ui-boton routerLink="/propietario/estacionamientos">Ver mis estacionamientos</ui-boton>
+        </ui-estado-vacio>
+      }
+    </div>
+  }
+</div>

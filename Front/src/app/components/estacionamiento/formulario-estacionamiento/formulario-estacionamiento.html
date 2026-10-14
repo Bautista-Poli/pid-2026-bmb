@@ -204,12 +204,20 @@
               @if (horario.controls.abierto.value) {
                 <label class="campo">
                   <span class="sr-only">Abre el {{ dias[i].etiqueta }}</span>
-                  <input class="num-tabular !py-2" type="time" formControlName="desde" />
+                  <select class="num-tabular !py-2" formControlName="desde">
+                    @for (hora of horas(horario.controls.desde.value); track hora) {
+                      <option [value]="hora">{{ hora }}</option>
+                    }
+                  </select>
                 </label>
                 <span class="text-[13px] text-plomo">a</span>
                 <label class="campo">
                   <span class="sr-only">Cierra el {{ dias[i].etiqueta }}</span>
-                  <input class="num-tabular !py-2" type="time" formControlName="hasta" />
+                  <select class="num-tabular !py-2" formControlName="hasta">
+                    @for (hora of horas(horario.controls.hasta.value); track hora) {
+                      <option [value]="hora">{{ hora }}</option>
+                    }
+                  </select>
                 </label>
               } @else {
                 <span class="text-[13px] text-humo">Cerrado</span>

@@ -1,8 +1,10 @@
 import * as estacionamientoService from '../services/estacionamiento.service.js';
+import * as cloudinary from '../services/cloudinary.service.js';
 import * as fotoService from '../services/estacionamiento-foto.service.js';
 import * as cocheraService from '../services/cochera.service.js';
 import * as reservaService from '../services/reserva.service.js';
 import { ApiError } from '../utils/ApiError.js';
+import { ROLES } from '../utils/roles.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
 export const crear = asyncHandler(async (req, res) => {
@@ -23,7 +25,10 @@ export const buscar = asyncHandler(async (req, res) => {
 });
 
 export const obtener = asyncHandler(async (req, res) => {
-  const estacionamiento = await estacionamientoService.obtenerPorId(req.params.id);
+  const estacionamiento = await estacionamientoService.obtenerPorId(req.params.id, {
+    idSolicitante: req.usuario?.id ?? null,
+    esAdmin: req.usuario?.rol === ROLES.ADMINISTRADOR,
+  });
   res.json({ estacionamiento });
 });
 
@@ -38,6 +43,11 @@ export const actualizar = asyncHandler(async (req, res) => {
     req.usuario.id,
     req.body,
   );
+  res.json({ estacionamiento });
+});
+
+export const reenviarRevision = asyncHandler(async (req, res) => {
+  const estacionamiento = await estacionamientoService.reenviarRevision(req.params.id, req.usuario.id);
   res.json({ estacionamiento });
 });
 
@@ -115,8 +125,16 @@ export const listarReservas = asyncHandler(async (req, res) => {
   res.json({ reservas });
 });
 
-/** Manda los bytes de una foto con cache corto y ETag por version. */
+/**
+ * Manda una foto: si esta en Cloudinary, redirige a su CDN; si no, los bytes
+ * con cache corto y ETag por version.
+ */
 function enviarFoto(res, foto) {
+  if (foto.public_id) {
+    res.set('Cache-Control', 'public, max-age=300');
+    res.redirect(302, cloudinary.url(foto.public_id, { ancho: 1600 }));
+    return;
+  }
   res.type(foto.mime);
   res.set('Cache-Control', 'public, max-age=300');
   res.set('ETag', `W/"${foto.actualizada.getTime()}"`);
@@ -129,6 +147,9 @@ function enviarFoto(res, foto) {
  * termina guardando cualquier cosa en la base.
  */
 function imagenDelBody(req) {
+  // El camino normal: la foto ya se subio a Cloudinary y llega su public_id.
+  if (req.body && typeof req.body.public_id === 'string') return { publicId: req.body.public_id };
+
   const bytes = req.body;
   // Con un Content-Type que no matchea, express.raw deja req.body en {}.
   const mime = Buffer.isBuffer(bytes) && bytes.length > 0 ? tipoDeImagen(bytes) : null;
@@ -144,9 +165,14 @@ export const obtenerFoto = asyncHandler(async (req, res) => {
 });
 
 export const guardarFoto = asyncHandler(async (req, res) => {
-  const { mime, bytes } = imagenDelBody(req);
-  const foto = await fotoService.guardarPortada(req.params.id, req.usuario.id, mime, bytes);
+  const foto = await fotoService.guardarPortada(req.params.id, req.usuario.id, imagenDelBody(req));
   res.json({ foto });
+});
+
+/** Firma para que el navegador suba una foto directo a Cloudinary. */
+export const firmarFoto = asyncHandler(async (req, res) => {
+  const firma = await fotoService.firmar(req.params.id, req.usuario.id);
+  res.json({ firma });
 });
 
 export const borrarFoto = asyncHandler(async (req, res) => {
@@ -161,8 +187,7 @@ export const obtenerFotoDeGaleria = asyncHandler(async (req, res) => {
 });
 
 export const agregarFoto = asyncHandler(async (req, res) => {
-  const { mime, bytes } = imagenDelBody(req);
-  const foto = await fotoService.agregar(req.params.id, req.usuario.id, mime, bytes);
+  const foto = await fotoService.agregar(req.params.id, req.usuario.id, imagenDelBody(req));
   res.status(201).json({ foto });
 });
 

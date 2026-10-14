@@ -4,7 +4,7 @@ import { config } from '../config/env.js';
 import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
 import { firmarToken } from '../utils/jwt.js';
-import { ESTADOS_VIGENTES } from '../utils/roles.js';
+import { ESTADOS_VIGENTES, ROLES } from '../utils/roles.js';
 
 // `roles` va como text[]: el driver no sabe leer arreglos de un ENUM propio y
 // los devolveria como el texto crudo '{CONDUCTOR,PROPIETARIO}'.
@@ -127,6 +127,9 @@ export async function actualizarPerfil(idUsuario, cambios) {
     }
 
     if (cambios.roles !== undefined) {
+      if (actual.roles.includes(ROLES.ADMINISTRADOR)) {
+        throw ApiError.badRequest('El administrador no puede tener otros perfiles');
+      }
       valores.push(cambios.roles);
       sets.push(`roles = $${valores.length}::rol_usuario[]`);
 
@@ -180,14 +183,14 @@ export async function eliminarCuenta(idUsuario) {
 
     // Reservas futuras que hizo como conductor.
     await client.query(
-      `UPDATE reserva SET estado = 'CANCELADA'
+      `UPDATE reserva SET estado = 'CANCELADA', cancelada_por = 'CONDUCTOR'
         WHERE id_conductor = $1 AND estado = ANY($2::estado_reserva[]) AND fin > now()`,
       [idUsuario, ESTADOS_VIGENTES],
     );
 
     // Reservas futuras que recibio en sus cocheras.
     await client.query(
-      `UPDATE reserva r SET estado = 'CANCELADA'
+      `UPDATE reserva r SET estado = 'CANCELADA', cancelada_por = 'PROPIETARIO'
          FROM cochera c
          JOIN estacionamiento e ON e.id_estacionamiento = c.id_estacionamiento
         WHERE c.id_cochera = r.id_cochera

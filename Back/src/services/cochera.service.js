@@ -1,13 +1,14 @@
 import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
 import { ESTADOS_COCHERA, ESTADOS_RESERVA, ESTADOS_VIGENTES } from '../utils/roles.js';
-import { sinSolapamiento } from '../utils/solapamiento.js';
+import { finEfectivo, sinSolapamiento } from '../utils/solapamiento.js';
 import { asegurarPropiedad } from './estacionamiento.service.js';
 
 const VIOLACION_UNIQUE = '23505';
 const VIOLACION_FK = '23503';
-// ON DELETE RESTRICT falla con este codigo (NO ACTION usa el de arriba, 23001).
-const VIOLACION_RESTRICT = '23503';
+// Borrar una fila referenciada por una FK ON DELETE RESTRICT: Postgres 18 (el de
+// Neon) responde restrict_violation (23001); versiones anteriores, 23503.
+const VIOLACION_RESTRICT = ['23001', '23503'];
 
 const CAMPOS =
   'id_cochera, id_estacionamiento, id_tipo_vehiculo, identificador, sector, cubierta, estado_actual, ' +
@@ -185,7 +186,7 @@ export async function darDeBaja(idEstacionamiento, idPropietario, idCochera) {
     if (!existentes[0].activo) throw ApiError.conflict('La cochera ya esta dada de baja');
 
     await client.query(
-      `UPDATE reserva SET estado = 'CANCELADA'
+      `UPDATE reserva SET estado = 'CANCELADA', cancelada_por = 'PROPIETARIO'
         WHERE id_cochera = $1 AND estado = ANY($2::estado_reserva[]) AND fin > now()`,
       [idCochera, ESTADOS_VIGENTES],
     );
@@ -224,7 +225,7 @@ export async function reactivar(idEstacionamiento, idPropietario, idCochera) {
 }
 
 /** Otra cochera libre del mismo estacionamiento, mismo tipo de vehiculo, para esa franja exacta. */
-async function buscarAlternativa(client, idEstacionamiento, idCocheraOriginal, idTipoVehiculo, inicio, fin) {
+export async function buscarAlternativa(client, idEstacionamiento, idCocheraOriginal, idTipoVehiculo, inicio, fin) {
   const { rows: candidatas } = await client.query(
     `SELECT c.id_cochera
        FROM cochera c
@@ -284,7 +285,7 @@ export async function bloquear(idEstacionamiento, idPropietario, idCochera, { mo
       `SELECT r.id_reserva, r.estado, r.inicio, r.fin, v.id_tipo_vehiculo
          FROM reserva r
          JOIN vehiculo v ON v.id_vehiculo = r.id_vehiculo
-        WHERE r.id_cochera = $1 AND r.estado = ANY($2::estado_reserva[]) AND r.fin > now()
+        WHERE r.id_cochera = $1 AND r.estado = ANY($2::estado_reserva[]) AND ${finEfectivo('r')} > now()
         FOR UPDATE OF r`,
       [idCochera, ESTADOS_VIGENTES],
     );
@@ -322,7 +323,7 @@ export async function bloquear(idEstacionamiento, idPropietario, idCochera, { mo
     }
     for (const reserva of sinAlternativa) {
       await client.query(
-        "UPDATE reserva SET estado = 'CANCELADA', motivo_reasignacion = $1 WHERE id_reserva = $2",
+        "UPDATE reserva SET estado = 'CANCELADA', cancelada_por = 'PROPIETARIO', motivo_reasignacion = $1 WHERE id_reserva = $2",
         [AVISO_CANCELADA_SIN_ALTERNATIVA, reserva.id_reserva],
       );
     }
@@ -380,7 +381,7 @@ export async function eliminar(idEstacionamiento, idPropietario, idCochera) {
   try {
     await query('DELETE FROM cochera WHERE id_cochera = $1', [idCochera]);
   } catch (error) {
-    if (error.code === VIOLACION_RESTRICT) {
+    if (VIOLACION_RESTRICT.includes(error.code)) {
       throw ApiError.conflict('La cochera tiene reservas en su historial: queda inactiva, no se puede eliminar');
     }
     throw error;

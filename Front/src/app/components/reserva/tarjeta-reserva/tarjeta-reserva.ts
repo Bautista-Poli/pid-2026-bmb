@@ -10,19 +10,23 @@ import {
   signal,
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { Etiqueta, Icono, TonoEtiqueta } from '@app/components/ui';
 import { ChapaPatente } from '@app/components/vehiculo';
 import {
   EstadoReserva,
-  ETIQUETA_ESTADO_RESERVA,
+  esVencida,
+  etiquetaReserva,
   ETIQUETA_MODALIDAD,
   ETIQUETA_TIPO_VEHICULO,
+  TURNOS,
   direccionCorta,
   ReservaDetallada,
 } from '@app/models';
 import { reservaEnJuego } from '@app/services/ciclo-reserva';
 import { aInstante, desdeFechaISO } from '@app/utils/fecha.util';
 import { linksComoLlegar } from '@app/utils/mapas.util';
+import { reservaReclamable } from '@app/utils/reclamo.util';
 
 const TONO_ESTADO: Record<EstadoReserva, TonoEtiqueta> = {
   PENDIENTE: 'aviso',
@@ -30,6 +34,7 @@ const TONO_ESTADO: Record<EstadoReserva, TonoEtiqueta> = {
   ACTIVA: 'exito',
   FINALIZADA: 'neutro',
   CANCELADA: 'peligro',
+  NO_SHOW: 'peligro',
 };
 
 /** El reloj de la reserva en curso se refresca cada 30 s: alcanza para los minutos. */
@@ -61,7 +66,7 @@ function duracion(ms: number): string {
 @Component({
   selector: 'app-tarjeta-reserva',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgTemplateOutlet, Etiqueta, Icono, ChapaPatente],
+  imports: [NgTemplateOutlet, RouterLink, Etiqueta, Icono, ChapaPatente],
   templateUrl: './tarjeta-reserva.html',
   host: { class: 'block' },
 })
@@ -73,13 +78,29 @@ export class TarjetaReserva implements OnInit {
   readonly cancelando = input(false);
 
   readonly cancelar = output<ReservaDetallada>();
+  readonly verQr = output<ReservaDetallada>();
+  /** "Tengo un problema": abre un reclamo sobre esta reserva. */
+  readonly reclamar = output<ReservaDetallada>();
 
-  protected readonly etiquetaEstado = ETIQUETA_ESTADO_RESERVA;
+  /** Pagada aparte, dentro de los 15 dias y sin otro reclamo abierto. */
+  protected readonly reclamable = computed(() => reservaReclamable(this.reserva()));
+
+  /** El QR sirve mientras la reserva puede entrar o salir: confirmada o en curso. */
+  protected readonly conQr = computed(() => {
+    const r = this.reserva();
+    // Una ACTIVA lo necesita para salir aunque ya haya pasado su fin.
+    return r.estado === 'ACTIVA' || (r.estado === 'CONFIRMADA' && reservaEnJuego(r));
+  });
+
+  protected readonly etiquetaEstado = computed(() => etiquetaReserva(this.reserva(), 'CONDUCTOR'));
   protected readonly etiquetaModalidad = ETIQUETA_MODALIDAD;
+  protected readonly turnos = TURNOS;
 
   protected readonly ahora = signal(Date.now());
 
-  protected readonly tono = computed(() => TONO_ESTADO[this.reserva().estado]);
+  protected readonly tono = computed(() =>
+    esVencida(this.reserva()) ? 'aviso' : TONO_ESTADO[this.reserva().estado],
+  );
   protected readonly enCurso = computed(
     () => this.variante() === 'completa' && this.reserva().estado === 'ACTIVA',
   );

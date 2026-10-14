@@ -45,29 +45,31 @@
           <input type="tel" formControlName="telefono" autocomplete="tel" />
         </label>
 
-        <fieldset class="flex flex-col gap-2">
-          <legend class="label-campo mb-2">Perfiles habilitados</legend>
-          @for (perfil of perfiles; track perfil.rol) {
-            <label class="flex items-start gap-2.5 text-[13px] text-grafito">
-              <input
-                class="mt-0.5 size-4 shrink-0 accent-acento"
-                type="checkbox"
-                [formControlName]="perfil.control"
-              />
-              <span>
-                {{ etiquetaRol[perfil.rol] }}
-                <span class="block text-[12px] text-plomo">{{ perfil.descripcion }}</span>
+        @if (!esAdmin()) {
+          <fieldset class="flex flex-col gap-2">
+            <legend class="label-campo mb-2">Perfiles habilitados</legend>
+            @for (perfil of perfiles; track perfil.rol) {
+              <label class="flex items-start gap-2.5 text-[13px] text-grafito">
+                <input
+                  class="mt-0.5 size-4 shrink-0 accent-acento"
+                  type="checkbox"
+                  [formControlName]="perfil.control"
+                />
+                <span>
+                  {{ etiquetaRol[perfil.rol] }}
+                  <span class="block text-[12px] text-plomo">{{ perfil.descripcion }}</span>
+                </span>
+              </label>
+            }
+            @if (datos.touched && datos.hasError('sinPerfiles')) {
+              <span class="campo-error">Tenés que dejar al menos un perfil.</span>
+            } @else {
+              <span class="campo-ayuda">
+                Con los dos podés alternar entre conductor y propietario desde el menú.
               </span>
-            </label>
-          }
-          @if (datos.touched && datos.hasError('sinPerfiles')) {
-            <span class="campo-error">Tenés que dejar al menos un perfil.</span>
-          } @else {
-            <span class="campo-ayuda">
-              Con los dos podés alternar entre conductor y propietario desde el menú.
-            </span>
-          }
-        </fieldset>
+            }
+          </fieldset>
+        }
 
         @if (errorDatos(); as mensaje) {
           <p
@@ -176,7 +178,16 @@
       <form class="flex flex-col gap-4" [formGroup]="clave" (ngSubmit)="cambiarPassword()" novalidate>
         <label class="campo">
           <span class="label-campo">Contraseña actual</span>
-          <input type="password" formControlName="passwordActual" autocomplete="current-password" />
+          <div class="relative">
+            <input
+              #campoActual
+              type="password"
+              class="w-full pr-11"
+              formControlName="passwordActual"
+              autocomplete="current-password"
+            />
+            <ui-ver-password [campo]="campoActual" />
+          </div>
           @if (invalidoClave('passwordActual')) {
             <span class="campo-error">Ingresá tu contraseña actual.</span>
           }
@@ -185,14 +196,32 @@
         <div class="grid grid-cols-2 gap-3">
           <label class="campo">
             <span class="label-campo">Nueva</span>
-            <input type="password" formControlName="password" autocomplete="new-password" />
+            <div class="relative">
+              <input
+                #campoNueva
+                type="password"
+                class="w-full pr-11"
+                formControlName="password"
+                autocomplete="new-password"
+              />
+              <ui-ver-password [campo]="campoNueva" />
+            </div>
             @if (invalidoClave('password')) {
               <span class="campo-error">Al menos {{ passwordMin }} caracteres.</span>
             }
           </label>
           <label class="campo">
             <span class="label-campo">Repetir</span>
-            <input type="password" formControlName="repetirPassword" autocomplete="new-password" />
+            <div class="relative">
+              <input
+                #campoRepetir
+                type="password"
+                class="w-full pr-11"
+                formControlName="repetirPassword"
+                autocomplete="new-password"
+              />
+              <ui-ver-password [campo]="campoRepetir" />
+            </div>
             @if (passwordsDistintas()) {
               <span class="campo-error">No coinciden.</span>
             }

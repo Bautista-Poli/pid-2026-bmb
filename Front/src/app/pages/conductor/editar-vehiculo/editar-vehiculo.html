@@ -36,7 +36,12 @@
           [enviando]="enviando()"
           [error]="error()"
           (guardar)="guardar($event)"
+          (fotoElegida)="elegirFoto($event)"
         />
+        @if (progresoFoto() !== null) {
+          <p class="mt-3 text-[12.5px] text-plomo num-tabular" role="status">Subiendo la foto… {{ progresoFoto() }}%</p>
+        }
+
       </ui-tarjeta>
 
       <section

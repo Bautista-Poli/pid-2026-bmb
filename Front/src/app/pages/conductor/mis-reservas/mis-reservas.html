@@ -48,7 +48,12 @@
       </ui-estado-vacio>
     } @else if (pestania() === 'VIGENTES') {
       @for (reserva of enCurso(); track reserva.id) {
-        <app-tarjeta-reserva class="aparece" [reserva]="reserva" />
+        <app-tarjeta-reserva
+          class="aparece"
+          [reserva]="reserva"
+          (verQr)="conQrAbierto.set($event)"
+          (reclamar)="pedirReclamo($event)"
+        />
       }
 
       @if (proximas().length > 0) {
@@ -60,6 +65,8 @@
                 [reserva]="reserva"
                 [cancelando]="cancelandoId() === reserva.id"
                 (cancelar)="pedirCancelacion($event)"
+                (verQr)="conQrAbierto.set($event)"
+                (reclamar)="pedirReclamo($event)"
               />
             }
           </div>
@@ -73,7 +80,7 @@
             <ul class="aparece-en-cadena">
               @for (reserva of mes.reservas; track reserva.id) {
                 <li class="border-t border-borde-sutil first:border-t-0">
-                  <app-tarjeta-reserva [reserva]="reserva" variante="compacta" />
+                  <app-tarjeta-reserva [reserva]="reserva" variante="compacta" (reclamar)="pedirReclamo($event)" />
                 </li>
               }
             </ul>
@@ -144,4 +151,18 @@
       </div>
     }
   </ui-modal>
+
+  <ui-modal titulo="QR de tu reserva" [abierto]="conQrAbierto() !== null" (cerrado)="conQrAbierto.set(null)">
+    @if (conQrAbierto(); as r) {
+      <div class="flex flex-col gap-4">
+        <p class="text-center text-[13px] text-plomo">
+          {{ r.estacionamiento.nombre }} · Cochera {{ r.cochera?.identificador ?? 'a asignar' }} ·
+          {{ r.horaDesde }}–{{ r.horaHasta }}
+        </p>
+        <app-qr-reserva [codigo]="r.codigoAcceso" />
+      </div>
+    }
+  </ui-modal>
 </div>
+
+<app-abrir-reclamo [objeto]="aReclamar()" (cerrado)="aReclamar.set(null)" (creado)="verReclamo($event)" />

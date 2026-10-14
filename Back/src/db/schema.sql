@@ -401,3 +401,433 @@ SELECT f.id_estacionamiento, 0, f.mime, f.bytes, f.actualizada
  WHERE NOT EXISTS (
    SELECT 1 FROM estacionamiento_imagen i WHERE i.id_estacionamiento = f.id_estacionamiento
  );
+
+-- Codigo de acceso de la reserva: va en su QR. El conductor lo muestra al
+-- entrar y al salir y el operador lo escanea (o lo tipea). Es unico por
+-- reserva. Sin 0 O 1 I L para que no se confundan; el alfabeto tiene que
+-- coincidir con src/utils/codigoAcceso.js. Lo genera la base, asi el INSERT
+-- de reserva.service.js no cambia.
+CREATE OR REPLACE FUNCTION generar_codigo_acceso(largo INT) RETURNS TEXT AS $$
+DECLARE
+  alfabeto CONSTANT TEXT := 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  codigo TEXT := '';
+BEGIN
+  FOR i IN 1..largo LOOP
+    codigo := codigo || substr(alfabeto, 1 + floor(random() * length(alfabeto))::int, 1);
+  END LOOP;
+  RETURN codigo;
+END
+$$ LANGUAGE plpgsql VOLATILE;
+
+ALTER TABLE reserva
+  ADD COLUMN IF NOT EXISTS codigo_acceso VARCHAR(8);
+
+-- Relleno de las reservas que ya existen. Con 31^8 combinaciones una colision
+-- es practicamente imposible; si pasara, el CREATE UNIQUE INDEX de abajo falla
+-- y alcanza con volver a migrar.
+UPDATE reserva SET codigo_acceso = generar_codigo_acceso(8) WHERE codigo_acceso IS NULL;
+
+ALTER TABLE reserva
+  ALTER COLUMN codigo_acceso SET DEFAULT generar_codigo_acceso(8),
+  ALTER COLUMN codigo_acceso SET NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS reserva_codigo_acceso_unico ON reserva (codigo_acceso);
+
+-- Abonos (Parte B de docs/superpowers/specs/2026-10-07-ingreso-codigo-y-abonos-design.md).
+-- No son reservas anticipadas: el conductor paga por adelantado un cupo de
+-- usos en un turno y despues reserva gratis dentro de ese turno. Cada reserva
+-- con abono descuenta un uso. Los usos consumidos no se guardan: son las
+-- reservas del abono que no estan CANCELADAS.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'turno_abono') THEN
+    CREATE TYPE turno_abono AS ENUM ('MANANA', 'TARDE', 'NOCHE');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'estado_abono') THEN
+    CREATE TYPE estado_abono AS ENUM ('VIGENTE', 'CANCELADO', 'VENCIDO');
+  END IF;
+END
+$$;
+
+ALTER TYPE modalidad_reserva ADD VALUE IF NOT EXISTS 'ABONO';
+
+-- Lo que ofrece el propietario: un plan activo por turno.
+CREATE TABLE IF NOT EXISTS plan_abono (
+  id_plan            UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+  id_estacionamiento UUID          NOT NULL,
+  turno              turno_abono   NOT NULL,
+  cupos              SMALLINT      NOT NULL,
+  precio             DECIMAL(10, 2) NOT NULL,
+  activo             BOOLEAN       NOT NULL DEFAULT TRUE,
+  created_at         TIMESTAMPTZ   NOT NULL DEFAULT now(),
+  CONSTRAINT plan_abono_estacionamiento_fk
+    FOREIGN KEY (id_estacionamiento) REFERENCES estacionamiento (id_estacionamiento) ON DELETE CASCADE,
+  CONSTRAINT plan_abono_cupos_positivos CHECK (cupos > 0),
+  CONSTRAINT plan_abono_precio_no_negativo CHECK (precio >= 0)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS plan_abono_un_activo_por_turno
+  ON plan_abono (id_estacionamiento, turno) WHERE activo;
+
+-- Lo que compro el conductor. Turno, cupos y precio se copian del plan al
+-- comprar, para que un cambio posterior del plan no altere lo ya vendido.
+CREATE TABLE IF NOT EXISTS abono (
+  id_abono           UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+  id_conductor       UUID          NOT NULL,
+  id_estacionamiento UUID          NOT NULL,
+  id_plan            UUID          NOT NULL,
+  turno              turno_abono   NOT NULL,
+  cupos_totales      SMALLINT      NOT NULL,
+  precio_total       DECIMAL(10, 2) NOT NULL,
+  desde              DATE          NOT NULL,
+  hasta              DATE          NOT NULL,
+  estado             estado_abono  NOT NULL DEFAULT 'VIGENTE',
+  created_at         TIMESTAMPTZ   NOT NULL DEFAULT now(),
+  CONSTRAINT abono_conductor_fk
+    FOREIGN KEY (id_conductor) REFERENCES usuario (id_usuario) ON DELETE RESTRICT,
+  CONSTRAINT abono_estacionamiento_fk
+    FOREIGN KEY (id_estacionamiento) REFERENCES estacionamiento (id_estacionamiento) ON DELETE RESTRICT,
+  CONSTRAINT abono_plan_fk
+    FOREIGN KEY (id_plan) REFERENCES plan_abono (id_plan) ON DELETE RESTRICT,
+  CONSTRAINT abono_cupos_positivos CHECK (cupos_totales > 0),
+  CONSTRAINT abono_rango_valido CHECK (hasta >= desde)
+);
+
+CREATE INDEX IF NOT EXISTS idx_abono_conductor       ON abono (id_conductor);
+CREATE INDEX IF NOT EXISTS idx_abono_estacionamiento ON abono (id_estacionamiento);
+
+ALTER TABLE reserva
+  ADD COLUMN IF NOT EXISTS id_abono UUID;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'reserva_abono_fk') THEN
+    ALTER TABLE reserva ADD CONSTRAINT reserva_abono_fk
+      FOREIGN KEY (id_abono) REFERENCES abono (id_abono) ON DELETE RESTRICT;
+  END IF;
+END
+$$;
+
+CREATE INDEX IF NOT EXISTS idx_reserva_abono ON reserva (id_abono) WHERE id_abono IS NOT NULL;
+
+-- No-show (Sprint 3): una reserva CONFIRMADA sin ingreso registrado pasada la
+-- tolerancia (TOLERANCIA_NO_SHOW_MS en reserva.service.js) pasa a NO_SHOW. No
+-- es vigente, asi que la cochera vuelve a estar disponible en el acto: no hay
+-- que tocar los EXCLUDE constraints, que solo miran PENDIENTE, CONFIRMADA y ACTIVA.
+ALTER TYPE estado_reserva ADD VALUE IF NOT EXISTS 'NO_SHOW';
+
+-- Quien cancelo la reserva (Sprint 3), para que el propietario distinga una
+-- cancelacion del conductor de una del sistema. SISTEMA = una PENDIENTE que el
+-- propietario no confirmo antes de su inicio (el front la muestra como
+-- "Vencida"). NULL = cancelada antes de existir esta columna (no se sabe).
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'origen_cancelacion') THEN
+    CREATE TYPE origen_cancelacion AS ENUM ('CONDUCTOR', 'PROPIETARIO', 'SISTEMA');
+  END IF;
+END
+$$;
+
+ALTER TABLE reserva
+  ADD COLUMN IF NOT EXISTS cancelada_por origen_cancelacion;
+
+-- Las canceladas por un bloqueo de cochera sin alternativa se reconocen por el aviso.
+UPDATE reserva SET cancelada_por = 'PROPIETARIO'
+ WHERE estado = 'CANCELADA' AND cancelada_por IS NULL AND motivo_reasignacion IS NOT NULL;
+
+-- Incidencias (Sprint 3). Problemas de una reserva que el propietario tiene
+-- que ver: un auto que se paso de su horario y sigue adentro (la cochera queda
+-- bloqueada hasta el egreso) o una reserva que no se pudo reasignar porque su
+-- cochera seguia ocupada. Cada una tiene un hilo de mensajes entre el
+-- propietario, el conductor de la reserva y (mas adelante) el administrador:
+-- el "ida y vuelta" que pidio el cliente. DENUNCIADA = escalada a la plataforma.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'tipo_incidencia') THEN
+    CREATE TYPE tipo_incidencia AS ENUM ('AUTO_EXCEDIDO', 'RESERVA_AFECTADA');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'estado_incidencia') THEN
+    CREATE TYPE estado_incidencia AS ENUM ('ABIERTA', 'DENUNCIADA', 'RESUELTA');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'autor_mensaje') THEN
+    CREATE TYPE autor_mensaje AS ENUM ('SISTEMA', 'PROPIETARIO', 'CONDUCTOR', 'ADMINISTRADOR');
+  END IF;
+END
+$$;
+
+CREATE TABLE IF NOT EXISTS incidencia (
+  id_incidencia      UUID              PRIMARY KEY DEFAULT gen_random_uuid(),
+  tipo               tipo_incidencia   NOT NULL,
+  estado             estado_incidencia NOT NULL DEFAULT 'ABIERTA',
+  id_reserva         UUID              NOT NULL,
+  id_estacionamiento UUID              NOT NULL,
+  created_at         TIMESTAMPTZ       NOT NULL DEFAULT now(),
+  denunciada_at      TIMESTAMPTZ,
+  resuelta_at        TIMESTAMPTZ,
+  CONSTRAINT incidencia_reserva_fk
+    FOREIGN KEY (id_reserva) REFERENCES reserva (id_reserva) ON DELETE CASCADE,
+  CONSTRAINT incidencia_estacionamiento_fk
+    FOREIGN KEY (id_estacionamiento) REFERENCES estacionamiento (id_estacionamiento) ON DELETE CASCADE,
+  -- El job corre cada minuto: una sola incidencia de cada tipo por reserva.
+  CONSTRAINT incidencia_una_por_tipo UNIQUE (id_reserva, tipo)
+);
+
+CREATE INDEX IF NOT EXISTS idx_incidencia_estacionamiento ON incidencia (id_estacionamiento, estado);
+
+CREATE TABLE IF NOT EXISTS incidencia_mensaje (
+  id_mensaje    UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+  id_incidencia UUID          NOT NULL,
+  id_autor      UUID,
+  rol_autor     autor_mensaje NOT NULL,
+  texto         VARCHAR(1000) NOT NULL,
+  -- clock_timestamp y no now(): dos mensajes de la misma transaccion tienen
+  -- que quedar en el orden en que se escribieron.
+  created_at    TIMESTAMPTZ   NOT NULL DEFAULT clock_timestamp(),
+  CONSTRAINT incidencia_mensaje_incidencia_fk
+    FOREIGN KEY (id_incidencia) REFERENCES incidencia (id_incidencia) ON DELETE CASCADE,
+  CONSTRAINT incidencia_mensaje_autor_fk
+    FOREIGN KEY (id_autor) REFERENCES usuario (id_usuario) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_incidencia_mensaje ON incidencia_mensaje (id_incidencia, created_at);
+
+-- Canales de la incidencia (Sprint 3). GENERAL: propietario y conductor
+-- arreglan entre ellos (la moderacion solo lee). PROPIETARIO / CONDUCTOR: chat
+-- privado de la moderacion con cada parte; existen recien cuando alguno
+-- denuncia (no llegaron a un acuerdo). Los mensajes anteriores son del GENERAL.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'canal_incidencia') THEN
+    CREATE TYPE canal_incidencia AS ENUM ('GENERAL', 'PROPIETARIO', 'CONDUCTOR');
+  END IF;
+END
+$$;
+
+ALTER TABLE incidencia_mensaje
+  ADD COLUMN IF NOT EXISTS canal canal_incidencia NOT NULL DEFAULT 'GENERAL';
+
+-- Quien denuncio: el propietario o el conductor de la reserva.
+ALTER TABLE incidencia
+  ADD COLUMN IF NOT EXISTS denunciada_por autor_mensaje;
+
+DROP INDEX IF EXISTS idx_incidencia_mensaje;
+CREATE INDEX IF NOT EXISTS idx_incidencia_mensaje_canal ON incidencia_mensaje (id_incidencia, canal, created_at);
+
+-- Aprobacion de estacionamientos (Sprint 3). Un Administrador de plataforma
+-- revisa cada estacionamiento antes de que aparezca en la busqueda. `publicado`
+-- sigue siendo la intencion del propietario; lo que se ve es publicado Y
+-- aprobado. El rol nuevo no se usa como literal en este archivo: Postgres no
+-- deja usar un valor de enum en la misma transaccion en la que se agrega.
+ALTER TYPE rol_usuario ADD VALUE IF NOT EXISTS 'ADMINISTRADOR';
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'estado_aprobacion') THEN
+    CREATE TYPE estado_aprobacion AS ENUM ('PENDIENTE', 'APROBADO', 'RECHAZADO');
+  END IF;
+END
+$$;
+
+-- `enviado_en`: cuando entro a la cola de revision por ultima vez (alta,
+-- reenvio o cambio de nombre/direccion). `created_at` no estaba y lo usan los
+-- dashboards.
+ALTER TABLE estacionamiento
+  ADD COLUMN IF NOT EXISTS estado_aprobacion estado_aprobacion,
+  ADD COLUMN IF NOT EXISTS motivo_rechazo    VARCHAR(300),
+  ADD COLUMN IF NOT EXISTS revisado_por      UUID,
+  ADD COLUMN IF NOT EXISTS revisado_en       TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS enviado_en        TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS created_at        TIMESTAMPTZ;
+
+-- Los que ya existian quedan aprobados: estaban a la vista antes de que
+-- hubiera revision. Solo toca filas sin estado, asi que volver a migrar no
+-- aprueba a los pendientes.
+UPDATE estacionamiento SET estado_aprobacion = 'APROBADO' WHERE estado_aprobacion IS NULL;
+UPDATE estacionamiento SET created_at = now() WHERE created_at IS NULL;
+UPDATE estacionamiento SET enviado_en = created_at WHERE enviado_en IS NULL;
+
+ALTER TABLE estacionamiento
+  ALTER COLUMN estado_aprobacion SET DEFAULT 'PENDIENTE',
+  ALTER COLUMN estado_aprobacion SET NOT NULL,
+  ALTER COLUMN created_at SET DEFAULT now(),
+  ALTER COLUMN created_at SET NOT NULL,
+  ALTER COLUMN enviado_en SET DEFAULT now(),
+  ALTER COLUMN enviado_en SET NOT NULL;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'estacionamiento_revisado_por_fk') THEN
+    ALTER TABLE estacionamiento ADD CONSTRAINT estacionamiento_revisado_por_fk
+      FOREIGN KEY (revisado_por) REFERENCES usuario (id_usuario) ON DELETE SET NULL;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'estacionamiento_rechazo_con_motivo') THEN
+    ALTER TABLE estacionamiento ADD CONSTRAINT estacionamiento_rechazo_con_motivo
+      CHECK (estado_aprobacion <> 'RECHAZADO' OR motivo_rechazo IS NOT NULL);
+  END IF;
+END
+$$;
+
+CREATE INDEX IF NOT EXISTS idx_estacionamiento_aprobacion
+  ON estacionamiento (estado_aprobacion, enviado_en);
+
+-- Fotos en Cloudinary (Sprint 3). Las fotos nuevas guardan el `public_id` de
+-- Cloudinary en vez de los bytes; las viejas siguen con sus bytes hasta que
+-- las mueva el script db:migrar-fotos-cloudinary. Cada fila tiene una de las dos.
+ALTER TABLE estacionamiento_imagen
+  ADD COLUMN IF NOT EXISTS public_id VARCHAR(200),
+  ALTER COLUMN mime  DROP NOT NULL,
+  ALTER COLUMN bytes DROP NOT NULL;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'estacionamiento_imagen_con_origen') THEN
+    ALTER TABLE estacionamiento_imagen ADD CONSTRAINT estacionamiento_imagen_con_origen
+      CHECK (public_id IS NOT NULL OR bytes IS NOT NULL);
+  END IF;
+END
+$$;
+
+-- Foto propia del vehiculo (opcional). Sin ella el front usa la de catalogo.
+ALTER TABLE vehiculo
+  ADD COLUMN IF NOT EXISTS foto_public_id VARCHAR(200);
+
+-- Una foto de Cloudinary pertenece a un solo lugar: si quedara en dos filas,
+-- borrar una dejaria a la otra apuntando a una imagen que ya no existe.
+CREATE UNIQUE INDEX IF NOT EXISTS estacionamiento_imagen_public_id_unico
+  ON estacionamiento_imagen (public_id) WHERE public_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS vehiculo_foto_public_id_unico
+  ON vehiculo (foto_public_id) WHERE foto_public_id IS NOT NULL;
+
+-- Cuando se cancelo cada reserva (Sprint 3, dashboard del propietario: la
+-- anticipacion con la que cancelan los conductores). Lo carga un trigger y no
+-- cada llamador: hay varios caminos que cancelan y asi ninguno se olvida.
+ALTER TABLE reserva
+  ADD COLUMN IF NOT EXISTS cancelada_en TIMESTAMPTZ;
+
+CREATE OR REPLACE FUNCTION marcar_cancelada_en() RETURNS trigger AS $$
+BEGIN
+  IF NEW.estado = 'CANCELADA' AND OLD.estado IS DISTINCT FROM 'CANCELADA' THEN
+    NEW.cancelada_en := now();
+  END IF;
+  RETURN NEW;
+END
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS reserva_cancelada_en ON reserva;
+CREATE TRIGGER reserva_cancelada_en
+  BEFORE UPDATE OF estado ON reserva
+  FOR EACH ROW EXECUTE FUNCTION marcar_cancelada_en();
+
+-- Reclamos y moderacion (Sprint 3). El conductor abre un RECLAMO (tipo de
+-- incidencia) sobre una reserva o un abono suyo; el propietario propone una
+-- devolucion en el hilo (monto_propuesto) y el conductor la acepta, o alguno
+-- denuncia y resuelve el administrador. Los literales 'RECLAMO' y 'RETIRADA' no
+-- se usan en este archivo (valores agregados en la misma transaccion): un
+-- reclamo es la incidencia con `abierta_por` (las del sistema no la tienen).
+ALTER TYPE tipo_incidencia   ADD VALUE IF NOT EXISTS 'RECLAMO';
+ALTER TYPE estado_incidencia ADD VALUE IF NOT EXISTS 'RETIRADA';
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'motivo_reclamo') THEN
+    CREATE TYPE motivo_reclamo AS ENUM
+      ('NO_HABIA_LUGAR', 'COBRO_INCORRECTO', 'DANO_AL_VEHICULO', 'MAL_SERVICIO', 'OTRO');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'resolucion_incidencia') THEN
+    CREATE TYPE resolucion_incidencia AS ENUM ('A_FAVOR_CONDUCTOR', 'A_FAVOR_PROPIETARIO');
+  END IF;
+END
+$$;
+
+ALTER TABLE incidencia ALTER COLUMN id_reserva DROP NOT NULL;
+ALTER TABLE incidencia
+  ADD COLUMN IF NOT EXISTS id_abono     UUID,
+  ADD COLUMN IF NOT EXISTS abierta_por  UUID,
+  ADD COLUMN IF NOT EXISTS motivo       motivo_reclamo,
+  ADD COLUMN IF NOT EXISTS monto_pedido DECIMAL(10, 2),
+  ADD COLUMN IF NOT EXISTS resuelta_por UUID,
+  ADD COLUMN IF NOT EXISTS resolucion   resolucion_incidencia;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'incidencia_abono_fk') THEN
+    ALTER TABLE incidencia ADD CONSTRAINT incidencia_abono_fk
+      FOREIGN KEY (id_abono) REFERENCES abono (id_abono) ON DELETE CASCADE;
+  END IF;
+  -- RESTRICT: `abierta_por` es lo que distingue un reclamo de una incidencia
+  -- del sistema; si quedara en NULL, el reclamo cambiaria de naturaleza.
+  IF EXISTS (SELECT 1 FROM pg_constraint
+              WHERE conname = 'incidencia_abierta_por_fk' AND confdeltype <> 'r') THEN
+    ALTER TABLE incidencia DROP CONSTRAINT incidencia_abierta_por_fk;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'incidencia_abierta_por_fk') THEN
+    ALTER TABLE incidencia ADD CONSTRAINT incidencia_abierta_por_fk
+      FOREIGN KEY (abierta_por) REFERENCES usuario (id_usuario) ON DELETE RESTRICT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'incidencia_resuelta_por_fk') THEN
+    ALTER TABLE incidencia ADD CONSTRAINT incidencia_resuelta_por_fk
+      FOREIGN KEY (resuelta_por) REFERENCES usuario (id_usuario) ON DELETE SET NULL;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'incidencia_un_objeto') THEN
+    ALTER TABLE incidencia ADD CONSTRAINT incidencia_un_objeto
+      CHECK ((id_reserva IS NULL) <> (id_abono IS NULL));
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'incidencia_monto_pedido_no_negativo') THEN
+    ALTER TABLE incidencia ADD CONSTRAINT incidencia_monto_pedido_no_negativo
+      CHECK (monto_pedido IS NULL OR monto_pedido >= 0);
+  END IF;
+END
+$$;
+
+-- La unica-por-tipo vale solo para las del sistema (el job); de reclamos puede
+-- haber varios por reserva, pero uno solo abierto o denunciado a la vez.
+ALTER TABLE incidencia DROP CONSTRAINT IF EXISTS incidencia_una_por_tipo;
+CREATE UNIQUE INDEX IF NOT EXISTS incidencia_sistema_una_por_tipo
+  ON incidencia (id_reserva, tipo) WHERE abierta_por IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS incidencia_reclamo_reserva_abierto
+  ON incidencia (id_reserva)
+  WHERE abierta_por IS NOT NULL AND id_reserva IS NOT NULL AND estado IN ('ABIERTA', 'DENUNCIADA');
+CREATE UNIQUE INDEX IF NOT EXISTS incidencia_reclamo_abono_abierto
+  ON incidencia (id_abono)
+  WHERE abierta_por IS NOT NULL AND id_abono IS NOT NULL AND estado IN ('ABIERTA', 'DENUNCIADA');
+
+-- Propuesta de devolucion del propietario en el hilo (vale la ultima).
+ALTER TABLE incidencia_mensaje
+  ADD COLUMN IF NOT EXISTS monto_propuesto DECIMAL(10, 2);
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'incidencia_mensaje_propuesta_no_negativa') THEN
+    ALTER TABLE incidencia_mensaje ADD CONSTRAINT incidencia_mensaje_propuesta_no_negativa
+      CHECK (monto_propuesto IS NULL OR monto_propuesto >= 0);
+  END IF;
+END
+$$;
+
+-- Devoluciones simuladas: las aplica la aceptacion de una propuesta
+-- (PROPIETARIO) o la resolucion de la moderacion (ADMINISTRADOR). Se descuentan
+-- de los ingresos del propietario.
+CREATE TABLE IF NOT EXISTS devolucion (
+  id_devolucion UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
+  id_incidencia UUID           NOT NULL,
+  id_reserva    UUID,
+  id_abono      UUID,
+  monto         DECIMAL(10, 2) NOT NULL,
+  aplicada_por  autor_mensaje  NOT NULL,
+  created_at    TIMESTAMPTZ    NOT NULL DEFAULT now(),
+  CONSTRAINT devolucion_incidencia_fk
+    FOREIGN KEY (id_incidencia) REFERENCES incidencia (id_incidencia) ON DELETE RESTRICT,
+  CONSTRAINT devolucion_reserva_fk
+    FOREIGN KEY (id_reserva) REFERENCES reserva (id_reserva) ON DELETE RESTRICT,
+  CONSTRAINT devolucion_abono_fk
+    FOREIGN KEY (id_abono) REFERENCES abono (id_abono) ON DELETE RESTRICT,
+  CONSTRAINT devolucion_monto_positivo CHECK (monto > 0),
+  CONSTRAINT devolucion_un_objeto CHECK ((id_reserva IS NULL) <> (id_abono IS NULL))
+);
+
+CREATE INDEX IF NOT EXISTS idx_devolucion_reserva ON devolucion (id_reserva) WHERE id_reserva IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_devolucion_abono   ON devolucion (id_abono)   WHERE id_abono IS NOT NULL;
+
+-- Dashboard del administrador (Sprint 3): sus consultas filtran reservas de toda
+-- la plataforma por `inicio`; el indice por cochera no sirve para eso.
+CREATE INDEX IF NOT EXISTS idx_reserva_inicio ON reserva (inicio);

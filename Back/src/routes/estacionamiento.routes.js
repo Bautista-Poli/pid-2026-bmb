@@ -1,9 +1,12 @@
 import express, { Router } from 'express';
 
+import * as abonoController from '../controllers/abono.controller.js';
 import * as estacionamientoController from '../controllers/estacionamiento.controller.js';
-import { authenticate, requireRole } from '../middlewares/auth.js';
+import { authenticate, authenticateOpcional, requireRole } from '../middlewares/auth.js';
+import { LIMITE_FIRMAS, limitarPorUsuario } from '../middlewares/limite.js';
 import { validate } from '../middlewares/validate.js';
 import { ROLES } from '../utils/roles.js';
+import { validarCambiosPlanAbono, validarPlanAbono } from '../validators/abono.validator.js';
 import {
   validarActualizacionCochera,
   validarBloqueoCochera,
@@ -21,9 +24,10 @@ const router = Router();
 const soloPropietario = [authenticate, requireRole(ROLES.PROPIETARIO)];
 
 /**
- * La foto se sube como body crudo: el archivo tal cual, con su tipo en el
- * Content-Type. Va montado solo en esta ruta -- el express.json() global de
- * app.js no la toca porque solo parsea application/json.
+ * Las fotos llegan como JSON `{ public_id }` (ya subidas a Cloudinary) o, por
+ * compatibilidad con el front anterior, como body crudo: el archivo tal cual,
+ * con su tipo en el Content-Type. El parser crudo va montado solo en estas
+ * rutas; el express.json() global de app.js se ocupa del JSON.
  */
 const imagen = express.raw({ type: ['image/jpeg', 'image/png', 'image/webp'], limit: '2mb' });
 
@@ -33,7 +37,8 @@ router.get('/', validate(validarBusqueda, 'query'), estacionamientoController.bu
 // Propietario: sus estacionamientos. Va antes de '/:id' para que no lo capture.
 router.get('/mios', ...soloPropietario, estacionamientoController.listarMios);
 
-router.get('/:id', estacionamientoController.obtener);
+// Con sesion opcional: el dueno ve el suyo aunque todavia no este aprobado.
+router.get('/:id', authenticateOpcional, estacionamientoController.obtener);
 router.get('/:id/cocheras', estacionamientoController.listarCocheras);
 router.get('/:id/foto', estacionamientoController.obtenerFoto);
 router.get('/:id/fotos/:idFoto', estacionamientoController.obtenerFotoDeGaleria);
@@ -65,10 +70,20 @@ router.patch(
   estacionamientoController.actualizar,
 );
 
+router.patch('/:id/reenviar-revision', ...soloPropietario, estacionamientoController.reenviarRevision);
+
 router.delete('/:id', ...soloPropietario, estacionamientoController.darDeBaja);
 
 router.put('/:id/foto', ...soloPropietario, imagen, estacionamientoController.guardarFoto);
 router.delete('/:id/foto', ...soloPropietario, estacionamientoController.borrarFoto);
+
+// Firma para subir una foto directo a Cloudinary (despues se manda su public_id).
+router.post(
+  '/:id/fotos/firma',
+  ...soloPropietario,
+  limitarPorUsuario(LIMITE_FIRMAS),
+  estacionamientoController.firmarFoto,
+);
 
 // Galeria: `/:id/foto` es la portada; estas suman y sacan el resto de las fotos.
 router.post('/:id/fotos', ...soloPropietario, imagen, estacionamientoController.agregarFoto);
@@ -125,5 +140,26 @@ router.post(
   ...soloPropietario,
   estacionamientoController.desbloquearCochera,
 );
+
+// Abonos: los planes que ofrece el propietario (uno activo por turno).
+router.get('/:id/planes-abono', abonoController.listarPlanes);
+
+router.post(
+  '/:id/planes-abono',
+  ...soloPropietario,
+  validate(validarPlanAbono),
+  abonoController.crearPlan,
+);
+
+router.patch(
+  '/:id/planes-abono/:idPlan',
+  ...soloPropietario,
+  validate(validarCambiosPlanAbono),
+  abonoController.actualizarPlan,
+);
+
+router.delete('/:id/planes-abono/:idPlan', ...soloPropietario, abonoController.darDeBajaPlan);
+
+router.get('/:id/abonos', ...soloPropietario, abonoController.listarVendidos);
 
 export default router;

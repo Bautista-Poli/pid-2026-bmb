@@ -1,0 +1,418 @@
+<div class="aparece mx-auto w-full max-w-[1240px] px-5 pt-5 pb-8 lg:px-9 lg:pt-8 lg:pb-11">
+  <div class="flex flex-col gap-5">
+    <header>
+      <h1 class="text-[24px] leading-tight font-semibold tracking-[-0.02em] text-tinta lg:text-[28px]">
+        Incidencias
+        @if (abiertas() > 0) {
+          <span class="num-tabular ml-1.5 align-middle text-[14px] font-semibold text-aviso">
+            {{ abiertas() }} sin resolver
+          </span>
+        }
+      </h1>
+      <p class="mt-1 text-[13.5px] text-plomo">
+        @if (esPropietario()) {
+          Autos que se pasaron de su horario, reservas que se quedaron sin cochera y reclamos de conductores.
+          Arreglalo con el conductor (en un reclamo, proponiéndole una devolución); si no llegan a un acuerdo,
+          denunciala ante la moderación de Parkit.
+        } @else {
+          Problemas con tus reservas y los reclamos que abriste. Hablá con el estacionamiento desde acá; si
+          no llegan a un acuerdo, podés denunciarlo ante la moderación de Parkit.
+        }
+      </p>
+    </header>
+
+    @if (recursoLista.isLoading() && recursoLista.value().length === 0) {
+      <ui-cargando [cantidad]="3" />
+    } @else if (recursoLista.error(); as e) {
+      <ui-estado-vacio titulo="No pudimos cargar las incidencias" [descripcion]="e.message">
+        <ui-boton (presionado)="recursoLista.reload()">Reintentar</ui-boton>
+      </ui-estado-vacio>
+    } @else if (recursoLista.value().length === 0) {
+      <ui-estado-vacio
+        titulo="No hay incidencias"
+        [descripcion]="
+          esPropietario()
+            ? 'Si un auto se pasa de su horario, una reserva se queda sin cochera o un conductor reclama, va a aparecer acá.'
+            : 'Si tenés un problema con una reserva o un abono, usá “Tengo un problema” en Mis reservas o en Abonos.'
+        "
+      />
+    } @else {
+      <div class="grid gap-5 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)] lg:items-start">
+        <!-- Lista: en mobile se oculta mientras hay una abierta -->
+        <ul [class]="seleccionId() === null ? 'flex flex-col gap-2.5' : 'hidden flex-col gap-2.5 lg:flex'">
+          @for (incidencia of recursoLista.value(); track incidencia.id) {
+            <li>
+              <button
+                type="button"
+                class="w-full rounded-tarjeta border bg-papel px-4 py-3.5 text-left shadow-tarjeta
+                       transition-[border-color,box-shadow] duration-160 hover:border-acento"
+                [class.border-acento]="seleccionId() === incidencia.id"
+                [class.border-borde]="seleccionId() !== incidencia.id"
+                (click)="abrir(incidencia)"
+              >
+                <div class="flex items-start justify-between gap-3">
+                  <div class="flex min-w-0 items-center gap-2">
+                    <ui-icono
+                      nombre="alerta"
+                      [tamano]="17"
+                      [class.text-humo]="incidencia.estado === 'RESUELTA' || incidencia.estado === 'RETIRADA'"
+                      [class.text-aviso]="incidencia.estado === 'ABIERTA' || incidencia.estado === 'DENUNCIADA'"
+                    />
+                    <p class="truncate text-[13.5px] font-semibold text-tinta">
+                      {{ etiquetaTipo[incidencia.tipo] }}
+                      @if (incidencia.motivo; as motivo) {
+                        <span class="font-normal text-plomo">· {{ etiquetaMotivo[motivo] }}</span>
+                      }
+                    </p>
+                  </div>
+                  <ui-etiqueta [tono]="tonoEstado[incidencia.estado]">
+                    {{ etiquetaEstado[incidencia.estado] }}
+                  </ui-etiqueta>
+                </div>
+                <p class="num-tabular mt-1 text-[12.5px] text-grafito">
+                  @if (incidencia.abono) {
+                    Abono · {{ incidencia.estacionamiento.nombre }}
+                  } @else {
+                    {{ incidencia.patente }} · cochera {{ incidencia.cochera }} · {{ incidencia.estacionamiento.nombre }}
+                  }
+                </p>
+                @if (incidencia.ultimoMensaje; as ultimo) {
+                  <p class="mt-1.5 line-clamp-2 text-[12.5px] text-plomo">{{ ultimo }}</p>
+                }
+                <p class="mt-1.5 text-[11.5px] text-humo">
+                  {{ incidencia.creadaEn | date: 'd MMM, HH:mm' }} · {{ incidencia.cantidadMensajes }}
+                  {{ incidencia.cantidadMensajes === 1 ? 'mensaje' : 'mensajes' }}
+                </p>
+              </button>
+            </li>
+          }
+        </ul>
+
+        <!-- Detalle con el hilo -->
+        @if (seleccionId() === null) {
+          <div class="hidden lg:block">
+            <ui-tarjeta>
+              <p class="py-10 text-center text-[13.5px] text-plomo">Elegí una incidencia para ver la conversación.</p>
+            </ui-tarjeta>
+          </div>
+        } @else if (detalle(); as incidencia) {
+          <ui-tarjeta relleno="ninguno">
+            <div class="flex flex-col">
+              <div class="flex flex-col gap-3 border-b border-borde-sutil px-5 py-4 lg:px-6">
+                <button
+                  type="button"
+                  class="self-start text-[12.5px] font-semibold text-acento lg:hidden"
+                  (click)="cerrar()"
+                >
+                  ← Todas las incidencias
+                </button>
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h2 class="text-[17px] font-semibold text-tinta">
+                      {{ etiquetaTipo[incidencia.tipo] }}
+                      @if (incidencia.motivo; as motivo) {
+                        <span class="font-normal text-plomo">· {{ etiquetaMotivo[motivo] }}</span>
+                      }
+                    </h2>
+                    @if (incidencia.abono; as abono) {
+                      <p class="num-tabular mt-0.5 text-[13px] text-grafito">
+                        Abono de {{ incidencia.conductor.nombre }} · {{ incidencia.estacionamiento.nombre }}
+                      </p>
+                      <p class="num-tabular mt-0.5 text-[12.5px] text-plomo">
+                        Del {{ abono.desde | date: 'd MMM' }} al {{ abono.hasta | date: 'd MMM' }}
+                      </p>
+                    } @else {
+                      <p class="num-tabular mt-0.5 text-[13px] text-grafito">
+                        {{ incidencia.patente }} · {{ incidencia.conductor.nombre }} · cochera {{ incidencia.cochera }}
+                      </p>
+                      <p class="num-tabular mt-0.5 text-[12.5px] text-plomo">
+                        {{ incidencia.estacionamiento.nombre }} · reserva de
+                        {{ incidencia.reserva?.inicio | date: 'd MMM HH:mm' }} a {{ incidencia.reserva?.fin | date: 'HH:mm' }}
+                        @if (incidencia.reserva?.egresoEn; as egreso) {
+                          · salió {{ egreso | date: 'd MMM HH:mm' }}
+                        } @else if (incidencia.tipo === 'AUTO_EXCEDIDO') {
+                          · <span class="font-semibold text-aviso">sigue adentro</span>
+                        }
+                      </p>
+                    }
+                  </div>
+                  <ui-etiqueta [tono]="tonoEstado[incidencia.estado]">
+                    {{ etiquetaEstado[incidencia.estado] }}
+                  </ui-etiqueta>
+                </div>
+
+                @if (incidencia.tipo === 'RECLAMO') {
+                  <!-- Montos del reclamo: lo pedido, lo pagado y la propuesta vigente -->
+                  <div class="num-tabular flex flex-wrap gap-x-4 gap-y-1 text-[12.5px] text-plomo">
+                    <span>Pagó {{ pesos(incidencia.pagado) }}</span>
+                    @if (incidencia.montoPedido !== null) {
+                      <span>Pide {{ pesos(incidencia.montoPedido) }}</span>
+                    }
+                    @if (incidencia.devuelto > 0) {
+                      <span class="font-semibold text-exito">Devuelto {{ pesos(incidencia.devuelto) }}</span>
+                    }
+                  </div>
+                  @if (incidencia.estado === 'ABIERTA' && incidencia.propuestaVigente !== null) {
+                    <div class="rounded-control border border-acento-borde bg-acento-suave px-3.5 py-2.5 text-[13px] text-tinta">
+                      {{ esPropietario() ? 'Propusiste' : 'El estacionamiento propone' }}
+                      @if (incidencia.propuestaVigente > 0) {
+                        devolver <span class="num-tabular font-semibold">{{ pesos(incidencia.propuestaVigente) }}</span>.
+                      } @else {
+                        cerrar el reclamo sin devolución.
+                      }
+                      @if (esPropietario()) {
+                        <span class="block text-[12px] text-plomo">Esperando que el conductor la acepte.</span>
+                      }
+                    </div>
+                  }
+                }
+
+                @if (incidencia.estado === 'ABIERTA') {
+                  <div class="flex flex-wrap gap-2">
+                    @if (esPropietario() && incidencia.tipo !== 'RECLAMO') {
+                      <ui-boton variante="primario" tamano="sm" (presionado)="abrirAccion('RESOLVER')">
+                        Marcar resuelta
+                      </ui-boton>
+                    }
+                    @if (!esPropietario() && incidencia.tipo === 'RECLAMO') {
+                      @if (incidencia.propuestaVigente !== null) {
+                        <ui-boton variante="primario" tamano="sm" (presionado)="abrirAccion('ACEPTAR')">
+                          {{
+                            incidencia.propuestaVigente > 0
+                              ? 'Aceptar devolución de ' + pesos(incidencia.propuestaVigente)
+                              : 'Aceptar sin devolución'
+                          }}
+                        </ui-boton>
+                      }
+                      <ui-boton tamano="sm" (presionado)="abrirAccion('RETIRAR')">Retirar reclamo</ui-boton>
+                    }
+                    <ui-boton variante="peligro" tamano="sm" (presionado)="abrirAccion('DENUNCIAR')">
+                      Denunciar
+                    </ui-boton>
+                  </div>
+                } @else if (incidencia.estado === 'DENUNCIADA') {
+                  <p class="text-[12.5px] text-plomo">
+                    Denunciada el {{ incidencia.denunciadaEn | date: 'd MMM HH:mm' }}. La va a cerrar la moderación de Parkit.
+                  </p>
+                } @else if (incidencia.resolucion; as resolucion) {
+                  <p class="text-[12.5px] text-plomo">
+                    La moderación de Parkit la resolvió: <span class="font-semibold text-tinta">{{ etiquetaResolucion[resolucion] }}</span>.
+                  </p>
+                }
+              </div>
+
+              <!-- Chats: el general siempre; el privado con la moderacion, si se denuncio -->
+              @if (canalPrivado(); as privado) {
+                <div class="flex gap-1 border-b border-borde-sutil px-5 pt-2 lg:px-6" role="tablist">
+                  <button
+                    type="button"
+                    role="tab"
+                    class="-mb-px border-b-2 px-3 py-2 text-[13px] font-semibold transition-colors duration-160"
+                    [class.border-acento]="canal() === 'GENERAL'"
+                    [class.text-acento]="canal() === 'GENERAL'"
+                    [class.border-transparent]="canal() !== 'GENERAL'"
+                    [class.text-plomo]="canal() !== 'GENERAL'"
+                    [attr.aria-selected]="canal() === 'GENERAL'"
+                    (click)="canal.set('GENERAL')"
+                  >
+                    {{ esPropietario() ? 'Con el conductor' : 'Con el estacionamiento' }}
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    class="-mb-px border-b-2 px-3 py-2 text-[13px] font-semibold transition-colors duration-160"
+                    [class.border-acento]="canal() === privado"
+                    [class.text-acento]="canal() === privado"
+                    [class.border-transparent]="canal() !== privado"
+                    [class.text-plomo]="canal() !== privado"
+                    [attr.aria-selected]="canal() === privado"
+                    (click)="canal.set(privado)"
+                  >
+                    Con la moderación
+                  </button>
+                </div>
+              }
+              <p class="px-5 pt-3 text-[11.5px] text-humo lg:px-6">
+                @if (canal() === 'GENERAL') {
+                  {{ esPropietario() ? 'Solo vos y el conductor escriben acá.' : 'Solo vos y el estacionamiento escriben acá.' }}
+                  La moderación de Parkit puede leer esta conversación.
+                } @else {
+                  Chat privado con la moderación de Parkit: {{ esPropietario() ? 'el conductor' : 'el estacionamiento' }} no lo ve.
+                }
+              </p>
+
+              <ol class="flex max-h-[460px] flex-col gap-3 overflow-y-auto px-5 py-4 lg:px-6" aria-label="Conversación">
+                @for (mensaje of mensajesDelCanal(); track mensaje.id) {
+                  @switch (lado(mensaje)) {
+                    @case ('sistema') {
+                      <li class="mx-auto max-w-[90%] rounded-control bg-lienzo px-3 py-2 text-center text-[12.5px] text-grafito">
+                        {{ mensaje.texto }}
+                        <span class="block text-[11px] text-humo">{{ mensaje.creadoEn | date: 'd MMM HH:mm' }}</span>
+                      </li>
+                    }
+                    @case ('propio') {
+                      <li class="ml-auto max-w-[80%] rounded-control bg-acento px-3.5 py-2 text-[13px] text-sobre-acento">
+                        @if (mensaje.montoPropuesto !== null) {
+                          <span class="num-tabular block text-[11.5px] font-semibold">
+                            Propusiste devolver {{ pesos(mensaje.montoPropuesto) }}
+                          </span>
+                        }
+                        <p class="whitespace-pre-line">{{ mensaje.texto }}</p>
+                        <span class="mt-0.5 block text-right text-[11px] opacity-80">
+                          Vos · {{ mensaje.creadoEn | date: 'HH:mm' }}
+                        </span>
+                      </li>
+                    }
+                    @default {
+                      <li class="mr-auto max-w-[80%] rounded-control border border-borde bg-papel px-3.5 py-2 text-[13px] text-tinta">
+                        <span class="block text-[11.5px] font-semibold text-grafito">{{ autor(mensaje) }}</span>
+                        @if (mensaje.montoPropuesto !== null) {
+                          <span class="num-tabular block text-[11.5px] font-semibold text-acento">
+                            Propone devolver {{ pesos(mensaje.montoPropuesto) }}
+                          </span>
+                        }
+                        <p class="whitespace-pre-line">{{ mensaje.texto }}</p>
+                        <span class="mt-0.5 block text-[11px] text-humo">{{ mensaje.creadoEn | date: 'd MMM HH:mm' }}</span>
+                      </li>
+                    }
+                  }
+                }
+              </ol>
+
+              @if (error(); as mensaje) {
+                <p class="mx-5 mb-2 text-[13px] text-ocupada lg:mx-6" role="alert">{{ mensaje }}</p>
+              }
+
+              @if (incidencia.estado === 'ABIERTA' || incidencia.estado === 'DENUNCIADA') {
+                @if (puedeProponer()) {
+                  <label class="flex flex-wrap items-center gap-2 border-t border-borde-sutil px-5 pt-3 text-[12.5px] text-grafito lg:px-6">
+                    Proponer devolución $
+                    <input
+                      type="number"
+                      inputmode="decimal"
+                      min="0"
+                      [max]="incidencia.tope"
+                      placeholder="opcional"
+                      class="num-tabular h-9 w-28 rounded-control border border-borde bg-papel px-2.5 text-[13px] text-tinta
+                             focus:border-acento focus:outline-none"
+                      [class.border-ocupada]="propuestaExcedida()"
+                      [value]="montoPropuesto() ?? ''"
+                      (input)="leerMonto($event)"
+                    />
+                    <span class="num-tabular text-humo">hasta {{ pesos(incidencia.tope) }}</span>
+                  </label>
+                }
+                <form
+                  class="flex items-end gap-2 border-t border-borde-sutil px-5 py-3.5 lg:px-6"
+                  [class.border-t-0]="puedeProponer()"
+                  (submit)="$event.preventDefault(); enviar(incidencia)"
+                >
+                  <textarea
+                    rows="2"
+                    maxlength="1000"
+                    class="min-h-[44px] flex-1 resize-none rounded-control border border-borde bg-papel px-3.5 py-2.5
+                           text-[13.5px] text-tinta placeholder:text-humo focus:border-acento focus:outline-none"
+                    [placeholder]="
+                      canal() !== 'GENERAL'
+                        ? 'Escribile a la moderación…'
+                        : esPropietario()
+                          ? 'Escribile al conductor…'
+                          : 'Escribile al estacionamiento…'
+                    "
+                    aria-label="Mensaje"
+                    [value]="borrador()"
+                    (input)="borrador.set(leer($event))"
+                  ></textarea>
+                  <ui-boton
+                    variante="primario"
+                    tipo="submit"
+                    [cargando]="enviando()"
+                    [deshabilitado]="!borrador().trim() || propuestaExcedida()"
+                  >
+                    Enviar
+                  </ui-boton>
+                </form>
+              } @else {
+                <p class="border-t border-borde-sutil px-5 py-3.5 text-[12.5px] text-plomo lg:px-6">
+                  {{ incidencia.estado === 'RETIRADA' ? 'Retirado' : 'Resuelta' }} el
+                  {{ incidencia.resueltaEn | date: 'd MMM HH:mm' }}. La conversación quedó cerrada.
+                </p>
+              }
+            </div>
+          </ui-tarjeta>
+        } @else {
+          <ui-cargando [cantidad]="1" />
+        }
+      </div>
+    }
+  </div>
+</div>
+
+@if (detalle(); as incidencia) {
+  <ui-modal
+    [titulo]="
+      accion() === 'DENUNCIAR'
+        ? 'Denunciar incidencia'
+        : accion() === 'ACEPTAR'
+          ? 'Aceptar la propuesta'
+          : accion() === 'RETIRAR'
+            ? 'Retirar reclamo'
+            : 'Marcar como resuelta'
+    "
+    [abierto]="accion() !== null"
+    (cerrado)="accion.set(null)"
+  >
+    <div class="flex flex-col gap-4">
+      <p class="text-[13.5px] text-grafito">
+        @if (accion() === 'ACEPTAR') {
+          @if ((incidencia.propuestaVigente ?? 0) > 0) {
+            Se te devuelven {{ pesos(incidencia.propuestaVigente ?? 0) }} y el reclamo queda cerrado.
+          } @else {
+            El reclamo se cierra sin devolución.
+          }
+        } @else if (accion() === 'RETIRAR') {
+          El reclamo se cierra sin devolución y la conversación queda de solo lectura.
+        } @else if (accion() === 'DENUNCIAR') {
+          Usalo si no llegaron a un acuerdo. La moderación de Parkit va a revisar el caso y se va a
+          comunicar con cada parte por un chat privado. Contá qué pasó: solo lo lee la moderación,
+          {{ esPropietario() ? 'el conductor' : 'el estacionamiento' }} no lo ve.
+        } @else {
+          La conversación se cierra y la incidencia queda como resuelta. Podés dejar un comentario
+          final para el conductor (opcional).
+        }
+      </p>
+      @if (accion() === 'DENUNCIAR' || accion() === 'RESOLVER') {
+        <textarea
+          rows="3"
+          maxlength="1000"
+          class="resize-none rounded-control border border-borde bg-papel px-3.5 py-2.5 text-[13.5px] text-tinta
+                 placeholder:text-humo focus:border-acento focus:outline-none"
+          [placeholder]="accion() === 'DENUNCIAR' ? 'Motivo de la denuncia (obligatorio)' : 'Comentario (opcional)'"
+          [attr.aria-label]="accion() === 'DENUNCIAR' ? 'Motivo de la denuncia' : 'Comentario'"
+          [value]="textoAccion()"
+          (input)="textoAccion.set(leer($event))"
+        ></textarea>
+      }
+      @if (error(); as mensaje) {
+        <p class="text-[13px] text-ocupada" role="alert">{{ mensaje }}</p>
+      }
+      <ui-boton
+        [variante]="accion() === 'DENUNCIAR' || accion() === 'RETIRAR' ? 'peligro' : 'primario'"
+        [bloque]="true"
+        [cargando]="procesando()"
+        [deshabilitado]="!accionValida()"
+        (presionado)="confirmarAccion(incidencia)"
+      >
+        {{
+          accion() === 'DENUNCIAR'
+            ? 'Denunciar'
+            : accion() === 'ACEPTAR'
+              ? 'Aceptar'
+              : accion() === 'RETIRAR'
+                ? 'Retirar reclamo'
+                : 'Marcar resuelta'
+        }}
+      </ui-boton>
+    </div>
+  </ui-modal>
+}

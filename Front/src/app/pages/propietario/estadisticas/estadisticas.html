@@ -28,7 +28,7 @@
   </header>
 
   @if (recurso.isLoading() && !recurso.value()) {
-    <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+    <div class="mt-6 grid grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-4">
       @for (i of [1, 2, 3, 4, 5, 6]; track i) {
         <div class="esqueleto h-[118px] rounded-tarjeta"></div>
       }
@@ -43,7 +43,7 @@
   } @else if (recurso.value(); as datos) {
     <div class="mt-6 flex flex-col gap-5 lg:gap-6" [class.opacity-60]="recurso.isLoading()">
       <!-- KPIs -->
-      <div class="aparece-en-cadena grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+      <div class="aparece-en-cadena grid grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-4">
         @for (metrica of metricas(); track metrica.etiqueta) {
           <app-tarjeta-metrica
             [etiqueta]="metrica.etiqueta"

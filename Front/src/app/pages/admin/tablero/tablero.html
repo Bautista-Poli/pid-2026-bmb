@@ -210,7 +210,7 @@
       </div>
 
       <!-- Actividad -->
-      <div class="aparece-en-cadena grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+      <div class="aparece-en-cadena grid grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-4">
         @for (metrica of metricas(); track metrica.etiqueta) {
           <app-tarjeta-metrica
             [etiqueta]="metrica.etiqueta"

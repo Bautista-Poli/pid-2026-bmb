@@ -23,7 +23,9 @@ import { EstacionamientoService } from '@app/services/estacionamiento.service';
 import { EstadisticaService } from '@app/services/estadistica.service';
 import { periodoDeUrl, Variacion, variacion } from '@app/utils/periodo.util';
 
-const pesos = (monto: number) => `$ ${Math.round(monto).toLocaleString('es-AR')}`;
+// Espacio no separable: el "$" no queda solo en una linea.
+const NBSP = String.fromCharCode(160);
+const pesos = (monto: number) => `$${NBSP}${Math.round(monto).toLocaleString('es-AR')}`;
 const porciento = (fraccion: number) => `${Math.round(fraccion * 100)} %`;
 const DIAS_PLURAL = ['domingos', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábados'];
 

@@ -16,7 +16,8 @@ import { periodoDeUrl, Variacion, variacion } from '@app/utils/periodo.util';
 import { haceCuanto } from '@app/utils/tiempo.util';
 
 // Espacio no separable: el "$" no queda solo en una linea en las tarjetas angostas.
-const pesos = (monto: number) => `$ ${Math.round(monto).toLocaleString('es-AR')}`;
+const NBSP = String.fromCharCode(160);
+const pesos = (monto: number) => `$${NBSP}${Math.round(monto).toLocaleString('es-AR')}`;
 const porciento = (fraccion: number) => `${Math.round(fraccion * 100)} %`;
 const diaYMes = (fecha: string) => `${fecha.slice(8, 10)}/${fecha.slice(5, 7)}`;
 const diaDelMes = (fecha: string) => String(Number(fecha.slice(8, 10)));

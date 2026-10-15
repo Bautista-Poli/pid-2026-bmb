@@ -1,15 +1,12 @@
-<div class="aparece mx-auto w-full max-w-[560px] px-6 pt-5 pb-8 lg:px-10 lg:pt-[34px] lg:pb-11">
-  <div class="flex flex-col gap-6">
+<div class="aparece pagina-alta">
+  <div class="contenido-alta">
     <header>
-      <a
-        class="inline-flex items-center gap-1.5 rounded-boton text-[12px] font-medium
-               text-plomo transition-colors duration-160 ease-out hover:text-acento"
-        routerLink="/conductor/vehiculos"
+      <a class="enlace-volver" routerLink="/conductor/vehiculos"
       >
         ← Volver a mis vehículos
       </a>
-      <p class="eyebrow mt-3">Conductor</p>
-      <h1 class="titulo-vista mt-1.5">Agregar vehículo</h1>
+      <p class="eyebrow cabecera-alta__eyebrow">Conductor</p>
+      <h1 class="titulo-vista cabecera-alta__titulo">Agregar vehículo</h1>
     </header>
 
     <ui-tarjeta relleno="lg">
@@ -22,7 +19,7 @@
         (fotoElegida)="elegirFoto($event)"
       />
       @if (progresoFoto() !== null) {
-        <p class="mt-3 text-[12.5px] text-plomo num-tabular" role="status">Subiendo la foto… {{ progresoFoto() }}%</p>
+        <p class="progreso-foto num-tabular" role="status">Subiendo la foto… {{ progresoFoto() }}%</p>
       }
 
     </ui-tarjeta>

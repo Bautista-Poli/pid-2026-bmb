@@ -1,0 +1,76 @@
+<div class="aparece contenedor-planes">
+  <div class="pila-planes">
+    <header>
+      <p class="eyebrow">Abonos mensuales</p>
+      <h1 class="titulo-vista titulo-planes">
+        {{ estacionamiento.hasValue() ? estacionamiento.value().nombre : 'Estacionamiento' }}
+      </h1>
+      <p class="planes-descripcion">
+        Pagás ahora una cantidad de usos en un turno y reservás gratis dentro de ese horario
+        durante 30 días. El abono no reserva cochera: cada reserva depende de que haya cochera libre.
+      </p>
+    </header>
+
+    @if (planes.status() === 'loading') {
+      <ui-cargando [cantidad]="2" />
+    } @else if (planes.error(); as e) {
+      <ui-estado-vacio titulo="No pudimos cargar los abonos" [descripcion]="e.message">
+        <ui-boton (presionado)="planes.reload()">Reintentar</ui-boton>
+      </ui-estado-vacio>
+    } @else if (planes.value().length === 0) {
+      <ui-estado-vacio titulo="Este estacionamiento no ofrece abonos" descripcion="Podés reservar por hora, estadía o jornada.">
+        <ui-boton routerLink="/conductor/explorar">Volver a explorar</ui-boton>
+      </ui-estado-vacio>
+    } @else {
+      @for (plan of planes.value(); track plan.id) {
+        <ui-tarjeta>
+          <div class="plan-tarjeta">
+            <div>
+              <p class="plan-tarjeta__turno">
+                Turno {{ turnos[plan.turno].etiqueta.toLowerCase() }}
+                <span class="plan-tarjeta__horario">· {{ turnos[plan.turno].desde }} a {{ turnos[plan.turno].hasta }}</span>
+              </p>
+              <p class="plan-tarjeta__detalle">
+                {{ plan.cupos }} usos · $ {{ plan.precio.toLocaleString('es-AR') }} · 30 días
+              </p>
+            </div>
+            <ui-boton variante="primario" [deshabilitado]="comprandoId() !== null" (presionado)="aComprar.set(plan)">
+              Comprar
+            </ui-boton>
+          </div>
+        </ui-tarjeta>
+      }
+    }
+
+    @if (error(); as mensaje) {
+      <p class="mensaje-error" role="alert">{{ mensaje }}</p>
+    }
+  </div>
+</div>
+
+<ui-modal titulo="Confirmar compra" [abierto]="aComprar() !== null" (cerrado)="cerrarCompra()">
+  @if (aComprar(); as plan) {
+    <div class="modal-compra__cuerpo">
+      <dl class="modal-compra__resumen">
+        <div class="modal-compra__fila">
+          <dt>Turno</dt>
+          <dd class="modal-compra__valor">
+            {{ turnos[plan.turno].etiqueta }} · {{ turnos[plan.turno].desde }} a {{ turnos[plan.turno].hasta }}
+          </dd>
+        </div>
+        <div class="modal-compra__fila"><dt>Usos</dt><dd class="modal-compra__valor">{{ plan.cupos }}</dd></div>
+        <div class="modal-compra__fila"><dt>Vigencia</dt><dd class="modal-compra__valor">30 días</dd></div>
+        <div class="modal-compra__fila">
+          <dt>Precio</dt><dd class="modal-compra__precio">$ {{ plan.precio.toLocaleString('es-AR') }}</dd>
+        </div>
+      </dl>
+      <p class="modal-compra__aviso">Si cancelás el abono, el pago no se devuelve.</p>
+      @if (error(); as mensaje) {
+        <p class="mensaje-error" role="alert">{{ mensaje }}</p>
+      }
+      <ui-boton variante="primario" [bloque]="true" [cargando]="comprandoId() === plan.id" (presionado)="comprar(plan)">
+        Confirmar compra
+      </ui-boton>
+    </div>
+  }
+</ui-modal>

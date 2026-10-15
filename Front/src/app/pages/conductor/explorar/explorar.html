@@ -1,21 +1,18 @@
-<div class="aparece mx-auto w-full max-w-[940px] px-6 pt-5 pb-8 lg:px-10 lg:pt-[34px] lg:pb-11">
-  <div class="flex flex-col gap-6">
+<div class="aparece vista-explorar">
+  <div class="columna-vista">
     @if (!exploracion()) {
       <app-elegir-momento [buscarDirecciones]="buscarDestinos" (elegido)="iniciar($event)" />
     } @else {
-    <header class="flex flex-col gap-4">
-      <div class="flex flex-wrap items-end justify-between gap-3">
+    <header class="cabecera-explorar">
+      <div class="barra-explorar">
         <div>
           <p class="eyebrow">Explorar</p>
-          <h1 class="titulo-vista mt-1.5">Estacionamientos con cocheras libres</h1>
+          <h1 class="titulo-vista titulo-pagina">Estacionamientos con cocheras libres</h1>
         </div>
-        <div class="flex items-center gap-2.5 text-[13.5px] text-grafito">
-          <span class="font-semibold text-tinta">{{ resumen() }}</span>
+        <div class="acciones-explorar">
+          <span class="resumen-busqueda">{{ resumen() }}</span>
           <ui-boton tamano="sm" variante="fantasma" (presionado)="cambiarExploracion()">Cambiar</ui-boton>
-          <a
-            routerLink="/conductor/mapa"
-            class="rounded-boton px-2.5 py-1.5 text-[13px] font-medium text-acento hover:bg-acento-suave"
-          >
+          <a routerLink="/conductor/mapa" class="enlace-mapa">
             Ver en mapa
           </a>
         </div>
@@ -39,7 +36,7 @@
         <ui-boton (presionado)="limpiarFiltros()">Limpiar filtros</ui-boton>
       </ui-estado-vacio>
     } @else {
-      <div class="aparece-en-cadena grid gap-4 lg:grid-cols-2">
+      <div class="aparece-en-cadena lista-estacionamientos">
         @for (estacionamiento of recurso.value(); track estacionamiento.id) {
           <app-tarjeta-estacionamiento
             [estacionamiento]="estacionamiento"

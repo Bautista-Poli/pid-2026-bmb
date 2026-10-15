@@ -18,6 +18,7 @@ import { VehiculoService } from '@app/services/vehiculo.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink, FormularioVehiculo, FotoVehiculo, Boton, Cargando, EstadoVacio, Tarjeta],
   templateUrl: './editar-vehiculo.html',
+  styleUrl: './editar-vehiculo.css',
 })
 export class EditarVehiculo {
   private readonly vehiculos = inject(VehiculoService);

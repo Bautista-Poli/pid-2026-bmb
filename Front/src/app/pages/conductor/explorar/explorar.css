@@ -1,0 +1,72 @@
+.vista-explorar {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 940px;
+  padding: 1.25rem 1.5rem 2rem;
+}
+
+@media (min-width: 1024px) {
+  .vista-explorar {
+    padding: 34px 2.5rem 2.75rem;
+  }
+}
+
+.columna-vista {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.cabecera-explorar {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.barra-explorar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.titulo-pagina {
+  margin-top: 0.375rem;
+}
+
+.acciones-explorar {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-size: 13.5px;
+  color: var(--color-grafito);
+}
+
+.resumen-busqueda {
+  font-weight: 600;
+  color: var(--color-tinta);
+}
+
+.enlace-mapa {
+  padding: 0.375rem 0.625rem;
+  border-radius: var(--radius-boton);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-acento);
+}
+
+.enlace-mapa:hover {
+  background: var(--color-acento-suave);
+}
+
+.lista-estacionamientos {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 1024px) {
+  .lista-estacionamientos {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

@@ -92,7 +92,7 @@ export interface EstacionamientoDto {
   enviado_en: string;
   cocheras_activas?: number;
   cocheras_libres?: number;
-  /** Solo con `incluir_no_disponibles`: si tiene lugar para el tipo y esta abierto en ese momento. */
+  /** Solo con `incluir_no_disponibles`: si tiene cochera libre para el tipo y esta abierto en ese momento. */
   disponible?: boolean;
   tipos_vehiculo?: number[];
   horarios?: HorarioDto[];
@@ -142,7 +142,8 @@ export interface ReservaDto {
   precio_total: number;
   modalidad: ModalidadReserva | 'ABONO';
   motivo_reasignacion: string | null;
-  codigo_acceso: string;
+  /** Solo en las respuestas al conductor. */
+  codigo_acceso?: string;
   id_abono: string | null;
   turno_abono: TurnoAbono | null;
   devuelto?: number;
@@ -161,7 +162,7 @@ export interface FranjaDto {
   cocheras_libres: number;
   motivo: string | null;
   fecha_hasta?: string;
-  causa?: 'HORARIO' | 'PASADO' | 'SIN_LUGAR' | null;
+  causa?: 'HORARIO' | 'PASADO' | 'SIN_COCHERA' | null;
 }
 
 export interface PlanAbonoDto {

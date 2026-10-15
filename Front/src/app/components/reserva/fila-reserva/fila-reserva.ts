@@ -1,6 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
-import { EstadoReserva, ETIQUETA_MODALIDAD, esVencida, etiquetaReserva, ReservaDetallada } from '@app/models';
+import { EstadoReserva, ETIQUETA_MODALIDAD, esExpirada, etiquetaReserva, ReservaDetallada } from '@app/models';
 import { puedeAvanzar, reservaEnJuego } from '@app/services/ciclo-reserva';
 import { desdeFechaISO } from '@app/utils/fecha.util';
 import { Boton, Etiqueta, TonoEtiqueta } from '@app/components/ui';
@@ -15,11 +15,9 @@ const TONO_ESTADO: Record<EstadoReserva, TonoEtiqueta> = {
   NO_SHOW: 'peligro',
 };
 
-/** Que puede hacer el propietario segun como este la reserva. */
+/** Que puede hacer el propietario desde la fila (ingreso y egreso van con el codigo). */
 const PASOS: Partial<Record<EstadoReserva, string>> = {
   PENDIENTE: 'Confirmar',
-  CONFIRMADA: 'Registrar ingreso',
-  ACTIVA: 'Registrar egreso',
 };
 
 /**
@@ -40,7 +38,7 @@ export class FilaReserva {
   readonly reserva = input.required<ReservaDetallada>();
   readonly vista = input<'CONDUCTOR' | 'PROPIETARIO'>('PROPIETARIO');
   readonly permiteCancelar = input(false);
-  /** Botones del ciclo (confirmar / ingreso / egreso) para el propietario. */
+  /** Boton de confirmar para el propietario (ingreso y egreso van con el codigo). */
   readonly permiteGestionar = input(false);
   /** Muestra el spinner en el boton mientras se procesa esta reserva. */
   readonly cancelando = input(false);
@@ -52,9 +50,9 @@ export class FilaReserva {
   protected readonly etiquetaEstado = computed(() => etiquetaReserva(this.reserva(), this.vista()));
   protected readonly etiquetaModalidad = ETIQUETA_MODALIDAD;
   protected readonly activa = computed(() => reservaEnJuego(this.reserva()));
-  // Vencida (el propietario no confirmo a tiempo) va en amarillo: no es culpa del conductor.
+  // Expirada (el propietario no confirmo a tiempo) va en amarillo: no es culpa del conductor.
   protected readonly tonoEstado = computed(() =>
-    esVencida(this.reserva()) ? 'aviso' : TONO_ESTADO[this.reserva().estado],
+    esExpirada(this.reserva()) ? 'aviso' : TONO_ESTADO[this.reserva().estado],
   );
 
   protected readonly titulo = computed(() => {

@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Reserva } from '@app/models';
 import {
+  avanzaConCodigo,
   avanzarReserva,
-  ingresoHabilitado,
   puedeAvanzar,
   puedeMarcarAusente,
   reservaEnJuego,
@@ -74,12 +74,7 @@ describe('reservaEnJuego', () => {
   });
 });
 
-describe('ingreso por franja', () => {
-  beforeEach(() => vi.useFakeTimers());
-  afterEach(() => vi.useRealTimers());
-
-  const ahora = (instante: string) => vi.setSystemTime(new Date(instante));
-
+describe('pasos del propietario', () => {
   const porHora = reserva({
     estado: 'CONFIRMADA',
     fecha: '2026-09-14',
@@ -88,37 +83,37 @@ describe('ingreso por franja', () => {
     horaHasta: '12:00',
   });
 
-  it('se habilita desde 30 min antes del inicio', () => {
-    ahora('2026-09-14T09:29:00-03:00');
-    expect(ingresoHabilitado(porHora)).toBe(false);
-    ahora('2026-09-14T09:30:00-03:00');
-    expect(ingresoHabilitado(porHora)).toBe(true);
-  });
-
-  it('se cierra al vencer la tolerancia de 15 min', () => {
-    ahora('2026-09-14T10:15:00-03:00');
-    expect(ingresoHabilitado(porHora)).toBe(true);
-    ahora('2026-09-14T10:15:01-03:00');
-    expect(ingresoHabilitado(porHora)).toBe(false);
-  });
-
-  it('una reserva vieja nunca habilita el ingreso', () => {
-    ahora('2026-10-08T12:00:00-03:00');
-    expect(ingresoHabilitado(porHora)).toBe(false);
-    expect(puedeAvanzar(porHora)).toBe(false);
-  });
-
-  it('el resto de los pasos no depende de la ventana', () => {
-    ahora('2026-10-08T12:00:00-03:00');
+  it('solo una pendiente tiene boton (confirmar)', () => {
     expect(puedeAvanzar({ ...porHora, estado: 'PENDIENTE' })).toBe(true);
-    expect(puedeAvanzar({ ...porHora, estado: 'ACTIVA' })).toBe(true);
+    expect(puedeAvanzar(porHora)).toBe(false);
+    expect(puedeAvanzar({ ...porHora, estado: 'ACTIVA' })).toBe(false);
+    expect(puedeAvanzar({ ...porHora, estado: 'FINALIZADA' })).toBe(false);
   });
 
-  it('avanzarReserva no ofrece el ingreso fuera de la ventana', () => {
-    ahora('2026-10-08T12:00:00-03:00');
-    const servicio = { registrarIngreso: vi.fn() } as never;
-    const paso = avanzarReserva(servicio, { ...porHora, vehiculo: { patente: 'AB 123 CD' } } as never);
-    expect(paso).toBeNull();
+  it('ingreso y egreso van con el codigo: confirmada y en curso', () => {
+    expect(avanzaConCodigo(porHora)).toBe(true);
+    expect(avanzaConCodigo({ ...porHora, estado: 'ACTIVA' })).toBe(true);
+    expect(avanzaConCodigo({ ...porHora, estado: 'PENDIENTE' })).toBe(false);
+    expect(avanzaConCodigo({ ...porHora, estado: 'NO_SHOW' })).toBe(false);
+  });
+
+  it('avanzarReserva confirma una pendiente', () => {
+    const confirmar = vi.fn();
+    const paso = avanzarReserva({ confirmar } as never, {
+      ...porHora,
+      id: 7,
+      estado: 'PENDIENTE',
+      vehiculo: { patente: 'AB 123 CD' },
+    } as never);
+    expect(confirmar).toHaveBeenCalledWith(7);
+    expect(paso?.aviso).toContain('AB 123 CD');
+  });
+
+  it('avanzarReserva no ofrece ingreso ni egreso', () => {
+    const servicio = { confirmar: vi.fn() } as never;
+    const conVehiculo = { ...porHora, vehiculo: { patente: 'AB 123 CD' } };
+    expect(avanzarReserva(servicio, conVehiculo as never)).toBeNull();
+    expect(avanzarReserva(servicio, { ...conVehiculo, estado: 'ACTIVA' } as never)).toBeNull();
   });
 });
 

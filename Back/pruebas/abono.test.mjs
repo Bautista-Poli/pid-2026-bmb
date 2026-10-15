@@ -330,7 +330,7 @@ describe('reservar con abono', () => {
     assert.equal(respuestas.filter((r) => r.estado === 409).length, 1);
   });
 
-  test('sin cochera libre: 409 como cualquier reserva (el abono no garantiza lugar)', async () => {
+  test('sin cochera libre: 409 como cualquier reserva (el abono no garantiza cochera)', async () => {
     const { estacionamiento, conductor, abono, vehiculo } = await escenario();
     const otroConductor = await crearUsuario();
     const otroVehiculo = await crearVehiculo(otroConductor.token);
@@ -388,8 +388,9 @@ describe('reservar con abono', () => {
     const { propietario, conductor, abono, vehiculo } = await escenario();
     const { datos } = await reservarConAbono(conductor, abono, vehiculo, franja('08:00', '09:00'));
     await ponerEnCurso(datos.reserva.id_reserva);
-    const ingreso = await api('PATCH', `/reservas/${datos.reserva.id_reserva}/ingreso`, {
+    const ingreso = await api('POST', '/reservas/acceso', {
       token: propietario.token,
+      body: { codigo: datos.reserva.codigo_acceso },
     });
     assert.equal(ingreso.estado, 200);
 

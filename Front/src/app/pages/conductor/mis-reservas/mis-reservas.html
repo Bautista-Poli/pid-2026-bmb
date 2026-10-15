@@ -29,7 +29,7 @@
         class="rounded-control border border-exito/25 bg-exito-suave px-4 py-3 text-[13px] text-exito"
         role="status"
       >
-        {{ mensaje }} La vas a encontrar en Historial.
+        {{ mensaje }} La vas a encontrar en Historial, con las canceladas.
       </p>
     }
 
@@ -42,7 +42,7 @@
     } @else if (vacia()) {
       <ui-estado-vacio
         [titulo]="pestania() === 'VIGENTES' ? 'No tenes reservas activas' : 'Todavia no hay historial'"
-        descripcion="Cuando reserves un lugar lo vas a ver aca."
+        descripcion="Cuando reserves una cochera la vas a ver aca."
       >
         <ui-boton routerLink="/conductor/explorar">Explorar estacionamientos</ui-boton>
       </ui-estado-vacio>
@@ -73,6 +73,22 @@
         </section>
       }
     } @else {
+      @if (cantidadSinUsar() > 0) {
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <p class="text-[13px] text-plomo">
+            @if (mostrarSinUsar()) {
+              Incluye canceladas y ausentes.
+            } @else if (cantidadHistorial() === 0) {
+              Solo tenés reservas canceladas o ausentes.
+            } @else {
+              Sin canceladas ni ausentes.
+            }
+          </p>
+          <ui-boton tamano="sm" (presionado)="mostrarSinUsar.set(!mostrarSinUsar())">
+            {{ mostrarSinUsar() ? 'Ocultar canceladas' : 'Mostrar canceladas (' + cantidadSinUsar() + ')' }}
+          </ui-boton>
+        </div>
+      }
       @for (mes of historial(); track mes.clave) {
         <section class="flex flex-col gap-3" [attr.aria-label]="mes.titulo">
           <h2 class="eyebrow eyebrow-neutro">{{ mes.titulo }}</h2>
@@ -99,7 +115,7 @@
       <div class="flex flex-col gap-4">
         <dl class="rounded-control border border-borde-sutil bg-lienzo px-4 py-1.5 text-[13px]">
           <div class="flex justify-between gap-4 border-b border-borde-sutil py-2">
-            <dt class="text-plomo">Lugar</dt>
+            <dt class="text-plomo">Estacionamiento</dt>
             <dd class="text-right font-medium text-tinta">{{ r.estacionamiento.nombre }}</dd>
           </div>
           <div class="flex justify-between gap-4 border-b border-borde-sutil py-2">
@@ -120,7 +136,7 @@
 
         <p class="text-[13px] leading-relaxed text-grafito">
           La cochera queda libre para otro conductor y la reserva pasa al historial. Si después
-          querés ese lugar, vas a tener que reservarlo de nuevo.
+          querés esa cochera, vas a tener que reservarla de nuevo.
         </p>
 
         @if (errorCancelar(); as mensaje) {
@@ -159,7 +175,7 @@
           {{ r.estacionamiento.nombre }} · Cochera {{ r.cochera?.identificador ?? 'a asignar' }} ·
           {{ r.horaDesde }}–{{ r.horaHasta }}
         </p>
-        <app-qr-reserva [codigo]="r.codigoAcceso" />
+        <app-qr-reserva [codigo]="r.codigoAcceso ?? ''" />
       </div>
     }
   </ui-modal>

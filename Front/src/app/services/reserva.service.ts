@@ -147,19 +147,11 @@ export class ReservaService {
   }
 
   /**
-   * Ciclo que maneja el propietario: confirmar la reserva, registrar que el
-   * vehiculo llego y registrar que se fue (eso la finaliza).
+   * Ciclo que maneja el propietario: confirmar la reserva. El ingreso y el
+   * egreso solo se registran con el codigo (ver `registrarAcceso`).
    */
   confirmar(id: Id): Observable<Reserva> {
     return this.transicion(id, 'confirmar');
-  }
-
-  registrarIngreso(id: Id): Observable<Reserva> {
-    return this.transicion(id, 'ingreso');
-  }
-
-  registrarEgreso(id: Id): Observable<Reserva> {
-    return this.transicion(id, 'egreso');
   }
 
   /** `PATCH /api/reservas/:id/ausente`: no-show a mano, si el conductor avisó que no viene. */

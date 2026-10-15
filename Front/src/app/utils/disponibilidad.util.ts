@@ -4,7 +4,7 @@ import { aFechaISO, diaSemanaDe } from './fecha.util';
 
 /**
  * Regla de disponibilidad del handoff:
- *   0 libres     -> ocupada  · "Sin lugares ahora"
+ *   0 libres     -> ocupada  · "Sin cocheras libres"
  *   1-4 libres   -> baja     · "N cocheras libres"
  *   5 o mas      -> acento   · "N cocheras libres"
  */
@@ -14,7 +14,7 @@ export function tonoDisponibilidad(libres: number): TonoPunto {
 }
 
 export function textoDisponibilidad(libres: number): string {
-  return libres === 0 ? 'Sin lugares ahora' : `${libres} cocheras libres`;
+  return libres === 0 ? 'Sin cocheras libres' : `${libres} cocheras libres`;
 }
 
 /** Color del punto en la cuadricula del propietario. */
@@ -59,7 +59,7 @@ export const ETIQUETA_ESTADO: Record<EstadoDisponibilidad, string> = {
 };
 
 /**
- * No disponible: sin lugar ahora o, si la busqueda lo informa, sin lugar para
+ * No disponible: sin cocheras libres ahora o, si la busqueda lo informa, sin cochera para
  * el vehiculo o cerrado en el momento buscado. Si `disponible` vino en true
  * (p. ej. una franja futura), cuenta como disponible aunque hoy este lleno.
  */

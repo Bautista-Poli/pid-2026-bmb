@@ -91,7 +91,7 @@ export class Tablero {
     computation: (nuevo, previo) => nuevo ?? previo?.value,
   });
 
-  /** "Reclamo · No había lugar" o "Auto excedido". */
+  /** "Reclamo · No había cochera libre" o "Auto excedido". */
   protected tituloDisputa(tipo: string, motivo: string | null): string {
     const nombre = ETIQUETA_TIPO_INCIDENCIA[tipo as TipoIncidencia] ?? tipo;
     return motivo ? `${nombre} · ${ETIQUETA_MOTIVO_RECLAMO[motivo as MotivoReclamo] ?? motivo}` : nombre;

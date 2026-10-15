@@ -290,7 +290,7 @@ export function aReserva(dto: ReservaDto): ReservaDetallada {
     ingresoEn: dto.ingreso_real,
     egresoEn: dto.egreso_real,
     motivoReasignacion: dto.motivo_reasignacion,
-    codigoAcceso: dto.codigo_acceso,
+    codigoAcceso: dto.codigo_acceso ?? null,
     devuelto: dto.devuelto ?? 0,
     reclamoAbierto: dto.reclamo_abierto ?? null,
     estacionamiento: {

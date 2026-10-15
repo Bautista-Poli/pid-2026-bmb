@@ -17,7 +17,7 @@ const DIRECCION_INEXISTENTE =
 /**
  * Verifica la direccion contra Georef y devuelve sus coordenadas. Lanza 400 si
  * Georef responde que no existe. Si no se pudo consultar, deja pasar sin
- * coordenadas: una caida del servicio no tiene que impedir cargar el lugar.
+ * coordenadas: una caida del servicio no tiene que impedir cargar el estacionamiento.
  */
 async function verificarDireccion(direccion) {
   const resultado = await geocodificar(direccion);
@@ -254,7 +254,7 @@ export async function buscar(filtros) {
 
   // Con `incluir_no_disponibles` la disponibilidad no descarta: se informa en
   // `disponible` (hay una cochera del tipo libre en ese momento y esta abierto).
-  // El tipo de vehiculo si sigue filtrando: un lugar sin cocheras para el
+  // El tipo de vehiculo si sigue filtrando: un estacionamiento sin cocheras para el
   // vehiculo no sirve aunque este libre.
   let columnaDisponible = '';
   const hayDisponibilidad = (filtros.inicio && filtros.fin) || filtros.disponible_ahora;

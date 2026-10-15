@@ -274,7 +274,7 @@ describe('estadisticas del propietario', () => {
     assert.equal(datos.kpis.ingresos.anterior, 4000);
   });
 
-  test('una jornada de 24 h en un lugar que abre 12 h no pasa el 100 %', async () => {
+  test('una jornada de 24 h en un estacionamiento que abre 12 h no pasa el 100 %', async () => {
     const e = await escenario();
     await e.reserva({ inicio: instante(D, '00:00'), fin: instante(D1, '00:00'), modalidad: 'JORNADA' });
 

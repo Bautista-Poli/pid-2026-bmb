@@ -26,7 +26,7 @@ import { EstacionamientoService } from '@app/services/estacionamiento.service';
           </h1>
           <p class="mt-2 text-[13px] text-plomo">
             Pagás ahora una cantidad de usos en un turno y reservás gratis dentro de ese horario
-            durante 30 días. El abono no reserva lugar: cada reserva depende de que haya cochera libre.
+            durante 30 días. El abono no reserva cochera: cada reserva depende de que haya cochera libre.
           </p>
         </header>
 

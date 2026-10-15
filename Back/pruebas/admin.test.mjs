@@ -18,7 +18,7 @@ before(() => levantarApi('admin'));
 after(() => cerrarApi());
 
 const nuevoPropietario = () => crearUsuario({ rol: 'PROPIETARIO' });
-const MOTIVO = 'Las fotos no muestran el lugar';
+const MOTIVO = 'Las fotos no muestran el estacionamiento';
 
 /** Un estacionamiento recien cargado, esperando revision, y un admin. */
 async function escenario() {

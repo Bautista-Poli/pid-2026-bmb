@@ -255,7 +255,7 @@ export function validarActualizacionCochera(body) {
  * Filtros de GET /api/estacionamientos. Todo opcional. La disponibilidad se pide
  * de una de dos formas, excluyentes: `disponible_ahora=true` o una franja
  * `inicio` + `fin`. Con `incluir_no_disponibles=true` no se descartan los que
- * no tienen lugar (o estan cerrados) en ese momento: vienen marcados con
+ * no tienen cochera libre (o estan cerrados) en ese momento: vienen marcados con
  * `disponible = false`.
  * `lat_min`, `lat_max`, `lng_min` y `lng_max` (juntos) limitan la busqueda a
  * un rectangulo: la parte del mapa que se esta viendo.

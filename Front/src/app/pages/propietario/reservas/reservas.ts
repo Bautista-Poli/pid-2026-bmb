@@ -1,7 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
-import { Router } from '@angular/router';
 import {
   Boton,
   Cargando,
@@ -16,14 +15,19 @@ import {
 import {
   EstadoReserva,
   Estacionamiento,
-  esVencida,
+  esExpirada,
   etiquetaReserva,
   ETIQUETA_TIPO_VEHICULO,
   Id,
   ReservaDetallada,
   TipoVehiculo,
 } from '@app/models';
-import { avanzarReserva, puedeAvanzar, puedeMarcarAusente, rutaAcceso } from '@app/services/ciclo-reserva';
+import {
+  avanzaConCodigo,
+  avanzarReserva,
+  puedeAvanzar,
+  puedeMarcarAusente,
+} from '@app/services/ciclo-reserva';
 import { AuthService } from '@app/services/auth.service';
 import { EstacionamientoService } from '@app/services/estacionamiento.service';
 import { ReservaService } from '@app/services/reserva.service';
@@ -38,7 +42,7 @@ const SECCIONES: { clave: string; titulo: string; estados: EstadoReserva[] }[] =
   { clave: 'PENDIENTES', titulo: 'Pendientes', estados: ['PENDIENTE'] },
   { clave: 'FINALIZADAS', titulo: 'Finalizadas', estados: ['FINALIZADA'] },
   { clave: 'NO_SHOW', titulo: 'Ausentes', estados: ['NO_SHOW'] },
-  { clave: 'CANCELADAS', titulo: 'Canceladas y vencidas', estados: ['CANCELADA'] },
+  { clave: 'CANCELADAS', titulo: 'Canceladas y expiradas', estados: ['CANCELADA'] },
 ];
 
 const TONO_ESTADO: Record<EstadoReserva, TonoEtiqueta> = {
@@ -56,11 +60,9 @@ const ICONO_VEHICULO: Record<TipoVehiculo, NombreIcono> = {
   MOTO: 'moto',
 };
 
-/** Que puede hacer el propietario segun como este la reserva. */
+/** Que puede hacer el propietario desde la lista (ingreso y egreso van con el codigo). */
 const PASOS: Partial<Record<EstadoReserva, string>> = {
   PENDIENTE: 'Confirmar',
-  CONFIRMADA: 'Registrar ingreso',
-  ACTIVA: 'Registrar egreso',
 };
 
 const sinAcentos = (texto: string) =>
@@ -82,16 +84,16 @@ export class Reservas {
   private readonly estacionamientos = inject(EstacionamientoService);
   private readonly reservas = inject(ReservaService);
   private readonly auth = inject(AuthService);
-  private readonly router = inject(Router);
 
   protected readonly etiquetaEstado = etiquetaReserva;
   protected readonly etiquetaTipo = ETIQUETA_TIPO_VEHICULO;
-  /** Vencida (no la confirmaste a tiempo) en amarillo, distinta de una cancelacion. */
+  /** Expirada (no la confirmaste a tiempo) en amarillo, distinta de una cancelacion. */
   protected tonoEstado(reserva: ReservaDetallada): TonoEtiqueta {
-    return esVencida(reserva) ? 'aviso' : TONO_ESTADO[reserva.estado];
+    return esExpirada(reserva) ? 'aviso' : TONO_ESTADO[reserva.estado];
   }
   protected readonly iconoVehiculo = ICONO_VEHICULO;
   protected readonly pasos = PASOS;
+  protected readonly avanzaConCodigo = avanzaConCodigo;
   protected readonly desdeFechaISO = desdeFechaISO;
 
   protected readonly busqueda = signal('');
@@ -155,7 +157,7 @@ export class Reservas {
   protected readonly aviso = signal<string | null>(null);
   protected readonly error = signal<string | null>(null);
 
-  /** El boton del paso siguiente, o null si hoy no corresponde (p. ej. ingreso fuera de la ventana). */
+  /** El boton del paso siguiente (solo confirmar), o null si no hay. */
   protected pasoDe(reserva: ReservaDetallada): string | null {
     return puedeAvanzar(reserva) ? (this.pasos[reserva.estado] ?? null) : null;
   }
@@ -175,14 +177,8 @@ export class Reservas {
     this.estacionamientoId.set('');
   }
 
-  /** Confirmar; ingreso y egreso pasan por la pantalla de acceso (codigo o QR). */
+  /** Confirmar una pendiente; ingreso y egreso solo con el codigo del conductor. */
   protected avanzar(reserva: ReservaDetallada): void {
-    const ruta = rutaAcceso(reserva);
-    if (ruta) {
-      void this.router.navigate(ruta);
-      return;
-    }
-
     const paso = avanzarReserva(this.reservas, reserva);
     if (!paso) return;
 

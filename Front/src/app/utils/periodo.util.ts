@@ -1,15 +1,18 @@
 import { FechaISO } from '@app/models';
 
-export type TipoPeriodo = '7D' | '30D' | 'MES' | 'MES_ANTERIOR';
+/** Periodos predefinidos de los dashboards; ademas se puede elegir un rango (RANGO). */
+export type TipoPeriodo = '7D' | 'MES';
 
 export const PERIODOS: { tipo: TipoPeriodo; etiqueta: string }[] = [
   { tipo: '7D', etiqueta: 'Últimos 7 días' },
-  { tipo: '30D', etiqueta: 'Últimos 30 días' },
   { tipo: 'MES', etiqueta: 'Este mes' },
-  { tipo: 'MES_ANTERIOR', etiqueta: 'Mes anterior' },
 ];
 
+/** Igual que el back (estadistica.validator.js): rango maximo de un pedido. */
+export const MAXIMO_DIAS = 92;
+
 const DIA = 86_400_000;
+const FECHA = /^\d{4}-\d{2}-\d{2}$/;
 /** Argentina es UTC-3 todo el año (igual que el back, utils/horario.js). */
 const DESFASE_AR = 3 * 3_600_000;
 
@@ -26,14 +29,45 @@ export function rangoDePeriodo(tipo: TipoPeriodo, hoy = new Date()): { desde: Fe
   switch (tipo) {
     case '7D':
       return { desde: iso(new Date(local.getTime() - 6 * DIA)), hasta: iso(local) };
-    case '30D':
-      return { desde: iso(new Date(local.getTime() - 29 * DIA)), hasta: iso(local) };
     case 'MES':
       return { desde: iso(new Date(Date.UTC(anio, mes, 1))), hasta: iso(local) };
-    case 'MES_ANTERIOR':
-      // Date.UTC normaliza el mes -1 al diciembre anterior; el dia 0 es el ultimo del mes previo.
-      return { desde: iso(new Date(Date.UTC(anio, mes - 1, 1))), hasta: iso(new Date(Date.UTC(anio, mes, 0))) };
   }
+}
+
+/** Una fecha YYYY-MM-DD que existe (2026-02-30 no). */
+const fechaValida = (fecha: string) => {
+  const instante = new Date(`${fecha}T00:00:00Z`);
+  return FECHA.test(fecha) && !Number.isNaN(instante.getTime()) && iso(instante) === fecha;
+};
+
+/** Por que un rango personalizado no sirve, o null si esta bien. */
+export function errorDeRango(desde: string, hasta: string): string | null {
+  if (!fechaValida(desde) || !fechaValida(hasta)) return 'Elegí las dos fechas';
+  if (desde > hasta) return 'La fecha "desde" tiene que ser anterior a "hasta"';
+  const dias = (Date.parse(hasta) - Date.parse(desde)) / DIA + 1;
+  if (dias > MAXIMO_DIAS) return `El rango puede ser de hasta ${MAXIMO_DIAS} días`;
+  return null;
+}
+
+export interface PeriodoElegido {
+  /** RANGO: fechas elegidas a mano (`?desde=&hasta=`). */
+  tipo: TipoPeriodo | 'RANGO';
+  desde: FechaISO;
+  hasta: FechaISO;
+}
+
+/**
+ * El periodo de la URL: un rango valido (`?desde=&hasta=`) gana; si no, un
+ * periodo predefinido (`?periodo=`); si no hay nada (o es uno viejo), este mes.
+ */
+export function periodoDeUrl(
+  params: { periodo?: string | null; desde?: string | null; hasta?: string | null },
+  hoy = new Date(),
+): PeriodoElegido {
+  const { periodo, desde, hasta } = params;
+  if (desde && hasta && !errorDeRango(desde, hasta)) return { tipo: 'RANGO', desde, hasta };
+  const tipo = PERIODOS.some((p) => p.tipo === periodo) ? (periodo as TipoPeriodo) : 'MES';
+  return { tipo, ...rangoDePeriodo(tipo, hoy) };
 }
 
 export interface Variacion {

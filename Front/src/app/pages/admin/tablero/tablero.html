@@ -109,13 +109,7 @@
     <!-- Periodo: los chips no se destruyen mientras carga el periodo nuevo -->
     <div class="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <h2 class="text-[17px] font-semibold text-tinta">Conflictos y actividad</h2>
-      <div class="flex gap-2 overflow-x-auto pb-1 sm:pb-0">
-        @for (opcion of periodos; track opcion.tipo) {
-          <ui-chip [activo]="opcion.tipo === periodo()" (alternar)="elegirPeriodo(opcion.tipo)">
-            {{ opcion.etiqueta }}
-          </ui-chip>
-        }
-      </div>
+      <app-selector-periodo [periodo]="periodo()" (cambio)="elegirPeriodo($event)" />
     </div>
     @if (recurso.error(); as e) {
       <p class="mt-3 text-[13px] text-ocupada" role="alert">
@@ -216,7 +210,7 @@
       </div>
 
       <!-- Actividad -->
-      <div class="aparece-en-cadena grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+      <div class="aparece-en-cadena grid grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-4">
         @for (metrica of metricas(); track metrica.etiqueta) {
           <app-tarjeta-metrica
             [etiqueta]="metrica.etiqueta"

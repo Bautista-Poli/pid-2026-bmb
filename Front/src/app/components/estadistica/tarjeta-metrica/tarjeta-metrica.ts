@@ -22,14 +22,20 @@ const CLASE_TONO: Record<TonoMetrica, string> = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [Icono, Tarjeta],
   template: `
-    <ui-tarjeta relleno="ninguno">
+    <!-- Alto completo: en una fila de la grilla todas las tarjetas miden lo mismo. -->
+    <ui-tarjeta relleno="ninguno" class="h-full [&>div]:h-full">
       <div class="flex items-start gap-4 p-5">
         <span class="grid size-11 shrink-0 place-items-center rounded-full" [class]="claseTono()">
           <ui-icono [nombre]="icono()" [tamano]="21" />
         </span>
         <div class="min-w-0">
           <p class="text-[13px] font-medium text-plomo">{{ etiqueta() }}</p>
-          <p class="num-tabular mt-2 text-[26px] leading-none font-semibold tracking-[-0.02em] text-tinta">
+          <!-- Sin cortes de linea: el tamano baja con el largo del valor ("$ 1.250.000"). -->
+          <p
+            class="num-tabular mt-2 leading-none font-semibold tracking-[-0.02em] whitespace-nowrap text-tinta"
+            [class]="claseTamano()"
+            [title]="valor()"
+          >
             {{ valor() }}
           </p>
           @if (variacion(); as v) {
@@ -47,7 +53,7 @@ const CLASE_TONO: Record<TonoMetrica, string> = {
       </div>
     </ui-tarjeta>
   `,
-  host: { class: 'block' },
+  host: { class: 'block h-full' },
 })
 export class TarjetaMetrica {
   readonly etiqueta = input.required<string>();
@@ -57,4 +63,13 @@ export class TarjetaMetrica {
   readonly variacion = input<Variacion | null>(null);
 
   protected readonly claseTono = computed(() => CLASE_TONO[this.tono()]);
+
+  /** "29 %" o "59" van grandes; montos largos, un poco mas chicos para que entren. */
+  protected readonly claseTamano = computed(() => {
+    const largo = this.valor().length;
+    if (largo <= 7) return 'text-[26px]';
+    if (largo <= 10) return 'text-[22px]';
+    if (largo <= 13) return 'text-[19px]';
+    return 'text-[17px]';
+  });
 }

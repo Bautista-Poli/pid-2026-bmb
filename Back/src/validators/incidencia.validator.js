@@ -25,7 +25,7 @@ export function validarResolucion(body) {
   return campos(body).texto('comentario', body.comentario, { max: MAX_TEXTO, requerido: false }).resultado();
 }
 
-const MOTIVOS = ['NO_HABIA_LUGAR', 'COBRO_INCORRECTO', 'DANO_AL_VEHICULO', 'MAL_SERVICIO', 'OTRO'];
+const MOTIVOS = ['NO_HABIA_COCHERA', 'COBRO_INCORRECTO', 'DANO_AL_VEHICULO', 'MAL_SERVICIO', 'OTRO'];
 
 /** `POST /incidencias/reclamos`: sobre una reserva o un abono (uno de los dos). */
 export function validarReclamo(body) {

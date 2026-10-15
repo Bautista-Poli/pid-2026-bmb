@@ -16,7 +16,7 @@ import {
 } from './ayuda.mjs';
 import {
   TOLERANCIA_NO_SHOW_MS,
-  vencerNoPresentadas,
+  vencerAusentes,
   vencerPendientesSinConfirmar,
 } from '../src/services/reserva.service.js';
 
@@ -75,7 +75,7 @@ describe('pasaje automatico a NO_SHOW', () => {
     await empezoHace(reserva.id_reserva, MINUTOS_TOLERANCIA + 1);
     assert.equal(await libresAhora(estacionamiento), 0);
 
-    await vencerNoPresentadas();
+    await vencerAusentes();
 
     assert.equal(await estadoDe(reserva.id_reserva), 'NO_SHOW');
     assert.equal(await libresAhora(estacionamiento), 1);
@@ -85,7 +85,7 @@ describe('pasaje automatico a NO_SHOW', () => {
     const { reserva } = await escenario();
     await empezoHace(reserva.id_reserva, MINUTOS_TOLERANCIA - 5);
 
-    await vencerNoPresentadas();
+    await vencerAusentes();
 
     assert.equal(await estadoDe(reserva.id_reserva), 'CONFIRMADA');
   });
@@ -96,7 +96,7 @@ describe('pasaje automatico a NO_SHOW', () => {
     await acceder(propietario, reserva.codigo_acceso);
     await empezoHace(reserva.id_reserva, MINUTOS_TOLERANCIA + 10);
 
-    await vencerNoPresentadas();
+    await vencerAusentes();
 
     assert.equal(await estadoDe(reserva.id_reserva), 'ACTIVA');
   });
@@ -105,7 +105,7 @@ describe('pasaje automatico a NO_SHOW', () => {
     const { estacionamiento, reserva } = await escenario();
     const cuando = franja();
     await empezoHace(reserva.id_reserva, MINUTOS_TOLERANCIA + 1);
-    await vencerNoPresentadas();
+    await vencerAusentes();
     // La franja original de manana queda libre: se vuelve a poner ahi y se reserva encima.
     await query('UPDATE reserva SET inicio = $2, fin = $3 WHERE id_reserva = $1', [
       reserva.id_reserva,
@@ -170,12 +170,12 @@ describe('ingreso y cancelacion fuera de la tolerancia', () => {
   test('el codigo de una reserva NO_SHOW explica por que no entra', async () => {
     const { propietario, reserva } = await escenario();
     await empezoHace(reserva.id_reserva, MINUTOS_TOLERANCIA + 1);
-    await vencerNoPresentadas();
+    await vencerAusentes();
 
     const intento = await acceder(propietario, reserva.codigo_acceso);
 
     assert.equal(intento.estado, 409);
-    assert.match(motivo(intento), /no presentada/i);
+    assert.match(motivo(intento), /ausente/i);
   });
 
   test('el conductor no puede cancelar pasada la tolerancia', async () => {
@@ -187,7 +187,7 @@ describe('ingreso y cancelacion fuera de la tolerancia', () => {
     });
 
     assert.equal(intento.estado, 409);
-    assert.match(motivo(intento), /no presentada/i);
+    assert.match(motivo(intento), /ausente/i);
     assert.equal(await estadoDe(reserva.id_reserva), 'CONFIRMADA');
   });
 });
@@ -222,9 +222,9 @@ describe('quien cancelo la reserva', () => {
     await vencerPendientesSinConfirmar();
 
     const mias = await api('GET', '/reservas', { token: conductor.token });
-    const vencida = mias.datos.reservas.find((r) => r.id_reserva === datos.reserva.id_reserva);
-    assert.equal(vencida.estado, 'CANCELADA');
-    assert.equal(vencida.cancelada_por, 'SISTEMA');
+    const expirada = mias.datos.reservas.find((r) => r.id_reserva === datos.reserva.id_reserva);
+    assert.equal(expirada.estado, 'CANCELADA');
+    assert.equal(expirada.cancelada_por, 'SISTEMA');
   });
 
   test('el propietario da de baja la cochera: cancelada_por PROPIETARIO', async () => {

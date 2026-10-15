@@ -56,7 +56,7 @@ const TRANSICIONES = {
         ]),
     },
     [ESTADOS_RESERVA.CANCELADA]: {},
-    // Automatica (vencerNoPresentadas): la cochera nunca paso a OCUPADA, asi
+    // Automatica (vencerAusentes): la cochera nunca paso a OCUPADA, asi
     // que no hay efecto; alcanza con que NO_SHOW no sea un estado vigente.
     [ESTADOS_RESERVA.NO_SHOW]: {},
   },
@@ -447,7 +447,7 @@ export async function cancelar(idReserva, idConductor) {
       throw ApiError.conflict('La reserva ya termino');
     }
     // Pasada la tolerancia ya es un no-show (aunque el job no la haya marcado):
-    // cancelarla ahi la sacaria de la estadistica de no presentados.
+    // cancelarla ahi la sacaria de la estadistica de ausentes.
     if (reserva.estado === ESTADOS_RESERVA.CONFIRMADA && Date.now() > limiteIngreso(reserva)) {
       throw ApiError.conflict(MENSAJE_NO_SHOW);
     }
@@ -549,8 +549,8 @@ export async function marcarAusente(idReserva, idPropietario) {
  */
 const MARGEN_EGRESO_TRAS_INGRESO_MS = 60 * 1000;
 
-const MENSAJE_TOLERANCIA = 'Paso la tolerancia de ingreso: la reserva quedo como no presentada';
-const MENSAJE_NO_SHOW = 'La reserva quedo como no presentada: el vehiculo no llego a tiempo';
+const MENSAJE_TOLERANCIA = 'Paso la tolerancia de ingreso: la reserva quedo como ausente';
+const MENSAJE_NO_SHOW = 'La reserva quedo como ausente: el vehiculo no llego a tiempo';
 
 /** Ultimo instante (ms) en que se acepta el ingreso: `inicio` + tolerancia, sin pasar de `fin`. */
 function limiteIngreso(reserva) {
@@ -706,8 +706,8 @@ export async function registrarAcceso(idPropietario, { codigo }) {
 
 /**
  * Franjas del dia con la cantidad de cocheras libres. `motivo` explica por
- * que una franja no se puede reservar (fuera de horario, ya empezo o sin lugar)
- * y `causa` lo resume: HORARIO, PASADO o SIN_LUGAR.
+ * que una franja no se puede reservar (fuera de horario, ya empezo o sin cochera libre)
+ * y `causa` lo resume: HORARIO, PASADO o SIN_COCHERA.
  *
  * Con `modalidad` y/o `horas` cada franja es un ingreso posible: una por cada
  * hora del dia, de `horas` de largo (12 y 24 en estadia y jornada).
@@ -777,7 +777,7 @@ export async function disponibilidad(idEstacionamiento, { fecha, id_tipo_vehicul
       libres = conteo[0].libres;
       if (libres === 0) {
         motivo = 'No quedan cocheras libres en esta franja';
-        causa = 'SIN_LUGAR';
+        causa = 'SIN_COCHERA';
       }
     }
 
@@ -824,7 +824,7 @@ async function ingresosDelDia(idEstacionamiento, horarios, { fecha, id_tipo_vehi
     }
     if (!motivo && libres === 0) {
       motivo = 'No quedan cocheras libres en ese horario';
-      causa = 'SIN_LUGAR';
+      causa = 'SIN_COCHERA';
     }
     const hasta = partesLocales(fin);
     return {
@@ -879,7 +879,7 @@ export async function vencerPendientesSinConfirmar() {
  * no es un estado vigente, la cochera queda disponible en el acto para la
  * disponibilidad, la busqueda y las reservas nuevas.
  */
-export async function vencerNoPresentadas() {
+export async function vencerAusentes() {
   const { rows } = await query(
     `SELECT id_reserva FROM reserva
       WHERE estado = $1 AND ingreso_real IS NULL
@@ -887,7 +887,7 @@ export async function vencerNoPresentadas() {
     [ESTADOS_RESERVA.CONFIRMADA, TOLERANCIA_NO_SHOW_MS],
   );
 
-  let noPresentadas = 0;
+  let ausentes = 0;
   for (const { id_reserva } of rows) {
     const proceso = await withTransaction(async (client) => {
       const { rows: filas } = await client.query(
@@ -900,7 +900,7 @@ export async function vencerNoPresentadas() {
       await cambiarEstado(client, filas[0], ESTADOS_RESERVA.NO_SHOW);
       return true;
     });
-    if (proceso) noPresentadas += 1;
+    if (proceso) ausentes += 1;
   }
-  return noPresentadas;
+  return ausentes;
 }

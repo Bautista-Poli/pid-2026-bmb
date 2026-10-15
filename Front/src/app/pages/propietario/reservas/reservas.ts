@@ -16,7 +16,7 @@ import {
 import {
   EstadoReserva,
   Estacionamiento,
-  esVencida,
+  esExpirada,
   etiquetaReserva,
   ETIQUETA_TIPO_VEHICULO,
   Id,
@@ -38,7 +38,7 @@ const SECCIONES: { clave: string; titulo: string; estados: EstadoReserva[] }[] =
   { clave: 'PENDIENTES', titulo: 'Pendientes', estados: ['PENDIENTE'] },
   { clave: 'FINALIZADAS', titulo: 'Finalizadas', estados: ['FINALIZADA'] },
   { clave: 'NO_SHOW', titulo: 'Ausentes', estados: ['NO_SHOW'] },
-  { clave: 'CANCELADAS', titulo: 'Canceladas y vencidas', estados: ['CANCELADA'] },
+  { clave: 'CANCELADAS', titulo: 'Canceladas y expiradas', estados: ['CANCELADA'] },
 ];
 
 const TONO_ESTADO: Record<EstadoReserva, TonoEtiqueta> = {
@@ -86,9 +86,9 @@ export class Reservas {
 
   protected readonly etiquetaEstado = etiquetaReserva;
   protected readonly etiquetaTipo = ETIQUETA_TIPO_VEHICULO;
-  /** Vencida (no la confirmaste a tiempo) en amarillo, distinta de una cancelacion. */
+  /** Expirada (no la confirmaste a tiempo) en amarillo, distinta de una cancelacion. */
   protected tonoEstado(reserva: ReservaDetallada): TonoEtiqueta {
-    return esVencida(reserva) ? 'aviso' : TONO_ESTADO[reserva.estado];
+    return esExpirada(reserva) ? 'aviso' : TONO_ESTADO[reserva.estado];
   }
   protected readonly iconoVehiculo = ICONO_VEHICULO;
   protected readonly pasos = PASOS;

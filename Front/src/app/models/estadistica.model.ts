@@ -11,7 +11,7 @@ export type OrigenCancelacionEstadistica = 'CONDUCTOR' | 'PROPIETARIO' | 'SISTEM
 export const ETIQUETA_ORIGEN_CANCELACION: Record<OrigenCancelacionEstadistica, string> = {
   CONDUCTOR: 'El conductor',
   PROPIETARIO: 'El estacionamiento',
-  SISTEMA: 'Vencidas sin confirmar',
+  SISTEMA: 'Expiradas sin confirmar',
   SIN_DATO: 'Sin dato',
 };
 

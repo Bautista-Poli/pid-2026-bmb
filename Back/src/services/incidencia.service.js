@@ -32,7 +32,7 @@ export const TIPOS_INCIDENCIA = Object.freeze({
 });
 
 export const MOTIVOS_RECLAMO = Object.freeze([
-  'NO_HABIA_LUGAR',
+  'NO_HABIA_COCHERA',
   'COBRO_INCORRECTO',
   'DANO_AL_VEHICULO',
   'MAL_SERVICIO',

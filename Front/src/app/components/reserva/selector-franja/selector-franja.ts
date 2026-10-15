@@ -9,7 +9,7 @@ export interface RangoHorario {
 /**
  * Hora de ingreso: una opcion por hora, con la hora de salida segun la
  * duracion elegida. Solo se muestran los ingresos posibles (dentro del horario
- * y no pasados); los que no tienen lugar quedan tachados.
+ * y no pasados); los que no tienen cochera libre quedan tachados.
  */
 @Component({
   selector: 'app-selector-franja',
@@ -28,7 +28,7 @@ export class SelectorFranja {
   readonly rangoElegido = output<RangoHorario>();
 
   protected readonly visibles = computed(() =>
-    this.franjas().filter((f) => f.disponible || f.causa === 'SIN_LUGAR'),
+    this.franjas().filter((f) => f.disponible || f.causa === 'SIN_COCHERA'),
   );
 
   protected esActiva(franja: FranjaDisponible): boolean {

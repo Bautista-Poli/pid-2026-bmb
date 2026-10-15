@@ -159,9 +159,9 @@ export class Reservar {
     return horario === 'Cerrado hoy' ? 'Cerrado ese día' : `Atiende ${horario}`;
   });
 
-  /** Hay ingresos para mostrar (disponibles o sin lugar) en el dia y la duracion elegidos. */
+  /** Hay ingresos para mostrar (disponibles o sin cochera libre) en el dia y la duracion elegidos. */
   protected readonly hayIngresos = computed(() =>
-    this.recursoDisponibilidad.value().some((f) => f.disponible || f.causa === 'SIN_LUGAR'),
+    this.recursoDisponibilidad.value().some((f) => f.disponible || f.causa === 'SIN_COCHERA'),
   );
 
   /** "Av. Belgrano 1240 · 1,2 km · $ 900 por hora": direccion, distancia y resumen de tarifas. */

@@ -19,7 +19,7 @@ import {
 before(() => levantarApi('reclamo'));
 after(() => cerrarApi());
 
-const DESCRIPCION = 'No habia lugar cuando llegue y tuve que irme a otro lado.';
+const DESCRIPCION = 'No habia cochera libre cuando llegue y tuve que irme a otro lado.';
 
 /** Reserva confirmada de 4 h a $1000 la hora: se pagaron $4000. */
 async function escenarioReserva() {
@@ -60,7 +60,7 @@ async function escenarioAbono() {
 const reclamar = (conductor, body) =>
   api('POST', '/incidencias/reclamos', {
     token: conductor.token,
-    body: { motivo: 'NO_HABIA_LUGAR', texto: DESCRIPCION, ...body },
+    body: { motivo: 'NO_HABIA_COCHERA', texto: DESCRIPCION, ...body },
   });
 
 describe('abrir un reclamo', () => {
@@ -73,7 +73,7 @@ describe('abrir un reclamo', () => {
     const incidencia = datos.incidencia;
     assert.equal(incidencia.tipo, 'RECLAMO');
     assert.equal(incidencia.estado, 'ABIERTA');
-    assert.equal(incidencia.motivo, 'NO_HABIA_LUGAR');
+    assert.equal(incidencia.motivo, 'NO_HABIA_COCHERA');
     assert.equal(incidencia.monto_pedido, 1500);
     assert.equal(incidencia.pagado, 4000);
     assert.equal(incidencia.devuelto, 0);

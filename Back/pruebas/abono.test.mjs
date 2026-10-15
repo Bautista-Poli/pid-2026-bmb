@@ -330,7 +330,7 @@ describe('reservar con abono', () => {
     assert.equal(respuestas.filter((r) => r.estado === 409).length, 1);
   });
 
-  test('sin cochera libre: 409 como cualquier reserva (el abono no garantiza lugar)', async () => {
+  test('sin cochera libre: 409 como cualquier reserva (el abono no garantiza cochera)', async () => {
     const { estacionamiento, conductor, abono, vehiculo } = await escenario();
     const otroConductor = await crearUsuario();
     const otroVehiculo = await crearVehiculo(otroConductor.token);

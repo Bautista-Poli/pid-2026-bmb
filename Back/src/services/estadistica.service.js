@@ -54,7 +54,7 @@ export const redondear = (valor, decimales = 2) => Math.round(valor * 10 ** deci
  * cierre) en hora local, con 23:59 tratado como medianoche. Es el universo de
  * la ocupacion: las horas ofrecidas son estas ventanas, y las usadas son la
  * parte de cada reserva que cae adentro. Asi la ocupacion nunca pasa el 100 %
- * (una JORNADA de 24 h en un lugar que abre 12 h cuenta 12) y no suman
+ * (una JORNADA de 24 h en un estacionamiento que abre 12 h cuenta 12) y no suman
  * cocheras dadas de baja ni estacionamientos sin horario.
  */
 const VENTANAS = `

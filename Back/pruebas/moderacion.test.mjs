@@ -18,7 +18,7 @@ import {
 before(() => levantarApi('moderacion'));
 after(() => cerrarApi());
 
-const FUNDAMENTO = 'El conductor demostro que no habia lugar libre al llegar.';
+const FUNDAMENTO = 'El conductor demostro que no habia cochera libre al llegar.';
 
 /** Reclamo de $4000 pagados, ya denunciado por el conductor. */
 async function disputa({ denunciar = true } = {}) {
@@ -40,7 +40,7 @@ async function disputa({ denunciar = true } = {}) {
     token: conductor.token,
     body: {
       id_reserva: reserva.id_reserva,
-      motivo: 'NO_HABIA_LUGAR',
+      motivo: 'NO_HABIA_COCHERA',
       texto: 'Llegue a horario y no habia ninguna cochera libre.',
     },
   });
@@ -123,7 +123,7 @@ describe('detalle y mensajes', () => {
   test('el admin escribe en un chat privado y solo esa parte lo ve', async () => {
     const { conductor, propietario, incidencia } = await disputa();
 
-    const { estado } = await escribir(admin, incidencia, { texto: 'Mandame una foto del lugar.', canal: 'CONDUCTOR' });
+    const { estado } = await escribir(admin, incidencia, { texto: 'Mandame una foto del estacionamiento.', canal: 'CONDUCTOR' });
     assert.equal(estado, 201);
 
     const ve = async (usuario) =>

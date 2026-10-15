@@ -17,10 +17,10 @@ export type TipoIncidencia = 'AUTO_EXCEDIDO' | 'RESERVA_AFECTADA' | 'RECLAMO';
 export type EstadoIncidencia = 'ABIERTA' | 'DENUNCIADA' | 'RESUELTA' | 'RETIRADA';
 
 /** Por que reclama el conductor. */
-export type MotivoReclamo = 'NO_HABIA_LUGAR' | 'COBRO_INCORRECTO' | 'DANO_AL_VEHICULO' | 'MAL_SERVICIO' | 'OTRO';
+export type MotivoReclamo = 'NO_HABIA_COCHERA' | 'COBRO_INCORRECTO' | 'DANO_AL_VEHICULO' | 'MAL_SERVICIO' | 'OTRO';
 
 export const ETIQUETA_MOTIVO_RECLAMO: Record<MotivoReclamo, string> = {
-  NO_HABIA_LUGAR: 'No había lugar',
+  NO_HABIA_COCHERA: 'No había cochera libre',
   COBRO_INCORRECTO: 'Cobro incorrecto',
   DANO_AL_VEHICULO: 'Daño al vehículo',
   MAL_SERVICIO: 'Mal servicio',

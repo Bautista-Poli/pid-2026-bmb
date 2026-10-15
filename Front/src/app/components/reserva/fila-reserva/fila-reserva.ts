@@ -1,6 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
-import { EstadoReserva, ETIQUETA_MODALIDAD, esVencida, etiquetaReserva, ReservaDetallada } from '@app/models';
+import { EstadoReserva, ETIQUETA_MODALIDAD, esExpirada, etiquetaReserva, ReservaDetallada } from '@app/models';
 import { puedeAvanzar, reservaEnJuego } from '@app/services/ciclo-reserva';
 import { desdeFechaISO } from '@app/utils/fecha.util';
 import { Boton, Etiqueta, TonoEtiqueta } from '@app/components/ui';
@@ -52,9 +52,9 @@ export class FilaReserva {
   protected readonly etiquetaEstado = computed(() => etiquetaReserva(this.reserva(), this.vista()));
   protected readonly etiquetaModalidad = ETIQUETA_MODALIDAD;
   protected readonly activa = computed(() => reservaEnJuego(this.reserva()));
-  // Vencida (el propietario no confirmo a tiempo) va en amarillo: no es culpa del conductor.
+  // Expirada (el propietario no confirmo a tiempo) va en amarillo: no es culpa del conductor.
   protected readonly tonoEstado = computed(() =>
-    esVencida(this.reserva()) ? 'aviso' : TONO_ESTADO[this.reserva().estado],
+    esExpirada(this.reserva()) ? 'aviso' : TONO_ESTADO[this.reserva().estado],
   );
 
   protected readonly titulo = computed(() => {

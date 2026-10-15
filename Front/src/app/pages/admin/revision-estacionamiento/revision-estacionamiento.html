@@ -1,0 +1,158 @@
+<div class="aparece vista-revision">
+  <a class="enlace-volver" routerLink="/admin/pendientes">
+    ← Volver a la revisión
+  </a>
+
+  @if (recurso.isLoading()) {
+    <div class="contenido-estado"><ui-cargando [cantidad]="2" /></div>
+  } @else if (recurso.error(); as e) {
+    <div class="contenido-estado">
+      <ui-estado-vacio titulo="No pudimos cargar el estacionamiento" [descripcion]="e.message">
+        <ui-boton (presionado)="recurso.reload()">Reintentar</ui-boton>
+      </ui-estado-vacio>
+    </div>
+  } @else if (recurso.value(); as e) {
+    <div class="contenido-revision">
+      <header class="cabecera-revision">
+        <div class="cabecera-revision__texto">
+          <h1 class="titulo-vista">{{ e.nombre }}</h1>
+          <p class="cabecera-revision__direccion">
+            {{ e.direccion.calle }} {{ e.direccion.numero }}, {{ e.direccion.ciudad }},
+            {{ e.direccion.provincia }}
+          </p>
+          <p class="cabecera-revision__envio">Enviado {{ e.enviadoEn | date: 'd MMM y, HH:mm' }}</p>
+        </div>
+        <ui-etiqueta [tono]="tonoEstado[e.estadoAprobacion]">
+          {{ etiquetaEstado[e.estadoAprobacion] }}
+        </ui-etiqueta>
+      </header>
+
+      @if (e.estadoAprobacion === 'RECHAZADO' && e.motivoRechazo) {
+        <p class="aviso-rechazo">
+          Rechazado: {{ e.motivoRechazo }}
+        </p>
+      }
+
+      @if (e.estadoAprobacion === 'PENDIENTE') {
+        <div class="acciones-decision">
+          <ui-boton variante="primario" (presionado)="abrirAprobacion()">Aprobar</ui-boton>
+          <ui-boton variante="peligro" (presionado)="abrirRechazo()">Rechazar</ui-boton>
+        </div>
+      }
+
+      @if (e.fotos.length > 0) {
+        <app-galeria-fotos [fotos]="e.fotos" [nombre]="e.nombre" />
+      } @else {
+        <p class="nota">No cargó fotos.</p>
+      }
+
+      <div class="tarjetas-revision">
+        <ui-tarjeta>
+          <h2 class="tarjeta-titulo">Propietario</h2>
+          <p class="propietario-nombre">
+            {{ e.propietario.nombre }} {{ e.propietario.apellido }}
+          </p>
+          <p class="nota">{{ e.propietario.email }}</p>
+          @if (e.propietario.telefono) {
+            <p class="nota">{{ e.propietario.telefono }}</p>
+          }
+        </ui-tarjeta>
+
+        <ui-tarjeta>
+          <h2 class="tarjeta-titulo">Tarifas y cocheras</h2>
+          <ul class="lista-tarifas">
+            @for (tarifa of tarifas(); track tarifa.etiqueta) {
+              <li>{{ tarifa.etiqueta }}: {{ tarifa.valor ?? 'no ofrece' }}</li>
+            }
+            <li class="lista-tarifas__cocheras">
+              {{ e.cocherasTotales }} cochera(s) activas · {{ e.cubierto ? 'Cubierto' : 'Descubierto' }}
+            </li>
+          </ul>
+        </ui-tarjeta>
+
+        <ui-tarjeta>
+          <h2 class="tarjeta-titulo">Horarios</h2>
+          @if (e.horarios.length === 0) {
+            <p class="nota-tarjeta">No cargó horarios.</p>
+          } @else {
+            <ul class="num-tabular lista-horarios">
+              @for (franja of e.horarios; track franja.dia) {
+                <li>
+                  <span class="dia-horario">{{ franja.dia }}</span>
+                  {{ franja.desde }} a {{ franja.hasta }}
+                </li>
+              }
+            </ul>
+          }
+        </ui-tarjeta>
+
+        @if (e.descripcion) {
+          <ui-tarjeta>
+            <h2 class="tarjeta-titulo">Descripción</h2>
+            <p class="descripcion-texto">{{ e.descripcion }}</p>
+          </ui-tarjeta>
+        }
+      </div>
+
+      @if (e.direccion.latitud !== null && e.direccion.longitud !== null) {
+        <div class="mapa-contenedor">
+          <app-mapa-estacionamientos [estacionamientos]="[e]" [seleccionadoId]="e.id" />
+        </div>
+      } @else {
+        <p class="nota">La dirección no tiene coordenadas: verificala a mano.</p>
+      }
+    </div>
+
+    <ui-modal
+      titulo="Aprobar estacionamiento"
+      [abierto]="aprobando()"
+      (cerrado)="aprobando.set(false)"
+    >
+      <div class="contenido-modal">
+        <p class="texto-modal">
+          ¿Aprobar {{ e.nombre }}? Si el propietario lo tiene publicado, va a aparecer en la búsqueda.
+        </p>
+        @if (error(); as mensaje) {
+          <p class="mensaje-error" role="alert">{{ mensaje }}</p>
+        }
+        <ui-boton variante="primario" [bloque]="true" [cargando]="guardando()" (presionado)="aprobar(e)">
+          Aprobar
+        </ui-boton>
+      </div>
+    </ui-modal>
+
+    <ui-modal
+      titulo="Rechazar estacionamiento"
+      [abierto]="rechazando()"
+      (cerrado)="rechazando.set(false)"
+    >
+      <div class="contenido-modal">
+        <label class="campo">
+          <span class="label-campo">Motivo (lo ve el propietario)</span>
+          <textarea
+            rows="4"
+            [maxLength]="motivoMax"
+            [ngModel]="motivo()"
+            (ngModelChange)="motivo.set($event)"
+            placeholder="Por ejemplo: las fotos no muestran la entrada del estacionamiento."
+          ></textarea>
+          <span class="campo-ayuda num-tabular">
+            {{ motivo().trim().length }}/{{ motivoMax }} · mínimo {{ motivoMin }}
+          </span>
+        </label>
+        @if (error(); as mensaje) {
+          <p class="mensaje-error" role="alert">{{ mensaje }}</p>
+        }
+        <ui-boton
+          variante="peligro"
+          [bloque]="true"
+          [cargando]="guardando()"
+          [deshabilitado]="motivo().trim().length < motivoMin"
+          (presionado)="rechazar(e)"
+        >
+          Rechazar
+        </ui-boton>
+      </div>
+    </ui-modal>
+  }
+</div>

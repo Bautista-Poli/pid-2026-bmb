@@ -29,7 +29,7 @@
         class="rounded-control border border-exito/25 bg-exito-suave px-4 py-3 text-[13px] text-exito"
         role="status"
       >
-        {{ mensaje }} La vas a encontrar en Historial.
+        {{ mensaje }} La vas a encontrar en Historial, con las canceladas.
       </p>
     }
 
@@ -73,6 +73,22 @@
         </section>
       }
     } @else {
+      @if (cantidadSinUsar() > 0) {
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <p class="text-[13px] text-plomo">
+            @if (mostrarSinUsar()) {
+              Incluye canceladas y ausentes.
+            } @else if (cantidadHistorial() === 0) {
+              Solo tenés reservas canceladas o ausentes.
+            } @else {
+              Sin canceladas ni ausentes.
+            }
+          </p>
+          <ui-boton tamano="sm" (presionado)="mostrarSinUsar.set(!mostrarSinUsar())">
+            {{ mostrarSinUsar() ? 'Ocultar canceladas' : 'Mostrar canceladas (' + cantidadSinUsar() + ')' }}
+          </ui-boton>
+        </div>
+      }
       @for (mes of historial(); track mes.clave) {
         <section class="flex flex-col gap-3" [attr.aria-label]="mes.titulo">
           <h2 class="eyebrow eyebrow-neutro">{{ mes.titulo }}</h2>

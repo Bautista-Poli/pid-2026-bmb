@@ -1,0 +1,185 @@
+<div class="aparece pagina-disputa">
+  <div class="contenido-disputa">
+    <a routerLink="/admin/disputas" class="enlace-volver">← Disputas</a>
+
+    @if (recurso.isLoading() && !recurso.hasValue()) {
+      <ui-cargando [cantidad]="2" />
+    } @else if (recurso.error(); as e) {
+      <ui-estado-vacio titulo="No pudimos cargar la disputa" [descripcion]="e.message">
+        <ui-boton (presionado)="recurso.reload()">Reintentar</ui-boton>
+      </ui-estado-vacio>
+    } @else if (recurso.value(); as d) {
+      <header class="cabecera-disputa">
+        <div>
+          <p class="eyebrow">Disputa</p>
+          <h1 class="titulo-vista cabecera-disputa__titulo">
+            {{ etiquetaTipo[d.tipo] }}
+            @if (d.motivo; as motivo) {
+              <span class="cabecera-disputa__motivo">· {{ etiquetaMotivo[motivo] }}</span>
+            }
+          </h1>
+          <p class="cabecera-disputa__resumen">
+            {{ d.estacionamiento.nombre }} · {{ d.conductor.nombre }}
+            @if (d.patente) {
+              · {{ d.patente }}
+            }
+          </p>
+        </div>
+        <ui-etiqueta [tono]="d.estado === 'DENUNCIADA' ? 'peligro' : 'neutro'">
+          {{ etiquetaEstado[d.estado] }}
+        </ui-etiqueta>
+      </header>
+
+      <!-- Resumen para decidir -->
+      <ui-tarjeta>
+        <dl class="num-tabular resumen-disputa">
+          <div><dt>Pagó</dt><dd class="resumen-disputa__destacado">{{ pesos(d.pagado) }}</dd></div>
+          <div><dt>Ya devuelto</dt><dd class="resumen-disputa__destacado">{{ pesos(d.devuelto) }}</dd></div>
+          <div><dt>Se puede devolver</dt><dd class="resumen-disputa__destacado">{{ pesos(d.tope) }}</dd></div>
+          @if (d.montoPedido !== null) {
+            <div><dt>Pide el conductor</dt><dd>{{ pesos(d.montoPedido) }}</dd></div>
+          }
+          @if (d.propuestaVigente !== null) {
+            <div><dt>Ofreció el estacionamiento</dt><dd>{{ pesos(d.propuestaVigente) }}</dd></div>
+          }
+          @if (d.resumen.inicio) {
+            <div>
+              <dt>Reserva</dt>
+              <dd>{{ d.resumen.inicio | date: 'd MMM HH:mm' }} a {{ d.resumen.fin | date: 'HH:mm' }}</dd>
+            </div>
+            <div>
+              <dt>Ingreso / egreso</dt>
+              <dd>
+                {{ d.resumen.ingresoEn ? (d.resumen.ingresoEn | date: 'HH:mm') : '—' }} /
+                {{ d.resumen.egresoEn ? (d.resumen.egresoEn | date: 'HH:mm') : '—' }}
+              </dd>
+            </div>
+            @if (d.resumen.canceladaPor; as quien) {
+              <div><dt>Cancelada por</dt><dd>{{ quien.toLowerCase() }}</dd></div>
+            }
+          } @else if (d.resumen.desde) {
+            <div>
+              <dt>Abono</dt>
+              <dd>{{ d.resumen.desde | date: 'd MMM' }} al {{ d.resumen.hasta | date: 'd MMM' }}</dd>
+            </div>
+          }
+        </dl>
+      </ui-tarjeta>
+
+      <!-- Chats -->
+      <ui-tarjeta relleno="ninguno">
+        <div class="pestanias" role="tablist">
+          @for (p of pestanias; track p.canal) {
+            <button
+              type="button"
+              role="tab"
+              class="pestania"
+              [class.pestania--activa]="canal() === p.canal"
+              [attr.aria-selected]="canal() === p.canal"
+              (click)="canal.set(p.canal)"
+            >
+              {{ p.etiqueta }}
+            </button>
+          }
+        </div>
+        <p class="pestania-ayuda">
+          @if (canal() === 'GENERAL') {
+            Lo que hablaron el conductor y el estacionamiento. No escribís acá: tu fundamento al resolver sí aparece.
+          } @else {
+            Chat privado: {{ canal() === 'CONDUCTOR' ? 'el estacionamiento' : 'el conductor' }} no lo ve.
+          }
+        </p>
+        <ol class="conversacion" aria-label="Conversación">
+          @for (mensaje of mensajes(); track mensaje.id) {
+            @if (mensaje.rolAutor === 'SISTEMA') {
+              <li class="mensaje--sistema">
+                {{ mensaje.texto }}
+                <span class="mensaje--sistema__hora">{{ mensaje.creadoEn | date: 'd MMM HH:mm' }}</span>
+              </li>
+            } @else {
+              <li
+                class="mensaje"
+                [class.mensaje--propio]="mensaje.rolAutor === 'ADMINISTRADOR'"
+                [class.mensaje--ajeno]="mensaje.rolAutor !== 'ADMINISTRADOR'"
+              >
+                <span class="mensaje__autor">{{ autor(mensaje) }}</span>
+                @if (mensaje.montoPropuesto !== null) {
+                  <span class="num-tabular mensaje__propuesta">Propone devolver {{ pesos(mensaje.montoPropuesto) }}</span>
+                }
+                <p class="mensaje__texto">{{ mensaje.texto }}</p>
+                <span class="mensaje__hora">{{ mensaje.creadoEn | date: 'd MMM HH:mm' }}</span>
+              </li>
+            }
+          } @empty {
+            <li class="conversacion__vacia">Todavía no hay mensajes.</li>
+          }
+        </ol>
+        @if (d.estado === 'DENUNCIADA' && canal() !== 'GENERAL') {
+          <form class="form-mensaje" (submit)="$event.preventDefault(); escribir(d)">
+            <textarea
+              rows="2"
+              maxlength="1000"
+              class="campo-mensaje"
+              [placeholder]="canal() === 'CONDUCTOR' ? 'Escribile al conductor…' : 'Escribile al estacionamiento…'"
+              aria-label="Mensaje"
+              [value]="borrador()"
+              (input)="borrador.set(leer($event))"
+            ></textarea>
+            <ui-boton variante="primario" tipo="submit" [cargando]="enviando()" [deshabilitado]="!borrador().trim()">
+              Enviar
+            </ui-boton>
+          </form>
+        }
+      </ui-tarjeta>
+
+      @if (error(); as mensaje) {
+        <p class="aviso-error" role="alert">{{ mensaje }}</p>
+      }
+
+      <!-- Resolver -->
+      @if (d.estado === 'DENUNCIADA') {
+        <ui-tarjeta>
+          <form class="form-resolver" (submit)="$event.preventDefault(); resolver(d)">
+            <h2 class="form-resolver__titulo">Resolver</h2>
+            <fieldset class="opciones-resolucion">
+              <legend class="label-campo opciones-resolucion__leyenda">A favor de</legend>
+              <label class="opcion-resolucion">
+                <input type="radio" name="resolucion" [checked]="resolucion() === 'A_FAVOR_CONDUCTOR'" (change)="resolucion.set('A_FAVOR_CONDUCTOR')" />
+                El conductor (se le devuelve plata)
+              </label>
+              <label class="opcion-resolucion">
+                <input type="radio" name="resolucion" [checked]="resolucion() === 'A_FAVOR_PROPIETARIO'" (change)="resolucion.set('A_FAVOR_PROPIETARIO')" />
+                El estacionamiento (sin devolución)
+              </label>
+            </fieldset>
+            @if (resolucion() === 'A_FAVOR_CONDUCTOR') {
+              <label class="campo">
+                <span class="label-campo">Monto a devolver</span>
+                <input type="number" inputmode="decimal" min="1" [max]="d.tope" [value]="monto() ?? ''" (input)="leerMonto($event)" />
+                <span class="campo-ayuda num-tabular">Hasta {{ pesos(d.tope) }}. Se aplica en el acto y se descuenta de los ingresos del estacionamiento.</span>
+              </label>
+            }
+            <label class="campo">
+              <span class="label-campo">Fundamento (lo leen las dos partes)</span>
+              <textarea
+                rows="3"
+                [maxLength]="fundamentoMax"
+                class="campo-fundamento"
+                [value]="fundamento()"
+                (input)="fundamento.set(leer($event))"
+              ></textarea>
+              <span class="campo-ayuda num-tabular">{{ fundamento().trim().length }}/{{ fundamentoMax }} · mínimo {{ fundamentoMin }}</span>
+            </label>
+            <ui-boton variante="primario" tipo="submit" [bloque]="true" [cargando]="resolviendo()" [deshabilitado]="!resolucionValida(d)">
+              Resolver disputa
+            </ui-boton>
+          </form>
+        </ui-tarjeta>
+      } @else if (d.resolucion; as resolucion) {
+        <p class="resuelta-disputa">
+          Resuelta el {{ d.resueltaEn | date: 'd MMM HH:mm' }}: <span class="resuelta-disputa__resolucion">{{ etiquetaResolucion[resolucion] }}</span>.
+        </p>
+      }
+    }
+  </div>
+</div>

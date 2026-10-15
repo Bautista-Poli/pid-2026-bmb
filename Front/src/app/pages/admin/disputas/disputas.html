@@ -1,0 +1,67 @@
+<div class="aparece pagina-disputas">
+  <div class="contenido-disputas">
+    <header>
+      <p class="eyebrow">Administración</p>
+      <h1 class="titulo-vista cabecera-disputas__titulo">Disputas</h1>
+      <p class="cabecera-disputas__descripcion">
+        Casos en los que el conductor y el estacionamiento no se pusieron de acuerdo. Escribile a cada
+        parte por su chat privado y resolvé, con devolución si corresponde.
+      </p>
+    </header>
+
+    <div class="filtros-estado">
+      @for (filtro of filtros; track filtro.estado) {
+        <ui-chip [activo]="filtro.estado === estado()" (alternar)="elegir(filtro.estado)">
+          {{ filtro.etiqueta }}
+        </ui-chip>
+      }
+    </div>
+
+    @if (recurso.isLoading()) {
+      <ui-cargando [cantidad]="3" />
+    } @else if (recurso.error(); as e) {
+      <ui-estado-vacio titulo="No pudimos cargar las disputas" [descripcion]="e.message">
+        <ui-boton (presionado)="recurso.reload()">Reintentar</ui-boton>
+      </ui-estado-vacio>
+    } @else if (recurso.value().length === 0) {
+      <ui-estado-vacio [titulo]="filtroActual().vacio" />
+    } @else {
+      <ul class="aparece-en-cadena lista-disputas">
+        @for (incidencia of recurso.value(); track incidencia.id) {
+          <li>
+            <a class="tarjeta-disputa" [routerLink]="['/admin/disputas', incidencia.id]">
+              <ui-tarjeta>
+                <div class="fila-disputa">
+                  <div class="fila-disputa__texto">
+                    <p class="fila-disputa__tipo">
+                      {{ etiquetaTipo[incidencia.tipo] }}
+                      @if (incidencia.motivo; as motivo) {
+                        <span class="fila-disputa__motivo">· {{ etiquetaMotivo[motivo] }}</span>
+                      }
+                    </p>
+                    <p class="fila-disputa__estacionamiento">
+                      {{ incidencia.estacionamiento.nombre }} · {{ incidencia.conductor.nombre }}
+                    </p>
+                    @if (incidencia.denunciadaPor; as quien) {
+                      <p class="fila-disputa__autor">
+                        Denunció: {{ etiquetaAutor[quien].toLowerCase() }}
+                      </p>
+                    }
+                  </div>
+                  <div class="fila-disputa__estado">
+                    @if (incidencia.resolucion; as resolucion) {
+                      <ui-etiqueta tono="neutro">{{ etiquetaResolucion[resolucion] }}</ui-etiqueta>
+                    }
+                    <p class="num-tabular fila-disputa__fecha">
+                      Denunciada<br />{{ incidencia.denunciadaEn | date: 'd MMM, HH:mm' }}
+                    </p>
+                  </div>
+                </div>
+              </ui-tarjeta>
+            </a>
+          </li>
+        }
+      </ul>
+    }
+  </div>
+</div>

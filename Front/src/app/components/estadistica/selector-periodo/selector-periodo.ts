@@ -17,7 +17,7 @@ export type CambioPeriodo =
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [Chip],
   template: `
-    <div class="flex flex-col gap-2.5">
+    <div class="flex flex-col gap-2.5 sm:items-end">
       <div class="flex gap-2 overflow-x-auto pb-1 sm:pb-0">
         @for (opcion of periodos; track opcion.tipo) {
           <ui-chip [activo]="opcion.tipo === periodo().tipo && !editando()" (alternar)="elegir(opcion.tipo)">
@@ -30,12 +30,12 @@ export type CambioPeriodo =
       </div>
 
       @if (editando() || periodo().tipo === 'RANGO') {
-        <form class="flex flex-wrap items-end gap-2" (submit)="$event.preventDefault(); aplicar()">
+        <form class="flex flex-wrap items-end gap-2 sm:flex-nowrap" (submit)="$event.preventDefault(); aplicar()">
           <label class="flex flex-col gap-1 text-[12px] text-plomo">
             Desde
             <input
               type="date"
-              class="h-10 rounded-control border border-borde bg-papel px-3 text-[13px] text-tinta focus:border-acento focus:outline-none"
+              class="h-10 w-[150px] rounded-control border border-borde bg-papel px-3 text-[13px] text-tinta focus:border-acento focus:outline-none"
               [max]="hasta() || null"
               [value]="desde()"
               (input)="desde.set(leer($event))"
@@ -45,7 +45,7 @@ export type CambioPeriodo =
             Hasta
             <input
               type="date"
-              class="h-10 rounded-control border border-borde bg-papel px-3 text-[13px] text-tinta focus:border-acento focus:outline-none"
+              class="h-10 w-[150px] rounded-control border border-borde bg-papel px-3 text-[13px] text-tinta focus:border-acento focus:outline-none"
               [min]="desde() || null"
               [value]="hasta()"
               (input)="hasta.set(leer($event))"

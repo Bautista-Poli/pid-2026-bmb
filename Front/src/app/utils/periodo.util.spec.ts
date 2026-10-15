@@ -1,22 +1,52 @@
-import { rangoDePeriodo, variacion } from './periodo.util';
+import { errorDeRango, periodoDeUrl, rangoDePeriodo, variacion } from './periodo.util';
 
 // Mediodia en Buenos Aires, para que el dia local no dependa de la zona del equipo.
 const hoy = new Date('2026-10-12T12:00:00-03:00');
 
 describe('rangoDePeriodo', () => {
-  it('ultimos 7 y 30 dias, incluyendo hoy', () => {
+  it('ultimos 7 dias, incluyendo hoy', () => {
     expect(rangoDePeriodo('7D', hoy)).toEqual({ desde: '2026-10-06', hasta: '2026-10-12' });
-    expect(rangoDePeriodo('30D', hoy)).toEqual({ desde: '2026-09-13', hasta: '2026-10-12' });
   });
 
   it('este mes va del 1 a hoy', () => {
     expect(rangoDePeriodo('MES', hoy)).toEqual({ desde: '2026-10-01', hasta: '2026-10-12' });
   });
+});
 
-  it('el mes anterior completo, aun cruzando de año', () => {
-    expect(rangoDePeriodo('MES_ANTERIOR', hoy)).toEqual({ desde: '2026-09-01', hasta: '2026-09-30' });
-    const enero = new Date('2027-01-15T12:00:00-03:00');
-    expect(rangoDePeriodo('MES_ANTERIOR', enero)).toEqual({ desde: '2026-12-01', hasta: '2026-12-31' });
+describe('errorDeRango', () => {
+  it('un rango valido no tiene error', () => {
+    expect(errorDeRango('2026-09-01', '2026-09-30')).toBeNull();
+    expect(errorDeRango('2026-09-01', '2026-09-01')).toBeNull();
+  });
+
+  it('faltan fechas, estan al reves o el rango es muy largo', () => {
+    expect(errorDeRango('', '2026-09-30')).toBe('Elegí las dos fechas');
+    expect(errorDeRango('2026-09-30', '2026-09-01')).toBe('La fecha "desde" tiene que ser anterior a "hasta"');
+    expect(errorDeRango('2026-01-01', '2026-06-30')).toBe('El rango puede ser de hasta 92 días');
+    expect(errorDeRango('2026-13-01', '2026-13-05')).toBe('Elegí las dos fechas');
+  });
+});
+
+describe('periodoDeUrl', () => {
+  it('sin nada en la URL es este mes', () => {
+    expect(periodoDeUrl({}, hoy)).toEqual({ tipo: 'MES', desde: '2026-10-01', hasta: '2026-10-12' });
+  });
+
+  it('un periodo predefinido', () => {
+    expect(periodoDeUrl({ periodo: '7D' }, hoy)).toEqual({ tipo: '7D', desde: '2026-10-06', hasta: '2026-10-12' });
+  });
+
+  it('un rango personalizado valido gana sobre el periodo', () => {
+    expect(periodoDeUrl({ periodo: '7D', desde: '2026-09-01', hasta: '2026-09-15' }, hoy)).toEqual({
+      tipo: 'RANGO',
+      desde: '2026-09-01',
+      hasta: '2026-09-15',
+    });
+  });
+
+  it('un rango invalido o un periodo viejo vuelven a este mes', () => {
+    expect(periodoDeUrl({ desde: '2026-09-30', hasta: '2026-09-01' }, hoy).tipo).toBe('MES');
+    expect(periodoDeUrl({ periodo: '30D' }, hoy).tipo).toBe('MES');
   });
 });
 

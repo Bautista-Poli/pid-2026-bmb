@@ -2,8 +2,16 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { rxResource, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { map } from 'rxjs';
-import { BarraDia, BarrasDia, MapaCalor, TarjetaMetrica, TonoMetrica } from '@app/components/estadistica';
-import { Boton, Cargando, Chip, EstadoVacio, NombreIcono, Tarjeta } from '@app/components/ui';
+import {
+  BarraDia,
+  BarrasDia,
+  CambioPeriodo,
+  MapaCalor,
+  SelectorPeriodo,
+  TarjetaMetrica,
+  TonoMetrica,
+} from '@app/components/estadistica';
+import { Boton, Cargando, EstadoVacio, NombreIcono, Tarjeta } from '@app/components/ui';
 import {
   Estacionamiento,
   EstadisticasPropietario,
@@ -13,7 +21,7 @@ import {
 import { AuthService } from '@app/services/auth.service';
 import { EstacionamientoService } from '@app/services/estacionamiento.service';
 import { EstadisticaService } from '@app/services/estadistica.service';
-import { PERIODOS, rangoDePeriodo, TipoPeriodo, Variacion, variacion } from '@app/utils/periodo.util';
+import { periodoDeUrl, Variacion, variacion } from '@app/utils/periodo.util';
 
 const pesos = (monto: number) => `$ ${Math.round(monto).toLocaleString('es-AR')}`;
 const porciento = (fraccion: number) => `${Math.round(fraccion * 100)} %`;
@@ -43,7 +51,7 @@ const ORIGENES: OrigenCancelacionEstadistica[] = ['CONDUCTOR', 'PROPIETARIO', 'S
 @Component({
   selector: 'app-estadisticas',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [BarrasDia, Boton, Cargando, Chip, EstadoVacio, MapaCalor, RouterLink, Tarjeta, TarjetaMetrica],
+  imports: [BarrasDia, Boton, Cargando, EstadoVacio, MapaCalor, RouterLink, SelectorPeriodo, Tarjeta, TarjetaMetrica],
   templateUrl: './estadisticas.html',
 })
 export class Estadisticas {
@@ -53,17 +61,20 @@ export class Estadisticas {
   private readonly router = inject(Router);
   private readonly ruta = inject(ActivatedRoute);
 
-  protected readonly periodos = PERIODOS;
   protected readonly origenes = ORIGENES;
   protected readonly etiquetaOrigen = ETIQUETA_ORIGEN_CANCELACION;
   protected readonly pesos = pesos;
 
   private readonly params = toSignal(this.ruta.queryParamMap, { requireSync: true });
 
-  protected readonly periodo = computed<TipoPeriodo>(() => {
-    const elegido = this.params().get('periodo') as TipoPeriodo | null;
-    return PERIODOS.some((p) => p.tipo === elegido) ? elegido! : '30D';
-  });
+  /** Periodo de la URL: `?periodo=7D|MES` o `?desde=&hasta=` (rango personalizado). */
+  protected readonly periodo = computed(() =>
+    periodoDeUrl({
+      periodo: this.params().get('periodo'),
+      desde: this.params().get('desde'),
+      hasta: this.params().get('hasta'),
+    }),
+  );
   protected readonly estacionamientoId = computed(() => this.params().get('estacionamiento') ?? '');
 
   protected readonly recursoEstacionamientos = rxResource({
@@ -73,7 +84,11 @@ export class Estadisticas {
   });
 
   protected readonly recurso = rxResource({
-    params: () => ({ ...rangoDePeriodo(this.periodo()), estacionamientoId: this.estacionamientoId() || null }),
+    params: () => ({
+      desde: this.periodo().desde,
+      hasta: this.periodo().hasta,
+      estacionamientoId: this.estacionamientoId() || null,
+    }),
     stream: ({ params }) => this.estadisticas.delPropietario(params),
   });
 
@@ -138,8 +153,8 @@ export class Estadisticas {
     return porciento(fraccion);
   }
 
-  protected elegirPeriodo(periodo: TipoPeriodo): void {
-    void this.router.navigate([], { queryParams: { periodo }, queryParamsHandling: 'merge', replaceUrl: true });
+  protected elegirPeriodo(cambio: CambioPeriodo): void {
+    void this.router.navigate([], { queryParams: cambio, queryParamsHandling: 'merge', replaceUrl: true });
   }
 
   protected elegirEstacionamiento(evento: Event): void {

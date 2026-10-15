@@ -20,6 +20,13 @@ interface MesHistorial {
 
 const MES_Y_ANIO = new Intl.DateTimeFormat('es-AR', { month: 'long', year: 'numeric' });
 
+/**
+ * Reservas que no llegaron a usarse (canceladas, expiradas y ausentes): en el
+ * historial quedan ocultas hasta que el conductor pide verlas.
+ */
+const sinUsar = (reserva: ReservaDetallada) =>
+  reserva.estado === 'CANCELADA' || reserva.estado === 'NO_SHOW';
+
 const inicioDe = (reserva: ReservaDetallada) =>
   Date.parse(aInstante(reserva.fecha, reserva.horaDesde));
 
@@ -92,8 +99,16 @@ export class MisReservas {
       .sort((a, b) => inicioDe(b) - inicioDe(a)),
   );
 
+  /** Si el historial muestra tambien las canceladas, expiradas y ausentes. */
+  protected readonly mostrarSinUsar = signal(false);
+
+  private readonly pasadasVisibles = computed(() =>
+    this.mostrarSinUsar() ? this.pasadas() : this.pasadas().filter((reserva) => !sinUsar(reserva)),
+  );
+
   protected readonly cantidadVigentes = computed(() => this.vigentes().length);
-  protected readonly cantidadHistorial = computed(() => this.pasadas().length);
+  protected readonly cantidadHistorial = computed(() => this.pasadasVisibles().length);
+  protected readonly cantidadSinUsar = computed(() => this.pasadas().filter(sinUsar).length);
 
   protected readonly enCurso = computed(() =>
     this.vigentes().filter((reserva) => reserva.estado === 'ACTIVA'),
@@ -104,7 +119,7 @@ export class MisReservas {
 
   protected readonly historial = computed<MesHistorial[]>(() => {
     const meses: MesHistorial[] = [];
-    for (const reserva of this.pasadas()) {
+    for (const reserva of this.pasadasVisibles()) {
       const clave = reserva.fecha.slice(0, 7);
       let mes = meses.at(-1);
       if (mes?.clave !== clave) {
@@ -118,7 +133,9 @@ export class MisReservas {
   });
 
   protected readonly vacia = computed(() =>
-    this.pestania() === 'VIGENTES' ? this.cantidadVigentes() === 0 : this.cantidadHistorial() === 0,
+    this.pestania() === 'VIGENTES'
+      ? this.cantidadVigentes() === 0
+      : this.pasadas().length === 0,
   );
 
   protected cambiarPestania(pestania: Pestania): void {

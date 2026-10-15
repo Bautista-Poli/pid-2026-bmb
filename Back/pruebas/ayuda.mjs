@@ -237,6 +237,13 @@ export function ponerEnCurso(idReserva) {
   );
 }
 
+/** Corre el ingreso_real hacia atras para pasar el margen anti doble escaneo. */
+export function ingresoHaceUnRato(idReserva) {
+  return query(`UPDATE reserva SET ingreso_real = now() - interval '10 minutes' WHERE id_reserva = $1`, [
+    idReserva,
+  ]);
+}
+
 /** Borra lo que creo la suite, respetando el orden de las claves foraneas. */
 async function borrarDatosDePrueba() {
   const deLaSuite = `%@${dominio}`;

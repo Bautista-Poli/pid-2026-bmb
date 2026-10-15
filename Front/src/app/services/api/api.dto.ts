@@ -142,7 +142,8 @@ export interface ReservaDto {
   precio_total: number;
   modalidad: ModalidadReserva | 'ABONO';
   motivo_reasignacion: string | null;
-  codigo_acceso: string;
+  /** Solo en las respuestas al conductor. */
+  codigo_acceso?: string;
   id_abono: string | null;
   turno_abono: TurnoAbono | null;
   devuelto?: number;

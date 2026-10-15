@@ -15,11 +15,9 @@ const TONO_ESTADO: Record<EstadoReserva, TonoEtiqueta> = {
   NO_SHOW: 'peligro',
 };
 
-/** Que puede hacer el propietario segun como este la reserva. */
+/** Que puede hacer el propietario desde la fila (ingreso y egreso van con el codigo). */
 const PASOS: Partial<Record<EstadoReserva, string>> = {
   PENDIENTE: 'Confirmar',
-  CONFIRMADA: 'Registrar ingreso',
-  ACTIVA: 'Registrar egreso',
 };
 
 /**
@@ -40,7 +38,7 @@ export class FilaReserva {
   readonly reserva = input.required<ReservaDetallada>();
   readonly vista = input<'CONDUCTOR' | 'PROPIETARIO'>('PROPIETARIO');
   readonly permiteCancelar = input(false);
-  /** Botones del ciclo (confirmar / ingreso / egreso) para el propietario. */
+  /** Boton de confirmar para el propietario (ingreso y egreso van con el codigo). */
   readonly permiteGestionar = input(false);
   /** Muestra el spinner en el boton mientras se procesa esta reserva. */
   readonly cancelando = input(false);

@@ -44,7 +44,13 @@ async function escenario() {
     token: propietario.token,
   });
 
-  return { propietario, estacionamiento, conductor, reserva: confirmada.datos.reserva };
+  // El codigo sale de la respuesta al conductor: al propietario no le llega.
+  return {
+    propietario,
+    estacionamiento,
+    conductor,
+    reserva: { ...confirmada.datos.reserva, codigo_acceso: datos.reserva.codigo_acceso },
+  };
 }
 
 /** Corre la franja para que haya empezado hace `minutos` y dure una hora. */
@@ -143,18 +149,6 @@ describe('ingreso y cancelacion fuera de la tolerancia', () => {
     assert.equal(intento.estado, 409);
     assert.match(motivo(intento), /tolerancia/i);
     assert.equal(await estadoDe(reserva.id_reserva), 'CONFIRMADA');
-  });
-
-  test('el boton de ingreso del propietario tambien respeta la tolerancia', async () => {
-    const { propietario, reserva } = await escenario();
-    await empezoHace(reserva.id_reserva, MINUTOS_TOLERANCIA + 1);
-
-    const intento = await api('PATCH', `/reservas/${reserva.id_reserva}/ingreso`, {
-      token: propietario.token,
-    });
-
-    assert.equal(intento.estado, 409);
-    assert.match(motivo(intento), /tolerancia/i);
   });
 
   test('dentro de la tolerancia el ingreso se registra', async () => {

@@ -9,6 +9,7 @@ import {
   crearUsuario,
   crearVehiculo,
   franja,
+  ingresoHaceUnRato,
   levantarApi,
   motivo,
   ponerEnCurso,
@@ -42,7 +43,8 @@ async function reservaConfirmada(propietario, conductor, estacionamiento, vehicu
   const confirmada = await api('PATCH', `/reservas/${datos.reserva.id_reserva}/confirmar`, {
     token: propietario.token,
   });
-  return confirmada.datos.reserva;
+  // El codigo sale de la respuesta al conductor: al propietario no le llega.
+  return { ...confirmada.datos.reserva, codigo_acceso: datos.reserva.codigo_acceso };
 }
 
 describe('codigo de la reserva', () => {
@@ -56,19 +58,35 @@ describe('codigo de la reserva', () => {
     assert.notEqual(reserva.codigo_acceso, otra.codigo_acceso);
   });
 
-  test('lo ven el conductor en sus reservas y el propietario en las recibidas', async () => {
-    const { propietario, estacionamiento, conductor, reserva } = await escenario();
+  test('lo ve el conductor; el propietario no, hasta que se lo dan o escanea el QR', async () => {
+    const { propietario, estacionamiento, conductor, vehiculo } = await escenario();
+    const { datos } = await api('POST', '/reservas', {
+      token: conductor.token,
+      body: {
+        id_estacionamiento: estacionamiento.id_estacionamiento,
+        id_vehiculo: vehiculo.id_vehiculo,
+        ...franja('14:00', '16:00'),
+      },
+    });
+    assert.match(datos.reserva.codigo_acceso, FORMATO_CODIGO);
 
     const mias = await api('GET', '/reservas', { token: conductor.token });
-    assert.match(mias.datos.reservas[0].codigo_acceso, FORMATO_CODIGO);
-    assert.equal(mias.datos.reservas[0].codigo_acceso, reserva.codigo_acceso);
+    assert.ok(mias.datos.reservas.length > 0);
+    for (const reserva of mias.datos.reservas) assert.match(reserva.codigo_acceso, FORMATO_CODIGO);
 
     const recibidas = await api(
       'GET',
       `/estacionamientos/${estacionamiento.id_estacionamiento}/reservas`,
       { token: propietario.token },
     );
-    assert.equal(recibidas.datos.reservas[0].codigo_acceso, reserva.codigo_acceso);
+    assert.ok(recibidas.datos.reservas.length > 0);
+    for (const reserva of recibidas.datos.reservas) assert.ok(!('codigo_acceso' in reserva));
+
+    const confirmada = await api('PATCH', `/reservas/${datos.reserva.id_reserva}/confirmar`, {
+      token: propietario.token,
+    });
+    assert.equal(confirmada.estado, 200);
+    assert.ok(!('codigo_acceso' in confirmada.datos.reserva));
   });
 });
 
@@ -78,12 +96,6 @@ const acceder = (propietario, codigo) =>
 const estadoCochera = async (idCochera) =>
   (await query('SELECT estado_actual FROM cochera WHERE id_cochera = $1', [idCochera])).rows[0]
     .estado_actual;
-
-/** Corre el ingreso_real hacia atras para pasar el margen anti doble escaneo. */
-const ingresoHaceUnRato = (idReserva) =>
-  query(`UPDATE reserva SET ingreso_real = now() - interval '10 minutes' WHERE id_reserva = $1`, [
-    idReserva,
-  ]);
 
 describe('ingreso y egreso con el codigo de la reserva', () => {
   test('ingreso en la ventana: ACTIVA y cochera OCUPADA', async () => {

@@ -159,7 +159,7 @@
           {{ r.estacionamiento.nombre }} · Cochera {{ r.cochera?.identificador ?? 'a asignar' }} ·
           {{ r.horaDesde }}–{{ r.horaHasta }}
         </p>
-        <app-qr-reserva [codigo]="r.codigoAcceso" />
+        <app-qr-reserva [codigo]="r.codigoAcceso ?? ''" />
       </div>
     }
   </ui-modal>

@@ -388,8 +388,9 @@ describe('reservar con abono', () => {
     const { propietario, conductor, abono, vehiculo } = await escenario();
     const { datos } = await reservarConAbono(conductor, abono, vehiculo, franja('08:00', '09:00'));
     await ponerEnCurso(datos.reserva.id_reserva);
-    const ingreso = await api('PATCH', `/reservas/${datos.reserva.id_reserva}/ingreso`, {
+    const ingreso = await api('POST', '/reservas/acceso', {
       token: propietario.token,
+      body: { codigo: datos.reserva.codigo_acceso },
     });
     assert.equal(ingreso.estado, 200);
 

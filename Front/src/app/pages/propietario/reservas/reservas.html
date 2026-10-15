@@ -196,7 +196,11 @@
                       </button>
                     }
                     @if (!pasoDe(reserva) && !puedeMarcarAusente(reserva)) {
-                      <span class="text-humo">—</span>
+                      @if (avanzaConCodigo(reserva)) {
+                        <span class="text-[12px] text-plomo">Con el código</span>
+                      } @else {
+                        <span class="text-humo">—</span>
+                      }
                     }
                   </td>
                 </tr>
@@ -264,6 +268,9 @@
                   >
                     Marcar ausente
                   </button>
+                }
+                @if (!pasoDe(reserva) && !puedeMarcarAusente(reserva) && avanzaConCodigo(reserva)) {
+                  <span class="text-[12px] text-plomo">Con el código</span>
                 }
               </div>
             </li>

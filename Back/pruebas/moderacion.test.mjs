@@ -226,7 +226,7 @@ test('resolver y registrar el egreso a la vez no se traban', async () => {
 
   const [resuelta, egreso] = await Promise.all([
     resolver(admin, rows[0], { resolucion: 'A_FAVOR_PROPIETARIO' }),
-    api('PATCH', `/reservas/${reserva.id_reserva}/egreso`, { token: propietario.token }),
+    api('POST', '/reservas/acceso', { token: propietario.token, body: { codigo: reserva.codigo_acceso } }),
   ]);
 
   assert.equal(resuelta.estado, 200);

@@ -85,8 +85,12 @@ export interface Reserva {
   egresoEn: FechaHoraISO | null;
   /** Aviso cuando el bloqueo de la cochera original la reasignó o, sin alternativa, la canceló. */
   motivoReasignacion: string | null;
-  /** Codigo del QR de la reserva: lo muestra el conductor y lo escanea el operador. */
-  codigoAcceso: string;
+  /**
+   * Codigo del QR de la reserva: lo muestra el conductor y lo escanea el operador.
+   * Solo viene en las reservas del conductor; el propietario no lo tiene (null)
+   * hasta que se lo dan o escanea el QR.
+   */
+  codigoAcceso: string | null;
   /** Con que abono se hizo, o null si se pago aparte. */
   abono: { id: Id; turno: TurnoAbono } | null;
   /** Lo devuelto por reclamos (simulado). */

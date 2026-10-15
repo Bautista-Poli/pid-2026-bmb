@@ -1,0 +1,101 @@
+<div class="aparece contenedor-abonos">
+  <div class="pila-abonos">
+    <header>
+      <p class="eyebrow">Conductor</p>
+      <h1 class="titulo-vista titulo-abonos">Mis abonos</h1>
+    </header>
+
+    @if (recurso.status() === 'loading') {
+      <ui-cargando [cantidad]="2" />
+    } @else if (recurso.error(); as e) {
+      <ui-estado-vacio titulo="No pudimos cargar tus abonos" [descripcion]="e.message">
+        <ui-boton (presionado)="recurso.reload()">Reintentar</ui-boton>
+      </ui-estado-vacio>
+    } @else if (recurso.value().length === 0) {
+      <ui-estado-vacio
+        titulo="Todavía no tenés abonos"
+        descripcion="Buscá un estacionamiento en el mapa y abrí “Ver abonos mensuales”."
+      >
+        <ui-boton routerLink="/conductor/explorar">Explorar estacionamientos</ui-boton>
+      </ui-estado-vacio>
+    } @else {
+      @for (abono of recurso.value(); track abono.id) {
+        <ui-tarjeta>
+          <div class="tarjeta-abono__cuerpo">
+            <div>
+              <p class="tarjeta-abono__estacionamiento">{{ abono.estacionamiento }}</p>
+              <p class="tarjeta-abono__turno">
+                Turno {{ turnos[abono.turno].etiqueta.toLowerCase() }}
+                ({{ turnos[abono.turno].desde }} a {{ turnos[abono.turno].hasta }}) ·
+                vence el {{ abono.hasta | date: 'd MMM' }}
+              </p>
+              <p class="tarjeta-abono__usos">
+                {{ abono.cuposRestantes }} de {{ abono.cuposTotales }} usos disponibles
+                @if (abono.estado !== 'VIGENTE') {
+                  <span class="tarjeta-abono__estado">· {{ abono.estado.toLowerCase() }}</span>
+                }
+              </p>
+              @if (abono.devuelto > 0) {
+                <p class="num-tabular tarjeta-abono__devuelto">
+                  Devuelto $ {{ abono.devuelto.toLocaleString('es-AR') }}
+                </p>
+              }
+            </div>
+            @if (abono.estado === 'VIGENTE') {
+              <div class="tarjeta-abono__acciones">
+                @if (abono.cuposRestantes > 0) {
+                  <ui-boton
+                    variante="primario"
+                    tamano="sm"
+                    [routerLink]="['/conductor/abonos', abono.id, 'reservar']"
+                  >
+                    Reservar con este abono
+                  </ui-boton>
+                } @else {
+                  <ui-boton variante="primario" tamano="sm" [deshabilitado]="true">
+                    Sin usos disponibles
+                  </ui-boton>
+                }
+                <ui-boton variante="peligro" tamano="sm" (presionado)="aCancelar.set(abono)">
+                  Cancelar abono
+                </ui-boton>
+              </div>
+            }
+            @if (abono.reclamoAbierto; as id) {
+              <div>
+                <ui-boton variante="secundario" tamano="sm" routerLink="/conductor/incidencias" [queryParams]="{ id }">
+                  Ver reclamo
+                </ui-boton>
+              </div>
+            } @else if (reclamable(abono)) {
+              <div>
+                <ui-boton variante="secundario" tamano="sm" (presionado)="pedirReclamo(abono)">
+                  Tengo un problema
+                </ui-boton>
+              </div>
+            }
+          </div>
+        </ui-tarjeta>
+      }
+    }
+  </div>
+</div>
+
+<ui-modal titulo="Cancelar abono" [abierto]="aCancelar() !== null" (cerrado)="aCancelar.set(null)">
+  @if (aCancelar(); as abono) {
+    <div class="modal-cancelar__cuerpo">
+      <p class="modal-cancelar__texto">
+        Se cancelan también tus reservas con este abono que todavía no empezaron. El pago no se
+        devuelve.
+      </p>
+      @if (error(); as mensaje) {
+        <p class="mensaje-error" role="alert">{{ mensaje }}</p>
+      }
+      <ui-boton variante="peligro" [bloque]="true" [cargando]="cancelando()" (presionado)="cancelar(abono)">
+        Cancelar abono
+      </ui-boton>
+    </div>
+  }
+</ui-modal>
+
+<app-abrir-reclamo [objeto]="aReclamar()" (cerrado)="aReclamar.set(null)" (creado)="verReclamo($event)" />

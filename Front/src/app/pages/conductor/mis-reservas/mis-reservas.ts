@@ -42,6 +42,7 @@ const inicioDe = (reserva: ReservaDetallada) =>
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [TarjetaReserva, QrReserva, AbrirReclamo, Tarjeta, Chip, Cargando, EstadoVacio, Boton, Modal, RouterLink, DatePipe],
   templateUrl: './mis-reservas.html',
+  styleUrl: './mis-reservas.css',
 })
 export class MisReservas {
   private readonly reservas = inject(ReservaService);

@@ -39,6 +39,7 @@ const FILTROS_INICIALES: FiltrosEstacionamiento = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink, ElegirMomento, FiltrosComponent, TarjetaEstacionamiento, Cargando, EstadoVacio, Boton],
   templateUrl: './explorar.html',
+  styleUrl: './explorar.css',
 })
 export class Explorar {
   private readonly estacionamientos = inject(EstacionamientoService);

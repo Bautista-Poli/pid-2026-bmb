@@ -1,0 +1,783 @@
+/* ============================================================================
+   Vista del mapa del conductor.
+   Mobile apila buscador, mapa y resultados; desktop pone la columna a la
+   izquierda y el mapa a la derecha. Los breakpoints son los de Tailwind: lg = 1024px.
+   ============================================================================ */
+
+.mapa-vista {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 0%;
+  flex-direction: column;
+}
+
+/* En mobile la columna es `contents`: sus dos secciones se ubican arriba y
+   abajo del mapa como hijos directos de .mapa-vista. */
+.mapa-columna {
+  display: contents;
+}
+
+@media (min-width: 1024px) {
+  .mapa-vista {
+    display: grid;
+    grid-template-columns: minmax(380px, 460px) 1fr;
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  .mapa-columna {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+    border-right: 1px solid var(--color-borde);
+    background: var(--color-papel);
+  }
+}
+
+/* ---------------------------------------------------------------- Buscador */
+
+.panel-buscador {
+  position: relative;
+  z-index: 900;
+  order: 1;
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+}
+
+.panel-buscador__fila {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.panel-buscador__formulario {
+  min-width: 0;
+  flex: 1 1 0%;
+}
+
+.panel-buscador__aviso {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--color-plomo);
+}
+
+/* El aviso largo solo aparece en desktop; el corto, en mobile. */
+.panel-buscador__aviso-largo {
+  display: none;
+}
+
+.boton-ubicacion {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  place-items: center;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radius-control);
+  background: var(--color-papel);
+  color: var(--color-acento);
+  box-shadow: var(--shadow-tarjeta);
+}
+
+.boton-ubicacion:hover {
+  border-color: var(--color-acento-borde);
+}
+
+/* ---------------------------------------------------------- Vehiculo */
+
+.selector-vehiculo {
+  display: flex;
+  height: 46px;
+  min-width: 0;
+  flex: 1 1 0%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem;
+  padding-inline: 0.375rem;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radius-control);
+  background: var(--color-papel);
+  box-shadow: var(--shadow-tarjeta);
+}
+
+.selector-vehiculo__boton {
+  padding: 0.25rem;
+  border-radius: 9999px;
+  color: var(--color-plomo);
+  transition:
+    color 160ms var(--ease-suave),
+    background-color 160ms var(--ease-suave);
+}
+
+.selector-vehiculo__boton:enabled:hover {
+  background: var(--color-acento-suave);
+  color: var(--color-acento-fuerte);
+}
+
+.selector-vehiculo__boton:disabled {
+  pointer-events: none;
+  opacity: 0.35;
+}
+
+.selector-vehiculo__info {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.5rem;
+  padding-inline: 0.25rem;
+}
+
+.selector-vehiculo__icono {
+  flex-shrink: 0;
+  color: var(--color-acento);
+}
+
+.selector-vehiculo__texto {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.selector-vehiculo__patente {
+  overflow: hidden;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--color-tinta);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selector-vehiculo__descripcion {
+  overflow: hidden;
+  font-size: 11.5px;
+  color: var(--color-plomo);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Las flechas son el mismo icono "cheuron" girado. */
+.selector-vehiculo__flecha-anterior {
+  rotate: 90deg;
+}
+
+.selector-vehiculo__flecha-siguiente {
+  rotate: -90deg;
+}
+
+.enlace-agregar-vehiculo {
+  display: flex;
+  height: 46px;
+  min-width: 0;
+  flex: 1 1 0%;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding-inline: 0.75rem;
+  border: 1px dashed var(--color-borde);
+  border-radius: var(--radius-control);
+  background: var(--color-papel);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-plomo);
+}
+
+.enlace-agregar-vehiculo:hover {
+  border-color: var(--color-acento-borde);
+  color: var(--color-acento-fuerte);
+}
+
+.enlace-agregar-vehiculo__texto {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------ Filtros (boton) */
+
+/* Base = inactivo. Con filtros activos el modificador pisa colores y sombra,
+   y el hover de borde no aplica (por eso el :not). */
+.boton-filtros {
+  display: flex;
+  height: 46px;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.5rem;
+  padding-inline: 1rem;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radius-control);
+  background: var(--color-papel);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--color-grafito);
+  box-shadow: var(--shadow-tarjeta);
+  transition:
+    color 160ms var(--ease-suave),
+    background-color 160ms var(--ease-suave),
+    border-color 160ms var(--ease-suave);
+}
+
+.boton-filtros:not(.boton-filtros--activo):hover {
+  border-color: var(--color-acento-borde);
+}
+
+.boton-filtros--activo {
+  border-color: var(--color-acento);
+  background: var(--color-acento);
+  color: var(--color-sobre-acento);
+  box-shadow: var(--shadow-elevada);
+}
+
+.boton-filtros__contador {
+  display: grid;
+  width: 1.25rem;
+  height: 1.25rem;
+  place-items: center;
+  border-radius: 9999px;
+  background: var(--color-sobre-acento);
+  font-size: 11px;
+  color: var(--color-acento);
+}
+
+/* ------------------------------------------------------------- Resultados */
+
+.panel-resultados {
+  order: 3;
+  display: flex;
+  max-height: 32%;
+  flex-shrink: 0;
+  flex-direction: column;
+  gap: 0.75rem;
+  overflow-y: auto;
+  padding: 0.625rem 1rem 1rem;
+  border-radius: 20px 20px 0 0;
+  background: var(--color-papel);
+  box-shadow: var(--shadow-flotante);
+}
+
+/* Agarre visual de la hoja en mobile. */
+.panel-resultados__agarre {
+  display: block;
+  width: 2.5rem;
+  height: 0.25rem;
+  margin-inline: auto;
+  border-radius: 9999px;
+  background: var(--color-borde);
+}
+
+.panel-resultados__cabecera {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.panel-resultados__titulo {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-tinta);
+}
+
+.panel-resultados__contador {
+  margin-top: 0.125rem;
+  font-size: 12.5px;
+  color: var(--color-plomo);
+}
+
+.panel-resultados__orden {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 11.5px;
+  color: var(--color-plomo);
+}
+
+.panel-resultados__select {
+  padding: 0.375rem 0.625rem;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radius-boton);
+  background: var(--color-papel);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--color-tinta);
+}
+
+.panel-resultados__reintentar {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-acento);
+}
+
+.panel-resultados__aviso {
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--color-plomo);
+}
+
+.panel-resultados__lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Fila de resultado. La clase `resultado--seleccionado` la activa el binding
+   de la lista; el borde base es el neutro. */
+.resultado {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radius-tarjeta);
+  background: var(--color-papel);
+  text-align: left;
+  box-shadow: var(--shadow-tarjeta);
+  transition:
+    border-color 160ms var(--ease-suave),
+    box-shadow 160ms var(--ease-suave);
+}
+
+.resultado:hover {
+  box-shadow: var(--shadow-elevada);
+}
+
+.resultado--seleccionado {
+  border-color: var(--color-acento);
+}
+
+.resultado--no-disponible {
+  opacity: 0.6;
+}
+
+/* Foto y, si no hay, la inicial "P": mismo tamano para que la fila no salte. */
+.resultado__avatar {
+  width: 2.5rem;
+  height: 2.5rem;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  object-fit: cover;
+}
+
+.resultado__avatar--inicial {
+  display: grid;
+  place-items: center;
+  background: var(--color-acento);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--color-sobre-acento);
+}
+
+.resultado__cuerpo {
+  min-width: 0;
+  flex: 1 1 0%;
+}
+
+.resultado__nombre {
+  display: block;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-tinta);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resultado__direccion {
+  display: block;
+  margin-top: 0.125rem;
+  overflow: hidden;
+  font-size: 12.5px;
+  color: var(--color-plomo);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resultado__distancia {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+  font-size: 12.5px;
+  color: var(--color-grafito);
+}
+
+.resultado__distancia-icono {
+  color: var(--color-plomo);
+}
+
+.resultado__columna {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.375rem;
+}
+
+.resultado__precio {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--color-tinta);
+}
+
+/* El color de estado lo pone el binding `claseEstado` (desde el .ts). */
+.resultado__estado {
+  padding: 0.125rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.resultado__horario {
+  font-size: 11.5px;
+  color: var(--color-plomo);
+}
+
+.resultado__flecha {
+  rotate: -90deg;
+  color: var(--color-humo);
+}
+
+/* ------------------------------------------------------------ Paginacion */
+
+.paginacion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.paginacion__boton {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.375rem 0.75rem;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radius-boton);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-tinta);
+}
+
+.paginacion__boton:disabled {
+  opacity: 0.4;
+}
+
+.paginacion__estado {
+  font-size: 12.5px;
+  color: var(--color-plomo);
+}
+
+.paginacion__flecha-anterior {
+  rotate: 90deg;
+}
+
+.paginacion__flecha-siguiente {
+  rotate: -90deg;
+}
+
+/* ------------------------------------------------------------------ Mapa */
+
+.mapa-contenedor {
+  position: relative;
+  order: 2;
+  min-height: 200px;
+  flex: 1 1 0%;
+}
+
+.mapa-contenedor__mapa {
+  width: 100%;
+  height: 100%;
+}
+
+/* Velo que cubre la pantalla con la ficha abierta (solo mobile). */
+.mapa-velo {
+  position: fixed;
+  inset: 0;
+  z-index: 1050;
+  background: color-mix(in oklab, var(--color-tinta) 30%, transparent);
+}
+
+/* Mobile: hoja desde abajo. Desktop: tarjeta sobre el mapa (ver media query). */
+.mapa-detalle {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1100;
+  max-height: 85dvh;
+}
+
+@media (min-width: 1024px) {
+  .mapa-contenedor {
+    height: 100%;
+  }
+
+  .mapa-velo {
+    display: none;
+  }
+
+  .mapa-detalle {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    bottom: 1rem;
+    left: auto;
+    width: 360px;
+    max-height: none;
+  }
+}
+
+/* ------------------------------------------------------- Mobile y desktop */
+
+@media (min-width: 1024px) {
+  .panel-buscador {
+    padding-top: 1.5rem;
+    padding-inline: 1.5rem;
+  }
+
+  .panel-buscador__aviso-corto {
+    display: none;
+  }
+
+  .panel-buscador__aviso-largo {
+    display: inline;
+  }
+
+  .panel-resultados {
+    flex: 1 1 0%;
+    gap: 1rem;
+    min-height: 0;
+    max-height: none;
+    padding: 1.25rem 1.5rem 1.5rem;
+    border-top: 1px solid var(--color-borde-sutil);
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .panel-resultados__agarre {
+    display: none;
+  }
+
+  .panel-resultados__lista {
+    gap: 0.625rem;
+  }
+
+  .resultado {
+    gap: 0.875rem;
+    padding: 0.875rem;
+  }
+
+  .resultado__avatar {
+    width: 3rem;
+    height: 3rem;
+  }
+
+  .resultado__avatar--inicial {
+    font-size: 20px;
+  }
+
+  .resultado__nombre {
+    font-size: 14.5px;
+  }
+}
+
+/* ------------------------------------------------------------ Filtros (modal) */
+
+.filtros__formulario {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.filtros__fecha-hora {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.filtros__campo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radius-control);
+  background: var(--color-papel);
+}
+
+.filtros__campo:focus-within {
+  border-color: var(--color-acento);
+}
+
+.filtros__campo-icono {
+  color: var(--color-plomo);
+}
+
+.filtros__campo-texto {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.filtros__campo-etiqueta {
+  font-size: 11.5px;
+  color: var(--color-plomo);
+}
+
+.filtros__campo-nota {
+  color: var(--color-humo);
+}
+
+.filtros__campo-input {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-tinta);
+}
+
+.filtros__campo-input:focus {
+  outline: none;
+}
+
+.filtros__horas {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: -0.5rem;
+}
+
+.filtros__horas-texto {
+  display: flex;
+  flex-direction: column;
+}
+
+.filtros__horas-titulo {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--color-tinta);
+}
+
+.filtros__horas-fin {
+  font-size: 12px;
+  color: var(--color-plomo);
+}
+
+.filtros__horas-controles {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.filtros__paso {
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  place-items: center;
+  border: 1px solid var(--color-borde);
+  border-radius: 9999px;
+  color: var(--color-tinta);
+}
+
+.filtros__paso:disabled {
+  opacity: 0.4;
+}
+
+.filtros__horas-valor {
+  min-width: 2.5rem;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-tinta);
+}
+
+.filtros__error {
+  margin-top: -0.75rem;
+}
+
+.filtros__bloque {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.filtros__bloque--chips {
+  gap: 0.625rem;
+}
+
+.filtros__bloque-cabecera {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.filtros__titulo {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--color-tinta);
+}
+
+.filtros__titulo-nota {
+  font-weight: 400;
+  color: var(--color-plomo);
+}
+
+.filtros__valor {
+  font-size: 12.5px;
+  color: var(--color-plomo);
+}
+
+.filtros__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.filtros__chip-contenido {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.filtros__acciones {
+  display: flex;
+  gap: 0.625rem;
+}
+
+.filtros__boton {
+  flex: 1 1 0%;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-control);
+  font-size: 14px;
+  font-weight: 600;
+  transition:
+    color 160ms var(--ease-suave),
+    background-color 160ms var(--ease-suave),
+    border-color 160ms var(--ease-suave);
+}
+
+.filtros__boton--limpiar {
+  border: 1px solid var(--color-borde);
+  background: var(--color-papel);
+  color: var(--color-grafito);
+}
+
+.filtros__boton--limpiar:hover {
+  border-color: var(--color-acento-borde);
+}
+
+.filtros__boton--aplicar {
+  background: var(--color-acento);
+  color: var(--color-sobre-acento);
+  box-shadow: var(--shadow-elevada);
+}
+
+.filtros__boton--aplicar:hover {
+  background: var(--color-acento-fuerte);
+}

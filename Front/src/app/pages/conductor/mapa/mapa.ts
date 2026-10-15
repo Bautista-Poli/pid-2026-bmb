@@ -159,6 +159,7 @@ interface Panel {
     Modal,
   ],
   templateUrl: './mapa.html',
+  styleUrl: './mapa.css',
   host: { class: 'flex min-h-0 flex-1 flex-col' },
 })
 export class Mapa {

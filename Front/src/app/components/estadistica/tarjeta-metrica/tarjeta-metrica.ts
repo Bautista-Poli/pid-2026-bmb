@@ -22,7 +22,8 @@ const CLASE_TONO: Record<TonoMetrica, string> = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [Icono, Tarjeta],
   template: `
-    <ui-tarjeta relleno="ninguno">
+    <!-- Alto completo: en una fila de la grilla todas las tarjetas miden lo mismo. -->
+    <ui-tarjeta relleno="ninguno" class="h-full [&>div]:h-full">
       <div class="flex items-start gap-4 p-5">
         <span class="grid size-11 shrink-0 place-items-center rounded-full" [class]="claseTono()">
           <ui-icono [nombre]="icono()" [tamano]="21" />
@@ -52,7 +53,7 @@ const CLASE_TONO: Record<TonoMetrica, string> = {
       </div>
     </ui-tarjeta>
   `,
-  host: { class: 'block' },
+  host: { class: 'block h-full' },
 })
 export class TarjetaMetrica {
   readonly etiqueta = input.required<string>();

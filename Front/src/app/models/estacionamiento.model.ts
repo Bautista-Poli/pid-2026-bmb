@@ -54,7 +54,7 @@ export interface Estacionamiento {
   /** Cocheras libres en este momento. */
   cocherasDisponibles: number;
   /**
-   * Si tiene lugar para el tipo pedido y esta abierto en el momento buscado.
+   * Si tiene cochera libre para el tipo pedido y esta abierto en el momento buscado.
    * Solo viene al buscar con `incluirNoDisponibles`.
    */
   disponible?: boolean;
@@ -117,7 +117,7 @@ export interface FiltrosEstacionamiento {
   precioMaximo?: number | null;
   soloCubiertos?: boolean;
   momento?: Momento | null;
-  /** Con un momento: trae tambien los que no tienen lugar o estan cerrados, marcados con `disponible`. */
+  /** Con un momento: trae tambien los que no tienen cochera libre o estan cerrados, marcados con `disponible`. */
   incluirNoDisponibles?: boolean;
   /** Solo los que caen en este rectangulo: la parte del mapa que se esta viendo. */
   area?: AreaMapa | null;

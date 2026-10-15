@@ -149,7 +149,7 @@ describe('nada se reserva dos veces', () => {
     assert.match(motivo(tercera), /no quedan cocheras/i);
   });
 
-  test('el mismo vehiculo no puede estar en dos lugares a la vez', async () => {
+  test('el mismo vehiculo no puede estar en dos estacionamientos a la vez', async () => {
     const { conductor, estacionamiento, vehiculo } = await escenario();
     const otroPropietario = await crearUsuario({ rol: 'PROPIETARIO' });
     const otroEstacionamiento = await crearEstacionamiento(otroPropietario.token);
@@ -162,7 +162,7 @@ describe('nada se reserva dos veces', () => {
     assert.match(motivo(superpuesta), /vehiculo/i);
   });
 
-  test('tres pedidos simultaneos con un solo lugar: una sola reserva', async () => {
+  test('tres pedidos simultaneos con una sola cochera: una sola reserva', async () => {
     const { conductor, estacionamiento, vehiculo } = await escenario();
     const cuando = franja('13:00', '17:00');
 
@@ -216,8 +216,8 @@ describe('nada se reserva dos veces', () => {
     assert.equal(porHora.length, 24);
     assert.equal(ingreso(porHora, '08:00').disponible, true);
     assert.equal(ingreso(porHora, '08:00').hora_hasta, '10:00');
-    assert.equal(ingreso(porHora, '09:00').causa, 'SIN_LUGAR');
-    assert.equal(ingreso(porHora, '12:00').causa, 'SIN_LUGAR');
+    assert.equal(ingreso(porHora, '09:00').causa, 'SIN_COCHERA');
+    assert.equal(ingreso(porHora, '12:00').causa, 'SIN_COCHERA');
     assert.equal(ingreso(porHora, '13:00').disponible, true);
     assert.equal(ingreso(porHora, '19:00').causa, 'HORARIO');
     assert.equal(ingreso(porHora, '06:00').causa, 'HORARIO');
@@ -227,7 +227,7 @@ describe('nada se reserva dos veces', () => {
     assert.equal(ingreso(estadia, '19:00').disponible, true);
     assert.equal(ingreso(estadia, '19:00').hora_hasta, '07:00');
     assert.notEqual(ingreso(estadia, '19:00').fecha_hasta, fecha);
-    assert.equal(ingreso(estadia, '08:00').causa, 'SIN_LUGAR');
+    assert.equal(ingreso(estadia, '08:00').causa, 'SIN_COCHERA');
 
     assert.equal((await api('GET', `${ruta}&modalidad=HORA`)).estado, 400);
   });

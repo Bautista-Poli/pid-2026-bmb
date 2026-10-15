@@ -42,7 +42,7 @@
     } @else if (vacia()) {
       <ui-estado-vacio
         [titulo]="pestania() === 'VIGENTES' ? 'No tenes reservas activas' : 'Todavia no hay historial'"
-        descripcion="Cuando reserves un lugar lo vas a ver aca."
+        descripcion="Cuando reserves una cochera la vas a ver aca."
       >
         <ui-boton routerLink="/conductor/explorar">Explorar estacionamientos</ui-boton>
       </ui-estado-vacio>
@@ -99,7 +99,7 @@
       <div class="flex flex-col gap-4">
         <dl class="rounded-control border border-borde-sutil bg-lienzo px-4 py-1.5 text-[13px]">
           <div class="flex justify-between gap-4 border-b border-borde-sutil py-2">
-            <dt class="text-plomo">Lugar</dt>
+            <dt class="text-plomo">Estacionamiento</dt>
             <dd class="text-right font-medium text-tinta">{{ r.estacionamiento.nombre }}</dd>
           </div>
           <div class="flex justify-between gap-4 border-b border-borde-sutil py-2">
@@ -120,7 +120,7 @@
 
         <p class="text-[13px] leading-relaxed text-grafito">
           La cochera queda libre para otro conductor y la reserva pasa al historial. Si después
-          querés ese lugar, vas a tener que reservarlo de nuevo.
+          querés esa cochera, vas a tener que reservarla de nuevo.
         </p>
 
         @if (errorCancelar(); as mensaje) {

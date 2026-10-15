@@ -21,7 +21,7 @@ import {
   EstadoCochera,
   EstadoReserva,
   ESTADOS_COCHERA_ORDEN,
-  esVencida,
+  esExpirada,
   etiquetaReserva,
   ETIQUETA_TIPO_VEHICULO,
   Id,
@@ -133,9 +133,9 @@ export class Tablero {
   protected readonly estados = ESTADOS_COCHERA_ORDEN;
   protected readonly etiquetaTipo = ETIQUETA_TIPO_VEHICULO;
   protected readonly etiquetaEstado = etiquetaReserva;
-  /** Vencida (no la confirmaste a tiempo) en amarillo, distinta de una cancelacion. */
+  /** Expirada (no la confirmaste a tiempo) en amarillo, distinta de una cancelacion. */
   protected tonoEstado(reserva: ReservaDetallada): TonoEtiqueta {
-    return esVencida(reserva) ? 'aviso' : TONO_ESTADO[reserva.estado];
+    return esExpirada(reserva) ? 'aviso' : TONO_ESTADO[reserva.estado];
   }
   protected readonly iconoVehiculo = ICONO_VEHICULO;
   protected readonly pasos = PASOS;

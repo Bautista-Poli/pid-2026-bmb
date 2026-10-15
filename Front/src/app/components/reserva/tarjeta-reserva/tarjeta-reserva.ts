@@ -15,7 +15,7 @@ import { Etiqueta, Icono, TonoEtiqueta } from '@app/components/ui';
 import { ChapaPatente } from '@app/components/vehiculo';
 import {
   EstadoReserva,
-  esVencida,
+  esExpirada,
   etiquetaReserva,
   ETIQUETA_MODALIDAD,
   ETIQUETA_TIPO_VEHICULO,
@@ -61,7 +61,7 @@ function duracion(ms: number): string {
  *
  *   completa  -> la de "Vigentes". Si la reserva esta en curso, suma arriba el
  *                bloque con el tiempo que lleva y la barra de progreso.
- *   compacta  -> la del historial: una linea con fecha, lugar, precio y estado.
+ *   compacta  -> la del historial: una linea con fecha, estacionamiento, precio y estado.
  */
 @Component({
   selector: 'app-tarjeta-reserva',
@@ -99,7 +99,7 @@ export class TarjetaReserva implements OnInit {
   protected readonly ahora = signal(Date.now());
 
   protected readonly tono = computed(() =>
-    esVencida(this.reserva()) ? 'aviso' : TONO_ESTADO[this.reserva().estado],
+    esExpirada(this.reserva()) ? 'aviso' : TONO_ESTADO[this.reserva().estado],
   );
   protected readonly enCurso = computed(
     () => this.variante() === 'completa' && this.reserva().estado === 'ACTIVA',

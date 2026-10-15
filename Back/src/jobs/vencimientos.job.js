@@ -16,21 +16,21 @@ import cron from 'node-cron';
 import { vencerAbonos } from '../services/abono.service.js';
 import { desbloquearVencidas } from '../services/cochera.service.js';
 import { detectarExcedidos, protegerReservasSiguientes } from '../services/incidencia.service.js';
-import { vencerNoPresentadas, vencerPendientesSinConfirmar } from '../services/reserva.service.js';
+import { vencerAusentes, vencerPendientesSinConfirmar } from '../services/reserva.service.js';
 
 let tarea;
 
 async function revisar() {
   try {
     const canceladas = await vencerPendientesSinConfirmar();
-    const noPresentadas = await vencerNoPresentadas();
+    const ausentes = await vencerAusentes();
     const excedidos = await detectarExcedidos();
     const { reasignadas, afectadas } = await protegerReservasSiguientes();
     const desbloqueadas = await desbloquearVencidas();
     const abonosVencidos = await vencerAbonos();
-    if (canceladas || noPresentadas || excedidos || reasignadas || afectadas || desbloqueadas || abonosVencidos) {
+    if (canceladas || ausentes || excedidos || reasignadas || afectadas || desbloqueadas || abonosVencidos) {
       console.log(
-        `[vencimientos] ${canceladas} pendiente(s) cancelada(s), ${noPresentadas} no-show(s), ` +
+        `[vencimientos] ${canceladas} pendiente(s) cancelada(s), ${ausentes} no-show(s), ` +
           `${excedidos} auto(s) excedido(s), ${reasignadas} reserva(s) reasignada(s), ` +
           `${afectadas} reserva(s) sin cochera, ${desbloqueadas} cochera(s) desbloqueada(s), ` +
           `${abonosVencidos} abono(s) vencido(s)`,

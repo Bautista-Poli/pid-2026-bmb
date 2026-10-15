@@ -519,7 +519,7 @@ ALTER TYPE estado_reserva ADD VALUE IF NOT EXISTS 'NO_SHOW';
 -- Quien cancelo la reserva (Sprint 3), para que el propietario distinga una
 -- cancelacion del conductor de una del sistema. SISTEMA = una PENDIENTE que el
 -- propietario no confirmo antes de su inicio (el front la muestra como
--- "Vencida"). NULL = cancelada antes de existir esta columna (no se sabe).
+-- "Expirada"). NULL = cancelada antes de existir esta columna (no se sabe).
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'origen_cancelacion') THEN
@@ -691,7 +691,7 @@ $$;
 ALTER TABLE vehiculo
   ADD COLUMN IF NOT EXISTS foto_public_id VARCHAR(200);
 
--- Una foto de Cloudinary pertenece a un solo lugar: si quedara en dos filas,
+-- Una foto de Cloudinary pertenece a una sola fila: si quedara en dos,
 -- borrar una dejaria a la otra apuntando a una imagen que ya no existe.
 CREATE UNIQUE INDEX IF NOT EXISTS estacionamiento_imagen_public_id_unico
   ON estacionamiento_imagen (public_id) WHERE public_id IS NOT NULL;
@@ -831,3 +831,18 @@ CREATE INDEX IF NOT EXISTS idx_devolucion_abono   ON devolucion (id_abono)   WHE
 -- Dashboard del administrador (Sprint 3): sus consultas filtran reservas de toda
 -- la plataforma por `inicio`; el indice por cochera no sirve para eso.
 CREATE INDEX IF NOT EXISTS idx_reserva_inicio ON reserva (inicio);
+
+-- Lenguaje ubicuo: "lugar" es solo un sitio geografico, nunca una cochera. El
+-- motivo de reclamo NO_HABIA_LUGAR pasa a NO_HABIA_COCHERA. Se renombra (y no se
+-- agrega) para que los reclamos ya abiertos conserven su motivo; el CREATE TYPE
+-- de arriba queda como estaba, asi una base nueva pasa por este mismo paso.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid
+     WHERE t.typname = 'motivo_reclamo' AND e.enumlabel = 'NO_HABIA_LUGAR'
+  ) THEN
+    ALTER TYPE motivo_reclamo RENAME VALUE 'NO_HABIA_LUGAR' TO 'NO_HABIA_COCHERA';
+  END IF;
+END
+$$;

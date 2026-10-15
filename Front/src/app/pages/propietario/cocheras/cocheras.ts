@@ -69,8 +69,8 @@ const TONO_ESTADO: Record<EstadoCochera, TonoEtiqueta> = {
   INACTIVA: 'neutro',
 };
 
-/** Fondo, borde y punto de cada lugar del plano segun su estado. */
-const CLASE_LUGAR: Record<EstadoCochera, string> = {
+/** Fondo, borde y punto de cada cochera del plano segun su estado. */
+const CLASE_COCHERA: Record<EstadoCochera, string> = {
   LIBRE: 'border-exito/30 bg-exito-suave',
   OCUPADA: 'border-ocupada/25 bg-ocupada/8',
   RESERVADA: 'border-baja/30 bg-baja/10',
@@ -113,7 +113,7 @@ interface CeldaPrevia {
  * Pantalla `/propietario/cocheras` (y `/propietario/cocheras/:estacionamientoId`) · rol PROPIETARIO
  *
  * Plano de cocheras por planta. Arriba, un selector para pasar entre los
- * estacionamientos del propietario. Tocar un lugar abre su ficha al costado (en
+ * estacionamientos del propietario. Tocar una cochera abre su ficha al costado (en
  * mobile, una hoja desde abajo); con Shift / Ctrl / Cmd se eligen varios y se
  * editan juntos. El alta por cantidad vive en un modal con vista previa.
  */
@@ -151,7 +151,7 @@ export class Cocheras {
   protected readonly etiquetaTipo = ETIQUETA_TIPO_VEHICULO;
   protected readonly etiquetaEstado = ETIQUETA_ESTADO_COCHERA;
   protected readonly tonoEstado = TONO_ESTADO;
-  protected readonly claseLugar = CLASE_LUGAR;
+  protected readonly claseCochera = CLASE_COCHERA;
   protected readonly clasePunto = CLASE_PUNTO;
   protected readonly claseBloqueada = CLASE_BLOQUEADA;
   protected readonly direccionCorta = direccionCorta;
@@ -637,7 +637,7 @@ export class Cocheras {
 
   /**
    * Vista previa de cada planta tocada por el alta: sus cocheras actuales en
-   * gris y las nuevas resaltadas. Se muestran hasta 60 lugares por planta.
+   * gris y las nuevas resaltadas. Se muestran hasta 60 cocheras por planta.
    */
   protected previa(): { planta: string; celdas: CeldaPrevia[]; nuevas: number }[] {
     const porPlanta = new Map<string, CeldaPrevia[]>();

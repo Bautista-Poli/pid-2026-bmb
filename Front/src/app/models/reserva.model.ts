@@ -31,13 +31,13 @@ export const ETIQUETA_ESTADO_RESERVA: Record<EstadoReserva, string> = {
 export type OrigenCancelacion = 'CONDUCTOR' | 'PROPIETARIO' | 'SISTEMA';
 
 /** Pendiente que el propietario no confirmo a tiempo: la cancelo el sistema. */
-export function esVencida(reserva: Pick<Reserva, 'estado' | 'canceladaPor'>): boolean {
+export function esExpirada(reserva: Pick<Reserva, 'estado' | 'canceladaPor'>): boolean {
   return reserva.estado === 'CANCELADA' && reserva.canceladaPor === 'SISTEMA';
 }
 
 /**
  * Texto del estado, distinguiendo quien cancelo: el propietario tiene que
- * saber si fue el conductor, el estacionamiento o el sistema (Vencida).
+ * saber si fue el conductor, el estacionamiento o el sistema (Expirada).
  * `vista` es quien mira: al conductor no se le dice "por el conductor".
  */
 export function etiquetaReserva(
@@ -47,7 +47,7 @@ export function etiquetaReserva(
   if (reserva.estado !== 'CANCELADA') return ETIQUETA_ESTADO_RESERVA[reserva.estado];
   switch (reserva.canceladaPor) {
     case 'SISTEMA':
-      return 'Vencida';
+      return 'Expirada';
     case 'CONDUCTOR':
       return vista === 'CONDUCTOR' ? 'Cancelada' : 'Cancelada por el conductor';
     case 'PROPIETARIO':
@@ -127,7 +127,7 @@ export interface ConsultaDisponibilidad {
 }
 
 /** Por que no se puede reservar una franja. */
-export type CausaNoDisponible = 'HORARIO' | 'PASADO' | 'SIN_LUGAR';
+export type CausaNoDisponible = 'HORARIO' | 'PASADO' | 'SIN_COCHERA';
 
 /** Franja ofrecida por el backend para una fecha dada. */
 export interface FranjaDisponible {

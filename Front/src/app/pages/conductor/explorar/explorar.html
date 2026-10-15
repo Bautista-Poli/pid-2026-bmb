@@ -7,7 +7,7 @@
       <div class="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p class="eyebrow">Explorar</p>
-          <h1 class="titulo-vista mt-1.5">Estacionamientos con lugar</h1>
+          <h1 class="titulo-vista mt-1.5">Estacionamientos con cocheras libres</h1>
         </div>
         <div class="flex items-center gap-2.5 text-[13.5px] text-grafito">
           <span class="font-semibold text-tinta">{{ resumen() }}</span>
@@ -34,7 +34,7 @@
     } @else if (resultados() === 0) {
       <ui-estado-vacio
         titulo="Sin resultados"
-        descripcion="No hay estacionamientos con lugar libre en ese momento para esos filtros. Probá con otra franja o menos filtros."
+        descripcion="No hay estacionamientos con cocheras libres en ese momento para esos filtros. Probá con otra franja o menos filtros."
       >
         <ui-boton (presionado)="limpiarFiltros()">Limpiar filtros</ui-boton>
       </ui-estado-vacio>

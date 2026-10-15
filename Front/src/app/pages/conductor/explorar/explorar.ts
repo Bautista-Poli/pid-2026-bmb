@@ -29,7 +29,7 @@ const FILTROS_INICIALES: FiltrosEstacionamiento = {
  * Pantalla `/conductor/explorar` · rol CONDUCTOR
  *
  * Inicio del conductor. Primero pregunta donde y cuando quiere estacionar y
- * recien despues lista y filtra los estacionamientos con lugar libre.
+ * recien despues lista y filtra los estacionamientos con cocheras libres.
  *
  * Las distancias se miden desde la ubicacion actual o desde la direccion que
  * elija en esa pregunta ("Pueyrredon 2409"), que se busca en Georef.

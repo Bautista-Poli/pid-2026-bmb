@@ -102,7 +102,7 @@ export class AbrirReclamo {
     etiqueta,
   }));
 
-  protected readonly motivo = signal<MotivoReclamo>('NO_HABIA_LUGAR');
+  protected readonly motivo = signal<MotivoReclamo>('NO_HABIA_COCHERA');
   protected readonly monto = signal<number | null>(null);
   protected readonly texto = signal('');
   protected readonly enviando = signal(false);
@@ -147,7 +147,7 @@ export class AbrirReclamo {
   }
 
   private limpiar(): void {
-    this.motivo.set('NO_HABIA_LUGAR');
+    this.motivo.set('NO_HABIA_COCHERA');
     this.monto.set(null);
     this.texto.set('');
     this.error.set(null);

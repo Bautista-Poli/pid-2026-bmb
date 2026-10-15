@@ -7,7 +7,7 @@ import { AbonoService } from '@app/services/abono.service';
 
 /**
  * Seccion "Abonos" del estacionamiento: un plan por turno (usos y precio) y
- * la lista de abonos vendidos. El abono no reserva lugar: da usos prepagos
+ * la lista de abonos vendidos. El abono no reserva cochera: da usos prepagos
  * para reservar gratis dentro del turno.
  */
 @Component({

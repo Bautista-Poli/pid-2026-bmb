@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, inject, linkedSignal } from '@angular/core';
 import { rxResource, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { BarraDia, BarrasDia, TarjetaMetrica, TonoMetrica } from '@app/components/estadistica';
-import { Boton, Cargando, Chip, EstadoVacio, NombreIcono, Tarjeta } from '@app/components/ui';
+import { BarraDia, BarrasDia, CambioPeriodo, SelectorPeriodo, TarjetaMetrica, TonoMetrica } from '@app/components/estadistica';
+import { Boton, Cargando, EstadoVacio, NombreIcono, Tarjeta } from '@app/components/ui';
 import {
   ETIQUETA_MOTIVO_RECLAMO,
   ETIQUETA_RAZON_PROBLEMATICO,
@@ -12,11 +12,12 @@ import {
   TipoIncidencia,
 } from '@app/models';
 import { AdminService } from '@app/services/admin.service';
-import { PERIODOS, rangoDePeriodo, TipoPeriodo, Variacion, variacion } from '@app/utils/periodo.util';
+import { periodoDeUrl, Variacion, variacion } from '@app/utils/periodo.util';
 import { haceCuanto } from '@app/utils/tiempo.util';
 
 // Espacio no separable: el "$" no queda solo en una linea en las tarjetas angostas.
-const pesos = (monto: number) => `$ ${Math.round(monto).toLocaleString('es-AR')}`;
+const NBSP = String.fromCharCode(160);
+const pesos = (monto: number) => `$${NBSP}${Math.round(monto).toLocaleString('es-AR')}`;
 const porciento = (fraccion: number) => `${Math.round(fraccion * 100)} %`;
 const diaYMes = (fecha: string) => `${fecha.slice(8, 10)}/${fecha.slice(5, 7)}`;
 const diaDelMes = (fecha: string) => String(Number(fecha.slice(8, 10)));
@@ -50,7 +51,7 @@ const TRAMOS_RESERVAS = [
 @Component({
   selector: 'app-tablero-admin',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [BarrasDia, Boton, Cargando, Chip, EstadoVacio, RouterLink, Tarjeta, TarjetaMetrica],
+  imports: [BarrasDia, Boton, Cargando, EstadoVacio, RouterLink, SelectorPeriodo, Tarjeta, TarjetaMetrica],
   templateUrl: './tablero.html',
 })
 export class Tablero {
@@ -58,7 +59,6 @@ export class Tablero {
   private readonly router = inject(Router);
   private readonly ruta = inject(ActivatedRoute);
 
-  protected readonly periodos = PERIODOS;
   protected readonly tramosReservas = TRAMOS_RESERVAS;
   protected readonly etiquetaRazon = ETIQUETA_RAZON_PROBLEMATICO;
   protected readonly pesos = pesos;
@@ -67,13 +67,17 @@ export class Tablero {
 
   private readonly params = toSignal(this.ruta.queryParamMap, { requireSync: true });
 
-  protected readonly periodo = computed<TipoPeriodo>(() => {
-    const elegido = this.params().get('periodo') as TipoPeriodo | null;
-    return PERIODOS.some((p) => p.tipo === elegido) ? elegido! : '30D';
-  });
+  /** Periodo de la URL: `?periodo=7D|MES` o `?desde=&hasta=` (rango personalizado). */
+  protected readonly periodo = computed(() =>
+    periodoDeUrl({
+      periodo: this.params().get('periodo'),
+      desde: this.params().get('desde'),
+      hasta: this.params().get('hasta'),
+    }),
+  );
 
   protected readonly recurso = rxResource({
-    params: () => rangoDePeriodo(this.periodo()),
+    params: () => ({ desde: this.periodo().desde, hasta: this.periodo().hasta }),
     stream: ({ params }) => this.admin.estadisticas(params.desde, params.hasta),
   });
 
@@ -127,7 +131,7 @@ export class Tablero {
     return b ? b.reasignadas + b.canceladas + b.autosExcedidos + b.sinCochera : 0;
   });
 
-  protected elegirPeriodo(periodo: TipoPeriodo): void {
-    void this.router.navigate([], { queryParams: { periodo }, queryParamsHandling: 'merge', replaceUrl: true });
+  protected elegirPeriodo(cambio: CambioPeriodo): void {
+    void this.router.navigate([], { queryParams: cambio, queryParamsHandling: 'merge', replaceUrl: true });
   }
 }

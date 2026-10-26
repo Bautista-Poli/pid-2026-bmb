@@ -7,6 +7,7 @@ import { config } from './config/env.js';
 import routes from './routes/index.js';
 import { notFound } from './middlewares/notFound.js';
 import { errorHandler } from './middlewares/errorHandler.js';
+import { vencimientosADemanda } from './jobs/vencimientos.job.js';
 
 const app = express();
 
@@ -24,7 +25,7 @@ if (config.nodeEnv !== 'test') {
   app.use(morgan(config.isProduction ? 'combined' : 'dev'));
 }
 
-app.use(config.apiPrefix, routes);
+app.use(config.apiPrefix, vencimientosADemanda, routes);
 
 // Manejo de errores (siempre al final)
 app.use(notFound);

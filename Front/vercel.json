@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "outputDirectory": "dist/parkit-front/browser",
   "rewrites": [
-    { "source": "/api/:path*", "destination": "https://ingenious-heart-production-2934.up.railway.app/api/:path*" },
+    { "source": "/api/:path*", "destination": "https://pid-2026-bmb-production.up.railway.app/api/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

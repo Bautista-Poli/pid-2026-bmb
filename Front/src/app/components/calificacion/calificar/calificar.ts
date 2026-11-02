@@ -35,7 +35,7 @@ const COMENTARIO_MAX = 500;
                 role="radio"
                 class="grid size-11 place-items-center rounded-control text-[30px] leading-none transition-colors
                        hover:bg-acento-suave focus-visible:bg-acento-suave"
-                [class.text-acento]="n <= puntaje()"
+                [class.text-estrella]="n <= puntaje()"
                 [class.text-humo]="n > puntaje()"
                 [attr.aria-checked]="n === puntaje()"
                 [attr.aria-label]="n + ' estrellas'"

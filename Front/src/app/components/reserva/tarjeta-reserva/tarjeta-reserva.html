@@ -34,11 +34,11 @@
              transition-colors duration-160 ease-out hover:bg-acento-suave"
       (click)="calificar.emit(r)"
     >
-      <span aria-hidden="true">★</span>Calificar
+      <span class="text-estrella" aria-hidden="true">★</span>Calificar
     </button>
   } @else if (r.calificacion.conductorCalifico) {
     <span class="inline-flex min-h-11 items-center gap-1.5 px-3 text-[12.5px] text-plomo">
-      <span class="text-acento" aria-hidden="true">★</span>Calificado
+      <span class="text-estrella" aria-hidden="true">★</span>Calificado
     </span>
   }
   @if (r.devuelto > 0) {

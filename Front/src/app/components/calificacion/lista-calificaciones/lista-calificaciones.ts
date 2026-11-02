@@ -15,7 +15,7 @@ import { CalificacionRecibida } from '@app/models';
         @for (c of calificaciones(); track $index) {
           <li class="flex flex-col gap-1 py-3">
             <div class="flex items-center justify-between gap-3">
-              <span class="text-acento tracking-wide" [attr.aria-label]="c.puntaje + ' de 5 estrellas'">
+              <span class="text-estrella tracking-wide" [attr.aria-label]="c.puntaje + ' de 5 estrellas'">
                 {{ '★'.repeat(c.puntaje) }}<span class="text-humo">{{ '★'.repeat(5 - c.puntaje) }}</span>
               </span>
               <span class="text-[12px] text-humo">{{ c.creadaEn | date: 'd MMM y' }}</span>

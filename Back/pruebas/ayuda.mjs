@@ -21,6 +21,8 @@ export { query };
 
 // Las pruebas no geocodifican: no dependen de la red ni del cupo de Nominatim.
 process.env.GEOCODING_ENABLED = 'false';
+// Ni revisan vencimientos solas: cada prueba llama a vencerAusentes() y demas a mano.
+process.env.VENCIMIENTOS_ENABLED = 'false';
 // Ni a Cloudinary: se prueba la logica propia (carpetas, firma), no su API.
 process.env.CLOUDINARY_ENABLED = 'false';
 // Sin credenciales (p. ej. en CI) se firma con unas de prueba: la firma es local.

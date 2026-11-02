@@ -48,6 +48,14 @@ export const config = {
     userAgent: process.env.GEOCODING_USER_AGENT || 'Parkit/1.0 (proyecto PID 2026)',
   },
 
+  // Revision de vencimientos al usar la app (middlewares/vencimientos.js). Las
+  // pruebas la apagan y llaman a las funciones a mano; se lee en cada uso.
+  vencimientos: {
+    get habilitados() {
+      return (process.env.VENCIMIENTOS_ENABLED ?? (nodeEnv === 'test' ? 'false' : 'true')) === 'true';
+    },
+  },
+
   // Fotos de estacionamientos y vehiculos. El navegador sube directo a
   // Cloudinary con una firma que arma la API (el secreto no sale de aca).
   // `habilitada` apaga las llamadas a la red de Cloudinary (verificar y borrar)

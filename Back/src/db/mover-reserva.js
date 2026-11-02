@@ -3,7 +3,7 @@
 //   npm run db:mover-reserva -- DCU2W3MZ ahora
 //   npm run db:mover-reserva -- DCU2W3MZ 12:00 --confirmar
 //   npm run db:mover-reserva -- DCU2W3MZ "2026-10-12 08:00"
-// --confirmar pasa una PENDIENTE a CONFIRMADA (si no, el job de vencimientos
+// --confirmar pasa una PENDIENTE a CONFIRMADA (si no, la revision de vencimientos
 // la cancela en cuanto su inicio quede en el pasado).
 // No valida horario de atencion ni turno del abono: es solo para probar.
 import { pool, withTransaction } from '../config/database.js';
@@ -53,7 +53,7 @@ try {
   console.log(`  antes:   ${formatearArgentina(antes.inicio)} a ${formatearArgentina(antes.fin)} (${antes.estado})`);
   console.log(`  despues: ${formatearArgentina(despues.inicio)} a ${formatearArgentina(despues.fin)} (${despues.estado})`);
   if (despues.estado === ESTADOS_RESERVA.PENDIENTE && despues.inicio <= new Date()) {
-    console.log('  Ojo: sigue PENDIENTE con el inicio en el pasado; el job de vencimientos la va a cancelar. Usa --confirmar.');
+    console.log('  Ojo: sigue PENDIENTE con el inicio en el pasado; la revision de vencimientos la va a cancelar. Usa --confirmar.');
   }
 } catch (error) {
   const mensaje =

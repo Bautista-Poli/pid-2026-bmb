@@ -353,7 +353,7 @@ export async function desbloquear(idEstacionamiento, idPropietario, idCochera) {
   return rows[0];
 }
 
-/** Cocheras con `bloqueada_hasta` ya vencido: las llama el job de vencimientos. */
+/** Cocheras con `bloqueada_hasta` ya vencido: las llama la revision de vencimientos (middlewares/vencimientos.js). */
 export async function desbloquearVencidas() {
   const { rows } = await query(
     `UPDATE cochera SET bloqueada = FALSE, motivo_bloqueo = NULL, bloqueada_hasta = NULL

@@ -327,17 +327,13 @@
                   </p>
                 </div>
 
-                <div class="flex flex-wrap gap-2">
-                  @for (estado of estados; track estado.valor) {
-                    <ui-boton
-                      tamano="sm"
-                      [deshabilitado]="cochera.estado === estado.valor"
-                      (presionado)="cambiarEstado(cochera, estado.valor)"
-                    >
-                      {{ estado.etiqueta }}
-                    </ui-boton>
-                  }
-                </div>
+                <!-- El estado lo mueven el ingreso y el egreso; baja y bloqueo estan en Cocheras. -->
+                <p class="text-[12.5px] text-plomo">
+                  Se ocupa y se libera sola con el ingreso y el egreso.
+                  <a class="font-medium text-acento hover:text-acento-fuerte" routerLink="/propietario/cocheras">
+                    Bloquearla o darla de baja
+                  </a>
+                </p>
               </div>
             }
           </div>

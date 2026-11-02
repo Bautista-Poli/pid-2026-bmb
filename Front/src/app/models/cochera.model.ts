@@ -38,7 +38,6 @@ export interface NuevaCochera {
   sector?: string;
   tipoVehiculo: TipoVehiculo;
   cubierta?: boolean;
-  estado?: EstadoCochera;
 }
 
 /**

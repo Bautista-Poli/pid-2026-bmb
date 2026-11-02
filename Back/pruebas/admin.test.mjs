@@ -48,7 +48,10 @@ describe('cola de revision', () => {
 
   test('filtra por estado', async () => {
     const { admin, id } = await escenario();
-    await api('PATCH', `/admin/estacionamientos/${id}/rechazar`, { token: admin.token, body: { motivo: MOTIVO } });
+    await api('PATCH', `/admin/estacionamientos/${id}/rechazar`, {
+      token: admin.token,
+      body: { motivo: MOTIVO, ...(await version(admin, id)) },
+    });
 
     const { datos } = await api('GET', '/admin/estacionamientos?estado=RECHAZADO', { token: admin.token });
     assert.ok(datos.estacionamientos.some((e) => e.id_estacionamiento === id));
@@ -72,11 +75,18 @@ describe('cola de revision', () => {
   });
 });
 
+/** El enviado_en que ve el admin: aprobar y rechazar lo exigen. */
+async function version(admin, id) {
+  const { datos } = await api('GET', `/admin/estacionamientos/${id}`, { token: admin.token });
+  return { enviado_en: datos.estacionamiento.enviado_en };
+}
+
 describe('aprobar y rechazar', () => {
   test('aprobar lo deja APROBADO, aparece en la busqueda y aprobar de nuevo da 409', async () => {
     const { admin, estacionamiento, id } = await escenario();
 
-    const aprobado = await api('PATCH', `/admin/estacionamientos/${id}/aprobar`, { token: admin.token });
+    const vista = await version(admin, id);
+    const aprobado = await api('PATCH', `/admin/estacionamientos/${id}/aprobar`, { token: admin.token, body: vista });
     assert.equal(aprobado.estado, 200);
     assert.equal(aprobado.datos.estacionamiento.estado_aprobacion, 'APROBADO');
 
@@ -87,7 +97,7 @@ describe('aprobar y rechazar', () => {
     const busqueda = await api('GET', `/estacionamientos?q=${encodeURIComponent(estacionamiento.nombre)}`);
     assert.ok(busqueda.datos.estacionamientos.some((e) => e.id_estacionamiento === id));
 
-    const otraVez = await api('PATCH', `/admin/estacionamientos/${id}/aprobar`, { token: admin.token });
+    const otraVez = await api('PATCH', `/admin/estacionamientos/${id}/aprobar`, { token: admin.token, body: vista });
     assert.equal(otraVez.estado, 409);
   });
 
@@ -135,7 +145,7 @@ describe('aprobar y rechazar', () => {
 
     const rechazo = await api('PATCH', `/admin/estacionamientos/${id}/rechazar`, {
       token: admin.token,
-      body: { motivo: MOTIVO },
+      body: { motivo: MOTIVO, ...(await version(admin, id)) },
     });
     assert.equal(rechazo.estado, 200);
     assert.equal(rechazo.datos.estacionamiento.estado_aprobacion, 'RECHAZADO');
@@ -150,8 +160,23 @@ describe('aprobar y rechazar', () => {
     const admin = await crearAdmin();
     const respuesta = await api('PATCH', `/admin/estacionamientos/${crypto.randomUUID()}/aprobar`, {
       token: admin.token,
+      body: { enviado_en: new Date().toISOString() },
     });
     assert.equal(respuesta.estado, 404);
+  });
+
+  test('aprobar sin enviado_en da 400', async () => {
+    const { admin, id } = await escenario();
+    const respuesta = await api('PATCH', `/admin/estacionamientos/${id}/aprobar`, { token: admin.token });
+    assert.equal(respuesta.estado, 400);
+  });
+
+  test('aprobar uno dado de baja da 409', async () => {
+    const { propietario, admin, id } = await escenario();
+    const vista = await version(admin, id);
+    await api('DELETE', `/estacionamientos/${id}`, { token: propietario.token });
+    const respuesta = await api('PATCH', `/admin/estacionamientos/${id}/aprobar`, { token: admin.token, body: vista });
+    assert.equal(respuesta.estado, 409);
   });
 
   test('conductor y propietario reciben 403 en /admin', async () => {

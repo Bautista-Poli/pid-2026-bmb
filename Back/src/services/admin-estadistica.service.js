@@ -4,7 +4,8 @@
 // que estadistica.service.js: todo en SQL, consultas en paralelo, dias en hora
 // argentina. Ver docs/.../dashboard-administrador-design.md.
 import { query } from '../config/database.js';
-import { COBRADAS, ZONA, anteriorA, desdeDia, hastaDia, numero, redondear } from './estadistica.service.js';
+import { AVISO_CANCELADA_SIN_ALTERNATIVA, AVISO_REASIGNADA } from './cochera.service.js';
+import { COBRADAS, ESTACIONAMIENTO_DE_DEVOLUCION, ZONA, anteriorA, desdeDia, hastaDia, numero, redondear } from './estadistica.service.js';
 
 const LIMITE_LISTA = 5;
 const LIMITE_PROBLEMATICOS = 20;
@@ -88,15 +89,16 @@ async function disputas() {
  * Lo que dejan los bloqueos de cocheras: reservas reasignadas o canceladas
  * (hoy quedan como canceladas por el propietario, con el aviso cargado) y las
  * incidencias del sistema. Una reasignada que despues cancelo el conductor no
- * es ni una cosa ni la otra.
+ * es ni una cosa ni la otra. Se cuentan por el aviso del bloqueo: los de un
+ * auto excedido (incidencia.service.js) ya cuentan como incidencia.
  */
 async function bloqueos(desde, hasta) {
   const { rows } = await query(
     `WITH r AS (${RESERVAS}),
      por_reserva AS (
        SELECT id_estacionamiento,
-              COUNT(*) FILTER (WHERE motivo_reasignacion IS NOT NULL AND estado <> 'CANCELADA') AS reasignadas,
-              COUNT(*) FILTER (WHERE estado = 'CANCELADA' AND motivo_reasignacion IS NOT NULL
+              COUNT(*) FILTER (WHERE motivo_reasignacion = $3 AND estado <> 'CANCELADA') AS reasignadas,
+              COUNT(*) FILTER (WHERE estado = 'CANCELADA' AND motivo_reasignacion = $4
                                  AND cancelada_por IS DISTINCT FROM 'CONDUCTOR') AS canceladas
          FROM r GROUP BY 1
      ),
@@ -114,7 +116,7 @@ async function bloqueos(desde, hasta) {
        LEFT JOIN por_incidencia pi ON pi.id_estacionamiento = e.id_estacionamiento
       WHERE COALESCE(pr.reasignadas, 0) + COALESCE(pr.canceladas, 0)
             + COALESCE(pi.autos, 0) + COALESCE(pi.sin_cochera, 0) > 0`,
-    [desde, hasta],
+    [desde, hasta, AVISO_REASIGNADA, AVISO_CANCELADA_SIN_ALTERNATIVA],
   );
   const porEstacionamiento = rows.map((f) => ({
     id: f.id,
@@ -195,8 +197,8 @@ const INGRESOS_POR_ESTACIONAMIENTO = `
     SELECT a.id_estacionamiento, a.precio_total
       FROM abono a WHERE ${EN_PERIODO('a.created_at')}
     UNION ALL
-    SELECT i.id_estacionamiento, -d.monto
-      FROM devolucion d JOIN incidencia i ON i.id_incidencia = d.id_incidencia
+    SELECT ${ESTACIONAMIENTO_DE_DEVOLUCION}, -d.monto
+      FROM devolucion d
      WHERE ${EN_PERIODO('d.created_at')}
   ) movimientos
   GROUP BY 1`;

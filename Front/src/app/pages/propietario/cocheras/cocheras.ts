@@ -37,6 +37,7 @@ import {
   ReservaDetallada,
   TipoVehiculo,
 } from '@app/models';
+import { ErrorApi } from '@app/interceptors/error.interceptor';
 import { AuthService } from '@app/services/auth.service';
 import { reservaEnJuego } from '@app/services/ciclo-reserva';
 import { CocheraService } from '@app/services/cochera.service';
@@ -523,8 +524,11 @@ export class Cocheras {
         error: (e: Error) => {
           this.enviando.set(false);
           this.errorBloqueo.set(e.message);
-          // El mensaje viene armado en cochera.service.js: bloquear().
-          this.necesitaForzar.set(e.message.includes('no tienen otra cochera para reasignar'));
+          // cochera.service.js: bloquear() lista en `details` las que no tienen alternativa.
+          const detalles = e instanceof ErrorApi ? e.detalles : null;
+          this.necesitaForzar.set(
+            typeof detalles === 'object' && detalles !== null && 'reservas_sin_alternativa' in detalles,
+          );
         },
       });
   }
@@ -689,11 +693,11 @@ export class Cocheras {
       cubierta: lote.cubierta,
     }));
 
-    this.enviando.set(true);
-    this.errorAlta.set(null);
-
     const idActivo = this.idActivo();
     if (!idActivo) return;
+
+    this.enviando.set(true);
+    this.errorAlta.set(null);
 
     this.cocheras.crearLote(idActivo, lotes).subscribe({
       next: (creadas) => {

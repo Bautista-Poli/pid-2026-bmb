@@ -203,6 +203,7 @@ export interface IncidenciaDto {
   denunciada_at: string | null;
   denunciada_por: 'PROPIETARIO' | 'CONDUCTOR' | null;
   resuelta_at: string | null;
+  retirada_at: string | null;
   id_reserva: string | null;
   inicio: string | null;
   fin: string | null;

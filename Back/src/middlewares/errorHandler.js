@@ -8,6 +8,7 @@ const ERRORES_PG = {
   '23514': { status: 400, mensaje: 'Los datos no cumplen una restriccion de la base' },
   '23P01': { status: 409, mensaje: 'El registro se superpone con otro existente' },
   '22P02': { status: 400, mensaje: 'Alguno de los identificadores enviados tiene formato invalido' },
+  '22003': { status: 400, mensaje: 'Algun numero enviado es demasiado grande' },
 };
 
 /** Middleware final: unifica el formato de todas las respuestas de error. */

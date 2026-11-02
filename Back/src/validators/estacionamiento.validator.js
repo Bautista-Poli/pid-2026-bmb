@@ -1,8 +1,10 @@
-import { ESTADOS_COCHERA } from '../utils/roles.js';
 import { CAMPOS_TARIFA, MODALIDADES } from '../utils/tarifas.js';
 import { campos } from './helpers.js';
 
 const REGEX_FECHA = /^\d{4}-\d{2}-\d{2}$/;
+// Lo que entra en las columnas: DECIMAL(10, 2) para tarifas y DECIMAL(5, 2) para las horas.
+const MAX_TARIFA = 99_999_999.99;
+const MAX_HORAS_CANCELACION = 999.99;
 const vino = (valor) => valor !== undefined && valor !== null && valor !== '';
 const CAMPOS_EDITABLES = [
   'nombre', 'descripcion', 'calle', 'numero', 'ciudad', 'provincia', 'codigo_postal',
@@ -20,7 +22,6 @@ const CAMPOS_COCHERA_EDITABLES = [
   'id_tipo_vehiculo',
   'sector',
   'cubierta',
-  'estado_actual',
 ];
 
 export function validarEstacionamiento(body) {
@@ -37,10 +38,15 @@ export function validarEstacionamiento(body) {
     .numero('longitud', body.longitud, { requerido: false, min: -180, max: 180 })
     .texto('telefono_contacto', body.telefono_contacto, { requerido: false, max: 30 })
     .email('email_contacto', body.email_contacto, { requerido: false })
-    .numero('tarifa_hora', body.tarifa_hora, { requerido: false, min: 0 })
-    .numero('tarifa_estadia', body.tarifa_estadia, { requerido: false, min: 0 })
-    .numero('tarifa_jornada', body.tarifa_jornada, { requerido: false, min: 0 })
-    .numero('politica_cancelacion_horas', body.politica_cancelacion_horas, { requerido: false, min: 0 })
+    .numero('tarifa_hora', body.tarifa_hora, { requerido: false, min: 0, max: MAX_TARIFA, decimales: 2 })
+    .numero('tarifa_estadia', body.tarifa_estadia, { requerido: false, min: 0, max: MAX_TARIFA, decimales: 2 })
+    .numero('tarifa_jornada', body.tarifa_jornada, { requerido: false, min: 0, max: MAX_TARIFA, decimales: 2 })
+    .numero('politica_cancelacion_horas', body.politica_cancelacion_horas, {
+      requerido: false,
+      min: 0,
+      max: MAX_HORAS_CANCELACION,
+      decimales: 2,
+    })
     .booleano('cubierto', body.cubierto, { requerido: false, default: false })
     .booleano('publicado', body.publicado, { requerido: false, default: false });
 
@@ -130,10 +136,15 @@ export function validarCambiosEstacionamiento(body) {
     .numero('longitud', body.longitud, { requerido: false, min: -180, max: 180 })
     .texto('telefono_contacto', body.telefono_contacto, { requerido: false, max: 30 })
     .email('email_contacto', body.email_contacto, { requerido: false })
-    .numero('tarifa_hora', body.tarifa_hora, { requerido: false, min: 0 })
-    .numero('tarifa_estadia', body.tarifa_estadia, { requerido: false, min: 0 })
-    .numero('tarifa_jornada', body.tarifa_jornada, { requerido: false, min: 0 })
-    .numero('politica_cancelacion_horas', body.politica_cancelacion_horas, { requerido: false, min: 0 })
+    .numero('tarifa_hora', body.tarifa_hora, { requerido: false, min: 0, max: MAX_TARIFA, decimales: 2 })
+    .numero('tarifa_estadia', body.tarifa_estadia, { requerido: false, min: 0, max: MAX_TARIFA, decimales: 2 })
+    .numero('tarifa_jornada', body.tarifa_jornada, { requerido: false, min: 0, max: MAX_TARIFA, decimales: 2 })
+    .numero('politica_cancelacion_horas', body.politica_cancelacion_horas, {
+      requerido: false,
+      min: 0,
+      max: MAX_HORAS_CANCELACION,
+      decimales: 2,
+    })
     .booleano('cubierto', body.cubierto, { requerido: false })
     .booleano('publicado', body.publicado, { requerido: false })
     .verificar(
@@ -162,10 +173,6 @@ export function validarCochera(body) {
     .entero('id_tipo_vehiculo', body.id_tipo_vehiculo, { min: 1 })
     .texto('sector', body.sector, { requerido: false, max: 40 })
     .booleano('cubierta', body.cubierta, { requerido: false, default: false })
-    .enumerado('estado_actual', body.estado_actual, Object.values(ESTADOS_COCHERA), {
-      requerido: false,
-      default: ESTADOS_COCHERA.LIBRE,
-    })
     .resultado();
 }
 
@@ -194,7 +201,7 @@ export function validarLoteCocheras(body) {
   body.lotes.forEach((lote, i) => {
     const validador = campos(lote ?? {})
       .entero('cantidad', lote?.cantidad, { min: 1, max: MAX_COCHERAS_POR_LOTE })
-      .texto('sector', lote?.sector, { min: 1, max: 20 })
+      .texto('sector', lote?.sector, { min: 1, max: 40 })
       .texto('prefijo', lote?.prefijo, { min: 1, max: 10 })
       .entero('id_tipo_vehiculo', lote?.id_tipo_vehiculo, { min: 1 })
       .booleano('cubierta', lote?.cubierta, { requerido: false, default: false })
@@ -240,9 +247,6 @@ export function validarActualizacionCochera(body) {
     .entero('id_tipo_vehiculo', body.id_tipo_vehiculo, { requerido: false, min: 1 })
     .texto('sector', body.sector, { requerido: false, max: 40 })
     .booleano('cubierta', body.cubierta, { requerido: false })
-    .enumerado('estado_actual', body.estado_actual, Object.values(ESTADOS_COCHERA), {
-      requerido: false,
-    })
     .verificar(
       CAMPOS_COCHERA_EDITABLES.some((campo) => body[campo] !== undefined),
       'body',
@@ -313,8 +317,9 @@ export function validarBusqueda(query) {
 
 /**
  * GET /api/estacionamientos/:id/disponibilidad?fecha=YYYY-MM-DD[&id_tipo_vehiculo=1]
- * [&modalidad=HORA&horas=3]. Con `horas` o `modalidad` devuelve un ingreso por
- * cada hora del dia; sin ninguno, las franjas estandar.
+ * [&modalidad=HORA&horas=3][&con_abono=true]. Con `horas` o `modalidad` devuelve un ingreso por
+ * cada hora del dia; sin ninguno, las franjas estandar. `con_abono` acepta un
+ * estacionamiento que volvio a revision, igual que al reservar con abono.
  */
 export function validarDisponibilidad(query) {
   const { valores, errores } = campos(query)
@@ -322,6 +327,7 @@ export function validarDisponibilidad(query) {
     .entero('id_tipo_vehiculo', query.id_tipo_vehiculo, { requerido: false, min: 1 })
     .enumerado('modalidad', query.modalidad, Object.values(MODALIDADES), { requerido: false })
     .entero('horas', query.horas, { requerido: false, min: 1, max: 24 })
+    .booleano('con_abono', query.con_abono, { requerido: false })
     .resultado();
 
   if (valores.modalidad === MODALIDADES.HORA && valores.horas === undefined) {

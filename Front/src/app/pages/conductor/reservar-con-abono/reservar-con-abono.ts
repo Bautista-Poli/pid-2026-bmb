@@ -6,7 +6,7 @@ import { Abono, HoraHHmm, Id, TURNOS, Vehiculo } from '@app/models';
 import { AbonoService } from '@app/services/abono.service';
 import { ReservaService } from '@app/services/reserva.service';
 import { VehiculoService } from '@app/services/vehiculo.service';
-import { aFechaISO } from '@app/utils/fecha.util';
+import { hoyISO } from '@app/utils/fecha.util';
 
 const dosDigitos = (n: number) => String(n).padStart(2, '0');
 
@@ -58,7 +58,7 @@ export class ReservarConAbono {
 
   /** Hoy o el primer dia del abono, lo que venga despues. */
   protected minimo(abono: Abono): string {
-    const hoy = aFechaISO(new Date());
+    const hoy = hoyISO();
     return hoy > abono.desde ? hoy : abono.desde;
   }
 

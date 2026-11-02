@@ -28,7 +28,7 @@ import {
   Usuario,
   Vehiculo,
 } from '@app/models';
-import { aInstante, DIAS_POR_NUMERO, partesLocales } from '@app/utils/fecha.util';
+import { aInstante, DIAS_POR_NUMERO, finDeFranja, partesLocales } from '@app/utils/fecha.util';
 import { AbonoDto, AccesoReservaDto, IncidenciaDetalladaDto, IncidenciaDto, IncidenciaModeradaDto, MensajeIncidenciaDto, CocheraDto, EstacionamientoDto, EstadoReservaDto, FranjaDto, HorarioDto, PlanAbonoDto, ReservaDto, UsuarioDto, VehiculoDto } from './api.dto';
 
 /*
@@ -196,7 +196,6 @@ export function aPayloadCochera(datos: NuevaCochera) {
     id_tipo_vehiculo: ID_TIPO_VEHICULO[datos.tipoVehiculo],
     sector: datos.sector || undefined,
     cubierta: datos.cubierta,
-    estado_actual: datos.estado,
   };
 }
 
@@ -218,7 +217,6 @@ export function aPayloadCambiosCochera(cambios: Partial<NuevaCochera>) {
     id_tipo_vehiculo: cambios.tipoVehiculo && ID_TIPO_VEHICULO[cambios.tipoVehiculo],
     sector: cambios.sector || undefined,
     cubierta: cambios.cubierta,
-    estado_actual: cambios.estado,
   };
 }
 
@@ -335,7 +333,9 @@ export function aPayloadReserva(datos: NuevaReserva) {
 
 /** Por hora el fin lo elige el conductor; estadia y jornada duran un bloque fijo desde el ingreso. */
 function finDeReserva(datos: NuevaReserva, inicio: FechaHoraISO): FechaHoraISO {
-  if (datos.modalidad === 'HORA') return aInstante(datos.fecha, datos.horaHasta ?? datos.horaDesde);
+  if (datos.modalidad === 'HORA') {
+    return datos.horaHasta ? finDeFranja(datos.fecha, datos.horaDesde, datos.horaHasta) : inicio;
+  }
   const horas = HORAS_POR_MODALIDAD[datos.modalidad];
   return new Date(Date.parse(inicio) + horas * 3_600_000).toISOString();
 }
@@ -387,7 +387,7 @@ export function aPayloadReservaConAbono(datos: NuevaReservaConAbono) {
     id_abono: datos.abonoId,
     id_vehiculo: datos.vehiculoId,
     inicio: aInstante(datos.fecha, datos.horaDesde),
-    fin: aInstante(datos.fecha, datos.horaHasta),
+    fin: finDeFranja(datos.fecha, datos.horaDesde, datos.horaHasta),
   };
 }
 
@@ -400,6 +400,7 @@ export function aIncidencia(dto: IncidenciaDto): Incidencia {
     denunciadaEn: dto.denunciada_at,
     denunciadaPor: dto.denunciada_por ?? null,
     resueltaEn: dto.resuelta_at,
+    retiradaEn: dto.retirada_at ?? null,
     reserva:
       dto.id_reserva && dto.inicio && dto.fin && dto.estado_reserva
         ? {

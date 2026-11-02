@@ -22,6 +22,15 @@ export const DIA = 86_400_000;
 const OCUPAN = `('PENDIENTE', 'CONFIRMADA', 'ACTIVA', 'FINALIZADA')`;
 export const COBRADAS = `('FINALIZADA', 'ACTIVA')`;
 
+/**
+ * Estacionamiento de una devolucion `d`: el de su abono o el de la cochera de
+ * su reserva (las de una baja no tienen incidencia, asi que no sale de ahi).
+ */
+export const ESTACIONAMIENTO_DE_DEVOLUCION = `COALESCE(
+  (SELECT a.id_estacionamiento FROM abono a WHERE a.id_abono = d.id_abono),
+  (SELECT c.id_estacionamiento FROM reserva r JOIN cochera c ON c.id_cochera = r.id_cochera
+    WHERE r.id_reserva = d.id_reserva))`;
+
 /** Inicio de un dia local (`$n::date`) como instante. */
 export const desdeDia = (parametro) => `(${parametro}::date)::timestamp AT TIME ZONE ${ZONA}`;
 export const hastaDia = (parametro) => `(${parametro}::date + 1)::timestamp AT TIME ZONE ${ZONA}`;
@@ -117,12 +126,11 @@ async function ingresosPorDia(parametros) {
         GROUP BY 1
      ),
      devoluciones AS (
-       SELECT (dv.created_at AT TIME ZONE ${ZONA})::date AS fecha, SUM(dv.monto) AS monto
-         FROM devolucion dv
-         JOIN incidencia i ON i.id_incidencia = dv.id_incidencia
-        WHERE i.id_estacionamiento IN (${ESTACIONAMIENTOS})
-          AND dv.created_at >= ${desdeDia('$2')}
-          AND dv.created_at <  ${hastaDia('$3')}
+       SELECT (d.created_at AT TIME ZONE ${ZONA})::date AS fecha, SUM(d.monto) AS monto
+         FROM devolucion d
+        WHERE ${ESTACIONAMIENTO_DE_DEVOLUCION} IN (${ESTACIONAMIENTOS})
+          AND d.created_at >= ${desdeDia('$2')}
+          AND d.created_at <  ${hastaDia('$3')}
         GROUP BY 1
      )
      SELECT d.fecha::text AS fecha, COALESCE(r.monto, 0) AS reservas, COALESCE(a.monto, 0) AS abonos,

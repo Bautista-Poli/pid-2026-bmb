@@ -1,6 +1,6 @@
 import { TonoPunto } from '@app/components/ui';
 import { DiaSemana, Estacionamiento, EstadoCochera, FranjaAtencion, HoraHHmm } from '@app/models';
-import { aFechaISO, diaSemanaDe } from './fecha.util';
+import { diaSemanaDe, hoyISO } from './fecha.util';
 
 /**
  * Regla de disponibilidad del handoff:
@@ -28,7 +28,7 @@ export const TONO_ESTADO_COCHERA: Record<EstadoCochera, TonoPunto> = {
 /** Horario de hoy: `07 – 23 h`, `24 h` si no cierra, o `Cerrado hoy`. */
 export function resumenHorario(
   horarios: FranjaAtencion[],
-  hoy: DiaSemana = diaSemanaDe(aFechaISO(new Date())),
+  hoy: DiaSemana = diaSemanaDe(hoyISO()),
 ): string {
   if (horarios.length === 0) return 'Sin horario';
 

@@ -10,6 +10,7 @@ const dto: IncidenciaDetalladaDto = {
   denunciada_at: null,
   denunciada_por: null,
   resuelta_at: null,
+  retirada_at: null,
   id_reserva: 'r1',
   inicio: '2026-10-11T21:00:00.000Z',
   fin: '2026-10-11T23:00:00.000Z',

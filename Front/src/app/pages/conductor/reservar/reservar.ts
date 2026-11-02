@@ -28,7 +28,7 @@ import { ReservaService } from '@app/services/reserva.service';
 import { VehiculoService } from '@app/services/vehiculo.service';
 import { calcularPrecio, horasReservables, modalidadPorHoras, resumenTarifas } from '@app/utils/tarifa.util';
 import { formatearDistancia, resumenHorario } from '@app/utils/disponibilidad.util';
-import { aFechaISO, desdeFechaISO, diaSemanaDe } from '@app/utils/fecha.util';
+import { desdeFechaISO, diaSemanaDe, hoyISO } from '@app/utils/fecha.util';
 
 /**
  * Pantalla `/conductor/reservar/:estacionamientoId` · rol CONDUCTOR
@@ -180,7 +180,7 @@ export class Reservar {
     effect(() => {
       const id = this.estacionamientoId();
       this.reservas.iniciarBorrador(id);
-      this.reservas.actualizarBorrador({ fecha: aFechaISO(new Date()) });
+      this.reservas.actualizarBorrador({ fecha: hoyISO() });
       this.reservaConfirmada.set(null);
       this.error.set(null);
     });

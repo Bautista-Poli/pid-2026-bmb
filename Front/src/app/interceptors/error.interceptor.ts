@@ -19,12 +19,14 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
   const router = inject(Router);
 
-  // Las subidas van directo a Cloudinary (URL absoluta): sus errores no tienen
-  // que ver con la sesion de Parkit y su mensaje no es para mostrar tal cual.
+  // Las URL absolutas son servicios externos (Cloudinary para las fotos, Georef
+  // y Photon para las direcciones): sus errores no tienen que ver con la sesion
+  // de Parkit y su mensaje no es para mostrar tal cual.
   if (/^https?:\/\//i.test(req.url)) {
-    return next(req).pipe(
-      catchError(() => throwError(() => new Error('No pudimos subir la foto. Probá de nuevo en un rato.'))),
-    );
+    const mensaje = /^https?:\/\/api\.cloudinary\.com\//i.test(req.url)
+      ? 'No pudimos subir la foto. Probá de nuevo en un rato.'
+      : 'No pudimos consultar el servicio externo. Probá de nuevo en un rato.';
+    return next(req).pipe(catchError(() => throwError(() => new Error(mensaje))));
   }
 
   return next(req).pipe(
@@ -34,10 +36,26 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
         void router.navigate(['/ingresar']);
       }
 
-      return throwError(() => new Error(mensajeDe(error)));
+      return throwError(() => new ErrorApi(mensajeDe(error), error.status, detallesDe(error)));
     }),
   );
 };
+
+/** Error de la API de Parkit: ademas del mensaje, conserva el status y `details`. */
+export class ErrorApi extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly detalles: unknown,
+  ) {
+    super(message);
+  }
+}
+
+function detallesDe(error: HttpErrorResponse): unknown {
+  const cuerpo = error.error as RespuestaError | string | null;
+  return cuerpo && typeof cuerpo === 'object' && 'error' in cuerpo ? (cuerpo.error.details ?? null) : null;
+}
 
 function mensajeDe(error: HttpErrorResponse): string {
   const cuerpo = error.error as RespuestaError | string | null;

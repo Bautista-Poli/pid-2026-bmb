@@ -18,9 +18,7 @@ import {
 import {
   Cochera,
   Estacionamiento,
-  EstadoCochera,
   EstadoReserva,
-  ESTADOS_COCHERA_ORDEN,
   esExpirada,
   etiquetaReserva,
   ETIQUETA_TIPO_VEHICULO,
@@ -33,7 +31,7 @@ import { avanzarReserva, puedeAvanzar } from '@app/services/ciclo-reserva';
 import { CocheraService } from '@app/services/cochera.service';
 import { EstacionamientoService } from '@app/services/estacionamiento.service';
 import { ReservaService } from '@app/services/reserva.service';
-import { aFechaISO } from '@app/utils/fecha.util';
+import { aFechaISO, hoyISO } from '@app/utils/fecha.util';
 
 /** Tono de cada tarjeta de metrica: fondo del icono y color del trazo. */
 type TonoMetrica = 'azul' | 'verde' | 'violeta';
@@ -124,10 +122,9 @@ export class Tablero {
   private readonly auth = inject(AuthService);
 
   protected readonly hoy = new Date();
-  private readonly hoyISO = aFechaISO(this.hoy);
-  private readonly ayerISO = aFechaISO(new Date(Date.now() - 86_400_000));
+  private readonly hoyISO = hoyISO();
+  private readonly ayerISO = hoyISO(new Date(Date.now() - 86_400_000));
 
-  protected readonly estados = ESTADOS_COCHERA_ORDEN;
   protected readonly etiquetaTipo = ETIQUETA_TIPO_VEHICULO;
   protected readonly etiquetaEstado = etiquetaReserva;
   /** Expirada (no la confirmaste a tiempo) en amarillo, distinta de una cancelacion. */
@@ -314,17 +311,6 @@ export class Tablero {
       error: (e: Error) => {
         this.procesandoId.set(null);
         this.error.set(e.message);
-      },
-    });
-  }
-
-  /** `PATCH /api/estacionamientos/:id/cocheras/:idCochera` y refresco. */
-  protected cambiarEstado(cochera: Cochera, estado: EstadoCochera): void {
-    this.cocheras.cambiarEstado(cochera, estado).subscribe({
-      next: () => {
-        this.cocheraAbierta.set(null);
-        this.recursoCocheras.reload();
-        this.recursoEstacionamientos.reload();
       },
     });
   }

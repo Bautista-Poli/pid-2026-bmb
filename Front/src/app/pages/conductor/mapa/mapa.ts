@@ -60,7 +60,7 @@ import {
   resumenHorario,
 } from '@app/utils/disponibilidad.util';
 import { minutosAPie } from '@app/utils/distancia.util';
-import { aFechaISO, desdeFechaISO } from '@app/utils/fecha.util';
+import { desdeFechaISO, hoyISO } from '@app/utils/fecha.util';
 
 /** Tope del rango de precios (por hora). En el tope, el maximo no filtra. */
 const PRECIO_TOPE = 5000;
@@ -97,7 +97,7 @@ const ICONO_TIPO: Record<TipoVehiculo, NombreIcono> = {
 
 /** Sin filtros: ahora, cualquier precio, ordenado por cercania. */
 const PANEL_INICIAL: Panel = {
-  fecha: aFechaISO(new Date()),
+  fecha: hoyISO(),
   desde: '',
   horas: 1,
   precioMinimo: 0,
@@ -178,7 +178,7 @@ export class Mapa {
   protected readonly precioTope = PRECIO_TOPE;
   protected readonly precioPaso = PRECIO_PASO;
   protected readonly horasMaximas = HORAS_MAXIMAS;
-  protected readonly hoy = aFechaISO(new Date());
+  protected readonly hoy = hoyISO();
 
   /* -------------------------------- Vehiculo ------------------------------- */
 

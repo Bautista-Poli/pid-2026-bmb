@@ -17,6 +17,8 @@ import {
   levantarApi,
   query,
 } from './ayuda.mjs';
+import { AVISO_CANCELADA_SIN_ALTERNATIVA, AVISO_REASIGNADA } from '../src/services/cochera.service.js';
+import { AVISO_AFECTADA_POR_EXCESO, AVISO_REASIGNADA_POR_EXCESO } from '../src/services/incidencia.service.js';
 
 before(() => levantarApi('admin-estadistica'));
 after(() => cerrarApi());
@@ -256,13 +258,22 @@ describe('bloqueos', () => {
     const fecha = '2001-05-03';
     const creadaEn = instante(fecha, 23);
     const x = await escenario();
-    const aviso = 'Te reasignamos a otra cochera.';
-    await x.reserva({ fecha, motivoReasignacion: aviso });
-    await x.reserva({ fecha, estado: 'CANCELADA', canceladaPor: 'PROPIETARIO', motivoReasignacion: aviso });
+    await x.reserva({ fecha, motivoReasignacion: AVISO_REASIGNADA });
+    await x.reserva({
+      fecha,
+      estado: 'CANCELADA',
+      canceladaPor: 'PROPIETARIO',
+      motivoReasignacion: AVISO_CANCELADA_SIN_ALTERNATIVA,
+    });
     // Reasignada y despues cancelada por el conductor: no es un bloqueo.
-    await x.reserva({ fecha, estado: 'CANCELADA', canceladaPor: 'CONDUCTOR', motivoReasignacion: aviso });
-    await x.incidencia('AUTO_EXCEDIDO', await x.reserva({ fecha }), { creadaEn });
-    await x.incidencia('RESERVA_AFECTADA', await x.reserva({ fecha }), { creadaEn });
+    await x.reserva({ fecha, estado: 'CANCELADA', canceladaPor: 'CONDUCTOR', motivoReasignacion: AVISO_REASIGNADA });
+    // Los avisos de un auto excedido cuentan por su incidencia, no como bloqueo (D-18).
+    await x.incidencia('AUTO_EXCEDIDO', await x.reserva({ fecha, motivoReasignacion: AVISO_REASIGNADA_POR_EXCESO }), {
+      creadaEn,
+    });
+    await x.incidencia('RESERVA_AFECTADA', await x.reserva({ fecha, motivoReasignacion: AVISO_AFECTADA_POR_EXCESO }), {
+      creadaEn,
+    });
 
     const { bloqueos } = (await stats(SEMANA)).e.conflictos;
     assert.deepEqual(
@@ -364,8 +375,8 @@ test('bloqueos empatados se ordenan por nombre', async () => {
   const fecha = '2001-08-03';
   const a = await escenario();
   const b = await escenario();
-  await a.reserva({ fecha, motivoReasignacion: 'Reasignada' });
-  await b.reserva({ fecha, motivoReasignacion: 'Reasignada' });
+  await a.reserva({ fecha, motivoReasignacion: AVISO_REASIGNADA });
+  await b.reserva({ fecha, motivoReasignacion: AVISO_REASIGNADA });
 
   const nombres = (await stats(SEMANA)).e.conflictos.bloqueos.porEstacionamiento.map((x) => x.nombre);
   assert.deepEqual(nombres, [a.estacionamiento.nombre, b.estacionamiento.nombre].sort((x, y) => x.localeCompare(y)));

@@ -5,7 +5,7 @@
 import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
 import { ROLES } from '../utils/roles.js';
-import { crearDevolucion } from './devolucion.service.js';
+import { crearDevolucion, topeDe } from './devolucion.service.js';
 import {
   CANALES,
   ESTADOS_INCIDENCIA,
@@ -21,10 +21,14 @@ export const RESOLUCIONES = Object.freeze({
   A_FAVOR_PROPIETARIO: 'A_FAVOR_PROPIETARIO',
 });
 
-/** La cola: por defecto las denunciadas, la que espera hace mas primero. */
+/**
+ * La cola: por defecto las denunciadas, la que espera hace mas primero. Con otro
+ * estado (p. ej. RESUELTA) solo las que pasaron por la moderacion: una que
+ * cerraron las partes sin denunciar no es una disputa.
+ */
 export async function listar({ estado = ESTADOS_INCIDENCIA.DENUNCIADA } = {}) {
   const { rows } = await query(
-    `${SELECT_INCIDENCIA} WHERE i.estado = $1
+    `${SELECT_INCIDENCIA} WHERE i.estado = $1 AND i.denunciada_at IS NOT NULL
       ORDER BY i.denunciada_at ASC NULLS LAST, i.created_at ASC`,
     [estado],
   );
@@ -111,12 +115,18 @@ export async function resolver(admin, idIncidencia, { resolucion, monto, fundame
 
     if (resolucion === RESOLUCIONES.A_FAVOR_CONDUCTOR) {
       await bloquearObjeto(client, incidencia);
-      await crearDevolucion(client, {
-        idIncidencia,
-        ...objetoDe(incidencia),
-        monto,
-        aplicadaPor: ROLES.ADMINISTRADOR,
-      });
+      // Sin devolucion solo si no queda nada por devolver (no se cobro o ya se devolvio todo).
+      if (monto === 0) {
+        const { tope } = await topeDe(client, objetoDe(incidencia));
+        if (tope > 0) throw ApiError.badRequest('A favor del conductor, indica cuanto se le devuelve');
+      } else {
+        await crearDevolucion(client, {
+          idIncidencia,
+          ...objetoDe(incidencia),
+          monto,
+          aplicadaPor: ROLES.ADMINISTRADOR,
+        });
+      }
     }
     await agregarMensaje(client, idIncidencia, ROLES.ADMINISTRADOR, fundamento, admin.id);
     await client.query(

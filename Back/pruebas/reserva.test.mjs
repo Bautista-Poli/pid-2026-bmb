@@ -379,18 +379,22 @@ describe('ciclo de la reserva', () => {
 
   test('el propietario que ademas es conductor usa el token de cada perfil', async () => {
     const ambos = await crearUsuario({ rol: 'PROPIETARIO', roles: ['PROPIETARIO', 'CONDUCTOR'] });
-    const estacionamiento = await crearEstacionamiento(ambos.token);
+    const propio = await crearEstacionamiento(ambos.token);
+    const otroDueno = await crearUsuario({ rol: 'PROPIETARIO' });
+    const ajeno = await crearEstacionamiento(otroDueno.token);
 
+    // Como conductor reserva en uno ajeno; en el propio no (no se reserva a si mismo).
     const comoConductor = await cambiarRol(ambos.token, 'CONDUCTOR');
     const vehiculo = await crearVehiculo(comoConductor);
-    const reserva = await reservar(
-      { token: comoConductor },
-      estacionamiento,
-      vehiculo,
-      franja('17:00', '21:00'),
-    );
-    assert.equal(reserva.estado, 201);
+    const enAjeno = await reservar({ token: comoConductor }, ajeno, vehiculo, franja('17:00', '21:00'));
+    assert.equal(enAjeno.estado, 201);
+    const enPropio = await reservar({ token: comoConductor }, propio, vehiculo, franja('08:00', '10:00'));
+    assert.equal(enPropio.estado, 409);
 
+    // Como propietario confirma la de otro conductor en el suyo.
+    const conductor = await crearUsuario();
+    const suVehiculo = await crearVehiculo(conductor.token);
+    const reserva = await reservar(conductor, propio, suVehiculo, franja('17:00', '21:00'));
     const comoPropietario = await cambiarRol(comoConductor, 'PROPIETARIO');
     const confirmada = await api('PATCH', `/reservas/${reserva.datos.reserva.id_reserva}/confirmar`, {
       token: comoPropietario,

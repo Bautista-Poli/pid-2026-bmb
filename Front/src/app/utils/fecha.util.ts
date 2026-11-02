@@ -47,6 +47,18 @@ export function aInstante(fecha: FechaISO, hora: HoraHHmm): FechaHoraISO {
   return `${fecha}T${hora}:00${OFFSET_ARGENTINA}`;
 }
 
+/**
+ * Instante en que termina una franja del dia `fecha` que va de `desde` a
+ * `hasta`. Si `hasta` no es posterior a `desde` (23:00 a 01:00) o es '24:00',
+ * termina al dia siguiente.
+ */
+export function finDeFranja(fecha: FechaISO, desde: HoraHHmm, hasta: HoraHHmm): FechaHoraISO {
+  if (hasta !== '24:00' && hasta > desde) return aInstante(fecha, hasta);
+  const siguiente = new Date(`${fecha}T00:00:00Z`);
+  siguiente.setUTCDate(siguiente.getUTCDate() + 1);
+  return aInstante(siguiente.toISOString().slice(0, 10), hasta === '24:00' ? '00:00' : hasta);
+}
+
 /** Fecha y hora de un instante de la API, vistas en hora argentina. */
 export function partesLocales(instante: FechaHoraISO): { fecha: FechaISO; hora: HoraHHmm } {
   const partes: Record<string, string> = {};
@@ -57,6 +69,15 @@ export function partesLocales(instante: FechaHoraISO): { fecha: FechaISO; hora: 
     fecha: `${partes['year']}-${partes['month']}-${partes['day']}`,
     hora: `${partes['hour']}:${partes['minute']}`,
   };
+}
+
+/**
+ * Hoy en Argentina, que es el "hoy" del negocio y de la API. No sale de
+ * `aFechaISO(new Date())`: con el reloj del dispositivo en otra zona (o cerca de
+ * la medianoche) el dia del navegador puede ser otro.
+ */
+export function hoyISO(ahora: Date = new Date()): FechaISO {
+  return partesLocales(ahora.toISOString() as FechaHoraISO).fecha;
 }
 
 /** Los proximos `cantidad` dias a partir de hoy. */

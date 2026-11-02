@@ -334,12 +334,20 @@
                 </form>
               } @else {
                 <p class="border-t border-borde-sutil px-5 py-3.5 text-[12.5px] text-plomo lg:px-6">
-                  {{ incidencia.estado === 'RETIRADA' ? 'Retirado' : 'Resuelta' }} el
-                  {{ incidencia.resueltaEn | date: 'd MMM HH:mm' }}. La conversación quedó cerrada.
+                  @if (incidencia.estado === 'RETIRADA') {
+                    Retirado el {{ incidencia.retiradaEn | date: 'd MMM HH:mm' }}.
+                  } @else {
+                    Resuelta el {{ incidencia.resueltaEn | date: 'd MMM HH:mm' }}.
+                  }
+                  La conversación quedó cerrada.
                 </p>
               }
             </div>
           </ui-tarjeta>
+        } @else if (recursoDetalle.error(); as e) {
+          <ui-estado-vacio titulo="No pudimos cargar la incidencia" [descripcion]="e.message">
+            <ui-boton (presionado)="recursoDetalle.reload()">Reintentar</ui-boton>
+          </ui-estado-vacio>
         } @else {
           <ui-cargando [cantidad]="1" />
         }

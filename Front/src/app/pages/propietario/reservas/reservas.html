@@ -155,6 +155,13 @@
                   <td class="px-3 py-3.5">
                     {{ vehiculo(reserva) }}
                     <span class="num-tabular text-plomo">({{ reserva.vehiculo.patente }})</span>
+                    @if (reserva.estado === 'PENDIENTE') {
+                      <app-reputacion
+                        class="mt-0.5 flex"
+                        [reputacion]="reserva.reputacionConductor"
+                        sinDatos="Sin calificaciones"
+                      />
+                    }
                   </td>
                   <td class="num-tabular px-3 py-3.5 text-right whitespace-nowrap">
                     $ {{ reserva.precioTotal.toLocaleString('es-AR') }}
@@ -195,7 +202,19 @@
                         Marcar ausente
                       </button>
                     }
-                    @if (!pasoDe(reserva) && !puedeMarcarAusente(reserva)) {
+                    @if (puedeCalificarConductor(reserva)) {
+                      <button
+                        type="button"
+                        class="ml-1.5 inline-flex items-center gap-1 rounded-boton px-3 py-1.5 text-[12px] font-semibold
+                               whitespace-nowrap text-acento transition-colors duration-160 hover:bg-acento-suave"
+                        (click)="pedirCalificacion(reserva)"
+                      >
+                        <span aria-hidden="true">★</span>Calificar conductor
+                      </button>
+                    } @else if (reserva.calificacion.propietarioCalifico) {
+                      <span class="text-[12px] text-plomo">Calificado</span>
+                    }
+                    @if (!pasoDe(reserva) && !puedeMarcarAusente(reserva) && !puedeCalificarConductor(reserva) && !reserva.calificacion.propietarioCalifico) {
                       @if (avanzaConCodigo(reserva)) {
                         <span class="text-[12px] text-plomo">Con el código</span>
                       } @else {
@@ -231,6 +250,13 @@
                       · {{ reserva.cochera.identificador }}
                     }
                   </p>
+                  @if (reserva.estado === 'PENDIENTE') {
+                    <app-reputacion
+                      class="mt-0.5 flex"
+                      [reputacion]="reserva.reputacionConductor"
+                      sinDatos="Sin calificaciones"
+                    />
+                  }
                 </div>
                 <ui-etiqueta [tono]="tonoEstado(reserva)">
                   {{ etiquetaEstado(reserva) }}
@@ -269,6 +295,17 @@
                     Marcar ausente
                   </button>
                 }
+                @if (puedeCalificarConductor(reserva)) {
+                  <button
+                    type="button"
+                    class="inline-flex items-center gap-1 rounded-boton px-3 py-1.5 text-[12px] font-semibold text-acento"
+                    (click)="pedirCalificacion(reserva)"
+                  >
+                    <span aria-hidden="true">★</span>Calificar conductor
+                  </button>
+                } @else if (reserva.calificacion.propietarioCalifico) {
+                  <span class="text-[12px] text-plomo">Calificado</span>
+                }
                 @if (!pasoDe(reserva) && !puedeMarcarAusente(reserva) && avanzaConCodigo(reserva)) {
                   <span class="text-[12px] text-plomo">Con el código</span>
                 }
@@ -282,6 +319,13 @@
     }
   </div>
 </div>
+
+<app-calificar
+  titulo="Calificá al conductor"
+  [objeto]="aCalificar()"
+  (cerrado)="aCalificar.set(null)"
+  (calificado)="calificado()"
+/>
 
 <ui-modal titulo="Marcar ausente" [abierto]="aMarcarAusente() !== null" (cerrado)="aMarcarAusente.set(null)">
   @if (aMarcarAusente(); as reserva) {

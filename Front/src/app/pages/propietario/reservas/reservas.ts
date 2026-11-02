@@ -28,9 +28,11 @@ import {
   puedeAvanzar,
   puedeMarcarAusente,
 } from '@app/services/ciclo-reserva';
+import { Calificar, ObjetoCalificacion, Reputacion } from '@app/components/calificacion';
 import { AuthService } from '@app/services/auth.service';
 import { EstacionamientoService } from '@app/services/estacionamiento.service';
 import { ReservaService } from '@app/services/reserva.service';
+import { puedeCalificar } from '@app/utils/calificacion.util';
 import { desdeFechaISO } from '@app/utils/fecha.util';
 
 /**
@@ -77,7 +79,7 @@ const sinAcentos = (texto: string) =>
 @Component({
   selector: 'app-reservas',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, Tarjeta, Cargando, EstadoVacio, Etiqueta, Icono, Boton, Modal],
+  imports: [DatePipe, Tarjeta, Cargando, EstadoVacio, Etiqueta, Icono, Boton, Modal, Calificar, Reputacion],
   templateUrl: './reservas.html',
 })
 export class Reservas {
@@ -223,5 +225,25 @@ export class Reservas {
         this.error.set(e.message);
       },
     });
+  }
+
+  /* ------------------------- calificar al conductor ------------------------- */
+
+  /** Reserva cuyo conductor se esta calificando: mientras no sea null, el modal esta abierto. */
+  protected readonly aCalificar = signal<ObjetoCalificacion | null>(null);
+  /** Finalizada o ausente, sin calificar todavia y dentro de los 14 dias. */
+  protected readonly puedeCalificarConductor = (reserva: ReservaDetallada) => puedeCalificar(reserva, 'PROPIETARIO');
+
+  protected pedirCalificacion(reserva: ReservaDetallada): void {
+    this.aCalificar.set({
+      idReserva: reserva.id,
+      descripcion: `${this.vehiculo(reserva)} (${reserva.vehiculo.patente}) · ${reserva.fecha.split('-').reverse().join('/')} ${reserva.horaDesde}`,
+    });
+  }
+
+  protected calificado(): void {
+    this.aCalificar.set(null);
+    this.aviso.set('Calificación registrada.');
+    this.recurso.reload();
   }
 }

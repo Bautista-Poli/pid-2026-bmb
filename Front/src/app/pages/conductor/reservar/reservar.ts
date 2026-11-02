@@ -59,6 +59,7 @@ import { aFechaISO, desdeFechaISO, diaSemanaDe } from '@app/utils/fecha.util';
     EstadoVacio,
   ],
   templateUrl: './reservar.html',
+  styleUrl: './reservar.css',
 })
 export class Reservar {
   private readonly estacionamientos = inject(EstacionamientoService);

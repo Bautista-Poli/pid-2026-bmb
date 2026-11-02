@@ -53,6 +53,7 @@ const TRAMOS_RESERVAS = [
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [BarrasDia, Boton, Cargando, EstadoVacio, RouterLink, SelectorPeriodo, Tarjeta, TarjetaMetrica],
   templateUrl: './tablero.html',
+  styleUrl: './tablero.css',
 })
 export class Tablero {
   private readonly admin = inject(AdminService);

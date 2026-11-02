@@ -1,0 +1,448 @@
+/* Ancho amplio: el tablero junta columnas de cifras, tablas y rankings. */
+.vista-tablero {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 1240px;
+  padding: 1.25rem 1.25rem 2rem;
+}
+
+@media (min-width: 1024px) {
+  .vista-tablero {
+    padding: 2rem 2.25rem 2.75rem;
+  }
+}
+
+.titulo-tablero {
+  margin-top: 0.375rem;
+}
+
+.subtitulo-tablero {
+  margin-top: 0.25rem;
+  font-size: 13.5px;
+  color: var(--color-plomo);
+}
+
+.esqueletos-tablero {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+@media (min-width: 1024px) {
+  .esqueletos-tablero {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.esqueleto-tarjeta {
+  height: 220px;
+  border-radius: var(--radius-tarjeta);
+}
+
+.contenido-estado {
+  margin-top: 1.25rem;
+}
+
+.estado-tablero {
+  margin-top: 1.5rem;
+}
+
+.nota {
+  font-size: 13px;
+  color: var(--color-plomo);
+}
+
+.nota-pequena {
+  font-size: 12.5px;
+  color: var(--color-plomo);
+}
+
+/* Bloque "Para revisar": lo que espera una decision, arriba de todo. */
+.seccion-revisar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.tarjetas-revisar {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 1024px) {
+  .tarjetas-revisar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.cuerpo-tarjeta {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.cuerpo-tarjeta--compacto {
+  gap: 0.75rem;
+}
+
+.encabezado-indicador {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.indicador-valor {
+  margin-top: 0.125rem;
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--color-tinta);
+}
+
+.indicador-alerta {
+  font-size: 12.5px;
+  color: var(--color-baja);
+}
+
+.enlace-ver-todos {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-acento);
+}
+
+.enlace-secundario {
+  font-size: 12.5px;
+  color: var(--color-plomo);
+}
+
+.enlace-secundario:hover {
+  color: var(--color-acento);
+}
+
+/* Estado vacio de una lista: centrado, con la altura que pide cada tarjeta. */
+.vacio {
+  padding-block: 1rem;
+  text-align: center;
+  font-size: 13px;
+  color: var(--color-plomo);
+}
+
+.vacio--amplio {
+  padding-block: 1.5rem;
+}
+
+.vacio--alto {
+  padding-block: 2rem;
+}
+
+/* Listas con separador entre filas, sin borde al final. */
+.lista-divisoria {
+  display: flex;
+  flex-direction: column;
+}
+
+.lista-divisoria > :not(:last-child) {
+  border-bottom: 1px solid var(--color-borde-sutil);
+}
+
+.fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-block: 0.625rem;
+}
+
+.fila--interactiva:hover {
+  color: var(--color-acento);
+}
+
+.fila-texto {
+  min-width: 0;
+}
+
+.fila-titulo {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--color-tinta);
+}
+
+.fila-subtitulo {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--color-plomo);
+}
+
+.fila-hora {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--color-humo);
+}
+
+.titulo-tarjeta {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-tinta);
+}
+
+.subtitulo-tarjeta {
+  margin-top: 0.125rem;
+  font-size: 12px;
+  color: var(--color-plomo);
+}
+
+/* Barra de periodo: columna en mobile, fila desde 640px. */
+.barra-periodo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 2rem;
+}
+
+@media (min-width: 640px) {
+  .barra-periodo {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.titulo-periodo {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--color-tinta);
+}
+
+.error-periodo {
+  margin-top: 0.75rem;
+  font-size: 13px;
+  color: var(--color-ocupada);
+}
+
+.reintentar-periodo {
+  margin-left: 0.25rem;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.cuerpo-tablero {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-top: 1rem;
+}
+
+@media (min-width: 1024px) {
+  .cuerpo-tablero {
+    gap: 1.5rem;
+  }
+}
+
+.cuerpo-tablero--cargando {
+  opacity: 0.6;
+}
+
+.grilla-conflictos {
+  display: grid;
+  gap: 1.25rem;
+}
+
+@media (min-width: 1024px) {
+  .grilla-conflictos {
+    gap: 1.5rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .grilla-conflictos {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  }
+}
+
+.bloqueos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  font-size: 13px;
+}
+
+.bloqueo-etiqueta {
+  color: var(--color-plomo);
+}
+
+.bloqueo-valor {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--color-tinta);
+}
+
+.tabla-desplazable {
+  overflow-x: auto;
+}
+
+.tabla-bloqueos {
+  width: 100%;
+  font-size: 12.5px;
+}
+
+.cabecera-tabla {
+  text-align: left;
+  color: var(--color-plomo);
+}
+
+.tabla-th {
+  padding-block: 0.375rem;
+  font-weight: 500;
+}
+
+.tabla-th--nombre {
+  padding-right: 0.5rem;
+}
+
+.tabla-th--numero {
+  padding-inline: 0.375rem;
+  text-align: right;
+}
+
+/* La ultima columna numerica cierra la fila: sin padding a la derecha. */
+.tabla-th--ultima {
+  padding-right: 0;
+}
+
+.fila-tabla {
+  border-top: 1px solid var(--color-borde-sutil);
+  color: var(--color-tinta);
+}
+
+.celda-nombre {
+  max-width: 180px;
+  overflow: hidden;
+  padding: 0.375rem 0.5rem 0.375rem 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.celda-numero {
+  padding: 0.375rem;
+  text-align: right;
+}
+
+.celda-numero--ultima {
+  padding-right: 0;
+}
+
+.fila-problema {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-block: 0.625rem;
+}
+
+.detalle-problema {
+  font-size: 12px;
+  color: var(--color-plomo);
+}
+
+.razones {
+  display: flex;
+  gap: 0.375rem;
+}
+
+.razon {
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  background: color-mix(in oklab, var(--color-ocupada) 10%, transparent);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--color-ocupada);
+}
+
+.metricas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 1rem;
+}
+
+.leyenda-tramos {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 1rem;
+  row-gap: 0.375rem;
+  font-size: 12px;
+  color: var(--color-plomo);
+}
+
+.tramo {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.tramo__color {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 3px;
+}
+
+.grilla-rankings {
+  display: grid;
+  gap: 1.25rem;
+}
+
+@media (min-width: 1024px) {
+  .grilla-rankings {
+    gap: 1.5rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.fila-ranking {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-block: 0.5rem;
+  font-size: 13px;
+}
+
+.fila-ranking__puesto {
+  width: 1rem;
+  color: var(--color-humo);
+}
+
+.fila-ranking__nombre {
+  flex: 1 1 0%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-tinta);
+}
+
+.fila-ranking__valor {
+  font-weight: 600;
+  color: var(--color-tinta);
+}
+
+/* Solo para lectores de pantalla: visible en el arbol de accesibilidad, no en pantalla. */
+.solo-lector {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

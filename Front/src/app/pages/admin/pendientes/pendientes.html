@@ -1,0 +1,57 @@
+<div class="aparece pagina-revision">
+  <div class="contenido-revision">
+    <header>
+      <p class="eyebrow">Administración</p>
+      <h1 class="titulo-vista cabecera-revision__titulo">Revisión de estacionamientos</h1>
+      <p class="cabecera-revision__descripcion">
+        Un estacionamiento aparece en la búsqueda recién cuando lo aprobás.
+      </p>
+    </header>
+
+    <div class="filtros-estado">
+      @for (filtro of filtros; track filtro.estado) {
+        <ui-chip [activo]="filtro.estado === estado()" (alternar)="elegir(filtro.estado)">
+          {{ filtro.etiqueta }}
+        </ui-chip>
+      }
+    </div>
+
+    @if (recurso.isLoading()) {
+      <ui-cargando [cantidad]="3" />
+    } @else if (recurso.error(); as e) {
+      <ui-estado-vacio titulo="No pudimos cargar la cola" [descripcion]="e.message">
+        <ui-boton (presionado)="recurso.reload()">Reintentar</ui-boton>
+      </ui-estado-vacio>
+    } @else if (recurso.value().length === 0) {
+      <ui-estado-vacio [titulo]="filtroActual().vacio" />
+    } @else {
+      <ul class="aparece-en-cadena lista-revision">
+        @for (estacionamiento of recurso.value(); track estacionamiento.id) {
+          <li>
+            <a class="tarjeta-revision" [routerLink]="['/admin/estacionamientos', estacionamiento.id]">
+              <ui-tarjeta>
+                <div class="fila-revision">
+                  <ui-miniatura [src]="estacionamiento.fotoUrl" icono="estacionamiento" tamano="sm" />
+                  <div class="fila-revision__texto">
+                    <p class="fila-revision__nombre">{{ estacionamiento.nombre }}</p>
+                    <p class="fila-revision__direccion">
+                      {{ estacionamiento.direccion.calle }} {{ estacionamiento.direccion.numero }},
+                      {{ estacionamiento.direccion.ciudad }}
+                    </p>
+                    <p class="fila-revision__propietario">
+                      {{ estacionamiento.propietario.nombre }} {{ estacionamiento.propietario.apellido }} ·
+                      {{ estacionamiento.propietario.email }}
+                    </p>
+                  </div>
+                  <p class="num-tabular fila-revision__envio">
+                    Enviado<br />{{ estacionamiento.enviadoEn | date: 'd MMM, HH:mm' }}
+                  </p>
+                </div>
+              </ui-tarjeta>
+            </a>
+          </li>
+        }
+      </ul>
+    }
+  </div>
+</div>

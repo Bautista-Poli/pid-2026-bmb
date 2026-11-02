@@ -1,15 +1,12 @@
-<div class="aparece mx-auto w-full max-w-[560px] px-6 pt-5 pb-8 lg:px-10 lg:pt-[34px] lg:pb-11">
-  <div class="flex flex-col gap-6">
+<div class="aparece pagina-editar">
+  <div class="contenido-editar">
     <header>
-      <a
-        class="inline-flex items-center gap-1.5 rounded-boton text-[12px] font-medium
-               text-plomo transition-colors duration-160 ease-out hover:text-acento"
-        routerLink="/conductor/vehiculos"
+      <a class="enlace-volver" routerLink="/conductor/vehiculos"
       >
         ← Volver a mis vehículos
       </a>
-      <p class="eyebrow mt-3">Conductor</p>
-      <h1 class="titulo-vista mt-1.5">Editar vehículo</h1>
+      <p class="eyebrow cabecera-editar__eyebrow">Conductor</p>
+      <h1 class="titulo-vista cabecera-editar__titulo">Editar vehículo</h1>
     </header>
 
     @if (recurso.isLoading()) {
@@ -19,13 +16,13 @@
         <ui-boton (presionado)="recurso.reload()">Reintentar</ui-boton>
       </ui-estado-vacio>
     } @else if (recurso.value(); as vehiculo) {
-      <div class="flex items-center gap-4">
+      <div class="vehiculo-resumen">
         <app-foto-vehiculo [vehiculo]="vehiculo" tamano="lg" />
-        <div class="min-w-0">
-          <p class="num-tabular truncate text-[15px] font-semibold text-tinta">
+        <div class="vehiculo-resumen__texto">
+          <p class="num-tabular vehiculo-resumen__patente">
             {{ vehiculo.patente }}
           </p>
-          <p class="mt-0.5 truncate text-[13px] text-plomo">{{ descripcion(vehiculo) }}</p>
+          <p class="vehiculo-resumen__descripcion">{{ descripcion(vehiculo) }}</p>
         </div>
       </div>
 
@@ -39,21 +36,20 @@
           (fotoElegida)="elegirFoto($event)"
         />
         @if (progresoFoto() !== null) {
-          <p class="mt-3 text-[12.5px] text-plomo num-tabular" role="status">Subiendo la foto… {{ progresoFoto() }}%</p>
+          <p class="progreso-foto num-tabular" role="status">Subiendo la foto… {{ progresoFoto() }}%</p>
         }
 
       </ui-tarjeta>
 
       <section
-        class="flex flex-col gap-3 rounded-tarjeta border border-ocupada/20 bg-ocupada/[0.03]
-               px-5 py-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6"
+        class="zona-peligro"
         aria-labelledby="titulo-eliminar"
       >
         <div>
-          <h2 id="titulo-eliminar" class="text-[14px] font-semibold text-tinta">
+          <h2 id="titulo-eliminar" class="zona-peligro__titulo">
             Eliminar vehículo
           </h2>
-          <p class="mt-0.5 text-[13px] text-plomo">
+          <p class="zona-peligro__texto">
             Dejará de aparecer en tus vehículos y no se podrá usar en nuevas reservas.
           </p>
         </div>

@@ -5,18 +5,15 @@
   (scrollea sola) y el mapa ocupando el resto. El wrapper de la izquierda es
   `contents` en mobile para que sus dos partes puedan ubicarse arriba y abajo del mapa.
 -->
-<div
-  class="flex min-h-0 flex-1 flex-col lg:grid lg:grid-cols-[minmax(380px,460px)_1fr]
-         lg:grid-rows-[minmax(0,1fr)]"
->
-  <div class="contents lg:flex lg:min-h-0 lg:flex-col lg:border-r lg:border-borde lg:bg-papel">
+<div class="mapa-vista">
+  <div class="mapa-columna">
     <!-- ============================ Buscador y vehiculo ============================ -->
     <!-- z-[900]: las sugerencias del buscador tienen que quedar sobre el mapa
          (Leaflet usa z-index de 400 a 800). -->
-    <section class="relative z-[900] order-1 flex shrink-0 flex-col gap-3 px-5 pt-4 pb-4 lg:px-6 lg:pt-6">
-      <div class="flex items-center gap-2">
+    <section class="panel-buscador">
+      <div class="panel-buscador__fila">
         <!-- Enter sin elegir sugerencia filtra por nombre o zona (un solo campo: el form se envia solo). -->
-        <form class="min-w-0 flex-1" role="search" (submit)="$event.preventDefault(); buscarTexto()">
+        <form class="panel-buscador__formulario" role="search" (submit)="$event.preventDefault(); buscarTexto()">
           <ui-campo-busqueda
             etiqueta="Buscar por dirección, lugar o zona"
             marcador="Buscar por dirección, lugar o zona..."
@@ -29,8 +26,7 @@
         </form>
         <button
           type="button"
-          class="grid size-[46px] shrink-0 place-items-center rounded-control border border-borde bg-papel
-                 text-acento shadow-tarjeta hover:border-acento-borde"
+          class="boton-ubicacion"
           aria-label="Usar mi ubicación"
           title="Usar mi ubicación"
           (click)="usarMiUbicacion()"
@@ -39,75 +35,56 @@
         </button>
       </div>
 
-      <div class="flex items-center gap-2">
+      <div class="panel-buscador__fila">
         <!-- Vehiculo: se muestran los estacionamientos aptos para su tipo. -->
         @if (vehiculoActual(); as vehiculo) {
-          <div
-            class="flex h-[46px] min-w-0 flex-1 items-center justify-between gap-1 rounded-control border
-                   border-borde bg-papel px-1.5 shadow-tarjeta"
-            role="group"
-            aria-label="Vehículo"
-          >
+          <div class="selector-vehiculo" role="group" aria-label="Vehículo">
             <button
               type="button"
-              class="rounded-full p-1 text-plomo transition-colors duration-160 ease-out
-                     enabled:hover:bg-acento-suave enabled:hover:text-acento-fuerte
-                     disabled:pointer-events-none disabled:opacity-35"
+              class="selector-vehiculo__boton"
               [disabled]="vehiculosDelConductor.value().length < 2"
               aria-label="Vehículo anterior"
               (click)="vehiculoAnterior()"
             >
-              <ui-icono nombre="cheuron" [tamano]="18" class="rotate-90" />
+              <ui-icono nombre="cheuron" [tamano]="18" class="selector-vehiculo__flecha-anterior" />
             </button>
 
-            <span class="flex min-w-0 items-center gap-2 px-1" aria-live="polite">
-              <ui-icono [nombre]="iconoTipo[vehiculo.tipo]" [tamano]="18" class="shrink-0 text-acento" />
-              <span class="flex min-w-0 flex-col leading-tight">
-                <span class="num-tabular truncate text-[13.5px] font-semibold text-tinta">{{ vehiculo.patente }}</span>
-                <span class="truncate text-[11.5px] text-plomo">{{ descripcion(vehiculo) }}</span>
+            <span class="selector-vehiculo__info" aria-live="polite">
+              <ui-icono [nombre]="iconoTipo[vehiculo.tipo]" [tamano]="18" class="selector-vehiculo__icono" />
+              <span class="selector-vehiculo__texto">
+                <span class="num-tabular selector-vehiculo__patente">{{ vehiculo.patente }}</span>
+                <span class="selector-vehiculo__descripcion">{{ descripcion(vehiculo) }}</span>
               </span>
             </span>
 
             <button
               type="button"
-              class="rounded-full p-1 text-plomo transition-colors duration-160 ease-out
-                     enabled:hover:bg-acento-suave enabled:hover:text-acento-fuerte
-                     disabled:pointer-events-none disabled:opacity-35"
+              class="selector-vehiculo__boton"
               [disabled]="vehiculosDelConductor.value().length < 2"
               aria-label="Vehículo siguiente"
               (click)="vehiculoSiguiente()"
             >
-              <ui-icono nombre="cheuron" [tamano]="18" class="-rotate-90" />
+              <ui-icono nombre="cheuron" [tamano]="18" class="selector-vehiculo__flecha-siguiente" />
             </button>
           </div>
         } @else {
-          <a
-            routerLink="/conductor/vehiculos/nuevo"
-            class="flex h-[46px] min-w-0 flex-1 items-center justify-center gap-2 rounded-control border
-                   border-dashed border-borde bg-papel px-3 text-[13px] font-medium text-plomo
-                   hover:border-acento-borde hover:text-acento-fuerte"
-          >
+          <a routerLink="/conductor/vehiculos/nuevo" class="enlace-agregar-vehiculo">
             <ui-icono nombre="auto" [tamano]="18" />
-            <span class="truncate">Agregá tu vehículo</span>
+            <span class="enlace-agregar-vehiculo__texto">Agregá tu vehículo</span>
           </a>
         }
 
         <button
           type="button"
-          class="flex h-[46px] shrink-0 items-center gap-2 rounded-control border px-4 text-[13.5px]
-                 font-semibold transition-colors duration-160"
-          [class]="
-            filtrosActivos() > 0
-              ? 'border-acento bg-acento text-sobre-acento shadow-elevada'
-              : 'border-borde bg-papel text-grafito shadow-tarjeta hover:border-acento-borde'
-          "
+          class="boton-filtros"
+          [class.boton-filtros--activo]="filtrosActivos() > 0"
           aria-haspopup="dialog"
           (click)="abrirFiltros()"
         >
           <ui-icono nombre="filtros" [tamano]="18" />
           Filtrar
           @if (filtrosActivos() > 0) {
-            <span class="num-tabular grid size-5 place-items-center rounded-full bg-sobre-acento text-[11px] text-acento">
+            <span class="num-tabular boton-filtros__contador">
               {{ filtrosActivos() }}
             </span>
           }
@@ -115,9 +92,9 @@
       </div>
 
       @if (sinOrigen()) {
-        <p class="text-[12.5px] leading-normal text-plomo">
-          <span class="lg:hidden">Activá tu ubicación o buscá una dirección para ver distancias.</span>
-          <span class="hidden lg:inline">
+        <p class="panel-buscador__aviso">
+          <span class="panel-buscador__aviso-corto">Activá tu ubicación o buscá una dirección para ver distancias.</span>
+          <span class="panel-buscador__aviso-largo">
             Activá la ubicación del navegador, o buscá la dirección a la que vas, para ver a qué distancia
             está cada estacionamiento.
           </span>
@@ -126,32 +103,22 @@
     </section>
 
     <!-- ================================ Resultados ================================ -->
-    <section
-      #lista
-      class="order-3 flex max-h-[32%] shrink-0 flex-col gap-3 overflow-y-auto rounded-t-[20px] bg-papel
-             px-4 pt-2.5 pb-4 shadow-flotante lg:gap-4 lg:pb-6 lg:max-h-none lg:min-h-0 lg:flex-1 lg:rounded-none lg:border-t
-             lg:border-borde-sutil lg:px-6 lg:pt-5 lg:shadow-none"
-      aria-labelledby="titulo-resultados"
-    >
-      <span class="mx-auto h-1 w-10 rounded-full bg-borde lg:hidden" aria-hidden="true"></span>
+    <section #lista class="panel-resultados" aria-labelledby="titulo-resultados">
+      <span class="panel-resultados__agarre" aria-hidden="true"></span>
 
-      <div class="flex items-end justify-between gap-3">
+      <div class="panel-resultados__cabecera">
         <div>
-          <h2 id="titulo-resultados" class="text-[16px] font-semibold text-tinta">
+          <h2 id="titulo-resultados" class="panel-resultados__titulo">
             {{ destino() ? 'Cerca de tu destino' : 'Estacionamientos cercanos' }}
           </h2>
-          <p class="mt-0.5 text-[12.5px] text-plomo">
+          <p class="panel-resultados__contador">
             {{ resultados().length }} {{ resultados().length === 1 ? 'estacionamiento' : 'estacionamientos' }}
             {{ buscandoPorNombre() ? (resultados().length === 1 ? 'encontrado' : 'encontrados') : 'en esta zona del mapa' }}
           </p>
         </div>
-        <label class="flex flex-col gap-1 text-[11.5px] text-plomo">
+        <label class="panel-resultados__orden">
           Ordenar por
-          <select
-            class="rounded-boton border border-borde bg-papel px-2.5 py-1.5 text-[12.5px] font-medium text-tinta"
-            [value]="orden()"
-            (change)="ordenar($any($event.target).value)"
-          >
+          <select class="panel-resultados__select" [value]="orden()" (change)="ordenar($any($event.target).value)">
             <option value="DISTANCIA">Más cercano</option>
             <option value="PRECIO">Más barato</option>
           </select>
@@ -162,7 +129,7 @@
         <ui-cargando [cantidad]="3" />
       } @else if (recurso.error(); as error) {
         <ui-estado-vacio titulo="No pudimos cargar los estacionamientos" [descripcion]="error.message">
-          <button type="button" class="text-[13px] font-semibold text-acento" (click)="recurso.reload()">
+          <button type="button" class="panel-resultados__reintentar" (click)="recurso.reload()">
             Reintentar
           </button>
         </ui-estado-vacio>
@@ -176,90 +143,79 @@
           "
         />
       } @else {
-        <ul class="aparece-en-cadena flex flex-col gap-2 lg:gap-2.5">
+        <ul class="panel-resultados__lista aparece-en-cadena">
           @for (estacionamiento of resultadosPagina(); track estacionamiento.id) {
             <li [id]="'estacionamiento-' + estacionamiento.id">
               <button
                 type="button"
-                class="flex w-full items-center gap-3 rounded-tarjeta border bg-papel p-2.5 text-left lg:gap-3.5 lg:p-3.5
-                       shadow-tarjeta transition-[border-color,box-shadow] duration-160 hover:shadow-elevada"
-                [class.border-acento]="seleccionadoId() === estacionamiento.id"
-                [class.border-borde]="seleccionadoId() !== estacionamiento.id"
-                [class.opacity-60]="estado(estacionamiento) === 'NO_DISPONIBLE'"
+                class="resultado"
+                [class.resultado--seleccionado]="seleccionadoId() === estacionamiento.id"
+                [class.resultado--no-disponible]="estado(estacionamiento) === 'NO_DISPONIBLE'"
                 (mouseenter)="seleccionadoId.set(estacionamiento.id)"
                 (focus)="seleccionadoId.set(estacionamiento.id)"
                 (click)="abrir(estacionamiento)"
               >
                 @if (estacionamiento.fotoUrl; as foto) {
-                  <img [src]="foto" alt="" loading="lazy" class="size-10 shrink-0 rounded-full object-cover lg:size-12" />
+                  <img [src]="foto" alt="" loading="lazy" class="resultado__avatar" />
                 } @else {
-                  <span
-                    class="grid size-10 shrink-0 place-items-center rounded-full bg-acento text-[17px] font-bold lg:size-12 lg:text-[20px]
-                           text-sobre-acento"
-                    aria-hidden="true"
-                    >P</span
-                  >
+                  <span class="resultado__avatar resultado__avatar--inicial" aria-hidden="true">P</span>
                 }
 
-                <span class="min-w-0 flex-1">
-                  <span class="block truncate text-[14px] font-semibold text-tinta lg:text-[14.5px]">{{ estacionamiento.nombre }}</span>
-                  <span class="mt-0.5 block truncate text-[12.5px] text-plomo">
+                <span class="resultado__cuerpo">
+                  <span class="resultado__nombre">{{ estacionamiento.nombre }}</span>
+                  <span class="resultado__direccion">
                     {{ estacionamiento.direccion.calle }} {{ estacionamiento.direccion.numero }}
                   </span>
                   @if (distancia(estacionamiento); as texto) {
-                    <span class="mt-1 flex items-center gap-1 text-[12.5px] text-grafito">
-                      <ui-icono nombre="explorar" [tamano]="14" class="text-plomo" />
+                    <span class="resultado__distancia">
+                      <ui-icono nombre="explorar" [tamano]="14" class="resultado__distancia-icono" />
                       {{ texto }}
                     </span>
                   }
                 </span>
 
-                <span class="flex shrink-0 flex-col items-end gap-1.5">
-                  <span class="num-tabular text-[14.5px] font-bold text-tinta">{{ precio(estacionamiento) }}</span>
-                  <span
-                    class="rounded-full px-2.5 py-0.5 text-[11.5px] font-semibold"
-                    [class]="claseEstado[estado(estacionamiento)]"
+                <span class="resultado__columna">
+                  <span class="num-tabular resultado__precio">{{ precio(estacionamiento) }}</span>
+                  <span class="resultado__estado" [class]="claseEstado[estado(estacionamiento)]"
                     >{{ etiquetaEstado[estado(estacionamiento)] }}</span
                   >
-                  <span class="num-tabular text-[11.5px] text-plomo">{{ horario(estacionamiento) }}</span>
+                  <span class="num-tabular resultado__horario">{{ horario(estacionamiento) }}</span>
                 </span>
 
-                <ui-icono nombre="cheuron" [tamano]="18" class="-rotate-90 text-humo" />
+                <ui-icono nombre="cheuron" [tamano]="18" class="resultado__flecha" />
               </button>
             </li>
           }
         </ul>
 
         @if (hayMasEnLaZona()) {
-          <p class="text-center text-[12.5px] text-plomo">
+          <p class="panel-resultados__aviso">
             Hay muchos estacionamientos en esta zona: acercá el mapa para ver todos.
           </p>
         }
 
         @if (totalPaginas() > 1) {
-          <nav class="flex items-center justify-between gap-3" aria-label="Páginas de resultados">
+          <nav class="paginacion" aria-label="Páginas de resultados">
             <button
               type="button"
-              class="flex items-center gap-1 rounded-boton border border-borde px-3 py-1.5 text-[12.5px]
-                     font-semibold text-tinta disabled:opacity-40"
+              class="paginacion__boton"
               [disabled]="pagina() === 0"
               (click)="irAPagina(pagina() - 1)"
             >
-              <ui-icono nombre="cheuron" [tamano]="16" class="rotate-90" />
+              <ui-icono nombre="cheuron" [tamano]="16" class="paginacion__flecha-anterior" />
               Anterior
             </button>
-            <span class="num-tabular text-[12.5px] text-plomo">
+            <span class="num-tabular paginacion__estado">
               Página {{ pagina() + 1 }} de {{ totalPaginas() }}
             </span>
             <button
               type="button"
-              class="flex items-center gap-1 rounded-boton border border-borde px-3 py-1.5 text-[12.5px]
-                     font-semibold text-tinta disabled:opacity-40"
+              class="paginacion__boton"
               [disabled]="pagina() === totalPaginas() - 1"
               (click)="irAPagina(pagina() + 1)"
             >
               Siguiente
-              <ui-icono nombre="cheuron" [tamano]="16" class="-rotate-90" />
+              <ui-icono nombre="cheuron" [tamano]="16" class="paginacion__flecha-siguiente" />
             </button>
           </nav>
         }
@@ -269,9 +225,9 @@
   </div>
 
   <!-- =================================== Mapa =================================== -->
-  <div class="relative order-2 min-h-[200px] flex-1 lg:h-full">
+  <div class="mapa-contenedor">
     <app-mapa-estacionamientos
-      class="size-full"
+      class="mapa-contenedor__mapa"
       [estacionamientos]="resultados()"
       [ubicacion]="ubicacionActual()"
       [destino]="destino()?.coordenadas ?? null"
@@ -286,15 +242,9 @@
 
     <!-- Ficha del elegido: tarjeta sobre el mapa en desktop, hoja desde abajo en mobile -->
     @if (abierto(); as elegido) {
-      <button
-        type="button"
-        class="fixed inset-0 z-[1050] bg-tinta/30 lg:hidden"
-        aria-label="Cerrar"
-        (click)="cerrarDetalle()"
-      ></button>
+      <button type="button" class="mapa-velo" aria-label="Cerrar" (click)="cerrarDetalle()"></button>
       <app-detalle-estacionamiento
-        class="fixed inset-x-0 bottom-0 z-[1100] max-h-[85dvh]
-               lg:absolute lg:inset-x-auto lg:top-4 lg:right-4 lg:bottom-4 lg:max-h-none lg:w-[360px]"
+        class="mapa-detalle"
         [estacionamiento]="elegido"
         [cuando]="cuando()"
         (cerrar)="cerrarDetalle()"
@@ -306,37 +256,29 @@
 
 <!-- ================================== Filtros ================================== -->
 <ui-modal titulo="Filtrar" [abierto]="filtrosAbiertos()" (cerrado)="filtrosAbiertos.set(false)">
-  <form class="flex flex-col gap-5" (submit)="$event.preventDefault(); aplicarFiltros()" novalidate>
+  <form class="filtros__formulario" (submit)="$event.preventDefault(); aplicarFiltros()" novalidate>
     <!-- Fecha y horario -->
-    <div class="grid grid-cols-2 gap-2">
-      <label
-        class="flex items-center gap-3 rounded-control border border-borde bg-papel px-3.5 py-2.5
-               focus-within:border-acento"
-      >
-        <ui-icono nombre="calendario" [tamano]="19" class="text-plomo" />
-        <span class="flex min-w-0 flex-col">
-          <span class="text-[11.5px] text-plomo">Fecha</span>
+    <div class="filtros__fecha-hora">
+      <label class="filtros__campo">
+        <ui-icono nombre="calendario" [tamano]="19" class="filtros__campo-icono" />
+        <span class="filtros__campo-texto">
+          <span class="filtros__campo-etiqueta">Fecha</span>
           <input
             type="date"
-            class="num-tabular w-full border-0 bg-transparent p-0 text-[13px] font-medium text-tinta
-                   focus:outline-none"
+            class="num-tabular filtros__campo-input"
             [min]="hoy"
             [value]="panel().fecha"
             (input)="cambiar({ fecha: $any($event.target).value })"
           />
         </span>
       </label>
-      <label
-        class="flex items-center gap-3 rounded-control border border-borde bg-papel px-3.5 py-2.5
-               focus-within:border-acento"
-      >
-        <ui-icono nombre="reloj" [tamano]="19" class="text-plomo" />
-        <span class="flex min-w-0 flex-col">
-          <span class="text-[11.5px] text-plomo">Inicio <span class="text-humo">(vacío: ahora)</span></span>
+      <label class="filtros__campo">
+        <ui-icono nombre="reloj" [tamano]="19" class="filtros__campo-icono" />
+        <span class="filtros__campo-texto">
+          <span class="filtros__campo-etiqueta">Inicio <span class="filtros__campo-nota">(vacío: ahora)</span></span>
           <input
             type="time"
-            class="num-tabular w-full border-0 bg-transparent p-0 text-[13px] font-medium text-tinta
-                   focus:outline-none"
+            class="num-tabular filtros__campo-input"
             [value]="panel().desde"
             (input)="cambiar({ desde: $any($event.target).value })"
           />
@@ -346,29 +288,29 @@
 
     <!-- Horas a reservar: solo con hora de inicio -->
     @if (panel().desde) {
-      <div class="-mt-2 flex items-center justify-between gap-3">
-        <span class="flex flex-col">
-          <span class="text-[13.5px] font-semibold text-tinta">Horas a reservar</span>
+      <div class="filtros__horas">
+        <span class="filtros__horas-texto">
+          <span class="filtros__horas-titulo">Horas a reservar</span>
           @if (textoFin(); as fin) {
-            <span class="num-tabular text-[12px] text-plomo">{{ fin }}</span>
+            <span class="num-tabular filtros__horas-fin">{{ fin }}</span>
           }
         </span>
-        <div class="flex items-center gap-3">
+        <div class="filtros__horas-controles">
           <button
             type="button"
-            class="grid size-9 place-items-center rounded-full border border-borde text-tinta disabled:opacity-40"
+            class="filtros__paso"
             aria-label="Menos horas"
             [disabled]="panel().horas <= 1"
             (click)="cambiarHoras(-1)"
           >
             <ui-icono nombre="menos" [tamano]="16" />
           </button>
-          <span class="num-tabular min-w-10 text-center text-[14px] font-semibold text-tinta" aria-live="polite">
+          <span class="num-tabular filtros__horas-valor" aria-live="polite">
             {{ panel().horas }} h
           </span>
           <button
             type="button"
-            class="grid size-9 place-items-center rounded-full border border-borde text-tinta disabled:opacity-40"
+            class="filtros__paso"
             aria-label="Más horas"
             [disabled]="panel().horas >= horasMaximas"
             (click)="cambiarHoras(1)"
@@ -379,14 +321,14 @@
       </div>
     }
     @if (intentoBuscar() && errorHorario(); as mensaje) {
-      <p class="campo-error -mt-3" role="alert">{{ mensaje }}</p>
+      <p class="campo-error filtros__error" role="alert">{{ mensaje }}</p>
     }
 
     <!-- Rango de precios -->
-    <div class="flex flex-col gap-3">
-      <div class="flex items-baseline justify-between">
-        <span class="text-[13.5px] font-semibold text-tinta">Rango de precios <span class="font-normal text-plomo">(por hora)</span></span>
-        <span class="num-tabular text-[12.5px] text-plomo">{{ textoPrecio() }}</span>
+    <div class="filtros__bloque">
+      <div class="filtros__bloque-cabecera">
+        <span class="filtros__titulo">Rango de precios <span class="filtros__titulo-nota">(por hora)</span></span>
+        <span class="num-tabular filtros__valor">{{ textoPrecio() }}</span>
       </div>
       <div class="rango-doble">
         <span
@@ -416,37 +358,26 @@
     </div>
 
     <!-- Filtros adicionales -->
-    <div class="flex flex-col gap-2.5">
-      <span class="text-[13.5px] font-semibold text-tinta">Filtros adicionales</span>
-      <div class="flex flex-wrap gap-2">
+    <div class="filtros__bloque filtros__bloque--chips">
+      <span class="filtros__titulo">Filtros adicionales</span>
+      <div class="filtros__chips">
         <ui-chip [activo]="panel().orden === 'DISTANCIA'" (alternar)="cambiar({ orden: 'DISTANCIA' })">
-          <span class="flex items-center gap-1.5"><ui-icono nombre="explorar" [tamano]="15" />Más cercano</span>
+          <span class="filtros__chip-contenido"><ui-icono nombre="explorar" [tamano]="15" />Más cercano</span>
         </ui-chip>
         <ui-chip [activo]="panel().orden === 'PRECIO'" (alternar)="cambiar({ orden: 'PRECIO' })">
-          <span class="flex items-center gap-1.5"><ui-icono nombre="moneda" [tamano]="15" />Más barato</span>
+          <span class="filtros__chip-contenido"><ui-icono nombre="moneda" [tamano]="15" />Más barato</span>
         </ui-chip>
         <ui-chip [activo]="panel().soloCubiertos" (alternar)="cambiar({ soloCubiertos: !panel().soloCubiertos })">
-          <span class="flex items-center gap-1.5"><ui-icono nombre="techo" [tamano]="15" />Cubierto</span>
+          <span class="filtros__chip-contenido"><ui-icono nombre="techo" [tamano]="15" />Cubierto</span>
         </ui-chip>
       </div>
     </div>
 
-    <div class="flex gap-2.5">
-      <button
-        type="button"
-        class="flex-1 rounded-control border border-borde bg-papel px-4 py-3 text-[14px] font-semibold
-               text-grafito transition-colors duration-160 hover:border-acento-borde"
-        (click)="limpiarFiltros()"
-      >
+    <div class="filtros__acciones">
+      <button type="button" class="filtros__boton filtros__boton--limpiar" (click)="limpiarFiltros()">
         Limpiar
       </button>
-      <button
-        type="submit"
-        class="flex-1 rounded-control bg-acento px-4 py-3 text-[14px] font-semibold text-sobre-acento
-               shadow-elevada transition-colors duration-160 hover:bg-acento-fuerte"
-      >
-        Aplicar
-      </button>
+      <button type="submit" class="filtros__boton filtros__boton--aplicar">Aplicar</button>
     </div>
   </form>
 </ui-modal>

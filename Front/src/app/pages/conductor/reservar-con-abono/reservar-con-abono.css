@@ -1,0 +1,65 @@
+.contenedor-reserva {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 560px;
+  padding: 1.25rem 1.5rem 2rem;
+}
+
+@media (min-width: 1024px) {
+  .contenedor-reserva {
+    padding: 34px 2.5rem 2.75rem;
+  }
+}
+
+.pila-reserva {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.titulo-reserva {
+  margin-top: 0.375rem;
+}
+
+.formulario-reserva {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.formulario-reserva__resumen {
+  font-size: 13px;
+  color: var(--color-plomo);
+}
+
+.campo-reserva {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 12.5px;
+  color: var(--color-plomo);
+}
+
+.campo-reserva--mitad {
+  flex: 1 1 0%;
+}
+
+.fila-horario {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.control-reserva {
+  height: 2.5rem;
+  padding: 0 0.75rem;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radius-boton);
+  background: var(--color-papel);
+  font-size: 14px;
+  color: var(--color-tinta);
+}
+
+.mensaje-error {
+  font-size: 13px;
+  color: var(--color-ocupada);
+}

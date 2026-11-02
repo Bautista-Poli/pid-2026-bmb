@@ -453,7 +453,7 @@ export async function cancelar(idReserva, idConductor) {
     if (reserva.fin <= new Date()) {
       throw ApiError.conflict('La reserva ya termino');
     }
-    // Pasada la tolerancia ya es un no-show (aunque el job no la haya marcado):
+    // Pasada la tolerancia ya es un no-show (aunque la revision de vencimientos no la haya marcado):
     // cancelarla ahi la sacaria de la estadistica de ausentes.
     if (reserva.estado === ESTADOS_RESERVA.CONFIRMADA && Date.now() > limiteIngreso(reserva)) {
       throw ApiError.conflict(MENSAJE_NO_SHOW);
@@ -482,7 +482,7 @@ export async function cancelar(idReserva, idConductor) {
 
      PENDIENTE -> CONFIRMADA -> (ingreso) ACTIVA -> (egreso) FINALIZADA
 
-   Ademas hay dos transiciones automaticas (src/jobs/vencimientos.job.js):
+   Ademas hay dos transiciones automaticas (src/middlewares/vencimientos.js):
    una PENDIENTE que nunca se confirmo se cancela sola al empezar su franja, y
    una CONFIRMADA sin ingreso pasa a NO_SHOW a los TOLERANCIA_NO_SHOW_MS de
    `inicio` (y libera la cochera). Una ACTIVA sin egreso registrado, en cambio,
@@ -576,8 +576,8 @@ async function aplicarIngreso(client, reserva) {
     throw ApiError.conflict('Todavia es muy temprano para registrar el ingreso');
   }
   if (ahora > reserva.fin.getTime()) throw ApiError.conflict('La franja de la reserva ya termino');
-  // Mismo corte que el job: pasada la tolerancia la reserva es un no-show,
-  // aunque el job todavia no la haya marcado (corre una vez por minuto).
+  // Mismo corte que la revision de vencimientos: pasada la tolerancia la reserva
+  // es un no-show, aunque todavia no la haya marcado (corre al llegar pedidos).
   if (ahora > limiteIngreso(reserva)) throw ApiError.conflict(MENSAJE_TOLERANCIA);
 
   await client.query('UPDATE reserva SET ingreso_real = now() WHERE id_reserva = $1', [reserva.id_reserva]);
@@ -828,9 +828,9 @@ async function ingresosDelDia(idEstacionamiento, horarios, { fecha, id_tipo_vehi
 }
 
 /*
- * Vencimientos automaticos: los llama src/jobs/vencimientos.job.js cada tanto.
+ * Vencimientos automaticos: los llama src/middlewares/vencimientos.js al llegar pedidos.
  * Cada reserva vencida se procesa en su propia transaccion con FOR UPDATE,
- * igual que las acciones manuales, asi una corrida del job nunca pisa una
+ * igual que las acciones manuales, asi una revision nunca pisa una
  * confirmacion/ingreso/egreso que este pasando al mismo tiempo.
  */
 

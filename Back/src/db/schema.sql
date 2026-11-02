@@ -568,7 +568,7 @@ CREATE TABLE IF NOT EXISTS incidencia (
     FOREIGN KEY (id_reserva) REFERENCES reserva (id_reserva) ON DELETE CASCADE,
   CONSTRAINT incidencia_estacionamiento_fk
     FOREIGN KEY (id_estacionamiento) REFERENCES estacionamiento (id_estacionamiento) ON DELETE CASCADE,
-  -- El job corre cada minuto: una sola incidencia de cada tipo por reserva.
+  -- La revision de vencimientos corre seguido: una sola incidencia de cada tipo por reserva.
   CONSTRAINT incidencia_una_por_tipo UNIQUE (id_reserva, tipo)
 );
 
@@ -779,7 +779,7 @@ BEGIN
 END
 $$;
 
--- La unica-por-tipo vale solo para las del sistema (el job); de reclamos puede
+-- La unica-por-tipo vale solo para las del sistema (la revision de vencimientos); de reclamos puede
 -- haber varios por reserva, pero uno solo abierto o denunciado a la vez.
 ALTER TABLE incidencia DROP CONSTRAINT IF EXISTS incidencia_una_por_tipo;
 CREATE UNIQUE INDEX IF NOT EXISTS incidencia_sistema_una_por_tipo

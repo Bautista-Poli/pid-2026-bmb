@@ -20,7 +20,7 @@ router.patch('/:id/cancelar', ...soloConductor, reservaController.cancelar);
 // El ciclo lo maneja el propietario de la cochera. El ingreso y el egreso
 // solo se registran con el codigo de la reserva (ver /acceso, abajo).
 router.patch('/:id/confirmar', ...soloPropietario, reservaController.confirmar);
-// No-show a mano, si el conductor avisó que no viene (el automatico lo hace el job).
+// No-show a mano, si el conductor avisó que no viene (el automatico lo hace la revision de vencimientos).
 router.patch('/:id/ausente', ...soloPropietario, reservaController.marcarAusente);
 
 // El operador escanea (o tipea) el QR de la reserva al entrar y al salir.

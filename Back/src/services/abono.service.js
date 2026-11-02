@@ -208,7 +208,7 @@ export async function cancelar(idAbono, idConductor) {
   });
 }
 
-/** Abonos vigentes cuya fecha `hasta` ya paso: los llama el job de vencimientos. */
+/** Abonos vigentes cuya fecha `hasta` ya paso: los llama la revision de vencimientos (middlewares/vencimientos.js). */
 export async function vencerAbonos() {
   const { rowCount } = await query(
     `UPDATE abono SET estado = 'VENCIDO' WHERE estado = 'VIGENTE' AND hasta < ${HOY_LOCAL}`,
@@ -235,7 +235,7 @@ export async function validarAbonoParaReservar(client, idAbono, idConductor, ini
     throw ApiError.conflict(`El abono esta ${abono.estado.toLowerCase()}`);
   }
 
-  // Por fecha y no solo por estado: el job puede no haberlo vencido todavia.
+  // Por fecha y no solo por estado: la revision de vencimientos puede no haberlo vencido todavia.
   const dia = partesLocales(inicio).fecha;
   if (dia < abono.desde || dia > abono.hasta) {
     throw ApiError.conflict(`El abono vale del ${abono.desde} al ${abono.hasta}`);

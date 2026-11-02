@@ -1,4 +1,4 @@
-// Corre las tareas automaticas cada minuto:
+// Revision de vencimientos, al usar la app:
 // - reserva.service.js: PENDIENTE sin confirmar que ya empezo -> CANCELADA, y
 //   CONFIRMADA sin ingreso pasada TOLERANCIA_NO_SHOW_MS -> NO_SHOW.
 // - incidencia.service.js: ACTIVA que se paso de su fin sin egreso -> incidencia
@@ -8,17 +8,19 @@
 // - cochera.service.js: cocheras bloqueadas con `bloqueada_hasta` vencido se desbloquean solas.
 // - abono.service.js: abonos VIGENTES con `hasta` vencido -> VENCIDO.
 //
-// Solo lo arranca src/index.js (el proceso real del servidor). Las pruebas
-// levantan la app con app.listen() directamente y nunca importan este
-// archivo, asi que no corre durante `npm test`.
-import cron from 'node-cron';
-
+// No hay cron: la revision corre antes de atender un pedido a la API, como
+// mucho una vez por INTERVALO_MS. Sin trafico no se consulta la base y Neon
+// puede suspenderse. El pedido espera a que la revision termine, asi lo que
+// devuelve ya esta al dia (p. ej. un NO_SHOW libera la cochera antes de
+// calcular la disponibilidad). Las pruebas la apagan (VENCIMIENTOS_ENABLED) y
+// llaman a las funciones de los services a mano.
+import { config } from '../config/env.js';
 import { vencerAbonos } from '../services/abono.service.js';
 import { desbloquearVencidas } from '../services/cochera.service.js';
 import { detectarExcedidos, protegerReservasSiguientes } from '../services/incidencia.service.js';
 import { vencerAusentes, vencerPendientesSinConfirmar } from '../services/reserva.service.js';
 
-let tarea;
+export const INTERVALO_MS = 60 * 1000;
 
 async function revisar() {
   try {
@@ -41,12 +43,27 @@ async function revisar() {
   }
 }
 
-export function iniciarVencimientosAutomaticos() {
-  tarea = cron.schedule('* * * * *', revisar);
-  return tarea;
+/**
+ * Middleware que corre `revisar` si paso `intervaloMs` desde la ultima vez.
+ * Los pedidos que llegan mientras corre esperan esa misma revision en vez de
+ * lanzar otra. `revisar` no debe tirar error (lo loguea y el pedido sigue).
+ */
+export function crearRegularizador({ revisar, intervaloMs = INTERVALO_MS, ahora = Date.now }) {
+  let ultimaRevision = -Infinity;
+  let enCurso = null;
+
+  return async (req, _res, next) => {
+    if (!config.vencimientos.habilitados || req.path === '/health') return next();
+
+    if (!enCurso && ahora() - ultimaRevision >= intervaloMs) {
+      ultimaRevision = ahora();
+      enCurso = revisar().finally(() => {
+        enCurso = null;
+      });
+    }
+    if (enCurso) await enCurso;
+    return next();
+  };
 }
 
-export function detenerVencimientosAutomaticos() {
-  tarea?.stop();
-  tarea = undefined;
-}
+export const regularizarVencimientos = crearRegularizador({ revisar });

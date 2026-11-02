@@ -1,19 +1,8 @@
 import { Tarifas } from '@app/models';
-import { calcularPrecio, modalidadesOfrecidas, resumenTarifas } from './tarifa.util';
+import { calcularPrecio, resumenTarifas } from './tarifa.util';
 
 const TODAS: Tarifas = { hora: 900, estadia: 5000, jornada: 8000 };
 const SOLO_JORNADA: Tarifas = { hora: null, estadia: null, jornada: 8000 };
-
-describe('modalidadesOfrecidas', () => {
-  it('lista solo las que tienen tarifa, en orden hora, estadia, jornada', () => {
-    expect(modalidadesOfrecidas(TODAS)).toEqual(['HORA', 'ESTADIA', 'JORNADA']);
-    expect(modalidadesOfrecidas(SOLO_JORNADA)).toEqual(['JORNADA']);
-  });
-
-  it('una tarifa en 0 cuenta como ofrecida', () => {
-    expect(modalidadesOfrecidas({ hora: 0, estadia: null, jornada: null })).toEqual(['HORA']);
-  });
-});
 
 describe('calcularPrecio', () => {
   it('por hora es proporcional a las horas', () => {

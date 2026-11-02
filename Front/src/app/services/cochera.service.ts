@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { Cochera, Id, LoteCocheras, NuevaCochera } from '@app/models';
 import { CocheraDto } from './api/api.dto';
-import { aCochera, aPayloadCambiosCochera, aPayloadCochera, aPayloadLotes } from './api/api.mapeo';
+import { aCochera, aPayloadCambiosCochera, aPayloadLotes } from './api/api.mapeo';
 
 /** Cocheras de un estacionamiento: `/api/estacionamientos/:id/cocheras`. */
 @Injectable({ providedIn: 'root' })
@@ -15,13 +15,6 @@ export class CocheraService {
     return this.http
       .get<{ cocheras: CocheraDto[] }>(rutaCocheras(estacionamientoId))
       .pipe(map(({ cocheras }) => cocheras.map(aCochera)));
-  }
-
-  /** `POST /api/estacionamientos/:id/cocheras` */
-  crear(datos: NuevaCochera): Observable<Cochera> {
-    return this.http
-      .post<{ cochera: CocheraDto }>(rutaCocheras(datos.estacionamientoId), aPayloadCochera(datos))
-      .pipe(map((respuesta) => aCochera(respuesta.cochera)));
   }
 
   /** `POST /api/estacionamientos/:id/cocheras/lote` (todo o nada) */

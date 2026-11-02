@@ -10,7 +10,6 @@ import {
   Cochera,
   Estacionamiento,
   EstadoCochera,
-  EstadoReserva,
   FechaHoraISO,
   FranjaAtencion,
   FranjaDisponible,
@@ -30,7 +29,7 @@ import {
   Vehiculo,
 } from '@app/models';
 import { aInstante, DIAS_POR_NUMERO, finDeFranja, partesLocales } from '@app/utils/fecha.util';
-import { AbonoDto, AccesoReservaDto, CalificacionesRecibidasDto, IncidenciaDetalladaDto, IncidenciaDto, IncidenciaModeradaDto, MensajeIncidenciaDto, CocheraDto, EstacionamientoDto, EstadoReservaDto, FranjaDto, HorarioDto, PlanAbonoDto, ReservaDto, UsuarioDto, VehiculoDto } from './api.dto';
+import { AbonoDto, AccesoReservaDto, CalificacionesRecibidasDto, IncidenciaDetalladaDto, IncidenciaDto, IncidenciaModeradaDto, MensajeIncidenciaDto, CocheraDto, EstacionamientoDto, FranjaDto, HorarioDto, PlanAbonoDto, ReservaDto, UsuarioDto, VehiculoDto } from './api.dto';
 
 /*
  * Traduccion entre la API (snake_case, ids de catalogo, instantes ISO) y los
@@ -190,15 +189,6 @@ export function aCochera(dto: CocheraDto): Cochera {
     bloqueada: dto.bloqueada,
     motivoBloqueo: dto.motivo_bloqueo,
     bloqueadaHasta: dto.bloqueada_hasta,
-  };
-}
-
-export function aPayloadCochera(datos: NuevaCochera) {
-  return {
-    identificador: datos.identificador,
-    id_tipo_vehiculo: ID_TIPO_VEHICULO[datos.tipoVehiculo],
-    sector: datos.sector || undefined,
-    cubierta: datos.cubierta,
   };
 }
 

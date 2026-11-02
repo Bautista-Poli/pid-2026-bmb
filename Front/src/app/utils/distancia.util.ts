@@ -22,30 +22,6 @@ export function distanciaKm(origen: Coordenadas, destino: Coordenadas): number {
   return 2 * RADIO_TIERRA_KM * Math.asin(Math.sqrt(a));
 }
 
-/**
- * Distancia desde `origen` hasta un lugar cuyas coordenadas pueden faltar
- * (estacionamientos cargados antes de geocodificar). `undefined` si falta algo.
- */
-export function distanciaHasta(
-  origen: Coordenadas | null,
-  destino: { latitud: number | null; longitud: number | null },
-): number | undefined {
-  if (!origen || destino.latitud == null || destino.longitud == null) return undefined;
-  return distanciaKm(origen, { latitud: destino.latitud, longitud: destino.longitud });
-}
-
-/**
- * Comparador para `sort`: el mas cercano primero. Los que no tienen distancia
- * (sin coordenadas o sin ubicacion del usuario) van al final, en el orden que
- * traian (`sort` es estable).
- */
-export function porCercania(
-  a: { distanciaKm?: number },
-  b: { distanciaKm?: number },
-): number {
-  return (a.distanciaKm ?? Number.POSITIVE_INFINITY) - (b.distanciaKm ?? Number.POSITIVE_INFINITY) || 0;
-}
-
 /** Paso de una persona caminando: ~4,8 km/h. */
 const METROS_POR_MINUTO_A_PIE = 80;
 

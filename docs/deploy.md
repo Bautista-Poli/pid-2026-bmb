@@ -3,7 +3,7 @@
 | Parte | Dónde | URL |
 |---|---|---|
 | Front (Angular) | Vercel, proyecto `parkit` | https://parkit-swart.vercel.app |
-| Back (Express) | Railway, proyecto `ingenious-heart` | https://ingenious-heart-production-2934.up.railway.app |
+| Back (Express) | Railway, proyecto `aware-creativity` | https://pid-2026-bmb-production.up.railway.app |
 | Base de datos | Neon, proyecto `ParkIt`, branch `production` | — |
 | Fotos | Cloudinary, carpeta `parkit/` | — |
 
@@ -114,13 +114,13 @@ vinculada al proyecto (`Front/.vercel/`).
 ### 3. Comprobar
 
 - Abrir https://parkit-swart.vercel.app y probar el login.
-- El back responde en https://ingenious-heart-production-2934.up.railway.app/api/health
+- El back responde en https://pid-2026-bmb-production.up.railway.app/api/health
 
 ## Si algo falla
 
 - **Front:** vercel.com → proyecto `parkit` → Deployments. Ahí está cada deploy y
   se puede volver a uno anterior con "Promote to Production".
-- **Back:** railway.com → proyecto `ingenious-heart` → servicio → Deployments → Logs.
+- **Back:** railway.com → proyecto `aware-creativity` → servicio → Deployments → Logs.
 - **"Unauthorized" en la CLI:** volver a loguearse con `npx vercel login` o
   `npx @railway/cli login`.
 
@@ -128,10 +128,14 @@ vinculada al proyecto (`Front/.vercel/`).
 
 - **Vercel** (proyecto `parkit` → Settings): Git conectado a `Bautista-Poli/pid-2026-bmb`,
   **Production Branch** `main`, **Root Directory** `Front`.
-- **Railway** (proyecto `ingenious-heart` → servicio → Settings → Source): repo
+- **Railway** (proyecto `aware-creativity` → servicio → Settings → Source): repo
   `Bautista-Poli/pid-2026-bmb`, **Branch connected to production** `main`,
   **Root Directory** `/Back`, **Watch Paths** `/Back/**`. **No** poner Start Command:
-  el arranque lo define `Back/railway.json`.
+  el arranque lo define `Back/railway.json`. El dominio publico (Settings →
+  Networking) apunta al puerto que muestra el log de arranque
+  (`[api] Parkit escuchando en :8080/api`); no se define `PORT` a mano.
+  El proyecto esta en la cuenta de Bautista Dimperio con el trial de Railway
+  (vence alrededor del 13/11/2026): despues hay que pasar al plan Hobby o mudarlo.
 - **Acceso de deploy:** los miembros del equipo se invitan a Railway (People del
   workspace) y a Vercel (team), con permiso para deployar.
 - **Variables del back:** en Railway → servicio → Variables. Son las mismas de

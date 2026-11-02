@@ -493,7 +493,7 @@ export async function cancelar(idReserva, idConductor) {
 
      PENDIENTE -> CONFIRMADA -> (ingreso) ACTIVA -> (egreso) FINALIZADA
 
-   Ademas hay dos transiciones automaticas (src/middlewares/vencimientos.js):
+   Ademas hay dos transiciones automaticas (src/jobs/vencimientos.job.js):
    una PENDIENTE que nunca se confirmo se cancela sola al empezar su franja, y
    una CONFIRMADA sin ingreso pasa a NO_SHOW a los TOLERANCIA_NO_SHOW_MS de
    `inicio` (y libera la cochera). Una ACTIVA sin egreso registrado, en cambio,
@@ -852,7 +852,7 @@ async function ingresosDelDia(idEstacionamiento, horarios, { fecha, id_tipo_vehi
 }
 
 /*
- * Vencimientos automaticos: los llama src/middlewares/vencimientos.js al llegar pedidos.
+ * Vencimientos automaticos: los llama src/jobs/vencimientos.job.js al llegar pedidos.
  * Cada reserva vencida se procesa en su propia transaccion con FOR UPDATE,
  * igual que las acciones manuales, asi una revision nunca pisa una
  * confirmacion/ingreso/egreso que este pasando al mismo tiempo.

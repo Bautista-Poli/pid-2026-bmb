@@ -250,7 +250,7 @@ export async function cancelarPorBajaDeEstacionamientos(client, idsEstacionamien
   ]);
 }
 
-/** Abonos vigentes cuya fecha `hasta` ya paso: los llama la revision de vencimientos (middlewares/vencimientos.js). */
+/** Abonos vigentes cuya fecha `hasta` ya paso: los llama la revision de vencimientos (src/jobs/vencimientos.job.js). */
 export async function vencerAbonos() {
   const { rowCount } = await query(
     `UPDATE abono SET estado = 'VENCIDO' WHERE estado = 'VIGENTE' AND hasta < ${HOY_LOCAL}`,

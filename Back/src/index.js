@@ -1,6 +1,7 @@
 import app from './app.js';
 import { config } from './config/env.js';
 import { connectDatabase, disconnectDatabase } from './config/database.js';
+import { activarVencimientosADemanda, desactivarVencimientosADemanda } from './jobs/vencimientos.job.js';
 
 async function main() {
   await connectDatabase();
@@ -10,8 +11,12 @@ async function main() {
     console.log(`[api] Parkit escuchando en :${config.port}${config.apiPrefix}`);
   });
 
+  // Vencimientos a demanda: corren con los pedidos, no con un reloj (ver el job).
+  activarVencimientosADemanda();
+
   const shutdown = (senal) => {
     console.log(`\n[api] ${senal} recibido, cerrando...`);
+    desactivarVencimientosADemanda();
     server.close(async () => {
       await disconnectDatabase();
       process.exit(0);

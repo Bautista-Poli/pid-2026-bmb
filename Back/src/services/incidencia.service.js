@@ -5,7 +5,7 @@
 //   - PROPIETARIO y CONDUCTOR: chat privado de la moderacion con cada parte.
 //     Aparecen recien cuando alguno de los dos denuncia (no hubo acuerdo).
 //
-// Las crea el sistema (src/middlewares/vencimientos.js):
+// Las crea el sistema (src/jobs/vencimientos.job.js):
 //   - AUTO_EXCEDIDO: una ACTIVA paso su `fin` (mas MARGEN_EXCESO_MS) sin
 //     egreso. La cochera ya estaba bloqueada desde el `fin` (ver finEfectivo en
 //     utils/solapamiento.js); la incidencia es el aviso al propietario.

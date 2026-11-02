@@ -1,79 +1,109 @@
-// Revision de vencimientos al usar la app: corre como mucho una vez por
-// intervalo, los pedidos simultaneos esperan la misma revision y no corre si
-// esta apagada o para /health. Sin base: `revisar` y el reloj son de mentira.
+// Vencimientos a demanda: la revision corre con los pedidos que llegan (como
+// mucho una vez por minuto), no con un reloj. Asi, sin nadie usando la app, la
+// base no se consulta y Neon la puede suspender. Estas pruebas no usan la base.
 import assert from 'node:assert/strict';
-import { afterEach, describe, test } from 'node:test';
+import { describe, test } from 'node:test';
 
-import { crearRegularizador } from '../src/middlewares/vencimientos.js';
+import { crearDisparador, middlewareVencimientos } from '../src/jobs/vencimientos.job.js';
 
-const INTERVALO = 60_000;
-
-afterEach(() => {
-  process.env.VENCIMIENTOS_ENABLED = 'true';
-});
-
-/** Regularizador con un reloj que se adelanta a mano y un contador de revisiones. */
+/** Reloj falso y una revision que cuenta cuantas veces corrio. */
 function escenario({ demora = 0 } = {}) {
-  let reloj = 0;
-  const contador = { revisiones: 0 };
-  const middleware = crearRegularizador({
-    intervaloMs: INTERVALO,
-    ahora: () => reloj,
-    revisar: async () => {
-      contador.revisiones += 1;
-      if (demora) await new Promise((resolver) => setTimeout(resolver, demora));
-      contador.terminadas = (contador.terminadas ?? 0) + 1;
-    },
-  });
-  /** Atiende un pedido y devuelve cuantas revisiones habian terminado al llegar a next(). */
-  const pedir = (path = '/reservas') =>
-    new Promise((resolver) => {
-      middleware({ path }, {}, () => resolver(contador.terminadas ?? 0));
-    });
-  const adelantar = (ms) => {
-    reloj += ms;
+  let ahora = 1_000_000;
+  let corridas = 0;
+  let terminar;
+  const revisar = () => {
+    corridas += 1;
+    return demora ? new Promise((resolver) => (terminar = resolver)) : Promise.resolve();
   };
-  return { contador, pedir, adelantar };
+  const disparar = crearDisparador({ revisar, intervaloMs: 60_000, reloj: () => ahora });
+  return {
+    disparar,
+    corridas: () => corridas,
+    avanzar: (ms) => (ahora += ms),
+    terminar: () => terminar?.(),
+  };
 }
 
-describe('revision de vencimientos al usar', () => {
-  test('dos pedidos dentro del intervalo revisan una sola vez', async () => {
-    process.env.VENCIMIENTOS_ENABLED = 'true';
-    const { contador, pedir, adelantar } = escenario();
-    await pedir();
-    adelantar(INTERVALO - 1);
-    await pedir();
-    assert.equal(contador.revisiones, 1);
+describe('crearDisparador', () => {
+  test('el primer pedido revisa y los siguientes del mismo minuto no', async () => {
+    const e = escenario();
+
+    await e.disparar();
+    await e.disparar();
+    e.avanzar(59_000);
+    await e.disparar();
+
+    assert.equal(e.corridas(), 1);
   });
 
-  test('pasado el intervalo vuelve a revisar', async () => {
-    process.env.VENCIMIENTOS_ENABLED = 'true';
-    const { contador, pedir, adelantar } = escenario();
-    await pedir();
-    adelantar(INTERVALO);
-    await pedir();
-    assert.equal(contador.revisiones, 2);
+  test('pasado el minuto vuelve a revisar', async () => {
+    const e = escenario();
+
+    await e.disparar();
+    e.avanzar(60_000);
+    await e.disparar();
+
+    assert.equal(e.corridas(), 2);
   });
 
-  test('los pedidos simultaneos esperan la misma revision', async () => {
-    process.env.VENCIMIENTOS_ENABLED = 'true';
-    const { contador, pedir } = escenario({ demora: 20 });
-    const terminadasAlAtender = await Promise.all([pedir(), pedir(), pedir()]);
-    assert.equal(contador.revisiones, 1);
-    assert.deepEqual(terminadasAlAtender, [1, 1, 1]);
+  test('no arranca otra revision mientras una sigue corriendo', async () => {
+    const e = escenario({ demora: 1 });
+
+    const primera = e.disparar();
+    e.avanzar(120_000);
+    e.disparar();
+    assert.equal(e.corridas(), 1);
+
+    e.terminar();
+    await primera;
+    const segunda = e.disparar();
+    assert.equal(e.corridas(), 2);
+    e.terminar();
+    await segunda;
   });
 
-  test('apagada por configuracion no revisa', async () => {
-    process.env.VENCIMIENTOS_ENABLED = 'false';
-    const { contador, pedir } = escenario();
-    await pedir();
-    assert.equal(contador.revisiones, 0);
+  test('si la revision falla, el pedido sigue y se reintenta al minuto siguiente', async () => {
+    let ahora = 0;
+    let corridas = 0;
+    const disparar = crearDisparador({
+      revisar: async () => {
+        corridas += 1;
+        throw new Error('base caida');
+      },
+      intervaloMs: 60_000,
+      reloj: () => ahora,
+    });
+
+    await disparar();
+    ahora += 60_000;
+    await disparar();
+
+    assert.equal(corridas, 2);
+  });
+});
+
+describe('middlewareVencimientos', () => {
+  test('cada pedido dispara la revision y sigue de largo', () => {
+    let disparos = 0;
+    let siguio = false;
+    const middleware = middlewareVencimientos(() => {
+      disparos += 1;
+    });
+
+    middleware({ path: '/estacionamientos' }, {}, () => (siguio = true));
+
+    assert.equal(disparos, 1);
+    assert.equal(siguio, true);
   });
 
-  test('/health no revisa', async () => {
-    process.env.VENCIMIENTOS_ENABLED = 'true';
-    const { contador, pedir } = escenario();
-    await pedir('/health');
-    assert.equal(contador.revisiones, 0);
+  test('el chequeo de salud de Railway no despierta la base', () => {
+    let disparos = 0;
+    const middleware = middlewareVencimientos(() => {
+      disparos += 1;
+    });
+
+    middleware({ path: '/health' }, {}, () => {});
+
+    assert.equal(disparos, 0);
   });
 });

@@ -28,12 +28,13 @@ const COMENTARIO_MAX = 500;
         <form class="flex flex-col gap-4" (ngSubmit)="enviar(o)">
           <p class="text-[13.5px] text-grafito">{{ o.descripcion }}</p>
 
-          <div class="flex gap-1" role="radiogroup" aria-label="Puntaje">
+          <div class="flex gap-0.5" role="radiogroup" aria-label="Puntaje">
             @for (n of estrellas; track n) {
               <button
                 type="button"
                 role="radio"
-                class="text-[30px] leading-none transition-colors"
+                class="grid size-11 place-items-center rounded-control text-[30px] leading-none transition-colors
+                       hover:bg-acento-suave focus-visible:bg-acento-suave"
                 [class.text-acento]="n <= puntaje()"
                 [class.text-humo]="n > puntaje()"
                 [attr.aria-checked]="n === puntaje()"

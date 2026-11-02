@@ -32,6 +32,10 @@ export const promedioEstacionamientoSql = (alias = 'e') => `
      FROM calificacion cal
     WHERE cal.id_estacionamiento = ${alias}.id_estacionamiento AND ${DE_CONDUCTORES})`;
 
+/** Promedio de todas las calificaciones a estacionamientos (`m` del ponderado). */
+const PROMEDIO_GENERAL = `(SELECT COALESCE(AVG(g.puntaje), ${PROMEDIO_SIN_DATOS})
+     FROM calificacion g WHERE g.autor = '${AUTORES_CALIFICACION.CONDUCTOR}')`;
+
 /**
  * Columnas `calificacion_promedio`, `cantidad_calificaciones` y `puntaje_orden`
  * del estacionamiento `alias`. `puntaje_orden` es el promedio ponderado
@@ -43,9 +47,8 @@ export const reputacionEstacionamiento = (alias = 'e') => `
   (SELECT COUNT(*)::int
      FROM calificacion cal
     WHERE cal.id_estacionamiento = ${alias}.id_estacionamiento AND ${DE_CONDUCTORES}) AS cantidad_calificaciones,
-  (SELECT ((${PESO_PRIOR} * (SELECT COALESCE(AVG(g.puntaje), ${PROMEDIO_SIN_DATOS})
-                                FROM calificacion g WHERE g.autor = '${AUTORES_CALIFICACION.CONDUCTOR}'))
-           + COALESCE(SUM(cal.puntaje), 0)) / (${PESO_PRIOR} + COUNT(*)))::float
+  (SELECT ((${PESO_PRIOR} * ${PROMEDIO_GENERAL} + COALESCE(SUM(cal.puntaje), 0))
+           / (${PESO_PRIOR} + COUNT(*)))::float
      FROM calificacion cal
     WHERE cal.id_estacionamiento = ${alias}.id_estacionamiento AND ${DE_CONDUCTORES}) AS puntaje_orden`;
 

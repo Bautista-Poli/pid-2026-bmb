@@ -185,3 +185,82 @@ describe('calificar una reserva', () => {
     assert.equal(typeof vista.conductor_calificacion_promedio, 'number');
   });
 });
+
+/**
+ * Estacionamiento nuevo con una calificacion de conductor por cada puntaje.
+ * Las reservas se copian por SQL de una hecha por la API (son muchas).
+ */
+async function estacionamientoCalificado(puntajes) {
+  const e = await escenario();
+  const plantilla = await reservaTerminada(e);
+  for (const puntaje of puntajes) {
+    const { rows } = await query(
+      `INSERT INTO reserva (id_conductor, id_vehiculo, id_cochera, inicio, fin, estado, precio_total)
+       SELECT id_conductor, id_vehiculo, id_cochera, inicio, fin, 'FINALIZADA', precio_total
+         FROM reserva WHERE id_reserva = $1
+       RETURNING id_reserva, id_conductor`,
+      [plantilla],
+    );
+    await query(
+      `INSERT INTO calificacion (id_reserva, autor, id_estacionamiento, id_conductor, puntaje)
+       VALUES ($1, 'CONDUCTOR', $2, $3, $4)`,
+      [rows[0].id_reserva, e.estacionamiento.id_estacionamiento, rows[0].id_conductor, puntaje],
+    );
+  }
+  return e;
+}
+
+/** El estacionamiento tal como lo devuelve la busqueda (filtrando por su nombre, que es unico). */
+async function enLaBusqueda(estacionamiento, extra = '') {
+  const { estado, datos } = await api(
+    'GET',
+    `/estacionamientos?q=${encodeURIComponent(estacionamiento.nombre)}${extra}`,
+  );
+  assert.equal(estado, 200, motivo({ datos }));
+  return datos.estacionamientos.find((x) => x.id_estacionamiento === estacionamiento.id_estacionamiento);
+}
+
+describe('reputacion del estacionamiento', () => {
+  test('sin calificaciones: sin promedio, cantidad 0 y el puntaje general para ordenar', async () => {
+    const { estacionamiento } = await escenario();
+    const encontrado = await enLaBusqueda(estacionamiento);
+    assert.equal(encontrado.calificacion_promedio, null);
+    assert.equal(encontrado.cantidad_calificaciones, 0);
+    assert.ok(encontrado.puntaje_orden >= 1 && encontrado.puntaje_orden <= 5);
+  });
+
+  test('promedio y cantidad; las del propietario no cuentan', async () => {
+    const e = await estacionamientoCalificado([5, 3]);
+    const id = await reservaTerminada(e);
+    await calificar(e.propietario.token, id, { puntaje: 1 });
+
+    const encontrado = await enLaBusqueda(e.estacionamiento);
+    assert.equal(encontrado.calificacion_promedio, 4);
+    assert.equal(encontrado.cantidad_calificaciones, 2);
+
+    const detalle = await api('GET', `/estacionamientos/${e.estacionamiento.id_estacionamiento}`);
+    assert.equal(detalle.datos.estacionamiento.calificacion_promedio, 4);
+  });
+
+  test('una sola 5 ordena por debajo de diez 5', async () => {
+    const una = await enLaBusqueda((await estacionamientoCalificado([5])).estacionamiento);
+    const diez = await enLaBusqueda((await estacionamientoCalificado(Array(10).fill(5))).estacionamiento);
+    assert.ok(una.puntaje_orden < diez.puntaje_orden);
+  });
+
+  test('el filtro usa el promedio que se ve: 3.96 se muestra 4.0 y pasa el 4+', async () => {
+    const { estacionamiento } = await estacionamientoCalificado([...Array(24).fill(4), 3]);
+    const encontrado = await enLaBusqueda(estacionamiento, '&calificacion_min=4');
+    assert.ok(encontrado, 'deberia pasar el filtro 4+');
+    assert.equal(encontrado.calificacion_promedio, 4);
+  });
+
+  test('el minimo deja afuera a los de menor promedio y a los nuevos', async () => {
+    const { estacionamiento: conCuatro } = await estacionamientoCalificado([4]);
+    const { estacionamiento: nuevo } = await escenario();
+    assert.equal(await enLaBusqueda(conCuatro, '&calificacion_min=4.5'), undefined);
+    assert.equal(await enLaBusqueda(nuevo, '&calificacion_min=3'), undefined);
+    const fuera = await api('GET', '/estacionamientos?calificacion_min=6');
+    assert.equal(fuera.estado, 400);
+  });
+});

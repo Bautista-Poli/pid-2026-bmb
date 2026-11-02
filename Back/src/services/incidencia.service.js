@@ -121,16 +121,22 @@ export async function detectarExcedidos() {
 
   let creadas = 0;
   for (const r of rows) {
-    const id = await withTransaction((client) =>
-      crearIncidencia(client, {
+    const id = await withTransaction(async (client) => {
+      // Si el egreso llego entre la busqueda y aca, ya no es un auto excedido.
+      const { rows: sigue } = await client.query(
+        'SELECT 1 FROM reserva WHERE id_reserva = $1 AND estado = $2 FOR UPDATE',
+        [r.id_reserva, ESTADOS_RESERVA.ACTIVA],
+      );
+      if (!sigue[0]) return null;
+      return crearIncidencia(client, {
         tipo: TIPOS_INCIDENCIA.AUTO_EXCEDIDO,
         idReserva: r.id_reserva,
         idEstacionamiento: r.id_estacionamiento,
         mensaje:
           `El vehiculo ${r.patente} tenia que salir de la cochera ${r.cochera} a las ` +
           `${HORA.format(r.fin)} y sigue adentro. La cochera queda bloqueada hasta que se registre el egreso.`,
-      }),
-    );
+      });
+    });
     if (id) creadas += 1;
   }
   return creadas;
@@ -140,7 +146,9 @@ export async function detectarExcedidos() {
  * Reservas que estan por empezar (o ya empezaron) en una cochera donde sigue un
  * auto excedido: se reasignan a otra cochera libre del mismo estacionamiento y
  * tipo; si no hay, quedan donde estan con un aviso para el conductor y una
- * incidencia RESERVA_AFECTADA para el propietario.
+ * incidencia RESERVA_AFECTADA para el propietario. Una afectada se vuelve a
+ * intentar en cada revision, mientras su incidencia siga abierta: si se libera
+ * otra cochera, se reasigna.
  */
 export async function protegerReservasSiguientes() {
   const { rows } = await query(
@@ -157,7 +165,8 @@ export async function protegerReservasSiguientes() {
              AND x.fin <= now()
         )
         AND NOT EXISTS (
-          SELECT 1 FROM incidencia i WHERE i.id_reserva = r.id_reserva AND i.tipo = $5
+          SELECT 1 FROM incidencia i
+           WHERE i.id_reserva = r.id_reserva AND i.tipo = $5 AND i.estado NOT IN ('ABIERTA', 'DENUNCIADA')
         )`,
     [
       ESTADOS_RESERVA.PENDIENTE,
@@ -172,7 +181,7 @@ export async function protegerReservasSiguientes() {
   for (const { id_reserva } of rows) {
     const accion = await withTransaction(async (client) => {
       const { rows: filas } = await client.query(
-        `SELECT r.id_reserva, r.inicio, r.fin, r.id_cochera, r.estado,
+        `SELECT r.id_reserva, r.inicio, r.fin, r.id_cochera, r.estado, r.motivo_reasignacion,
                 c.id_estacionamiento, c.identificador AS cochera, v.id_tipo_vehiculo, v.patente
            FROM reserva r
            JOIN cochera c  ON c.id_cochera = r.id_cochera
@@ -197,8 +206,11 @@ export async function protegerReservasSiguientes() {
           'UPDATE reserva SET id_cochera = $1, motivo_reasignacion = $2 WHERE id_reserva = $3',
           [alternativa, AVISO_REASIGNADA_POR_EXCESO, reserva.id_reserva],
         );
+        await avisarReasignacionTardia(client, reserva.id_reserva);
         return 'reasignadas';
       }
+      // Ya estaba afectada y sigue sin alternativa: no hay nada nuevo.
+      if (reserva.motivo_reasignacion === AVISO_AFECTADA_POR_EXCESO) return null;
 
       await client.query('UPDATE reserva SET motivo_reasignacion = $1 WHERE id_reserva = $2', [
         AVISO_AFECTADA_POR_EXCESO,
@@ -218,6 +230,18 @@ export async function protegerReservasSiguientes() {
     if (accion) resultado[accion] += 1;
   }
   return resultado;
+}
+
+/** Una afectada que se pudo reasignar despues: queda constancia en su incidencia. */
+async function avisarReasignacionTardia(client, idReserva) {
+  const { rows } = await client.query(
+    `SELECT id_incidencia FROM incidencia
+      WHERE id_reserva = $1 AND tipo = $2 AND estado IN ('ABIERTA', 'DENUNCIADA')`,
+    [idReserva, TIPOS_INCIDENCIA.RESERVA_AFECTADA],
+  );
+  if (rows[0]) {
+    await agregarMensaje(client, rows[0].id_incidencia, SISTEMA, 'Se libero otra cochera y la reserva se reasigno.');
+  }
 }
 
 /**
@@ -251,7 +275,7 @@ const CONDUCTOR = 'COALESCE(r.id_conductor, a.id_conductor)';
 
 export const SELECT_INCIDENCIA = `
   SELECT i.id_incidencia, i.tipo::text AS tipo, i.estado::text AS estado,
-         i.created_at, i.denunciada_at, i.resuelta_at, i.denunciada_por::text AS denunciada_por,
+         i.created_at, i.denunciada_at, i.resuelta_at, i.retirada_at, i.denunciada_por::text AS denunciada_por,
          i.id_reserva, r.inicio, r.fin, r.estado::text AS estado_reserva, r.egreso_real,
          i.id_abono, a.desde::text AS abono_desde, a.hasta::text AS abono_hasta, a.turno::text AS abono_turno,
          ${CONDUCTOR} AS id_conductor, u.nombre AS conductor_nombre, u.apellido AS conductor_apellido,
@@ -545,7 +569,7 @@ export async function retirar(usuario, idIncidencia) {
     await reclamoEnCurso(client, usuario, idIncidencia);
     await agregarMensaje(client, idIncidencia, SISTEMA, 'El conductor retiro el reclamo.');
     await client.query(
-      'UPDATE incidencia SET estado = $1, resuelta_at = now() WHERE id_incidencia = $2',
+      'UPDATE incidencia SET estado = $1, retirada_at = now() WHERE id_incidencia = $2',
       [ESTADOS_INCIDENCIA.RETIRADA, idIncidencia],
     );
   });

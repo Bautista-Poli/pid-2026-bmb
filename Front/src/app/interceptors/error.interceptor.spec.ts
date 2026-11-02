@@ -4,7 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { of } from 'rxjs';
 import { AuthService } from '@app/services/auth.service';
-import { errorInterceptor } from './error.interceptor';
+import { ErrorApi, errorInterceptor } from './error.interceptor';
 
 describe('errorInterceptor', () => {
   let http: HttpClient;
@@ -44,5 +44,24 @@ describe('errorInterceptor', () => {
 
     expect(logout).not.toHaveBeenCalled();
     expect(mensaje).toBe('No pudimos subir la foto. Probá de nuevo en un rato.');
+  });
+
+  it('un error de otro servicio externo no habla de fotos', () => {
+    let mensaje = '';
+    const url = 'https://apis.datos.gob.ar/georef/api/calles';
+    http.get(url).subscribe({ error: (e: Error) => (mensaje = e.message) });
+    backend.expectOne(url).flush('caido', { status: 503, statusText: 'x' });
+
+    expect(mensaje).not.toContain('foto');
+  });
+
+  it('un error de la API conserva los details', () => {
+    let detalles: unknown = null;
+    http.post('/api/x', {}).subscribe({ error: (e: ErrorApi) => (detalles = e.detalles) });
+    backend
+      .expectOne('/api/x')
+      .flush({ error: { message: 'No', details: { reservas_sin_alternativa: ['r1'] } } }, { status: 409, statusText: 'x' });
+
+    expect(detalles).toEqual({ reservas_sin_alternativa: ['r1'] });
   });
 });

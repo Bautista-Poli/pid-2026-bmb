@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
-import { Cochera, EstadoCochera, Id, LoteCocheras, NuevaCochera } from '@app/models';
+import { Cochera, Id, LoteCocheras, NuevaCochera } from '@app/models';
 import { CocheraDto } from './api/api.dto';
 import { aCochera, aPayloadCambiosCochera, aPayloadCochera, aPayloadLotes } from './api/api.mapeo';
 
@@ -36,10 +36,6 @@ export class CocheraService {
     return this.http
       .patch<{ cochera: CocheraDto }>(rutaCochera(cochera), aPayloadCambiosCochera(cambios))
       .pipe(map((respuesta) => aCochera(respuesta.cochera)));
-  }
-
-  cambiarEstado(cochera: Cochera, estado: EstadoCochera): Observable<Cochera> {
-    return this.actualizar(cochera, { estado });
   }
 
   /** `POST /api/estacionamientos/:id/cocheras/:idCochera/reactivar` */

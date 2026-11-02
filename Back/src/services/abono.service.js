@@ -5,6 +5,7 @@ import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
 import { partesLocales } from '../utils/horario.js';
 import { motivoFueraDeTurno, TURNOS } from '../utils/turnos.js';
+import { crearDevolucion, topeDe } from './devolucion.service.js';
 import { aceptaReservas, asegurarPropiedad } from './estacionamiento.service.js';
 
 const VIOLACION_UNIQUE = '23505';
@@ -138,7 +139,7 @@ export async function comprar(idConductor, { id_plan }) {
   return withTransaction(async (client) => {
     const { rows } = await client.query(
       `SELECT p.id_plan, p.id_estacionamiento, p.turno, p.cupos, p.precio, p.activo,
-              e.publicado, e.estado_aprobacion, e.activo AS estacionamiento_activo
+              e.id_propietario, e.publicado, e.estado_aprobacion, e.activo AS estacionamiento_activo
          FROM plan_abono p
          JOIN estacionamiento e ON e.id_estacionamiento = p.id_estacionamiento
         WHERE p.id_plan = $1`,
@@ -148,6 +149,9 @@ export async function comprar(idConductor, { id_plan }) {
     if (!plan || !plan.activo) throw ApiError.notFound('El plan no existe o ya no se ofrece');
     if (!aceptaReservas({ ...plan, activo: plan.estacionamiento_activo })) {
       throw ApiError.conflict('El estacionamiento no esta disponible para reservar');
+    }
+    if (plan.id_propietario === idConductor) {
+      throw ApiError.conflict('No podes comprar un abono de un estacionamiento propio');
     }
 
     const { rows: creado } = await client.query(
@@ -206,6 +210,44 @@ export async function cancelar(idAbono, idConductor) {
 
     return obtenerAbono(client, idAbono);
   });
+}
+
+/**
+ * Baja de estacionamientos (el propio o la cuenta del propietario): sus abonos
+ * VIGENTE se cancelan junto con las reservas que todavia no empezaron, los
+ * planes dejan de ofrecerse y al conductor se le devuelve la parte no usada
+ * (precio por los usos que le quedaban). La devolucion no tiene incidencia.
+ * Corre dentro de la transaccion de la baja.
+ */
+export async function cancelarPorBajaDeEstacionamientos(client, idsEstacionamientos) {
+  const { rows: abonos } = await client.query(
+    `SELECT id_abono FROM abono
+      WHERE id_estacionamiento = ANY($1::uuid[]) AND estado = 'VIGENTE'
+      ORDER BY id_abono
+      FOR UPDATE`,
+    [idsEstacionamientos],
+  );
+
+  for (const { id_abono } of abonos) {
+    await client.query(
+      `UPDATE reserva SET estado = 'CANCELADA', cancelada_por = 'PROPIETARIO'
+        WHERE id_abono = $1 AND estado IN ('PENDIENTE', 'CONFIRMADA') AND inicio > now()`,
+      [id_abono],
+    );
+    await client.query(`UPDATE abono SET estado = 'CANCELADO' WHERE id_abono = $1`, [id_abono]);
+
+    const abono = await obtenerAbono(client, id_abono);
+    const noUsado = (Number(abono.precio_total) * abono.cupos_restantes) / abono.cupos_totales;
+    const { tope } = await topeDe(client, { idAbono: id_abono });
+    const monto = Math.min(Math.round(noUsado * 100) / 100, tope);
+    if (monto > 0) {
+      await crearDevolucion(client, { idIncidencia: null, idAbono: id_abono, monto, aplicadaPor: 'SISTEMA' });
+    }
+  }
+
+  await client.query('UPDATE plan_abono SET activo = FALSE WHERE id_estacionamiento = ANY($1::uuid[])', [
+    idsEstacionamientos,
+  ]);
 }
 
 /** Abonos vigentes cuya fecha `hasta` ya paso: los llama la revision de vencimientos (middlewares/vencimientos.js). */

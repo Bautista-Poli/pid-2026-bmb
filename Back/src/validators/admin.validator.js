@@ -12,9 +12,9 @@ export function validarFiltroAdmin(query) {
   return resultado;
 }
 
-/** La version que el admin tenia en pantalla (opcional): ver admin.service.js: decidir. */
+/** La version que el admin tenia en pantalla (obligatoria): ver admin.service.js: decidir. */
 function conVersionVista(validador, body) {
-  const resultado = validador.texto('enviado_en', body.enviado_en, { requerido: false, max: 40 }).resultado();
+  const resultado = validador.texto('enviado_en', body.enviado_en, { max: 40 }).resultado();
   const { enviado_en } = resultado.valores;
   if (enviado_en !== undefined && Number.isNaN(Date.parse(enviado_en))) {
     resultado.errores.push({ campo: 'enviado_en', mensaje: 'tiene que ser una fecha' });
@@ -57,7 +57,8 @@ export function validarResolucionModeracion(body) {
     .texto('fundamento', body.fundamento, { min: 20, max: 1000 })
     .resultado();
   const { resolucion, monto } = resultado.valores;
-  if (resolucion === 'A_FAVOR_CONDUCTOR' && !(monto > 0)) {
+  // 0 vale si no hay nada para devolver (p. ej. una reserva cancelada): lo controla el service.
+  if (resolucion === 'A_FAVOR_CONDUCTOR' && monto === undefined) {
     resultado.errores.push({ campo: 'monto', mensaje: 'a favor del conductor, indica cuanto se le devuelve' });
   }
   if (resolucion === 'A_FAVOR_PROPIETARIO' && monto > 0) {

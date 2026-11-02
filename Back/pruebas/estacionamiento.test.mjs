@@ -210,9 +210,9 @@ describe('cocheras', () => {
 
     const cambio = await api('PATCH', `${ruta}/${alta.datos.cochera.id_cochera}`, {
       token: propietario.token,
-      body: { estado_actual: 'OCUPADA' },
+      body: { sector: 'Planta baja' },
     });
-    assert.equal(cambio.datos.cochera.estado_actual, 'OCUPADA');
+    assert.equal(cambio.datos.cochera.sector, 'Planta baja');
 
     const baja = await api('DELETE', `${ruta}/${alta.datos.cochera.id_cochera}`, {
       token: propietario.token,
@@ -306,13 +306,15 @@ describe('baja, reactivacion y eliminacion de cocheras', () => {
     assert.equal(estado, 409);
   });
 
-  test('el PATCH no permite marcarla INACTIVA', async () => {
+  test('el PATCH no cambia el estado_actual: lo maneja el ciclo de la reserva', async () => {
     const { propietario, ruta, cochera } = await escenario();
-    const { estado } = await api('PATCH', `${ruta}/${cochera.id_cochera}`, {
-      token: propietario.token,
-      body: { estado_actual: 'INACTIVA' },
-    });
-    assert.equal(estado, 400);
+    for (const estadoActual of ['INACTIVA', 'OCUPADA']) {
+      const { estado } = await api('PATCH', `${ruta}/${cochera.id_cochera}`, {
+        token: propietario.token,
+        body: { estado_actual: estadoActual },
+      });
+      assert.equal(estado, 400);
+    }
   });
 
   test('una cochera activa no se puede eliminar: primero hay que darla de baja', async () => {

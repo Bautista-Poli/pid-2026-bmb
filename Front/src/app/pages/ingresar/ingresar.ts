@@ -25,7 +25,8 @@ export class Ingresar {
 
   protected readonly formulario = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
-    password: ['', [Validators.required, Validators.minLength(6)]],
+    // Sin largo minimo: el de registro puede cambiar y las cuentas viejas siguen entrando.
+    password: ['', [Validators.required]],
   });
 
   protected readonly enviando = signal(false);

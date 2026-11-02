@@ -45,24 +45,25 @@ export async function obtenerEstacionamiento(idEstacionamiento) {
  * decision se rechaza, para no aprobar algo que nadie vio. Se compara al
  * milisegundo porque es la precision con la que viaja por JSON.
  */
-async function decidir(idEstacionamiento, idAdmin, estado, motivo, enviadoEn = null) {
+async function decidir(idEstacionamiento, idAdmin, estado, motivo, enviadoEn) {
   const { rows } = await query(
     `UPDATE estacionamiento
         SET estado_aprobacion = $3, motivo_rechazo = $4, revisado_por = $2, revisado_en = now()
       WHERE id_estacionamiento = $1
+        AND activo
         AND estado_aprobacion = '${ESTADOS_APROBACION.PENDIENTE}'
-        AND ($5::timestamptz IS NULL
-             OR date_trunc('milliseconds', enviado_en) = date_trunc('milliseconds', $5::timestamptz))
+        AND date_trunc('milliseconds', enviado_en) = date_trunc('milliseconds', $5::timestamptz)
       RETURNING id_estacionamiento`,
     [idEstacionamiento, idAdmin, estado, motivo, enviadoEn],
   );
 
   if (!rows[0]) {
     const { rows: existe } = await query(
-      'SELECT estado_aprobacion FROM estacionamiento WHERE id_estacionamiento = $1',
+      'SELECT estado_aprobacion, activo FROM estacionamiento WHERE id_estacionamiento = $1',
       [idEstacionamiento],
     );
     if (!existe[0]) throw ApiError.notFound('Estacionamiento no encontrado');
+    if (!existe[0].activo) throw ApiError.conflict('El estacionamiento esta dado de baja');
     if (existe[0].estado_aprobacion !== ESTADOS_APROBACION.PENDIENTE) {
       throw ApiError.conflict('El estacionamiento no esta pendiente de revision');
     }
@@ -72,7 +73,7 @@ async function decidir(idEstacionamiento, idAdmin, estado, motivo, enviadoEn = n
   return obtenerEstacionamiento(idEstacionamiento);
 }
 
-export function aprobar(idEstacionamiento, idAdmin, { enviado_en } = {}) {
+export function aprobar(idEstacionamiento, idAdmin, { enviado_en }) {
   return decidir(idEstacionamiento, idAdmin, ESTADOS_APROBACION.APROBADO, null, enviado_en);
 }
 

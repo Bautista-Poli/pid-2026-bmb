@@ -162,9 +162,24 @@ export async function actualizar(idVehiculo, idConductor, cambios) {
   });
 }
 
-/** Baja logica: marca activo = false y libera el predeterminado, no borra la fila. */
+/**
+ * Baja logica: marca activo = false y libera el predeterminado, no borra la fila.
+ * Con reservas vigentes (o el vehiculo adentro) no se da de baja: el
+ * propietario lo sigue esperando. Primero hay que cancelarlas.
+ */
 export async function darDeBaja(idVehiculo, idConductor) {
   await obtenerDelConductor(idVehiculo, idConductor);
+
+  const { rows: vigentes } = await query(
+    `SELECT 1 FROM reserva
+      WHERE id_vehiculo = $1
+        AND (estado = 'ACTIVA' OR (estado IN ('PENDIENTE', 'CONFIRMADA') AND fin > now()))
+      LIMIT 1`,
+    [idVehiculo],
+  );
+  if (vigentes[0]) {
+    throw ApiError.conflict('El vehiculo tiene reservas vigentes: cancelalas antes de darlo de baja');
+  }
   // La foto no se va a volver a ver: se saca tambien de Cloudinary.
   await cambiarFoto(idVehiculo, null);
 

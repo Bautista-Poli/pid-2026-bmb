@@ -3,7 +3,7 @@ import { Observable } from 'rxjs';
 import { Boton, CampoBusqueda, Chip, Sugerencia, Tarjeta } from '@app/components/ui';
 import { HoraHHmm, Momento, Ubicacion } from '@app/models';
 import { DireccionGeoref } from '@app/services/georef.service';
-import { aFechaISO } from '@app/utils/fecha.util';
+import { hoyISO } from '@app/utils/fecha.util';
 
 /** Lo que se pregunta antes de listar: donde busca el conductor y para cuando. */
 export interface Exploracion {
@@ -43,7 +43,7 @@ export class ElegirMomento {
 
   /** La franja queda oculta detras de "Busqueda avanzada" hasta que se abre. */
   protected readonly avanzadaAbierta = signal(false);
-  protected readonly hoy = aFechaISO(new Date());
+  protected readonly hoy = hoyISO();
   protected readonly fecha = signal(this.hoy);
   protected readonly horaDesde = signal<HoraHHmm>('');
   protected readonly horaHasta = signal<HoraHHmm>('');

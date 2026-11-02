@@ -19,6 +19,9 @@ import { aceptaReservas, asegurarPropiedad } from './estacionamiento.service.js'
 
 const VIOLACION_EXCLUSION = '23P01';
 
+// Un propietario que tambien es conductor no reserva en lo suyo.
+export const MENSAJE_PROPIO = 'No podes reservar en un estacionamiento propio';
+
 // Modalidad de las reservas hechas con un abono: no se cobra (ya se pago el
 // abono). No esta en MODALIDADES porque el conductor no la elige: sale de `id_abono`.
 const MODALIDAD_ABONO = 'ABONO';
@@ -155,6 +158,10 @@ export async function crear(
           conAbono: Boolean(abono),
         });
 
+    if (cochera.id_propietario === idConductor) {
+      throw ApiError.conflict(MENSAJE_PROPIO);
+    }
+
     if (abono && cochera.id_estacionamiento !== abono.id_estacionamiento) {
       throw ApiError.conflict('El abono es de otro estacionamiento');
     }
@@ -219,7 +226,11 @@ async function obtenerVehiculo(client, idVehiculo, idConductor) {
   return vehiculo;
 }
 
-/** Un vehiculo no puede estar en dos reservas vigentes que se superpongan. */
+/**
+ * Un vehiculo no puede estar en dos reservas vigentes que se superpongan. Si
+ * sigue adentro pasado su `fin` (auto excedido), esa reserva cuenta como sin
+ * fin (finEfectivo): el EXCLUDE de la base usa `fin` y no lo ve.
+ */
 async function asegurarVehiculoLibre(client, idVehiculo, inicio, fin) {
   const { rows } = await client.query(
     `SELECT r.id_reserva, r.inicio, r.fin, e.nombre AS estacionamiento
@@ -229,7 +240,7 @@ async function asegurarVehiculoLibre(client, idVehiculo, inicio, fin) {
       WHERE r.id_vehiculo = $1
         AND r.estado = ANY($2::estado_reserva[])
         AND r.inicio < $4
-        AND r.fin > $3
+        AND ${finEfectivo('r')} > $3
       ORDER BY r.inicio
       LIMIT 1`,
     [idVehiculo, ESTADOS_VIGENTES, inicio, fin],
@@ -252,7 +263,7 @@ async function asegurarVehiculoLibre(client, idVehiculo, inicio, fin) {
 async function bloquearCochera(client, idCochera, vehiculo, inicio, fin, { conAbono = false } = {}) {
   const { rows: cocheras } = await client.query(
     `SELECT c.id_cochera, c.identificador, c.estado_actual, c.activo, c.bloqueada,
-            c.id_tipo_vehiculo, c.id_estacionamiento,
+            c.id_tipo_vehiculo, c.id_estacionamiento, e.id_propietario,
             e.publicado, e.estado_aprobacion, e.activo AS estacionamiento_activo
        FROM cochera c
        JOIN estacionamiento e ON e.id_estacionamiento = c.id_estacionamiento
@@ -309,7 +320,7 @@ async function bloquearCochera(client, idCochera, vehiculo, inicio, fin, { conAb
  */
 async function asignarCochera(client, idEstacionamiento, vehiculo, inicio, fin, { conAbono = false } = {}) {
   const { rows: estacionamientos } = await client.query(
-    'SELECT publicado, activo, estado_aprobacion FROM estacionamiento WHERE id_estacionamiento = $1',
+    'SELECT id_propietario, publicado, activo, estado_aprobacion FROM estacionamiento WHERE id_estacionamiento = $1',
     [idEstacionamiento],
   );
 
@@ -350,7 +361,7 @@ async function asignarCochera(client, idEstacionamiento, vehiculo, inicio, fin, 
     throw ApiError.conflict('No quedan cocheras libres para ese vehiculo en esa franja horaria');
   }
 
-  return libres[0];
+  return { ...libres[0], id_propietario: estacionamiento.id_propietario };
 }
 
 /** Precio de la reserva segun la tarifa vigente; 409 si el estacionamiento no ofrece la modalidad. */
@@ -518,6 +529,10 @@ export async function confirmar(idReserva, idPropietario) {
     const reserva = await bloquearReservaDelPropietario(client, idReserva, idPropietario);
 
     if (reserva.fin <= new Date()) throw ApiError.conflict('La reserva ya termino');
+    // Sin confirmar al empezar ya es Expirada, aunque la revision de vencimientos no la haya cancelado.
+    if (reserva.estado === ESTADOS_RESERVA.PENDIENTE && reserva.inicio <= new Date()) {
+      throw ApiError.conflict('La reserva empezo sin confirmar: quedo expirada');
+    }
 
     await cambiarEstado(client, reserva, ESTADOS_RESERVA.CONFIRMADA);
 
@@ -541,7 +556,7 @@ export async function marcarAusente(idReserva, idPropietario) {
     }
     if (Date.now() < reserva.inicio.getTime()) {
       throw ApiError.conflict(
-        `La reserva empieza a las ${HORA_LOCAL.format(reserva.inicio)}; hasta entonces se puede marcar ausente`,
+        `La reserva empieza a las ${HORA_LOCAL.format(reserva.inicio)}; recien desde entonces se puede marcar ausente`,
       );
     }
 
@@ -579,6 +594,15 @@ async function aplicarIngreso(client, reserva) {
   // Mismo corte que la revision de vencimientos: pasada la tolerancia la reserva
   // es un no-show, aunque todavia no la haya marcado (corre al llegar pedidos).
   if (ahora > limiteIngreso(reserva)) throw ApiError.conflict(MENSAJE_TOLERANCIA);
+
+  // Un auto excedido sigue en la cochera: no entra otro hasta su egreso.
+  const { rows: ocupada } = await client.query(
+    `SELECT 1 FROM reserva WHERE id_cochera = $1 AND estado = $2 AND id_reserva <> $3 LIMIT 1`,
+    [reserva.id_cochera, ESTADOS_RESERVA.ACTIVA, reserva.id_reserva],
+  );
+  if (ocupada[0]) {
+    throw ApiError.conflict('La cochera sigue ocupada por el vehiculo anterior: espera su egreso');
+  }
 
   await client.query('UPDATE reserva SET ingreso_real = now() WHERE id_reserva = $1', [reserva.id_reserva]);
   await cambiarEstado(client, reserva, ESTADOS_RESERVA.ACTIVA);
@@ -698,14 +722,14 @@ export async function registrarAcceso(idPropietario, { codigo }) {
  * Con `modalidad` y/o `horas` cada franja es un ingreso posible: una por cada
  * hora del dia, de `horas` de largo (12 y 24 en estadia y jornada).
  */
-export async function disponibilidad(idEstacionamiento, { fecha, id_tipo_vehiculo, modalidad, horas }) {
+export async function disponibilidad(idEstacionamiento, { fecha, id_tipo_vehiculo, modalidad, horas, con_abono = false }) {
   const { rows } = await query(
     'SELECT publicado, activo, estado_aprobacion FROM estacionamiento WHERE id_estacionamiento = $1',
     [idEstacionamiento],
   );
 
   if (!rows[0]) throw ApiError.notFound('Estacionamiento no encontrado');
-  if (!aceptaReservas(rows[0])) {
+  if (!aceptaReservas(rows[0], { conAbono: con_abono })) {
     throw ApiError.conflict('El estacionamiento no esta disponible para reservar');
   }
 

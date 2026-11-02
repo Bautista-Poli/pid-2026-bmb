@@ -1,8 +1,9 @@
 import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
 import { sinSolapamiento } from '../utils/solapamiento.js';
-import { CAMPOS_TARIFA } from '../utils/tarifas.js';
+import { CAMPOS_TARIFA, HORAS_POR_MODALIDAD } from '../utils/tarifas.js';
 import { ESTADOS_APROBACION, ESTADOS_COCHERA, ESTADOS_VIGENTES } from '../utils/roles.js';
+import { cancelarPorBajaDeEstacionamientos as cancelarAbonos } from './abono.service.js';
 import { listarPorEstacionamiento as listarCocheras } from './cochera.service.js';
 import { geocodificar } from './geocodificacion.service.js';
 
@@ -206,14 +207,19 @@ export async function buscar(filtros) {
     condiciones.push(`e.barrio_zona ILIKE $${parametros.length}`);
   }
 
+  // El filtro de precio es por hora. Sin tarifa por hora, cuenta lo que sale
+  // la hora en su estadia (12 h) o su jornada (24 h).
+  const precioHora = `COALESCE(e.tarifa_hora, e.tarifa_estadia / ${HORAS_POR_MODALIDAD.ESTADIA},
+                               e.tarifa_jornada / ${HORAS_POR_MODALIDAD.JORNADA})`;
+
   if (filtros.tarifa_min !== undefined) {
     parametros.push(filtros.tarifa_min);
-    condiciones.push(`e.tarifa_hora >= $${parametros.length}`);
+    condiciones.push(`${precioHora} >= $${parametros.length}`);
   }
 
   if (filtros.tarifa_max !== undefined) {
     parametros.push(filtros.tarifa_max);
-    condiciones.push(`e.tarifa_hora <= $${parametros.length}`);
+    condiciones.push(`${precioHora} <= $${parametros.length}`);
   }
 
   if (filtros.cubierto !== undefined) {
@@ -326,7 +332,10 @@ export async function obtenerPorId(idEstacionamiento, { idSolicitante = null, es
 export function aceptaReservas(fila, { conAbono = false } = {}) {
   // Un abono ya pagado se sigue usando aunque el estacionamiento haya vuelto a
   // revision por un cambio de nombre o direccion: lo que no se vende es nuevo.
-  const aprobado = conAbono || fila.estado_aprobacion === ESTADOS_APROBACION.APROBADO;
+  // Si el administrador lo rechazo, tampoco se usa el abono.
+  const aprobado =
+    fila.estado_aprobacion === ESTADOS_APROBACION.APROBADO ||
+    (conAbono && fila.estado_aprobacion === ESTADOS_APROBACION.PENDIENTE);
   return fila.activo && fila.publicado && aprobado;
 }
 
@@ -452,7 +461,8 @@ export async function reenviarRevision(idEstacionamiento, idPropietario) {
 
   const { rows } = await query(
     `UPDATE estacionamiento
-        SET estado_aprobacion = '${ESTADOS_APROBACION.PENDIENTE}', motivo_rechazo = NULL, enviado_en = now()
+        SET estado_aprobacion = '${ESTADOS_APROBACION.PENDIENTE}', motivo_rechazo = NULL, enviado_en = now(),
+            revisado_por = NULL, revisado_en = NULL
       WHERE id_estacionamiento = $1
         AND estado_aprobacion = '${ESTADOS_APROBACION.RECHAZADO}'
         AND activo
@@ -543,28 +553,54 @@ export async function darDeBaja(idEstacionamiento, idPropietario) {
 
     if (!rows[0].activo) throw ApiError.conflict('El estacionamiento ya esta dado de baja');
 
-    await client.query(
-      `UPDATE reserva r SET estado = 'CANCELADA', cancelada_por = 'PROPIETARIO'
-         FROM cochera c
-        WHERE c.id_cochera = r.id_cochera
-          AND c.id_estacionamiento = $1
-          AND r.estado = ANY($2::estado_reserva[])
-          AND r.fin > now()`,
-      [idEstacionamiento, ESTADOS_VIGENTES],
-    );
-
-    await client.query(
-      'UPDATE cochera SET activo = FALSE, estado_actual = $1 WHERE id_estacionamiento = $2',
-      [ESTADOS_COCHERA.INACTIVA, idEstacionamiento],
-    );
+    await darDeBajaEnTransaccion(client, [idEstacionamiento]);
 
     const { rows: actualizado } = await client.query(
-      `UPDATE estacionamiento SET activo = FALSE, publicado = FALSE
-        WHERE id_estacionamiento = $1
-        RETURNING ${CAMPOS}`,
+      `SELECT ${CAMPOS} FROM estacionamiento WHERE id_estacionamiento = $1`,
       [idEstacionamiento],
     );
-
     return actualizado[0];
   });
 }
+
+/**
+ * La baja de uno o varios estacionamientos, dentro de una transaccion (la usan
+ * darDeBaja y la baja de la cuenta). Con un vehiculo adentro (reserva ACTIVA,
+ * aunque se haya excedido) se rechaza: primero tiene que registrarse su egreso.
+ * Las reservas que todavia no empezaron se cancelan, los abonos vigentes se
+ * cancelan con la devolucion de lo no usado, y se desactiva todo.
+ */
+export async function darDeBajaEnTransaccion(client, idsEstacionamientos) {
+  if (idsEstacionamientos.length === 0) return;
+
+  const { rows: adentro } = await client.query(
+    `SELECT 1 FROM reserva r JOIN cochera c ON c.id_cochera = r.id_cochera
+      WHERE c.id_estacionamiento = ANY($1::uuid[]) AND r.estado = 'ACTIVA' LIMIT 1`,
+    [idsEstacionamientos],
+  );
+  if (adentro[0]) throw ApiError.conflict(MENSAJE_VEHICULO_ADENTRO);
+
+  await client.query(
+    `UPDATE reserva r SET estado = 'CANCELADA', cancelada_por = 'PROPIETARIO'
+       FROM cochera c
+      WHERE c.id_cochera = r.id_cochera
+        AND c.id_estacionamiento = ANY($1::uuid[])
+        AND r.estado IN ('PENDIENTE', 'CONFIRMADA')
+        AND r.fin > now()`,
+    [idsEstacionamientos],
+  );
+
+  await cancelarAbonos(client, idsEstacionamientos);
+
+  await client.query(
+    'UPDATE cochera SET activo = FALSE, estado_actual = $1 WHERE id_estacionamiento = ANY($2::uuid[])',
+    [ESTADOS_COCHERA.INACTIVA, idsEstacionamientos],
+  );
+  await client.query(
+    'UPDATE estacionamiento SET activo = FALSE, publicado = FALSE WHERE id_estacionamiento = ANY($1::uuid[])',
+    [idsEstacionamientos],
+  );
+}
+
+export const MENSAJE_VEHICULO_ADENTRO =
+  'Hay un vehiculo adentro: registra su egreso antes de dar de baja';

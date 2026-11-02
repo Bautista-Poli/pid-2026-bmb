@@ -846,3 +846,19 @@ BEGIN
   END IF;
 END
 $$;
+
+-- Devoluciones sin incidencia: la baja de un estacionamiento (o de la cuenta del
+-- propietario) cancela sus abonos vigentes y devuelve la parte no usada, sin
+-- reclamo de por medio.
+ALTER TABLE devolucion ALTER COLUMN id_incidencia DROP NOT NULL;
+
+-- La patente es unica solo entre los vehiculos activos: despues de una baja se
+-- puede volver a registrar (el mismo conductor o un dueno nuevo).
+ALTER TABLE vehiculo DROP CONSTRAINT IF EXISTS vehiculo_patente_unica;
+CREATE UNIQUE INDEX IF NOT EXISTS vehiculo_patente_unica ON vehiculo (patente) WHERE activo;
+
+-- Un reclamo retirado no esta resuelto: la fecha va en su propia columna.
+-- `estado::text`: RETIRADA se agrega en esta misma transaccion (ver arriba).
+ALTER TABLE incidencia ADD COLUMN IF NOT EXISTS retirada_at TIMESTAMPTZ;
+UPDATE incidencia SET retirada_at = resuelta_at, resuelta_at = NULL
+ WHERE estado::text = 'RETIRADA' AND retirada_at IS NULL AND resuelta_at IS NOT NULL;

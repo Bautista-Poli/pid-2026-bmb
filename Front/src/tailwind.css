@@ -65,6 +65,9 @@
      la "it"— y por eso se usa tambien como acento secundario. */
   --color-ocupada: #dc2626;
   --color-baja: #d97706;
+  /* Avisos (cocheras bloqueadas, incidencias pendientes): mismo tono que baja,
+     y sigue a baja en los temas oscuros. */
+  --color-aviso: var(--color-baja);
   --color-reservada: #7c8aa0;
   --color-exito: #12b76a;
   --color-exito-suave: #e7f9f0;

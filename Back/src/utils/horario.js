@@ -35,13 +35,17 @@ export function sumarDias(fecha, dias) {
 /**
  * Motivo por el que [inicio, fin) queda fuera del horario de atencion, o null
  * si esta dentro. Un estacionamiento sin horarios cargados no se restringe.
+ * Un fin justo a la medianoche cuenta como '24:00' del mismo dia (como en
+ * utils/turnos.js), y un cierre a las 23:59 como abierto hasta la medianoche
+ * (como en estadistica.service.js).
  */
 export function motivoFueraDeHorario(horarios, inicio, fin) {
   if (horarios.length === 0) return null;
 
   const desde = partesLocales(inicio);
   const hasta = partesLocales(fin);
-  if (desde.fecha !== hasta.fecha) {
+  const finEsMedianoche = hasta.hora === '00:00' && hasta.fecha === sumarDias(desde.fecha, 1);
+  if (desde.fecha !== hasta.fecha && !finEsMedianoche) {
     return 'La reserva tiene que empezar y terminar el mismo dia';
   }
 
@@ -50,7 +54,9 @@ export function motivoFueraDeHorario(horarios, inicio, fin) {
 
   const apertura = horario.hora_apertura.slice(0, 5);
   const cierre = horario.hora_cierre.slice(0, 5);
-  if (desde.hora < apertura || hasta.hora > cierre) {
+  const horaHasta = finEsMedianoche ? '24:00' : hasta.hora;
+  const cierreEfectivo = cierre >= '23:59' ? '24:00' : cierre;
+  if (desde.hora < apertura || horaHasta > cierreEfectivo) {
     return `La franja esta fuera del horario de atencion (${apertura} a ${cierre})`;
   }
 

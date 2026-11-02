@@ -74,6 +74,8 @@ export interface Incidencia {
   /** Quien la escalo a la moderacion: PROPIETARIO o CONDUCTOR. */
   denunciadaPor: AutorMensaje | null;
   resueltaEn: FechaHoraISO | null;
+  /** Solo en un reclamo que el conductor retiro. */
+  retiradaEn: FechaHoraISO | null;
   /** null en un reclamo sobre un abono. */
   reserva: {
     id: Id;

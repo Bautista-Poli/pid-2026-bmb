@@ -120,6 +120,11 @@ const COMPARADORES: Record<OrdenEstacionamiento, (a: Estacionamiento, b: Estacio
     DISTANCIA: (a, b) => distancia(a) - distancia(b),
     PRECIO: (a, b) =>
       (a.tarifas.hora ?? Number.MAX_VALUE) - (b.tarifas.hora ?? Number.MAX_VALUE),
+    // Ponderado (lo calcula la API); a igual puntaje, el de mas calificaciones y despues el mas cercano.
+    CALIFICACION: (a, b) =>
+      b.puntajeOrden - a.puntajeOrden ||
+      b.reputacion.cantidad - a.reputacion.cantidad ||
+      distancia(a) - distancia(b),
   };
 
 /** Con `origen`, calcula la distancia de cada estacionamiento; si no tiene coordenadas, queda sin distancia. */
@@ -161,6 +166,7 @@ function aParams(filtros: FiltrosEstacionamiento): HttpParams {
   if (filtros.precioMinimo != null) params = params.set('tarifa_min', filtros.precioMinimo);
   if (filtros.precioMaximo != null) params = params.set('tarifa_max', filtros.precioMaximo);
   if (filtros.soloCubiertos) params = params.set('cubierto', true);
+  if (filtros.calificacionMinima != null) params = params.set('calificacion_min', filtros.calificacionMinima);
   if (filtros.area) {
     params = params
       .set('lat_min', filtros.area.latitudMinima)

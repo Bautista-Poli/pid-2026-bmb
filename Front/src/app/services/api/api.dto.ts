@@ -100,6 +100,11 @@ export interface EstacionamientoDto {
   foto_actualizada?: string | null;
   /** La galeria en orden; la primera es la portada. */
   fotos?: { id_foto: string; actualizada: string }[];
+  /** Promedio de un decimal de lo que pusieron los conductores; `null` sin calificaciones. */
+  calificacion_promedio?: number | null;
+  cantidad_calificaciones?: number;
+  /** Promedio ponderado para ordenar. */
+  puntaje_orden?: number;
 }
 
 export interface VehiculoDto {
@@ -148,6 +153,17 @@ export interface ReservaDto {
   turno_abono: TurnoAbono | null;
   devuelto?: number;
   reclamo_abierto?: string | null;
+  califico_conductor?: boolean;
+  califico_propietario?: boolean;
+  /** Hasta cuando se puede calificar; `null` si la reserva no termino. */
+  calificable_hasta?: string | null;
+  conductor_calificacion_promedio?: number | null;
+  conductor_cantidad_calificaciones?: number;
+}
+
+export interface CalificacionesRecibidasDto {
+  resumen: { promedio: number | null; cantidad: number };
+  calificaciones: { puntaje: number; comentario: string | null; created_at: string }[];
 }
 
 export interface AccesoReservaDto {

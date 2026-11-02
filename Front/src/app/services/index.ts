@@ -7,3 +7,4 @@ export * from './abono.service';
 export * from './admin.service';
 export * from './cloudinary.service';
 export * from './estadistica.service';
+export * from './calificacion.service';

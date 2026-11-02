@@ -1,4 +1,5 @@
 import { TurnoAbono } from './abono.model';
+import { Reputacion } from './calificacion.model';
 import { FechaHoraISO, FechaISO, HoraHHmm, Id } from './api.model';
 import { Cochera } from './cochera.model';
 import { Estacionamiento } from './estacionamiento.model';
@@ -97,6 +98,14 @@ export interface Reserva {
   devuelto: number;
   /** El reclamo abierto o denunciado sobre esta reserva, si hay. */
   reclamoAbierto: Id | null;
+  /** Quien ya califico y hasta cuando se puede (null si la reserva no termino). */
+  calificacion: {
+    conductorCalifico: boolean;
+    propietarioCalifico: boolean;
+    calificableHasta: FechaHoraISO | null;
+  };
+  /** Lo que le pusieron al conductor los propietarios: lo ve el propietario para decidir. */
+  reputacionConductor: Reputacion;
 }
 
 /**

@@ -8,7 +8,6 @@ export * from './punto-estado/punto-estado';
 export * from './campo-busqueda/campo-busqueda';
 export * from './estado-vacio/estado-vacio';
 export * from './cargando/cargando';
-export * from './kpi/kpi';
 export * from './icono/icono';
 export * from './logo/logo';
 export * from './miniatura/miniatura';

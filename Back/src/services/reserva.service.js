@@ -11,6 +11,7 @@ import {
 } from '../utils/horario.js';
 import { ESTADOS_COCHERA, ESTADOS_RESERVA, ESTADOS_VIGENTES, ORIGENES_CANCELACION } from '../utils/roles.js';
 import { finEfectivo, sinSolapamiento } from '../utils/solapamiento.js';
+import { limiteCalificacionSql, reputacionConductor } from '../utils/reputacion.js';
 import { CAMPOS_TARIFA, HORAS_POR_MODALIDAD, MODALIDADES, precioDeReserva } from '../utils/tarifas.js';
 import { ORDEN_NATURAL } from './cochera.service.js';
 import { validarAbonoParaReservar } from './abono.service.js';
@@ -113,7 +114,13 @@ const selectDetalle = ({ conCodigo = false } = {}) => `
          (SELECT i.id_incidencia FROM incidencia i
            WHERE i.id_reserva = r.id_reserva AND i.abierta_por IS NOT NULL
              AND i.estado IN ('ABIERTA', 'DENUNCIADA')
-           LIMIT 1) AS reclamo_abierto
+           LIMIT 1) AS reclamo_abierto,
+         EXISTS (SELECT 1 FROM calificacion cal
+                  WHERE cal.id_reserva = r.id_reserva AND cal.autor = 'CONDUCTOR') AS califico_conductor,
+         EXISTS (SELECT 1 FROM calificacion cal
+                  WHERE cal.id_reserva = r.id_reserva AND cal.autor = 'PROPIETARIO') AS califico_propietario,
+         CASE WHEN r.estado IN ('FINALIZADA', 'NO_SHOW') THEN ${limiteCalificacionSql('r')} END AS calificable_hasta,
+         ${reputacionConductor('r.id_conductor')}
     FROM reserva r
     JOIN vehiculo v        ON v.id_vehiculo = r.id_vehiculo
     JOIN cochera c         ON c.id_cochera = r.id_cochera

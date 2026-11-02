@@ -1,12 +1,14 @@
 import express, { Router } from 'express';
 
 import * as abonoController from '../controllers/abono.controller.js';
+import * as calificacionController from '../controllers/calificacion.controller.js';
 import * as estacionamientoController from '../controllers/estacionamiento.controller.js';
 import { authenticate, authenticateOpcional, requireRole } from '../middlewares/auth.js';
 import { LIMITE_FIRMAS, limitarPorUsuario } from '../middlewares/limite.js';
 import { validate } from '../middlewares/validate.js';
 import { ROLES } from '../utils/roles.js';
 import { validarCambiosPlanAbono, validarPlanAbono } from '../validators/abono.validator.js';
+import { validarPaginado } from '../validators/calificacion.validator.js';
 import {
   validarActualizacionCochera,
   validarBloqueoCochera,
@@ -54,6 +56,13 @@ router.get(
   ...soloPropietario,
   validate(validarFiltroReservas, 'query'),
   estacionamientoController.listarReservas,
+);
+// Lo que los conductores le pusieron: solo lo ve el dueno.
+router.get(
+  '/:id/calificaciones',
+  ...soloPropietario,
+  validate(validarPaginado, 'query'),
+  calificacionController.recibidasPorEstacionamiento,
 );
 
 router.post(

@@ -1,7 +1,8 @@
-import { withTransaction } from '../config/database.js';
+import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
 import { AUTORES_CALIFICACION, limiteCalificacionSql } from '../utils/reputacion.js';
 import { ESTADOS_RESERVA, ROLES } from '../utils/roles.js';
+import { asegurarPropiedad } from './estacionamiento.service.js';
 
 const VIOLACION_UNIQUE = '23505';
 
@@ -62,4 +63,38 @@ export async function calificar(idReserva, usuario, { puntaje, comentario }) {
     if (error.code === VIOLACION_UNIQUE) throw ApiError.conflict(MENSAJE_YA_CALIFICO);
     throw error;
   }
+}
+
+/**
+ * Lo que recibio alguien: resumen (promedio de un decimal y cantidad) y la
+ * pagina de calificaciones, sin autor ni reserva. Los comentarios solo los ve
+ * quien los recibe.
+ */
+async function recibidas(columna, id, autor, { limit, offset }) {
+  const [resumen, pagina] = await Promise.all([
+    query(
+      `SELECT ROUND(AVG(puntaje), 1)::float AS promedio, COUNT(*)::int AS cantidad
+         FROM calificacion WHERE ${columna} = $1 AND autor = $2`,
+      [id, autor],
+    ),
+    query(
+      `SELECT puntaje, comentario, created_at
+         FROM calificacion WHERE ${columna} = $1 AND autor = $2
+        ORDER BY created_at DESC
+        LIMIT $3 OFFSET $4`,
+      [id, autor, limit, offset],
+    ),
+  ]);
+  return { resumen: resumen.rows[0], calificaciones: pagina.rows };
+}
+
+/** Lo que los propietarios le pusieron al conductor. */
+export function recibidasPorConductor(idConductor, paginado) {
+  return recibidas('id_conductor', idConductor, AUTORES_CALIFICACION.PROPIETARIO, paginado);
+}
+
+/** Lo que los conductores le pusieron al estacionamiento; solo lo ve su dueno. */
+export async function recibidasPorEstacionamiento(idEstacionamiento, idPropietario, paginado) {
+  await asegurarPropiedad(idEstacionamiento, idPropietario);
+  return recibidas('id_estacionamiento', idEstacionamiento, AUTORES_CALIFICACION.CONDUCTOR, paginado);
 }

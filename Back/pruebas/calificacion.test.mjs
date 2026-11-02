@@ -264,3 +264,45 @@ describe('reputacion del estacionamiento', () => {
     assert.equal(fuera.estado, 400);
   });
 });
+
+describe('comentarios recibidos', () => {
+  let e;
+  before(async () => {
+    e = await escenario();
+    const id = await reservaTerminada(e);
+    await calificar(e.conductor.token, id, { puntaje: 5, comentario: 'Impecable' });
+    await calificar(e.propietario.token, id, { puntaje: 4, comentario: 'Puntual' });
+  });
+
+  const DEL_ESTACIONAMIENTO = () => `/estacionamientos/${e.estacionamiento.id_estacionamiento}/calificaciones`;
+
+  test('el propietario ve los de su estacionamiento, sin datos del autor', async () => {
+    const r = await api('GET', DEL_ESTACIONAMIENTO(), { token: e.propietario.token });
+    assert.equal(r.estado, 200, motivo(r));
+    assert.deepEqual(r.datos.resumen, { promedio: 5, cantidad: 1 });
+    assert.equal(r.datos.calificaciones.length, 1);
+    assert.deepEqual(Object.keys(r.datos.calificaciones[0]).sort(), ['comentario', 'created_at', 'puntaje']);
+    assert.equal(r.datos.calificaciones[0].comentario, 'Impecable');
+  });
+
+  test('nadie mas ve los comentarios del estacionamiento', async () => {
+    const otroPropietario = await crearUsuario({ rol: 'PROPIETARIO' });
+    assert.equal((await api('GET', DEL_ESTACIONAMIENTO(), { token: otroPropietario.token })).estado, 403);
+    assert.equal((await api('GET', DEL_ESTACIONAMIENTO(), { token: e.conductor.token })).estado, 403);
+    assert.equal((await api('GET', DEL_ESTACIONAMIENTO())).estado, 401);
+  });
+
+  test('el conductor ve lo que le pusieron, con el mismo formato', async () => {
+    const r = await api('GET', '/calificaciones/recibidas', { token: e.conductor.token });
+    assert.equal(r.estado, 200, motivo(r));
+    assert.deepEqual(r.datos.resumen, { promedio: 4, cantidad: 1 });
+    assert.deepEqual(Object.keys(r.datos.calificaciones[0]).sort(), ['comentario', 'created_at', 'puntaje']);
+    assert.equal(r.datos.calificaciones[0].comentario, 'Puntual');
+  });
+
+  test('un conductor sin calificaciones: sin promedio y lista vacia', async () => {
+    const nuevo = await crearUsuario();
+    const r = await api('GET', '/calificaciones/recibidas', { token: nuevo.token });
+    assert.deepEqual(r.datos, { resumen: { promedio: null, cantidad: 0 }, calificaciones: [] });
+  });
+});

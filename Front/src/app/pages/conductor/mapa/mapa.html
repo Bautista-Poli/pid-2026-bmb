@@ -121,6 +121,7 @@
           <select class="panel-resultados__select" [value]="orden()" (change)="ordenar($any($event.target).value)">
             <option value="DISTANCIA">Más cercano</option>
             <option value="PRECIO">Más barato</option>
+            <option value="CALIFICACION">Mejor calificados</option>
           </select>
         </label>
       </div>
@@ -166,6 +167,7 @@
                   <span class="resultado__direccion">
                     {{ estacionamiento.direccion.calle }} {{ estacionamiento.direccion.numero }}
                   </span>
+                  <app-reputacion [reputacion]="estacionamiento.reputacion" />
                   @if (distancia(estacionamiento); as texto) {
                     <span class="resultado__distancia">
                       <ui-icono nombre="explorar" [tamano]="14" class="resultado__distancia-icono" />
@@ -357,6 +359,21 @@
       </div>
     </div>
 
+    <!-- Calificacion minima: deja afuera a los que no tienen calificaciones -->
+    <div class="filtros__bloque filtros__bloque--chips">
+      <span class="filtros__titulo">Calificación</span>
+      <div class="filtros__chips">
+        @for (opcion of opcionesCalificacion; track opcion.etiqueta) {
+          <ui-chip
+            [activo]="panel().calificacionMinima === opcion.valor"
+            (alternar)="cambiar({ calificacionMinima: opcion.valor })"
+          >
+            <span class="filtros__chip-contenido">{{ opcion.etiqueta }}</span>
+          </ui-chip>
+        }
+      </div>
+    </div>
+
     <!-- Filtros adicionales -->
     <div class="filtros__bloque filtros__bloque--chips">
       <span class="filtros__titulo">Filtros adicionales</span>
@@ -366,6 +383,9 @@
         </ui-chip>
         <ui-chip [activo]="panel().orden === 'PRECIO'" (alternar)="cambiar({ orden: 'PRECIO' })">
           <span class="filtros__chip-contenido"><ui-icono nombre="moneda" [tamano]="15" />Más barato</span>
+        </ui-chip>
+        <ui-chip [activo]="panel().orden === 'CALIFICACION'" (alternar)="cambiar({ orden: 'CALIFICACION' })">
+          <span class="filtros__chip-contenido"><span aria-hidden="true">★</span>Mejor calificados</span>
         </ui-chip>
         <ui-chip [activo]="panel().soloCubiertos" (alternar)="cambiar({ soloCubiertos: !panel().soloCubiertos })">
           <span class="filtros__chip-contenido"><ui-icono nombre="techo" [tamano]="15" />Cubierto</span>

@@ -52,6 +52,7 @@ import {
 import { LugaresService } from '@app/services/lugares.service';
 import { UbicacionService } from '@app/services/ubicacion.service';
 import { VehiculoService } from '@app/services/vehiculo.service';
+import { Reputacion } from '@app/components/calificacion/reputacion/reputacion';
 import {
   ETIQUETA_ESTADO,
   EstadoDisponibilidad,
@@ -104,7 +105,16 @@ const PANEL_INICIAL: Panel = {
   precioMaximo: PRECIO_TOPE,
   orden: 'DISTANCIA',
   soloCubiertos: false,
+  calificacionMinima: null,
 };
+
+/** Opciones del filtro "Calificación": null = cualquiera. */
+const OPCIONES_CALIFICACION: { valor: number | null; etiqueta: string }[] = [
+  { valor: null, etiqueta: 'Cualquiera' },
+  { valor: 3, etiqueta: '3+' },
+  { valor: 4, etiqueta: '4+' },
+  { valor: 4.5, etiqueta: '4.5+' },
+];
 
 const CLASE_ESTADO: Record<EstadoDisponibilidad, string> = {
   DISPONIBLE: 'bg-exito-suave text-exito',
@@ -123,6 +133,8 @@ interface Panel {
   precioMaximo: number;
   orden: OrdenEstacionamiento;
   soloCubiertos: boolean;
+  /** Promedio minimo; null = cualquiera (incluye los "Nuevo"). */
+  calificacionMinima: number | null;
 }
 
 /**
@@ -157,6 +169,7 @@ interface Panel {
     EstadoVacio,
     Icono,
     Modal,
+    Reputacion,
   ],
   templateUrl: './mapa.html',
   styleUrl: './mapa.css',
@@ -217,14 +230,19 @@ export class Mapa {
   /** Los filtros en uso. */
   private readonly aplicado = signal<Panel>(PANEL_INICIAL);
 
+  protected readonly opcionesCalificacion = OPCIONES_CALIFICACION;
   protected readonly filtrosAbiertos = signal(false);
   protected readonly intentoBuscar = signal(false);
 
   /** Cuantos filtros del modal estan en uso (el orden no cuenta: tiene su propio selector). */
   protected readonly filtrosActivos = computed(() => {
-    const { desde, precioMinimo, precioMaximo, soloCubiertos } = this.aplicado();
-    return [desde, precioMinimo > 0 || precioMaximo < PRECIO_TOPE, soloCubiertos].filter(Boolean)
-      .length;
+    const { desde, precioMinimo, precioMaximo, soloCubiertos, calificacionMinima } = this.aplicado();
+    return [
+      desde,
+      precioMinimo > 0 || precioMaximo < PRECIO_TOPE,
+      soloCubiertos,
+      calificacionMinima !== null,
+    ].filter(Boolean).length;
   });
 
   protected readonly errorHorario = computed(() => {
@@ -444,6 +462,7 @@ export class Mapa {
       precioMinimo: panel.precioMinimo > 0 ? panel.precioMinimo : null,
       precioMaximo: panel.precioMaximo < PRECIO_TOPE ? panel.precioMaximo : null,
       soloCubiertos: panel.soloCubiertos,
+      calificacionMinima: panel.calificacionMinima,
       momento: momentoDe(panel),
       // Los que no sirven tambien se muestran (en gris y al final), no desaparecen.
       incluirNoDisponibles: true,

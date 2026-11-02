@@ -3,6 +3,7 @@ import { Router } from 'express';
 import abonoRoutes from './abono.routes.js';
 import adminRoutes from './admin.routes.js';
 import authRoutes from './auth.routes.js';
+import calificacionRoutes from './calificacion.routes.js';
 import estacionamientoRoutes from './estacionamiento.routes.js';
 import estadisticaRoutes from './estadistica.routes.js';
 import incidenciaRoutes from './incidencia.routes.js';
@@ -21,5 +22,6 @@ router.use('/abonos', abonoRoutes);
 router.use('/admin', adminRoutes);
 router.use('/incidencias', incidenciaRoutes);
 router.use('/estadisticas', estadisticaRoutes);
+router.use('/calificaciones', calificacionRoutes);
 
 export default router;

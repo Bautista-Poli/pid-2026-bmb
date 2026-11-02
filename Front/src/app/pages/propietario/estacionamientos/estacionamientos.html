@@ -81,6 +81,16 @@
                     <ui-icono nombre="moneda" [tamano]="16" class="text-plomo" />
                     <span class="num-tabular">{{ precio(estacionamiento) }}</span>
                   </li>
+                  <li>
+                    <button
+                      type="button"
+                      class="rounded-boton hover:text-acento"
+                      [attr.aria-label]="'Ver calificaciones de ' + estacionamiento.nombre"
+                      (click)="verCalificaciones(estacionamiento)"
+                    >
+                      <app-reputacion [reputacion]="estacionamiento.reputacion" />
+                    </button>
+                  </li>
                 </ul>
 
                 @if (estacionamiento.activo && estacionamiento.estadoAprobacion === 'RECHAZADO') {
@@ -133,6 +143,24 @@
     }
   </div>
 </div>
+
+<ui-modal
+  [titulo]="'Calificaciones · ' + (conCalificaciones()?.nombre ?? '')"
+  [abierto]="conCalificaciones() !== null"
+  (cerrado)="conCalificaciones.set(null)"
+>
+  @if (calificaciones.isLoading()) {
+    <ui-cargando [cantidad]="2" />
+  } @else if (calificaciones.error(); as error) {
+    <p class="text-[13px] text-ocupada" role="alert">{{ error.message }}</p>
+  } @else if (calificaciones.value(); as recibidas) {
+    <div class="flex flex-col gap-2">
+      <app-reputacion [reputacion]="recibidas.resumen" />
+      <p class="text-[12.5px] text-plomo">Solo vos ves los comentarios. No se muestra quién los dejó.</p>
+      <app-lista-calificaciones [calificaciones]="recibidas.calificaciones" />
+    </div>
+  }
+</ui-modal>
 
 <ng-template #estado let-estacionamiento>
   @if (!estacionamiento.activo) {

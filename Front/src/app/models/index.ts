@@ -8,3 +8,4 @@ export * from './tarifa.model';
 export * from './abono.model';
 export * from './incidencia.model';
 export * from './estadistica.model';
+export * from './calificacion.model';

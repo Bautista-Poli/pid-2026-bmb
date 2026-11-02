@@ -6,6 +6,7 @@ import {
   MensajeIncidencia,
   Abono,
   AccesoReserva,
+  CalificacionesRecibidas,
   Cochera,
   Estacionamiento,
   EstadoCochera,
@@ -29,7 +30,7 @@ import {
   Vehiculo,
 } from '@app/models';
 import { aInstante, DIAS_POR_NUMERO, finDeFranja, partesLocales } from '@app/utils/fecha.util';
-import { AbonoDto, AccesoReservaDto, IncidenciaDetalladaDto, IncidenciaDto, IncidenciaModeradaDto, MensajeIncidenciaDto, CocheraDto, EstacionamientoDto, EstadoReservaDto, FranjaDto, HorarioDto, PlanAbonoDto, ReservaDto, UsuarioDto, VehiculoDto } from './api.dto';
+import { AbonoDto, AccesoReservaDto, CalificacionesRecibidasDto, IncidenciaDetalladaDto, IncidenciaDto, IncidenciaModeradaDto, MensajeIncidenciaDto, CocheraDto, EstacionamientoDto, EstadoReservaDto, FranjaDto, HorarioDto, PlanAbonoDto, ReservaDto, UsuarioDto, VehiculoDto } from './api.dto';
 
 /*
  * Traduccion entre la API (snake_case, ids de catalogo, instantes ISO) y los
@@ -113,6 +114,8 @@ export function aEstacionamiento(dto: EstacionamientoDto): Estacionamiento {
     estadoAprobacion: dto.estado_aprobacion,
     motivoRechazo: dto.motivo_rechazo ?? null,
     enviadoEn: dto.enviado_en,
+    reputacion: { promedio: dto.calificacion_promedio ?? null, cantidad: dto.cantidad_calificaciones ?? 0 },
+    puntajeOrden: dto.puntaje_orden ?? 0,
   };
 }
 
@@ -291,6 +294,15 @@ export function aReserva(dto: ReservaDto): ReservaDetallada {
     codigoAcceso: dto.codigo_acceso ?? null,
     devuelto: dto.devuelto ?? 0,
     reclamoAbierto: dto.reclamo_abierto ?? null,
+    calificacion: {
+      conductorCalifico: dto.califico_conductor ?? false,
+      propietarioCalifico: dto.califico_propietario ?? false,
+      calificableHasta: dto.calificable_hasta ?? null,
+    },
+    reputacionConductor: {
+      promedio: dto.conductor_calificacion_promedio ?? null,
+      cantidad: dto.conductor_cantidad_calificaciones ?? 0,
+    },
     estacionamiento: {
       id: dto.id_estacionamiento,
       nombre: dto.estacionamiento,
@@ -475,5 +487,16 @@ export function aPayloadReclamo(datos: NuevoReclamo) {
     motivo: datos.motivo,
     ...(datos.montoPedido !== undefined ? { monto_pedido: datos.montoPedido } : {}),
     texto: datos.texto,
+  };
+}
+
+export function aCalificacionesRecibidas(dto: CalificacionesRecibidasDto): CalificacionesRecibidas {
+  return {
+    resumen: dto.resumen,
+    calificaciones: dto.calificaciones.map((c) => ({
+      puntaje: c.puntaje,
+      comentario: c.comentario,
+      creadaEn: c.created_at,
+    })),
   };
 }

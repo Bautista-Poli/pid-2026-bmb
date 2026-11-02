@@ -27,6 +27,20 @@
 
 <!-- Lo devuelto por reclamos y el acceso a abrir uno (o al que esta abierto). -->
 <ng-template #reclamo>
+  @if (calificable()) {
+    <button
+      type="button"
+      class="inline-flex min-h-11 items-center gap-1.5 rounded-boton px-3 text-[13px] font-semibold text-acento
+             transition-colors duration-160 ease-out hover:bg-acento-suave"
+      (click)="calificar.emit(r)"
+    >
+      <span aria-hidden="true">★</span>Calificar
+    </button>
+  } @else if (r.calificacion.conductorCalifico) {
+    <span class="inline-flex min-h-11 items-center gap-1.5 px-3 text-[12.5px] text-plomo">
+      <span class="text-acento" aria-hidden="true">★</span>Calificado
+    </span>
+  }
   @if (r.devuelto > 0) {
     <span class="num-tabular text-[12.5px] font-semibold text-exito">
       Devuelto $ {{ r.devuelto.toLocaleString('es-AR') }}
@@ -99,7 +113,7 @@
       </div>
     </div>
     <ng-container [ngTemplateOutlet]="aviso" />
-    @if (r.devuelto > 0 || r.reclamoAbierto || reclamable()) {
+    @if (r.devuelto > 0 || r.reclamoAbierto || reclamable() || calificable() || r.calificacion.conductorCalifico) {
       <div class="-my-2 flex flex-wrap items-center justify-end gap-1">
         <ng-container [ngTemplateOutlet]="reclamo" />
       </div>

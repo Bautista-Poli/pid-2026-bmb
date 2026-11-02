@@ -1,5 +1,6 @@
 import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
+import { promedioEstacionamientoSql, reputacionEstacionamiento } from '../utils/reputacion.js';
 import { sinSolapamiento } from '../utils/solapamiento.js';
 import { CAMPOS_TARIFA, HORAS_POR_MODALIDAD } from '../utils/tarifas.js';
 import { ESTADOS_APROBACION, ESTADOS_COCHERA, ESTADOS_VIGENTES } from '../utils/roles.js';
@@ -86,7 +87,8 @@ export const AGREGADOS = `
      FROM estacionamiento_imagen f
     WHERE f.id_estacionamiento = e.id_estacionamiento
     ORDER BY f.orden, f.actualizada
-    LIMIT 1) AS foto_actualizada
+    LIMIT 1) AS foto_actualizada,
+  ${reputacionEstacionamiento('e')}
 `;
 
 /** Zona horaria del negocio (ver utils/horario.js: UTC-3 todo el anio). */
@@ -225,6 +227,13 @@ export async function buscar(filtros) {
   if (filtros.cubierto !== undefined) {
     parametros.push(filtros.cubierto);
     condiciones.push(`e.cubierto = $${parametros.length}`);
+  }
+
+  // Sobre el promedio que ve el conductor (un decimal); los que no tienen
+  // calificaciones (NULL) quedan afuera.
+  if (filtros.calificacion_min !== undefined) {
+    parametros.push(filtros.calificacion_min);
+    condiciones.push(`${promedioEstacionamientoSql('e')} >= $${parametros.length}`);
   }
 
   // La parte del mapa que se esta viendo: sin coordenadas no se puede ubicar.

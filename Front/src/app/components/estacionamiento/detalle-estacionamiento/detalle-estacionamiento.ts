@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { Icono } from '@app/components/ui';
 import { Estacionamiento } from '@app/models';
 import { GaleriaFotos } from '../galeria-fotos/galeria-fotos';
+import { Reputacion } from '@app/components/calificacion/reputacion/reputacion';
 import {
   ETIQUETA_ESTADO,
   EstadoDisponibilidad,
@@ -31,7 +32,7 @@ const pesos = (monto: number) => `$${monto.toLocaleString('es-AR')}`;
 @Component({
   selector: 'app-detalle-estacionamiento',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Icono, GaleriaFotos, RouterLink],
+  imports: [Icono, GaleriaFotos, RouterLink, Reputacion],
   template: `
     <article
       class="pointer-events-auto flex max-h-full min-h-0 flex-col overflow-hidden rounded-t-[20px] border border-borde bg-papel
@@ -67,6 +68,7 @@ const pesos = (monto: number) => `$${monto.toLocaleString('es-AR')}`;
         <!-- Nombre y si esta abierto -->
         <div>
           <h2 class="text-[18px] leading-tight font-semibold text-tinta">{{ estacionamiento().nombre }}</h2>
+          <app-reputacion class="mt-1" [reputacion]="estacionamiento().reputacion" />
           <p class="mt-1.5 flex items-center gap-1.5 text-[12.5px]">
             <span
               class="size-2 rounded-full"

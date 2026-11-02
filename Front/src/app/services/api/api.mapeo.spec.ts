@@ -184,3 +184,46 @@ describe('aReserva con abono', () => {
     expect(reserva.abono).toEqual({ id: 'a1', turno: 'MANANA' });
   });
 });
+
+describe('reputacion', () => {
+  const base = {
+    id_estacionamiento: 'e1', id_propietario: 'p1', nombre: 'X', descripcion: null, direccion: 'Calle 1',
+    calle: null, numero: null, ciudad: null, provincia: null, codigo_postal: null, barrio_zona: null,
+    latitud: null, longitud: null, telefono_contacto: null, email_contacto: null,
+    tarifa_hora: 1000, tarifa_estadia: null, tarifa_jornada: null, politica_cancelacion_horas: null,
+    cubierto: false, publicado: true, activo: true, estado_aprobacion: 'APROBADO', motivo_rechazo: null,
+    enviado_en: '2026-10-10T12:00:00Z',
+  } as EstacionamientoDto;
+
+  it('el estacionamiento trae promedio, cantidad y puntaje para ordenar', () => {
+    const e = aEstacionamiento({ ...base, calificacion_promedio: 4.6, cantidad_calificaciones: 37, puntaje_orden: 4.5 });
+    expect(e.reputacion).toEqual({ promedio: 4.6, cantidad: 37 });
+    expect(e.puntajeOrden).toBe(4.5);
+  });
+
+  it('sin datos de calificacion queda sin promedio', () => {
+    const e = aEstacionamiento(base);
+    expect(e.reputacion).toEqual({ promedio: null, cantidad: 0 });
+  });
+
+  it('la reserva trae quien califico, el plazo y la reputacion del conductor', () => {
+    const r = aReserva({
+      id_reserva: 'r1', id_conductor: 'c1',
+      inicio: '2026-10-09T11:00:00.000Z', fin: '2026-10-09T13:00:00.000Z',
+      estado: 'FINALIZADA', created_at: '2026-10-08T12:00:00.000Z',
+      ingreso_real: null, egreso_real: null,
+      id_vehiculo: 'v1', patente: 'AB123CD', marca: null, modelo: null, id_tipo_vehiculo: 1,
+      id_cochera: 'k1', cochera: 'P-1', cochera_sector: null, cochera_cubierta: false,
+      id_estacionamiento: 'e1', estacionamiento: 'Centro', direccion: 'Calle 1',
+      precio_total: 0, modalidad: 'HORA', motivo_reasignacion: null, id_abono: null, turno_abono: null,
+      califico_conductor: true, califico_propietario: false, calificable_hasta: '2026-10-23T13:00:00.000Z',
+      conductor_calificacion_promedio: 4.3, conductor_cantidad_calificaciones: 12,
+    } as ReservaDto);
+    expect(r.calificacion).toEqual({
+      conductorCalifico: true,
+      propietarioCalifico: false,
+      calificableHasta: '2026-10-23T13:00:00.000Z',
+    });
+    expect(r.reputacionConductor).toEqual({ promedio: 4.3, cantidad: 12 });
+  });
+});

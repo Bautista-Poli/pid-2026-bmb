@@ -52,11 +52,3 @@ export interface LoteCocheras {
   tipoVehiculo: TipoVehiculo;
   cubierta: boolean;
 }
-
-/** Estados en el orden en que se muestran en los filtros del tablero. */
-export const ESTADOS_COCHERA_ORDEN: { valor: EstadoCochera; etiqueta: string }[] = [
-  { valor: 'LIBRE', etiqueta: 'Libres' },
-  { valor: 'OCUPADA', etiqueta: 'Ocupadas' },
-  { valor: 'RESERVADA', etiqueta: 'Reservadas' },
-  { valor: 'INACTIVA', etiqueta: 'Inactivas' },
-];

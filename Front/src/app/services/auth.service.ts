@@ -24,8 +24,6 @@ export class AuthService {
   readonly usuario = this.usuarioActual.asReadonly();
   readonly rol = computed<RolUsuario | null>(() => this.usuario()?.rol ?? null);
   readonly estaAutenticado = computed(() => this.usuario() !== null);
-  readonly esConductor = computed(() => this.rol() === 'CONDUCTOR');
-  readonly esPropietario = computed(() => this.rol() === 'PROPIETARIO');
 
   /**
    * Pregunta si hay una sesion vigente y la deja cargada. Nunca lanza: sin

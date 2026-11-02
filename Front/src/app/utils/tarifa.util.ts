@@ -6,14 +6,8 @@ const CLAVE: Record<ModalidadReserva, keyof Tarifas> = {
   JORNADA: 'jornada',
 };
 
-const ORDEN: ModalidadReserva[] = ['HORA', 'ESTADIA', 'JORNADA'];
-
 const pesos = (monto: number) => `$${monto.toLocaleString('es-AR')}`;
 
-/** Las modalidades con tarifa, en el orden en que se muestran. Un 0 cuenta como ofrecida. */
-export function modalidadesOfrecidas(tarifas: Tarifas): ModalidadReserva[] {
-  return ORDEN.filter((modalidad) => tarifas[CLAVE[modalidad]] !== null);
-}
 
 /**
  * La modalidad que corresponde a `horas`: 12 h es estadia y 24 h es jornada si

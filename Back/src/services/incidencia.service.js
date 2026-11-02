@@ -31,14 +31,6 @@ export const TIPOS_INCIDENCIA = Object.freeze({
   RECLAMO: 'RECLAMO',
 });
 
-export const MOTIVOS_RECLAMO = Object.freeze([
-  'NO_HABIA_COCHERA',
-  'COBRO_INCORRECTO',
-  'DANO_AL_VEHICULO',
-  'MAL_SERVICIO',
-  'OTRO',
-]);
-
 // Pasado este plazo desde el fin de la reserva (o del abono) ya no se reclama.
 export const DIAS_PARA_RECLAMAR = 15;
 

@@ -89,12 +89,3 @@ export function proximosDias(cantidad: number, desde: Date = new Date()): Date[]
   });
 }
 
-export function aMinutos(hora: HoraHHmm): number {
-  const [h, m] = hora.split(':').map(Number);
-  return h * 60 + m;
-}
-
-/** Duracion en horas entre dos horarios de la misma jornada. */
-export function duracionEnHoras(desde: HoraHHmm, hasta: HoraHHmm): number {
-  return Math.max(0, (aMinutos(hasta) - aMinutos(desde)) / 60);
-}

@@ -94,6 +94,26 @@
       </form>
     </ui-tarjeta>
 
+    <!-- Reputacion del conductor: lo que le pusieron los propietarios -->
+    @if (esConductor() && recibidas.hasValue()) {
+      <ui-tarjeta relleno="lg">
+        <div class="flex flex-col gap-3">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <h2 class="text-[15px] font-semibold text-tinta">Tu reputación</h2>
+              <p class="mt-1 text-[12.5px] text-plomo">
+                La ven los estacionamientos cuando les pedís una reserva. Los comentarios son solo para vos.
+              </p>
+            </div>
+            <app-reputacion [reputacion]="recibidas.value().resumen" sinDatos="Sin calificaciones" />
+          </div>
+          @if (recibidas.value().calificaciones.length > 0) {
+            <app-lista-calificaciones [calificaciones]="recibidas.value().calificaciones" />
+          }
+        </div>
+      </ui-tarjeta>
+    }
+
     <!-- Apariencia -->
     <ui-tarjeta relleno="lg">
       <div class="flex flex-col gap-4">

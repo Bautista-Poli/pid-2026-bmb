@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { rxResource } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
   FormBuilder,
@@ -7,10 +8,12 @@ import {
   Validators,
 } from '@angular/forms';
 import { Router } from '@angular/router';
+import { ListaCalificaciones, Reputacion } from '@app/components/calificacion';
 import { Boton, Icono, Modal, NombreIcono, Tarjeta, VerPassword } from '@app/components/ui';
 import { inicioSegunRol } from '@app/guards/rol.guard';
 import { CambiosPerfil, ETIQUETA_ROL, RolUsuario } from '@app/models';
 import { AuthService } from '@app/services/auth.service';
+import { CalificacionService } from '@app/services/calificacion.service';
 import { PreferenciaTema, TemaService } from '@app/services/tema.service';
 
 const PASSWORD_MIN = 8;
@@ -52,7 +55,7 @@ function passwordsIguales(grupo: AbstractControl): ValidationErrors | null {
 @Component({
   selector: 'app-perfil',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, Boton, Icono, Modal, Tarjeta, VerPassword],
+  imports: [ReactiveFormsModule, Boton, Icono, Modal, Tarjeta, VerPassword, Reputacion, ListaCalificaciones],
   templateUrl: './perfil.html',
 })
 export class Perfil {
@@ -105,6 +108,15 @@ export class Perfil {
 
   /** El administrador es un usuario aparte: no elige perfiles. */
   protected readonly esAdmin = computed(() => this.usuario()?.rol === 'ADMINISTRADOR');
+  protected readonly esConductor = computed(() => this.usuario()?.rol === 'CONDUCTOR');
+
+  private readonly calificaciones = inject(CalificacionService);
+  /** Lo que los propietarios le pusieron al conductor; con otro perfil no se pide. */
+  protected readonly recibidas = rxResource({
+    params: () => (this.esConductor() ? true : undefined),
+    stream: () => this.calificaciones.recibidasComoConductor(),
+    defaultValue: { resumen: { promedio: null, cantidad: 0 }, calificaciones: [] },
+  });
 
   protected readonly rolActivo = computed(() => {
     const usuario = this.usuario();

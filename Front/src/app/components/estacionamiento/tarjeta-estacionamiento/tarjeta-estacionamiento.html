@@ -9,6 +9,7 @@
             {{ estacionamiento().nombre }}
           </h3>
           <p class="mt-1 text-[13px] leading-normal text-plomo">{{ ubicacion() }}</p>
+          <app-reputacion class="mt-1.5" [reputacion]="estacionamiento().reputacion" />
           <p class="num-tabular mt-2 text-[12.5px] font-medium text-tinta">{{ tarifas() }}</p>
         </div>
       </div>

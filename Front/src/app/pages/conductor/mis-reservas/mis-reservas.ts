@@ -187,7 +187,9 @@ export class MisReservas {
         this.cancelandoId.set(null);
         this.aCancelar.set(null);
         // La reserva pasa a CANCELADA: sale de Vigentes y aparece en Historial.
-        this.aviso.set(`Cancelamos tu reserva en ${reserva.estacionamiento.nombre}.`);
+        this.aviso.set(
+          `Cancelamos tu reserva en ${reserva.estacionamiento.nombre}. La vas a encontrar en Historial, con las canceladas.`,
+        );
         this.recurso.reload();
       },
       error: (e: Error) => {

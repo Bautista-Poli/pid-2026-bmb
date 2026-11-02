@@ -862,3 +862,37 @@ CREATE UNIQUE INDEX IF NOT EXISTS vehiculo_patente_unica ON vehiculo (patente) W
 ALTER TABLE incidencia ADD COLUMN IF NOT EXISTS retirada_at TIMESTAMPTZ;
 UPDATE incidencia SET retirada_at = resuelta_at, resuelta_at = NULL
  WHERE estado::text = 'RETIRADA' AND retirada_at IS NULL AND resuelta_at IS NOT NULL;
+
+-- Calificaciones -------------------------------------------------------------
+-- Al terminar una reserva el conductor califica el estacionamiento y el
+-- propietario al conductor (una por reserva y por lado). `id_estacionamiento` e
+-- `id_conductor` se copian de la reserva para agregar la reputacion sin joins.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'autor_calificacion') THEN
+    CREATE TYPE autor_calificacion AS ENUM ('CONDUCTOR', 'PROPIETARIO');
+  END IF;
+END
+$$;
+
+CREATE TABLE IF NOT EXISTS calificacion (
+  id_calificacion    UUID               PRIMARY KEY DEFAULT gen_random_uuid(),
+  id_reserva         UUID               NOT NULL,
+  autor              autor_calificacion NOT NULL,
+  id_estacionamiento UUID               NOT NULL,
+  id_conductor       UUID               NOT NULL,
+  puntaje            SMALLINT           NOT NULL,
+  comentario         VARCHAR(500),
+  created_at         TIMESTAMPTZ        NOT NULL DEFAULT now(),
+  CONSTRAINT calificacion_reserva_fk
+    FOREIGN KEY (id_reserva) REFERENCES reserva (id_reserva) ON DELETE CASCADE,
+  CONSTRAINT calificacion_estacionamiento_fk
+    FOREIGN KEY (id_estacionamiento) REFERENCES estacionamiento (id_estacionamiento) ON DELETE CASCADE,
+  CONSTRAINT calificacion_conductor_fk
+    FOREIGN KEY (id_conductor) REFERENCES usuario (id_usuario) ON DELETE CASCADE,
+  CONSTRAINT calificacion_puntaje_valido CHECK (puntaje BETWEEN 1 AND 5),
+  CONSTRAINT calificacion_una_por_lado UNIQUE (id_reserva, autor)
+);
+
+CREATE INDEX IF NOT EXISTS idx_calificacion_estacionamiento ON calificacion (id_estacionamiento, autor);
+CREATE INDEX IF NOT EXISTS idx_calificacion_conductor       ON calificacion (id_conductor, autor);

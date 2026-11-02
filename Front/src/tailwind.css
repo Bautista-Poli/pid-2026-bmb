@@ -68,6 +68,8 @@
   /* Avisos (cocheras bloqueadas, incidencias pendientes): mismo tono que baja,
      y sigue a baja en los temas oscuros. */
   --color-aviso: var(--color-baja);
+  /* Estrellas de las calificaciones: dorado, legible sobre blanco. */
+  --color-estrella: #e0a800;
   --color-reservada: #7c8aa0;
   --color-exito: #12b76a;
   --color-exito-suave: #e7f9f0;
@@ -138,6 +140,7 @@
 
     --color-ocupada: #f87171;
     --color-baja: #fbbf24;
+    --color-estrella: #facc15;
     --color-reservada: #8c99ad;
     --color-exito: #34d399;
     --color-exito-suave: #0d2c22;
@@ -170,6 +173,7 @@
 
   --color-ocupada: #f87171;
   --color-baja: #fbbf24;
+  --color-estrella: #facc15;
   --color-reservada: #8c99ad;
   --color-exito: #34d399;
   --color-exito-suave: #0d2c22;

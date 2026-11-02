@@ -209,7 +209,7 @@
                                whitespace-nowrap text-acento transition-colors duration-160 hover:bg-acento-suave"
                         (click)="pedirCalificacion(reserva)"
                       >
-                        <span aria-hidden="true">★</span>Calificar conductor
+                        <span class="text-estrella" aria-hidden="true">★</span>Calificar conductor
                       </button>
                     } @else if (reserva.calificacion.propietarioCalifico) {
                       <span class="text-[12px] text-plomo">Calificado</span>
@@ -301,7 +301,7 @@
                     class="inline-flex items-center gap-1 rounded-boton px-3 py-1.5 text-[12px] font-semibold text-acento"
                     (click)="pedirCalificacion(reserva)"
                   >
-                    <span aria-hidden="true">★</span>Calificar conductor
+                    <span class="text-estrella" aria-hidden="true">★</span>Calificar conductor
                   </button>
                 } @else if (reserva.calificacion.propietarioCalifico) {
                   <span class="text-[12px] text-plomo">Calificado</span>

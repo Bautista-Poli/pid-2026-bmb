@@ -8,7 +8,7 @@ import { textoReputacion } from '@app/utils/calificacion.util';
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'inline-flex items-center gap-1 text-[12.5px] num-tabular' },
   template: `
-    <span [class.text-acento]="tiene()" [class.text-humo]="!tiene()" aria-hidden="true">★</span>
+    <span [class.text-estrella]="tiene()" [class.text-humo]="!tiene()" aria-hidden="true">★</span>
     <span [class.text-tinta]="tiene()" [class.text-grafito]="!tiene()">{{ texto() }}</span>
   `,
 })

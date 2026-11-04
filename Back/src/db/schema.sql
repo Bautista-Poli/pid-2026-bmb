@@ -931,3 +931,30 @@ BEGIN
   END IF;
 END
 $$;
+
+-- Denuncia de reseñas (Sprint 3). La parte calificada denuncia una reseña (una
+-- vez); el administrador la desestima o la oculta. Una oculta deja de contar en
+-- la reputacion y de mostrarse, pero sigue ocupando su lugar (no se vuelve a
+-- calificar esa reserva). `denuncia_estado` es NULL mientras nadie denuncio.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'estado_denuncia_resena') THEN
+    CREATE TYPE estado_denuncia_resena AS ENUM ('PENDIENTE', 'DESESTIMADA', 'OCULTA');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'motivo_denuncia_resena') THEN
+    CREATE TYPE motivo_denuncia_resena AS ENUM ('OFENSIVA', 'FALSA', 'DATOS_PERSONALES', 'OTRO');
+  END IF;
+END
+$$;
+
+ALTER TABLE calificacion
+  ADD COLUMN IF NOT EXISTS oculta           BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS denuncia_estado  estado_denuncia_resena,
+  ADD COLUMN IF NOT EXISTS denuncia_motivo  motivo_denuncia_resena,
+  ADD COLUMN IF NOT EXISTS denuncia_detalle VARCHAR(500),
+  ADD COLUMN IF NOT EXISTS denunciada_at    TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS moderada_por     UUID REFERENCES usuario (id_usuario),
+  ADD COLUMN IF NOT EXISTS moderada_at      TIMESTAMPTZ;
+
+CREATE INDEX IF NOT EXISTS idx_calificacion_denuncia
+  ON calificacion (denunciada_at) WHERE denuncia_estado = 'PENDIENTE';

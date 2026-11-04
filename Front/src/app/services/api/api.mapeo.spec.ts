@@ -64,6 +64,39 @@ describe('aEstacionamiento', () => {
     expect(estacionamiento.motivoRechazo).toBe('Faltan fotos del frente');
     expect(estacionamiento.enviadoEn).toBe('2026-10-10T12:00:00Z');
   });
+  it('sin calificaciones la reputacion queda vacia', () => {
+    expect(aEstacionamiento(dto).reputacion).toEqual({
+      cantidad: 0,
+      promedio: null,
+      categorias: null,
+      destacado: false,
+      insignias: [],
+      puntaje: 0,
+    });
+  });
+
+  it('mapea el puntaje de reputacion', () => {
+    expect(aEstacionamiento({ ...dto, puntaje_reputacion: 91 }).reputacion.puntaje).toBe(91);
+  });
+
+  it('mapea la reputacion: promedio, destacado e insignias por codigo', () => {
+    const { reputacion } = aEstacionamiento({
+      ...dto,
+      calificaciones: 12,
+      calificacion_promedio: 4.7,
+      calificacion_categorias: { limpieza: 4.8, infraestructura: 4.1, atencion: 4.9, seguridad: 4.6, acceso: 4.4 },
+      destacado: true,
+      insignias: [
+        { codigo: 'DESTACADO', texto: 'Anfitrion destacado' },
+        { codigo: 'IMPECABLE', texto: 'Impecable' },
+      ],
+    });
+    expect(reputacion.cantidad).toBe(12);
+    expect(reputacion.promedio).toBe(4.7);
+    expect(reputacion.destacado).toBe(true);
+    expect(reputacion.insignias).toEqual(['DESTACADO', 'IMPECABLE']);
+    expect(reputacion.categorias?.limpieza).toBe(4.8);
+  });
 });
 
 describe('aVehiculo', () => {
@@ -182,5 +215,41 @@ describe('aReserva con abono', () => {
 
     expect(reserva.modalidad).toBe('HORA');
     expect(reserva.abono).toEqual({ id: 'a1', turno: 'MANANA' });
+  });
+});
+
+describe('aReserva: calificacion del conductor', () => {
+  const base = {
+    id_reserva: 'r1', id_conductor: 'c1',
+    inicio: '2026-10-09T11:00:00.000Z', fin: '2026-10-09T13:00:00.000Z',
+    estado: 'FINALIZADA', created_at: '2026-10-08T12:00:00.000Z',
+    ingreso_real: null, egreso_real: null,
+    id_vehiculo: 'v1', patente: 'AB123CD', marca: null, modelo: null, id_tipo_vehiculo: 1,
+    id_cochera: 'k1', cochera: 'P-1', cochera_sector: null, cochera_cubierta: false,
+    id_estacionamiento: 'e1', estacionamiento: 'Centro', direccion: 'Calle 1',
+    precio_total: 4000, modalidad: 'HORA', motivo_reasignacion: null,
+    id_abono: null, turno_abono: null,
+  } as ReservaDto;
+
+  it('mapea la reputacion del conductor y lo que le puso el propietario', () => {
+    const reserva = aReserva({
+      ...base,
+      conductor_promedio: 4.5,
+      conductor_calificaciones: 2,
+      calificacion_al_conductor: 5,
+      conductor_calificable: false,
+    });
+
+    expect(reserva.reputacionConductor).toEqual({ promedio: 4.5, cantidad: 2 });
+    expect(reserva.calificacionAlConductor).toBe(5);
+    expect(reserva.conductorCalificable).toBe(false);
+  });
+
+  it('sin esos campos: sin calificaciones y no calificable', () => {
+    const reserva = aReserva(base);
+
+    expect(reserva.reputacionConductor).toEqual({ promedio: null, cantidad: 0 });
+    expect(reserva.calificacionAlConductor).toBeNull();
+    expect(reserva.conductorCalificable).toBe(false);
   });
 });

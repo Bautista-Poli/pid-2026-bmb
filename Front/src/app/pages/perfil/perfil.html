@@ -94,6 +94,41 @@
       </form>
     </ui-tarjeta>
 
+    <!-- Reputacion del conductor: lo que le pusieron los estacionamientos -->
+    @if (esConductor()) {
+      <ui-tarjeta relleno="lg">
+        <div class="flex flex-col gap-3">
+          <h2 class="text-[15px] font-semibold text-tinta">Tu reputación</h2>
+          @if (reputacion.error()) {
+            <p class="text-[13px] text-plomo">No pudimos cargar tu reputación. Probá de nuevo en un rato.</p>
+          } @else if (reputacion.value(); as rep) {
+            @if (rep.cantidad > 0 && rep.promedio !== null) {
+              <p class="num-tabular flex items-baseline gap-2 text-tinta">
+                <span class="text-[22px] font-semibold"><span class="text-oro">★</span> {{ nota(rep.promedio) }}</span>
+                <span class="text-[13px] text-plomo">
+                  {{ rep.cantidad }} {{ rep.cantidad === 1 ? 'calificación' : 'calificaciones' }}
+                </span>
+              </p>
+              @if (rep.etiquetas.length > 0) {
+                <div class="flex flex-wrap gap-2">
+                  @for (etiqueta of rep.etiquetas; track etiqueta.codigo) {
+                    <span class="rounded-full border border-borde px-3 py-1 text-[12.5px] text-grafito">
+                      {{ textoEtiqueta[etiqueta.codigo] }}
+                      <span class="num-tabular text-plomo">· {{ etiqueta.cantidad }}</span>
+                    </span>
+                  }
+                </div>
+              }
+            } @else {
+              <p class="text-[13px] text-plomo">
+                Todavía no te calificaron. Los estacionamientos te califican después de cada reserva.
+              </p>
+            }
+          }
+        </div>
+      </ui-tarjeta>
+    }
+
     <!-- Apariencia -->
     <ui-tarjeta relleno="lg">
       <div class="flex flex-col gap-4">

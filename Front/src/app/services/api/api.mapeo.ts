@@ -1,4 +1,7 @@
 import {
+  Calificacion,
+  ReputacionEstacionamiento,
+  ResumenReputacion,
   Incidencia,
   IncidenciaDetallada,
   IncidenciaModerada,
@@ -29,6 +32,7 @@ import {
   Vehiculo,
 } from '@app/models';
 import { aInstante, DIAS_POR_NUMERO, partesLocales } from '@app/utils/fecha.util';
+import { CalificacionDto, ReputacionDto } from './api.dto';
 import { AbonoDto, AccesoReservaDto, IncidenciaDetalladaDto, IncidenciaDto, IncidenciaModeradaDto, MensajeIncidenciaDto, CocheraDto, EstacionamientoDto, EstadoReservaDto, FranjaDto, HorarioDto, PlanAbonoDto, ReservaDto, UsuarioDto, VehiculoDto } from './api.dto';
 
 /*
@@ -113,6 +117,59 @@ export function aEstacionamiento(dto: EstacionamientoDto): Estacionamiento {
     estadoAprobacion: dto.estado_aprobacion,
     motivoRechazo: dto.motivo_rechazo ?? null,
     enviadoEn: dto.enviado_en,
+    reputacion: aResumenReputacion(dto),
+  };
+}
+
+/* ------------------------------- reputacion ------------------------------- */
+
+export function aResumenReputacion(dto: EstacionamientoDto): ResumenReputacion {
+  return {
+    cantidad: dto.calificaciones ?? 0,
+    promedio: dto.calificacion_promedio ?? null,
+    categorias: dto.calificacion_categorias ?? null,
+    destacado: dto.destacado ?? false,
+    insignias: (dto.insignias ?? []).map((i) => i.codigo),
+    puntaje: dto.puntaje_reputacion ?? 0,
+  };
+}
+
+export function aCalificacion(dto: CalificacionDto): Calificacion {
+  return { id: dto.id_calificacion, reservaId: dto.id_reserva, promedio: dto.promedio };
+}
+
+export function aReputacion(dto: ReputacionDto): ReputacionEstacionamiento {
+  const { operacion } = dto;
+  return {
+    dias: dto.dias,
+    puntaje: dto.puntaje,
+    puntajeAnterior: dto.puntaje_anterior,
+    destacado: dto.destacado,
+    umbralDestacado: dto.umbral_destacado,
+    minimoCalificaciones: dto.minimo_calificaciones,
+    calificaciones: dto.calificaciones,
+    operacion: {
+      puntos: operacion.puntos,
+      confirmacion: operacion.confirmacion,
+      incidencias: {
+        puntos: operacion.incidencias.puntos,
+        sinDenuncia: operacion.incidencias.sin_denuncia,
+        total: operacion.incidencias.total,
+      },
+      respuesta: operacion.respuesta,
+      cancelaciones: operacion.cancelaciones,
+    },
+    insignias: dto.insignias.map((i) => i.codigo),
+    etiquetas: dto.etiquetas,
+    sugerencia: dto.sugerencia,
+    opiniones: dto.opiniones.map((o) => ({
+      id: o.id_calificacion,
+      autor: o.autor,
+      creadaEn: o.created_at,
+      promedio: o.promedio,
+      comentario: o.comentario,
+      etiquetas: o.etiquetas,
+    })),
   };
 }
 
@@ -293,6 +350,14 @@ export function aReserva(dto: ReservaDto): ReservaDetallada {
     codigoAcceso: dto.codigo_acceso ?? null,
     devuelto: dto.devuelto ?? 0,
     reclamoAbierto: dto.reclamo_abierto ?? null,
+    calificable: dto.calificable ?? false,
+    calificacionPromedio: dto.calificacion_promedio ?? null,
+    reputacionConductor: {
+      promedio: dto.conductor_promedio ?? null,
+      cantidad: dto.conductor_calificaciones ?? 0,
+    },
+    calificacionAlConductor: dto.calificacion_al_conductor ?? null,
+    conductorCalificable: dto.conductor_calificable ?? false,
     estacionamiento: {
       id: dto.id_estacionamiento,
       nombre: dto.estacionamiento,

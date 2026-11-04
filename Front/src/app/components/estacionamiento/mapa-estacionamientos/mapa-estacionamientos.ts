@@ -88,6 +88,7 @@ const CLASE_ESTADO: Record<EstadoDisponibilidad, string> = {
       <li class="flex items-center gap-1.5"><span class="size-2.5 rounded-full bg-exito"></span>Disponible</li>
       <li class="flex items-center gap-1.5"><span class="size-2.5 rounded-full bg-baja"></span>Poca disponibilidad</li>
       <li class="flex items-center gap-1.5"><span class="size-2.5 rounded-full bg-[color-mix(in_srgb,var(--color-ocupada)_45%,var(--color-humo))]"></span>No disponible</li>
+      <li class="flex items-center gap-1.5"><span class="grid size-3.5 place-items-center rounded-full bg-oro text-[8px] text-[#0f172a]">★</span>Destacado</li>
     </ul>
 
     <!-- Zoom y volver al origen -->
@@ -343,10 +344,13 @@ function etiquetaPin(estacionamiento: Estacionamiento): string {
 
 function iconoPin(estacionamiento: Estacionamiento, activo: boolean): L.DivIcon {
   const estado = estadoDisponibilidad(estacionamiento);
-  const clases = ['pin', CLASE_ESTADO[estado], activo ? 'pin--activo' : ''].join(' ');
+  const destacado = estacionamiento.reputacion.destacado;
+  const clases = ['pin', CLASE_ESTADO[estado], activo ? 'pin--activo' : '', destacado ? 'pin--destacado' : ''].join(' ');
+  // Destacado: la gota lleva un aro dorado y una estrellita (ver styles.css).
+  const sello = destacado ? '<span class="pin__sello" aria-hidden="true">★</span>' : '';
   return L.divIcon({
     className: '',
-    html: `<div class="${clases}"><span class="pin__cabeza"><b>P</b></span><span class="pin__precio">${etiquetaPin(estacionamiento)}</span></div>`,
+    html: `<div class="${clases}"><span class="pin__cabeza"><b>P</b>${sello}</span><span class="pin__precio">${etiquetaPin(estacionamiento)}</span></div>`,
     // La punta del pin (abajo de la "P") es la que cae sobre la direccion.
     iconSize: [96, 64],
     iconAnchor: [48, 36],

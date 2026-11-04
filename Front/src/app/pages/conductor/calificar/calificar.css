@@ -1,0 +1,235 @@
+.vista-calificar {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 560px;
+  padding: 1.25rem 1.25rem 2rem;
+}
+
+@media (min-width: 1024px) {
+  .vista-calificar {
+    padding: 34px 2.5rem 2.75rem;
+  }
+}
+
+.calificar {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.calificar__barra {
+  display: flex;
+}
+
+.calificar__ahora-no {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-acento);
+  text-decoration: none;
+}
+
+.calificar__egreso {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radius-tarjeta);
+  background: var(--color-papel);
+  box-shadow: var(--shadow-tarjeta);
+}
+
+.calificar__check {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  background: var(--color-exito-suave);
+  color: var(--color-exito);
+}
+
+.calificar__egreso-titulo {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--color-tinta);
+}
+
+.calificar__egreso-detalle {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--color-plomo);
+}
+
+.calificar__bajada {
+  margin-top: 0.375rem;
+  font-size: 13px;
+  color: var(--color-plomo);
+}
+
+.calificar__categorias {
+  display: flex;
+  flex-direction: column;
+  padding: 0.25rem 1rem;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radius-tarjeta);
+  background: var(--color-papel);
+  box-shadow: var(--shadow-tarjeta);
+}
+
+.calificar__categoria {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.625rem 0;
+  border-top: 1px solid var(--color-borde-sutil);
+}
+
+.calificar__categoria--primera {
+  border-top: 0;
+}
+
+.calificar__categoria-nombre {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--color-tinta);
+}
+
+.calificar__categoria-ayuda {
+  margin-top: 1px;
+  font-size: 11.5px;
+  color: var(--color-plomo);
+}
+
+.calificar__estrellas {
+  display: flex;
+  flex-shrink: 0;
+}
+
+/* 30x44: el alto llega al minimo tactil sin agrandar la fila. */
+.calificar__estrella {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  fill: none;
+  stroke: var(--color-humo);
+  transition: transform 160ms var(--ease-suave);
+}
+
+.calificar__estrella:hover {
+  transform: scale(1.12);
+}
+
+.calificar__estrella--llena {
+  fill: var(--color-oro);
+  stroke: var(--color-baja);
+}
+
+.calificar__etiquetas {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.calificar__subtitulo {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--color-tinta);
+}
+
+.calificar__opcional {
+  font-weight: 400;
+  color: var(--color-plomo);
+}
+
+.calificar__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.calificar__chip {
+  min-height: 36px;
+  padding: 0 0.75rem;
+  border: 1px solid var(--color-borde);
+  border-radius: 999px;
+  background: var(--color-papel);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-grafito);
+  cursor: pointer;
+  transition:
+    background-color 160ms var(--ease-suave),
+    border-color 160ms var(--ease-suave);
+}
+
+.calificar__chip--activo {
+  border-color: var(--color-acento);
+  background: var(--color-acento-suave);
+  color: var(--color-acento-fuerte);
+}
+
+.calificar__comentario {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.calificar__comentario textarea {
+  resize: none;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radius-control);
+  background: var(--color-papel);
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--color-tinta);
+}
+
+.calificar__error {
+  padding: 0.75rem 1rem;
+  border: 1px solid color-mix(in oklab, var(--color-ocupada) 25%, transparent);
+  border-radius: var(--radius-control);
+  background: color-mix(in oklab, var(--color-ocupada) 5%, transparent);
+  font-size: 13px;
+  color: var(--color-ocupada);
+}
+
+.calificar-listo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 3rem 1rem;
+  text-align: center;
+}
+
+.calificar-listo__icono {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 999px;
+  background: var(--color-oro-suave);
+  color: var(--color-oro-tinta);
+}
+
+.calificar-listo__texto {
+  max-width: 340px;
+  font-size: 13.5px;
+  color: var(--color-plomo);
+}

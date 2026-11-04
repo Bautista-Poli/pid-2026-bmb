@@ -1,6 +1,7 @@
-import { DatePipe } from '@angular/common';
+import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
+import { CalificarConductor } from '@app/components/reserva';
 import {
   Boton,
   Cargando,
@@ -77,7 +78,7 @@ const sinAcentos = (texto: string) =>
 @Component({
   selector: 'app-reservas',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, Tarjeta, Cargando, EstadoVacio, Etiqueta, Icono, Boton, Modal],
+  imports: [DatePipe, NgTemplateOutlet, Tarjeta, Cargando, EstadoVacio, Etiqueta, Icono, Boton, Modal, CalificarConductor],
   templateUrl: './reservas.html',
 })
 export class Reservas {
@@ -223,5 +224,29 @@ export class Reservas {
         this.error.set(e.message);
       },
     });
+  }
+
+  /* ----------------------- calificacion del conductor ----------------------- */
+
+  /** Reserva cuyo conductor se esta calificando: abre el modal. */
+  protected readonly aCalificar = signal<ReservaDetallada | null>(null);
+
+  /** "★ 4,6 (12)", o null si todavia nadie lo califico. */
+  protected reputacionConductor(reserva: ReservaDetallada): string | null {
+    const { promedio, cantidad } = reserva.reputacionConductor;
+    if (promedio === null || cantidad === 0) return null;
+    return `★ ${promedio.toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} (${cantidad})`;
+  }
+
+  /** Si la fila ya muestra el boton de calificar o la nota dada (asi no va el "—"). */
+  protected conAccionDeCalificar(reserva: ReservaDetallada): boolean {
+    return reserva.conductorCalificable || reserva.calificacionAlConductor !== null;
+  }
+
+  protected conductorCalificado(): void {
+    const reserva = this.aCalificar();
+    this.aCalificar.set(null);
+    this.aviso.set(reserva ? `Calificaste al conductor de ${reserva.vehiculo.patente}.` : 'Calificaste al conductor.');
+    this.recurso.reload();
   }
 }

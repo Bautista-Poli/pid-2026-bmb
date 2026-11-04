@@ -1,4 +1,11 @@
-import { MotivoReclamo, ResolucionIncidencia } from '@app/models';
+import {
+  CategoriaCalificacion,
+  CodigoInsignia,
+  EtiquetaCalificacion,
+  MotivoReclamo,
+  PeriodoReputacion,
+  ResolucionIncidencia,
+} from '@app/models';
 import {
   EstadoAbono,
   EstadoAprobacion,
@@ -100,6 +107,59 @@ export interface EstacionamientoDto {
   foto_actualizada?: string | null;
   /** La galeria en orden; la primera es la portada. */
   fotos?: { id_foto: string; actualizada: string }[];
+  /** Reputacion de los ultimos 90 dias (ver reputacion.service.js del backend). */
+  calificaciones?: number;
+  calificacion_promedio?: number | null;
+  calificacion_categorias?: Record<CategoriaCalificacion, number | null> | null;
+  destacado?: boolean;
+  insignias?: { codigo: CodigoInsignia; texto: string }[];
+  puntaje_reputacion?: number;
+}
+
+export interface CalificacionDto {
+  id_calificacion: string;
+  id_reserva: string;
+  promedio: number;
+}
+
+export interface ReputacionDto {
+  dias: PeriodoReputacion;
+  puntaje: number;
+  puntaje_anterior: number | null;
+  destacado: boolean;
+  umbral_destacado: number;
+  minimo_calificaciones: number;
+  calificaciones: {
+    cantidad: number;
+    promedio: number | null;
+    puntos: number;
+    categorias: { codigo: CategoriaCalificacion; nombre: string; promedio: number | null; anterior: number | null }[];
+  };
+  operacion: {
+    puntos: number;
+    confirmacion: { puntos: number; porcentaje: number; vencidas: number; reservas: number };
+    incidencias: { puntos: number; sin_denuncia: number; total: number };
+    respuesta: { puntos: number; minutos: number | null };
+    cancelaciones: { puntos: number; propias: number };
+  };
+  insignias: { codigo: CodigoInsignia; texto: string }[];
+  etiquetas: { codigo: EtiquetaCalificacion; positiva: boolean; cantidad: number }[];
+  sugerencia: {
+    categoria: CategoriaCalificacion;
+    nombre: string;
+    promedio: number;
+    objetivo: number;
+    puntos: number;
+    etiqueta: { codigo: EtiquetaCalificacion; cantidad: number } | null;
+  } | null;
+  opiniones: {
+    id_calificacion: string;
+    autor: string;
+    created_at: string;
+    promedio: number;
+    comentario: string | null;
+    etiquetas: EtiquetaCalificacion[];
+  }[];
 }
 
 export interface VehiculoDto {
@@ -148,6 +208,12 @@ export interface ReservaDto {
   turno_abono: TurnoAbono | null;
   devuelto?: number;
   reclamo_abierto?: string | null;
+  calificable?: boolean;
+  calificacion_promedio?: number | null;
+  conductor_promedio?: number | null;
+  conductor_calificaciones?: number;
+  calificacion_al_conductor?: number | null;
+  conductor_calificable?: boolean;
 }
 
 export interface AccesoReservaDto {

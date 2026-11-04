@@ -2,6 +2,7 @@ import * as estacionamientoService from '../services/estacionamiento.service.js'
 import * as cloudinary from '../services/cloudinary.service.js';
 import * as fotoService from '../services/estacionamiento-foto.service.js';
 import * as cocheraService from '../services/cochera.service.js';
+import * as reputacionService from '../services/reputacion.service.js';
 import * as reservaService from '../services/reserva.service.js';
 import { ApiError } from '../utils/ApiError.js';
 import { ROLES } from '../utils/roles.js';
@@ -215,3 +216,7 @@ function tipoDeImagen(bytes) {
 }
 
 const FIRMA_PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+export const reputacion = asyncHandler(async (req, res) => {
+  res.json(await reputacionService.delEstacionamiento(req.params.id, req.usuario.id, req.query));
+});

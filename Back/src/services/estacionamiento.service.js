@@ -5,6 +5,16 @@ import { CAMPOS_TARIFA } from '../utils/tarifas.js';
 import { ESTADOS_APROBACION, ESTADOS_COCHERA, ESTADOS_VIGENTES } from '../utils/roles.js';
 import { listarPorEstacionamiento as listarCocheras } from './cochera.service.js';
 import { geocodificar } from './geocodificacion.service.js';
+import {
+  COLUMNAS_REPUTACION,
+  DIAS_BUSQUEDA,
+  ES_DESTACADO,
+  darFormaReputacion,
+  lateralReputacion,
+} from './reputacion.service.js';
+
+/** Reputacion publica (calificaciones e insignias) de los ultimos DIAS_BUSQUEDA dias. */
+const reputacionPublica = () => lateralReputacion(`now() - interval '${DIAS_BUSQUEDA} days'`, 'now()');
 
 const CAMPOS_DIRECCION = ['calle', 'numero', 'ciudad', 'provincia'];
 // Si cambia alguno de estos en uno aprobado, vuelve a la cola de revision.
@@ -216,6 +226,8 @@ export async function buscar(filtros) {
     condiciones.push(`e.tarifa_hora <= $${parametros.length}`);
   }
 
+  if (filtros.destacados) condiciones.push(ES_DESTACADO);
+
   if (filtros.cubierto !== undefined) {
     parametros.push(filtros.cubierto);
     condiciones.push(`e.cubierto = $${parametros.length}`);
@@ -283,15 +295,17 @@ export async function buscar(filtros) {
   parametros.push(filtros.limit, filtros.offset);
 
   const { rows } = await query(
-    `SELECT ${CAMPOS_E}, ${AGREGADOS}${columnaDisponible}
+    `SELECT ${CAMPOS_E}, ${AGREGADOS}, ${COLUMNAS_REPUTACION}${columnaDisponible}
        FROM estacionamiento e
+       ${reputacionPublica()}
       WHERE ${condiciones.join(' AND ')}
-      ORDER BY e.nombre
+      -- Sin calificaciones el puntaje supone un 4: van despues de los calificados.
+      ORDER BY ${ES_DESTACADO} DESC, (rep.cal_cantidad > 0) DESC, rep.puntaje DESC, e.nombre
       LIMIT $${parametros.length - 1} OFFSET $${parametros.length}`,
     parametros,
   );
 
-  return rows;
+  return rows.map(darFormaReputacion);
 }
 
 /**
@@ -300,11 +314,13 @@ export async function buscar(filtros) {
  */
 export async function obtenerPorId(idEstacionamiento, { idSolicitante = null, esAdmin = false } = {}) {
   const { rows } = await query(
-    `SELECT ${CAMPOS_E}, ${AGREGADOS}
+    `SELECT ${CAMPOS_E}, ${AGREGADOS}, ${COLUMNAS_REPUTACION}
        FROM estacionamiento e
+       ${reputacionPublica()}
       WHERE e.id_estacionamiento = $1`,
     [idEstacionamiento],
   );
+  if (rows[0]) darFormaReputacion(rows[0]);
 
   const visible =
     rows[0] &&
@@ -348,13 +364,14 @@ export async function asegurarPropiedad(idEstacionamiento, idPropietario) {
 
 export async function listarPorPropietario(idPropietario) {
   const { rows } = await query(
-    `SELECT ${CAMPOS_E}, ${AGREGADOS}
+    `SELECT ${CAMPOS_E}, ${AGREGADOS}, ${COLUMNAS_REPUTACION}
        FROM estacionamiento e
+       ${reputacionPublica()}
       WHERE e.id_propietario = $1
       ORDER BY e.nombre`,
     [idPropietario],
   );
-  return rows;
+  return rows.map(darFormaReputacion);
 }
 
 /**

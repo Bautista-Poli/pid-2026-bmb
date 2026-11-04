@@ -268,6 +268,7 @@ export function validarBusqueda(query) {
     .numero('tarifa_min', query.tarifa_min, { requerido: false, min: 0 })
     .numero('tarifa_max', query.tarifa_max, { requerido: false, min: 0 })
     .booleano('cubierto', query.cubierto, { requerido: false })
+    .booleano('destacados', query.destacados, { requerido: false })
     .booleano('disponible_ahora', query.disponible_ahora, { requerido: false })
     .booleano('incluir_no_disponibles', query.incluir_no_disponibles, { requerido: false })
     .fechaHora('inicio', query.inicio, { requerido: false })

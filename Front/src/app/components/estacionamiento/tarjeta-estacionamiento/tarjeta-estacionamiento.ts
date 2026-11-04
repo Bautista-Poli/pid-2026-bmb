@@ -8,6 +8,7 @@ import {
 } from '@app/utils/disponibilidad.util';
 import { resumenTarifas } from '@app/utils/tarifa.util';
 import { Boton, Miniatura, PuntoEstado, Tarjeta } from '@app/components/ui';
+import { InsigniasEstacionamiento } from '../insignias-estacionamiento/insignias-estacionamiento';
 
 /**
  * Ficha de estacionamiento del listado.
@@ -17,7 +18,7 @@ import { Boton, Miniatura, PuntoEstado, Tarjeta } from '@app/components/ui';
 @Component({
   selector: 'app-tarjeta-estacionamiento',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Tarjeta, Boton, Miniatura, PuntoEstado],
+  imports: [Tarjeta, Boton, Miniatura, PuntoEstado, InsigniasEstacionamiento],
   templateUrl: './tarjeta-estacionamiento.html',
   host: { class: 'block' },
 })

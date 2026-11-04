@@ -164,3 +164,96 @@ describe('denunciar una reseña', () => {
     assert.equal((await denunciar(e.propietario, crypto.randomUUID())).estado, 404);
   });
 });
+
+const moderar = (admin, id, accion) => api('PATCH', `/admin/resenas/${id}/${accion}`, { token: admin.token });
+
+describe('moderacion del administrador', () => {
+  test('la cola trae las pendientes, la mas vieja primero', async () => {
+    const admin = await crearAdmin();
+    const e = await escenario();
+    const primera = await resenaDelConductor(e, NOTAS, { comentario: 'Primera reseña denunciada.' });
+    const segunda = await resenaDelPropietario(e, 1);
+    await denunciar(e.propietario, primera);
+    await denunciar(e.conductor, segunda, { motivo: 'FALSA', detalle: 'No es cierto' });
+
+    const { estado, datos } = await api('GET', '/admin/resenas', { token: admin.token });
+    assert.equal(estado, 200);
+    const ids = datos.resenas.map((r) => r.id_calificacion);
+    assert.ok(ids.indexOf(primera) >= 0 && ids.indexOf(primera) < ids.indexOf(segunda));
+    const deEstas = datos.resenas.find((r) => r.id_calificacion === primera);
+    assert.equal(deEstas.autor, 'CONDUCTOR');
+    assert.equal(deEstas.comentario, 'Primera reseña denunciada.');
+    assert.equal(deEstas.denuncia_motivo, 'OFENSIVA');
+    assert.equal(deEstas.estacionamiento, e.estacionamiento.nombre);
+    assert.equal(typeof deEstas.conductor_nombre, 'string');
+    assert.equal(deEstas.promedio, 5);
+    const delPropietario = datos.resenas.find((r) => r.id_calificacion === segunda);
+    assert.equal(delPropietario.puntaje, 1);
+    assert.equal(delPropietario.denuncia_detalle, 'No es cierto');
+
+    const desestimadas = await api('GET', '/admin/resenas?estado=DESESTIMADA', { token: admin.token });
+    assert.ok(!desestimadas.datos.resenas.some((r) => r.id_calificacion === primera));
+  });
+
+  test('desestimar cierra la denuncia y no cambia la reputacion', async () => {
+    const admin = await crearAdmin();
+    const e = await escenario();
+    const id = await resenaDelConductor(e);
+    await denunciar(e.propietario, id);
+
+    const { estado, datos } = await moderar(admin, id, 'desestimar');
+    assert.equal(estado, 200);
+    assert.equal(datos.resena.denuncia_estado, 'DESESTIMADA');
+    const cola = await api('GET', '/admin/resenas', { token: admin.token });
+    assert.ok(!cola.datos.resenas.some((r) => r.id_calificacion === id));
+    const { datos: detalle } = await api('GET', `/estacionamientos/${e.estacionamiento.id_estacionamiento}`);
+    assert.equal(detalle.estacionamiento.calificaciones, 1);
+  });
+
+  test('ocultar marca la reseña', async () => {
+    const admin = await crearAdmin();
+    const e = await escenario();
+    const id = await resenaDelConductor(e);
+    await denunciar(e.propietario, id);
+
+    const { estado, datos } = await moderar(admin, id, 'ocultar');
+    assert.equal(estado, 200);
+    assert.equal(datos.resena.denuncia_estado, 'OCULTA');
+    assert.equal(datos.resena.oculta, true);
+  });
+
+  test('no se modera dos veces ni algo no denunciado', async () => {
+    const admin = await crearAdmin();
+    const e = await escenario();
+    const id = await resenaDelConductor(e);
+    await denunciar(e.propietario, id);
+    await moderar(admin, id, 'desestimar');
+
+    const otraVez = await moderar(admin, id, 'ocultar');
+    assert.equal(otraVez.estado, 409);
+    assert.match(motivo(otraVez), /ya fue resuelta/);
+    const sinDenuncia = await resenaDelConductor(e);
+    assert.equal((await moderar(admin, sinDenuncia, 'ocultar')).estado, 409);
+    assert.equal((await moderar(admin, crypto.randomUUID(), 'ocultar')).estado, 404);
+  });
+
+  test('dos admins a la vez: una sola moderacion', async () => {
+    const [uno, otro] = [await crearAdmin(), await crearAdmin()];
+    const e = await escenario();
+    const id = await resenaDelConductor(e);
+    await denunciar(e.propietario, id);
+
+    const estados = (await Promise.all([moderar(uno, id, 'desestimar'), moderar(otro, id, 'ocultar')]))
+      .map((r) => r.estado)
+      .sort();
+    assert.deepEqual(estados, [200, 409]);
+  });
+
+  test('solo el administrador', async () => {
+    const e = await escenario();
+    const id = await resenaDelConductor(e);
+    await denunciar(e.propietario, id);
+    assert.equal((await api('GET', '/admin/resenas', { token: e.propietario.token })).estado, 403);
+    assert.equal((await moderar(e.propietario, id, 'ocultar')).estado, 403);
+  });
+});

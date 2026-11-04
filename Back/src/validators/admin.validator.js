@@ -1,3 +1,4 @@
+import { ESTADOS_DENUNCIA } from '../services/denuncia-resena.service.js';
 import { ESTADOS_APROBACION } from '../utils/roles.js';
 import { campos } from './helpers.js';
 
@@ -63,5 +64,14 @@ export function validarResolucionModeracion(body) {
   if (resolucion === 'A_FAVOR_PROPIETARIO' && monto > 0) {
     resultado.errores.push({ campo: 'monto', mensaje: 'a favor del propietario no hay devolucion' });
   }
+  return resultado;
+}
+
+/** `GET /admin/resenas?estado=`: por defecto, las denuncias pendientes. */
+export function validarFiltroResenas(query) {
+  const resultado = campos(query)
+    .enumerado('estado', query.estado, Object.values(ESTADOS_DENUNCIA), { requerido: false })
+    .resultado();
+  resultado.valores.estado ??= ESTADOS_DENUNCIA.PENDIENTE;
   return resultado;
 }

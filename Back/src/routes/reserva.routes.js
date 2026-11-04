@@ -16,6 +16,9 @@ router.post('/', ...soloConductor, validate(validarReserva), reservaController.c
 
 router.get('/', ...soloConductor, reservaController.listarMias);
 
+// Lo que le pusieron los propietarios (va antes de las rutas con /:id).
+router.get('/mi-reputacion', ...soloConductor, reservaController.miReputacion);
+
 router.patch('/:id/cancelar', ...soloConductor, reservaController.cancelar);
 
 // Despues de entrar y salir, el conductor califica el estacionamiento (una vez).

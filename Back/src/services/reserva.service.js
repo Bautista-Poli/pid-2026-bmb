@@ -15,6 +15,7 @@ import { CAMPOS_TARIFA, HORAS_POR_MODALIDAD, MODALIDADES, precioDeReserva } from
 import { ORDEN_NATURAL } from './cochera.service.js';
 import { validarAbonoParaReservar } from './abono.service.js';
 import { PLAZO_CALIFICACION_DIAS } from './calificacion.service.js';
+import { REPUTACION_CONDUCTOR } from './reputacion.service.js';
 import { registrarEgresoEnIncidencia } from './incidencia.service.js';
 import { aceptaReservas, asegurarPropiedad } from './estacionamiento.service.js';
 
@@ -116,7 +117,16 @@ const selectDetalle = ({ conCodigo = false } = {}) => `
          q.promedio AS calificacion_promedio,
          (q.promedio IS NULL AND r.estado = 'FINALIZADA'
            AND r.ingreso_real IS NOT NULL AND r.egreso_real IS NOT NULL
-           AND r.egreso_real > now() - make_interval(days => ${PLAZO_CALIFICACION_DIAS})) AS calificable
+           AND r.egreso_real > now() - make_interval(days => ${PLAZO_CALIFICACION_DIAS})) AS calificable,
+         -- Lo mismo del lado del propietario: la reputacion del conductor, lo
+         -- que le puso en esta reserva y si todavia lo puede calificar.
+         ${REPUTACION_CONDUCTOR('r.id_conductor')},
+         qp.puntaje AS calificacion_al_conductor,
+         (qp.puntaje IS NULL AND (
+           (r.estado = 'FINALIZADA' AND r.ingreso_real IS NOT NULL AND r.egreso_real IS NOT NULL
+             AND r.egreso_real > now() - make_interval(days => ${PLAZO_CALIFICACION_DIAS}))
+           OR (r.estado = 'NO_SHOW' AND r.fin > now() - make_interval(days => ${PLAZO_CALIFICACION_DIAS}))
+         )) AS conductor_calificable
     FROM reserva r
     JOIN vehiculo v        ON v.id_vehiculo = r.id_vehiculo
     JOIN cochera c         ON c.id_cochera = r.id_cochera
@@ -129,6 +139,7 @@ const selectDetalle = ({ conCodigo = false } = {}) => `
              )::numeric, 1)::float AS promedio
         FROM calificacion cq WHERE cq.id_reserva = r.id_reserva AND cq.autor = 'CONDUCTOR'
     ) q ON TRUE
+    LEFT JOIN calificacion qp ON qp.id_reserva = r.id_reserva AND qp.autor = 'PROPIETARIO'
 `;
 
 /**

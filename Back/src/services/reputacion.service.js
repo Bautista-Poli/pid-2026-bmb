@@ -152,6 +152,41 @@ export const ES_DESTACADO = `(rep.puntaje >= ${UMBRAL_DESTACADO} AND rep.cal_can
 const redondear = (valor, decimales = 1) =>
   valor == null ? null : Math.round(valor * 10 ** decimales) / 10 ** decimales;
 
+/* ------------------------ reputacion del conductor ------------------------ */
+
+const DEL_PROPIETARIO = (idConductor) =>
+  `FROM calificacion qc WHERE qc.id_conductor = ${idConductor} AND qc.autor = 'PROPIETARIO'`;
+
+/**
+ * Columnas `conductor_promedio` y `conductor_calificaciones` para el conductor
+ * `idConductor` (expresion SQL): lo que le pusieron los propietarios, de toda
+ * su historia.
+ */
+export const REPUTACION_CONDUCTOR = (idConductor) => `
+  (SELECT ROUND(AVG(qc.puntaje)::numeric, 1)::float ${DEL_PROPIETARIO(idConductor)}) AS conductor_promedio,
+  (SELECT COUNT(*)::int ${DEL_PROPIETARIO(idConductor)}) AS conductor_calificaciones`;
+
+/** Promedio, cantidad y las 3 etiquetas mas marcadas por los propietarios. */
+export async function reputacionDelConductor(idConductor) {
+  const [{ rows: resumen }, { rows: etiquetas }] = await Promise.all([
+    query(`SELECT ${REPUTACION_CONDUCTOR('$1')}`, [idConductor]),
+    query(
+      `SELECT etiqueta AS codigo, COUNT(*)::int AS cantidad
+         FROM calificacion qc, unnest(qc.etiquetas) AS etiqueta
+        WHERE qc.id_conductor = $1 AND qc.autor = 'PROPIETARIO'
+        GROUP BY etiqueta
+        ORDER BY cantidad DESC, etiqueta
+        LIMIT 3`,
+      [idConductor],
+    ),
+  ]);
+  return {
+    promedio: resumen[0].conductor_promedio,
+    cantidad: resumen[0].conductor_calificaciones,
+    etiquetas,
+  };
+}
+
 /**
  * Insignias a partir de destacado y los promedios por categoria. `conDetalle`
  * es cuantas calificaciones traen categorias (las de solo puntaje no cuentan

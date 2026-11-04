@@ -166,3 +166,62 @@ describe('el propietario califica al conductor', () => {
     assert.equal(rows[0].n, 1);
   });
 });
+
+describe('reputacion del conductor', () => {
+  const miReputacion = (conductor) => api('GET', '/reservas/mi-reputacion', { token: conductor.token });
+
+  test('sin calificaciones', async () => {
+    const conductor = await crearUsuario();
+    const { estado, datos } = await miReputacion(conductor);
+    assert.equal(estado, 200);
+    assert.deepEqual(datos.reputacion, { promedio: null, cantidad: 0, etiquetas: [] });
+  });
+
+  test('promedio, cantidad y etiquetas mas marcadas; el propietario la ve en sus reservas', async () => {
+    const { propietario, estacionamiento, conductor } = await escenario();
+    const primera = await reservar(propietario, conductor, estacionamiento, franja('08:00', '10:00', 1));
+    const segunda = await reservar(propietario, conductor, estacionamiento, franja('08:00', '10:00', 2));
+    const sinCalificar = await reservar(propietario, conductor, estacionamiento, franja('08:00', '10:00', 3));
+    await marcarUsada(primera.id_reserva);
+    await marcarUsada(segunda.id_reserva);
+    await marcarUsada(sinCalificar.id_reserva);
+    await calificarConductor(propietario, primera.id_reserva, { puntaje: 5, etiquetas: ['PUNTUAL', 'RESPETUOSO'] });
+    await calificarConductor(propietario, segunda.id_reserva, { puntaje: 4, etiquetas: ['PUNTUAL'] });
+
+    const { datos } = await miReputacion(conductor);
+    assert.equal(datos.reputacion.promedio, 4.5);
+    assert.equal(datos.reputacion.cantidad, 2);
+    assert.deepEqual(datos.reputacion.etiquetas[0], { codigo: 'PUNTUAL', cantidad: 2 });
+    assert.ok(datos.reputacion.etiquetas.length <= 3);
+
+    const pendiente = await reservar(propietario, conductor, estacionamiento, franja('08:00', '10:00', 4));
+    const { datos: listado } = await api('GET', `/estacionamientos/${estacionamiento.id_estacionamiento}/reservas`, {
+      token: propietario.token,
+    });
+    const porId = Object.fromEntries(listado.reservas.map((r) => [r.id_reserva, r]));
+
+    assert.equal(porId[pendiente.id_reserva].conductor_promedio, 4.5);
+    assert.equal(porId[pendiente.id_reserva].conductor_calificaciones, 2);
+    assert.equal(porId[pendiente.id_reserva].conductor_calificable, false);
+    assert.equal(porId[primera.id_reserva].calificacion_al_conductor, 5);
+    assert.equal(porId[primera.id_reserva].conductor_calificable, false);
+    assert.equal(porId[sinCalificar.id_reserva].calificacion_al_conductor, null);
+    assert.equal(porId[sinCalificar.id_reserva].conductor_calificable, true);
+  });
+
+  test('no cambia la reputacion del estacionamiento', async () => {
+    const { propietario, estacionamiento, conductor } = await escenario();
+    const reserva = await reservar(propietario, conductor, estacionamiento);
+    await marcarUsada(reserva.id_reserva);
+    await calificarConductor(propietario, reserva.id_reserva, { puntaje: 1 });
+
+    const { datos } = await api('GET', `/estacionamientos/${estacionamiento.id_estacionamiento}`);
+    assert.equal(datos.estacionamiento.calificaciones, 0);
+    assert.equal(datos.estacionamiento.calificacion_promedio, null);
+  });
+
+  test('solo el conductor pide su reputacion', async () => {
+    const propietario = await crearUsuario({ rol: 'PROPIETARIO' });
+    assert.equal((await miReputacion(propietario)).estado, 403);
+  });
+});

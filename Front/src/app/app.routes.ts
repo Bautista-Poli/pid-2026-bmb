@@ -233,6 +233,11 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/admin/disputas/disputas').then((m) => m.Disputas),
       },
       {
+        path: 'resenas',
+        title: 'Parkit · Reseñas',
+        loadComponent: () => import('./pages/admin/resenas/resenas').then((m) => m.Resenas),
+      },
+      {
         path: 'disputas/:incidenciaId',
         title: 'Parkit · Disputa',
         loadComponent: () => import('./pages/admin/disputa/disputa').then((m) => m.Disputa),

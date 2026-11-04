@@ -7,10 +7,12 @@ import {
   ValidationErrors,
   Validators,
 } from '@angular/forms';
+import { DatePipe } from '@angular/common';
 import { Router } from '@angular/router';
+import { DenunciarResena } from '@app/components/reclamo';
 import { Boton, Icono, Modal, NombreIcono, Tarjeta, VerPassword } from '@app/components/ui';
 import { inicioSegunRol } from '@app/guards/rol.guard';
-import { CambiosPerfil, ETIQUETA_ROL, RolUsuario, TEXTO_ETIQUETA_CONDUCTOR } from '@app/models';
+import { CambiosPerfil, ETIQUETA_ROL, Id, RolUsuario, TEXTO_ESTADO_DENUNCIA, TEXTO_ETIQUETA_CONDUCTOR } from '@app/models';
 import { AuthService } from '@app/services/auth.service';
 import { CalificacionService } from '@app/services/calificacion.service';
 import { PreferenciaTema, TemaService } from '@app/services/tema.service';
@@ -54,7 +56,7 @@ function passwordsIguales(grupo: AbstractControl): ValidationErrors | null {
 @Component({
   selector: 'app-perfil',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, Boton, Icono, Modal, Tarjeta, VerPassword],
+  imports: [DatePipe, ReactiveFormsModule, Boton, DenunciarResena, Icono, Modal, Tarjeta, VerPassword],
   templateUrl: './perfil.html',
 })
 export class Perfil {
@@ -75,6 +77,15 @@ export class Perfil {
     params: () => (this.esConductor() ? true : undefined),
     stream: () => this.calificaciones.miReputacion(),
   });
+
+  protected readonly textoEstadoDenuncia = TEXTO_ESTADO_DENUNCIA;
+  /** Reseña que se esta denunciando: abre el modal. */
+  protected readonly aDenunciar = signal<Id | null>(null);
+
+  protected resenaDenunciada(): void {
+    this.aDenunciar.set(null);
+    this.reputacion.reload();
+  }
 
   protected nota(promedio: number): string {
     return promedio.toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });

@@ -124,9 +124,60 @@
                 Todavía no te calificaron. Los estacionamientos te califican después de cada reserva.
               </p>
             }
+
+            @if (rep.resenas.length > 0) {
+              <div class="mt-2 flex flex-col">
+                <h3 class="text-[13.5px] font-semibold text-tinta">Reseñas que recibiste</h3>
+                <ul class="flex flex-col">
+                  @for (resena of rep.resenas; track resena.id; let primera = $first) {
+                    <li class="flex flex-col gap-1.5 py-3" [class.border-t]="!primera" [class.border-borde-sutil]="!primera">
+                      <div class="flex items-center justify-between gap-3">
+                        <span class="text-[13px] font-semibold text-tinta">
+                          {{ resena.estacionamiento }}
+                          <span class="font-normal text-plomo">· {{ resena.creadaEn | date: 'd MMM' }}</span>
+                        </span>
+                        <span class="num-tabular text-[12.5px] font-semibold text-grafito">
+                          <span class="text-oro">★</span> {{ resena.puntaje }}
+                        </span>
+                      </div>
+                      @if (resena.comentario) {
+                        <p class="text-[13px] text-grafito">“{{ resena.comentario }}”</p>
+                      }
+                      @if (resena.etiquetas.length > 0) {
+                        <div class="flex flex-wrap gap-1">
+                          @for (etiqueta of resena.etiquetas; track etiqueta) {
+                            <span class="rounded-full bg-lienzo px-2 py-0.5 text-[11.5px] text-plomo">
+                              {{ textoEtiqueta[etiqueta] }}
+                            </span>
+                          }
+                        </div>
+                      }
+                      <div>
+                        @if (resena.denunciaEstado; as estado) {
+                          <span class="text-[12px] text-plomo">{{ textoEstadoDenuncia[estado] }}</span>
+                        } @else {
+                          <button
+                            type="button"
+                            class="text-[12px] font-semibold text-plomo underline-offset-2 hover:text-ocupada hover:underline"
+                            (click)="aDenunciar.set(resena.id)"
+                          >
+                            Denunciar
+                          </button>
+                        }
+                      </div>
+                    </li>
+                  }
+                </ul>
+              </div>
+            }
           }
         </div>
       </ui-tarjeta>
+      <app-denunciar-resena
+        [calificacionId]="aDenunciar()"
+        (cerrado)="aDenunciar.set(null)"
+        (denunciada)="resenaDenunciada()"
+      />
     }
 
     <!-- Apariencia -->

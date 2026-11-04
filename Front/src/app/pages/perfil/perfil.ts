@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { rxResource } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
   FormBuilder,
@@ -9,8 +10,9 @@ import {
 import { Router } from '@angular/router';
 import { Boton, Icono, Modal, NombreIcono, Tarjeta, VerPassword } from '@app/components/ui';
 import { inicioSegunRol } from '@app/guards/rol.guard';
-import { CambiosPerfil, ETIQUETA_ROL, RolUsuario } from '@app/models';
+import { CambiosPerfil, ETIQUETA_ROL, RolUsuario, TEXTO_ETIQUETA_CONDUCTOR } from '@app/models';
 import { AuthService } from '@app/services/auth.service';
+import { CalificacionService } from '@app/services/calificacion.service';
 import { PreferenciaTema, TemaService } from '@app/services/tema.service';
 
 const PASSWORD_MIN = 8;
@@ -60,8 +62,23 @@ export class Perfil {
   private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
   private readonly tema = inject(TemaService);
+  private readonly calificaciones = inject(CalificacionService);
 
   protected readonly usuario = this.auth.usuario;
+
+  /* ------------------------ reputacion del conductor ------------------------ */
+
+  protected readonly esConductor = computed(() => this.usuario()?.rol === 'CONDUCTOR');
+  protected readonly textoEtiqueta = TEXTO_ETIQUETA_CONDUCTOR;
+  /** Solo con el perfil de conductor activo: el propietario no tiene esta reputacion. */
+  protected readonly reputacion = rxResource({
+    params: () => (this.esConductor() ? true : undefined),
+    stream: () => this.calificaciones.miReputacion(),
+  });
+
+  protected nota(promedio: number): string {
+    return promedio.toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  }
   protected readonly perfiles = PERFILES;
   protected readonly temas = TEMAS;
   protected readonly temaElegido = this.tema.elegida;

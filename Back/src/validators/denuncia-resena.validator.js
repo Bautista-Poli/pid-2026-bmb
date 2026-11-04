@@ -1,4 +1,4 @@
-import { MOTIVOS_DENUNCIA } from '../services/denuncia-resena.service.js';
+import { MOTIVOS_DENUNCIA } from '../utils/denuncias.js';
 import { campos } from './helpers.js';
 
 /** `POST /calificaciones/:id/denuncia`: motivo obligatorio y detalle opcional. */

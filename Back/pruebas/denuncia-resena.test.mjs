@@ -85,6 +85,10 @@ async function resenaDelPropietario(e, puntaje = 4, reserva = null) {
   return datos.calificacion.id_calificacion;
 }
 
+/** Vence el plazo del conductor para calificar sus reservas: asi ya ve las reseñas que recibio. */
+const vencerPlazo = (conductor) =>
+  query(`UPDATE reserva SET egreso_real = now() - interval '8 days' WHERE id_conductor = $1`, [conductor.id]);
+
 const denunciar = (usuario, id, body = { motivo: 'OFENSIVA' }) =>
   api('POST', `/calificaciones/${id}/denuncia`, { token: usuario.token, body });
 
@@ -105,6 +109,7 @@ describe('denunciar una reseña', () => {
   test('el conductor denuncia una reseña sobre el', async () => {
     const e = await escenario();
     const id = await resenaDelPropietario(e, 1);
+    await vencerPlazo(e.conductor);
     assert.equal((await denunciar(e.conductor, id)).estado, 201);
   });
 
@@ -136,6 +141,15 @@ describe('denunciar una reseña', () => {
     const idPropio = await resenaDelConductor(propio);
     const comoConductor = { token: await cambiarRol(dueno.token, 'CONDUCTOR') };
     assert.equal((await denunciar(comoConductor, idPropio)).estado, 403);
+  });
+
+  test('el conductor no denuncia una reseña que todavia no puede ver', async () => {
+    const e = await escenario();
+    // El conductor no califico esa reserva y esta en plazo: la reseña no le aparece.
+    const id = await resenaDelPropietario(e, 1);
+    const respuesta = await denunciar(e.conductor, id);
+    assert.equal(respuesta.estado, 403);
+    assert.match(motivo(respuesta), /sobre vos o tu estacionamiento/);
   });
 
   test('no se denuncia dos veces', async () => {
@@ -174,6 +188,7 @@ describe('moderacion del administrador', () => {
     const primera = await resenaDelConductor(e, NOTAS, { comentario: 'Primera reseña denunciada.' });
     const segunda = await resenaDelPropietario(e, 1);
     await denunciar(e.propietario, primera);
+    await vencerPlazo(e.conductor);
     await denunciar(e.conductor, segunda, { motivo: 'FALSA', detalle: 'No es cierto' });
 
     const { estado, datos } = await api('GET', '/admin/resenas', { token: admin.token });
@@ -193,6 +208,23 @@ describe('moderacion del administrador', () => {
 
     const desestimadas = await api('GET', '/admin/resenas?estado=DESESTIMADA', { token: admin.token });
     assert.ok(!desestimadas.datos.resenas.some((r) => r.id_calificacion === primera));
+  });
+
+  test('el historial va de la ultima moderada a la primera', async () => {
+    const admin = await crearAdmin();
+    const e = await escenario();
+    const primera = await resenaDelConductor(e);
+    const segunda = await resenaDelConductor(e);
+    await denunciar(e.propietario, primera);
+    await denunciar(e.propietario, segunda);
+    // Se moderan en el mismo orden en que se denunciaron: la ultima moderada es `segunda`.
+    await moderar(admin, primera, 'desestimar');
+    await moderar(admin, segunda, 'desestimar');
+
+    const { datos } = await api('GET', '/admin/resenas?estado=DESESTIMADA', { token: admin.token });
+    const ids = datos.resenas.map((r) => r.id_calificacion);
+    assert.ok(ids.indexOf(segunda) < ids.indexOf(primera), 'la ultima moderada primero');
+    assert.ok(datos.resenas.length <= 100);
   });
 
   test('desestimar cierra la denuncia y no cambia la reputacion', async () => {
@@ -233,7 +265,9 @@ describe('moderacion del administrador', () => {
     assert.equal(otraVez.estado, 409);
     assert.match(motivo(otraVez), /ya fue resuelta/);
     const sinDenuncia = await resenaDelConductor(e);
-    assert.equal((await moderar(admin, sinDenuncia, 'ocultar')).estado, 409);
+    const noDenunciada = await moderar(admin, sinDenuncia, 'ocultar');
+    assert.equal(noDenunciada.estado, 409);
+    assert.match(motivo(noDenunciada), /no fue denunciada/);
     assert.equal((await moderar(admin, crypto.randomUUID(), 'ocultar')).estado, 404);
   });
 

@@ -174,7 +174,7 @@ export const lateralReputacionConductor = (idConductor) => `
  * cuyo plazo para calificar vencio. Antes no, para que no vea la nota del
  * propietario y responda en consecuencia al calificar el estacionamiento.
  */
-const RESENA_VISIBLE_PARA_EL_CONDUCTOR = `(
+export const RESENA_VISIBLE_PARA_EL_CONDUCTOR = `(
   EXISTS (SELECT 1 FROM calificacion qq WHERE qq.id_reserva = r.id_reserva AND qq.autor = 'CONDUCTOR')
   OR (r.estado = 'FINALIZADA' AND r.egreso_real <= now() - make_interval(days => ${PLAZO_CALIFICACION_DIAS}))
   OR (r.estado = 'NO_SHOW' AND r.fin <= now() - make_interval(days => ${PLAZO_CALIFICACION_DIAS}))

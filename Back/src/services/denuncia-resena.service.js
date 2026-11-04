@@ -4,23 +4,20 @@
 // administrador la oculte; desestimada, queda firme.
 import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
+import { ESTADOS_DENUNCIA, LIMITE_DENUNCIAS } from '../utils/denuncias.js';
 import { ROLES } from '../utils/roles.js';
+import { RESENA_VISIBLE_PARA_EL_CONDUCTOR } from './reputacion.service.js';
 
-export const MOTIVOS_DENUNCIA = Object.freeze(['OFENSIVA', 'FALSA', 'DATOS_PERSONALES', 'OTRO']);
-
-export const ESTADOS_DENUNCIA = Object.freeze({
-  PENDIENTE: 'PENDIENTE',
-  DESESTIMADA: 'DESESTIMADA',
-  OCULTA: 'OCULTA',
-});
-
-/** Si la reseña es sobre quien la denuncia, segun el perfil con el que entro. */
+/**
+ * Si la reseña es sobre quien la denuncia, segun el perfil con el que entro. El
+ * conductor, ademas, solo denuncia las que ya puede ver (`visible_conductor`).
+ */
 function esSobre(usuario, resena) {
   if (usuario.rol === ROLES.PROPIETARIO) {
     return resena.autor === 'CONDUCTOR' && resena.id_propietario === usuario.id;
   }
   if (usuario.rol === ROLES.CONDUCTOR) {
-    return resena.autor === 'PROPIETARIO' && resena.id_conductor === usuario.id;
+    return resena.autor === 'PROPIETARIO' && resena.id_conductor === usuario.id && resena.visible_conductor;
   }
   return false;
 }
@@ -28,9 +25,11 @@ function esSobre(usuario, resena) {
 export async function denunciar(idCalificacion, usuario, { motivo, detalle }) {
   return withTransaction(async (client) => {
     const { rows } = await client.query(
-      `SELECT q.id_calificacion, q.autor::text AS autor, q.id_conductor, q.denuncia_estado, e.id_propietario
+      `SELECT q.id_calificacion, q.autor::text AS autor, q.id_conductor, q.denuncia_estado, e.id_propietario,
+              ${RESENA_VISIBLE_PARA_EL_CONDUCTOR} AS visible_conductor
          FROM calificacion q
          JOIN estacionamiento e ON e.id_estacionamiento = q.id_estacionamiento
+         JOIN reserva r         ON r.id_reserva = q.id_reserva
         WHERE q.id_calificacion = $1
         FOR UPDATE OF q`,
       [idCalificacion],
@@ -71,12 +70,20 @@ const JOINS_DENUNCIA = `
   JOIN estacionamiento e ON e.id_estacionamiento = q.id_estacionamiento
   JOIN usuario u         ON u.id_usuario = q.id_conductor`;
 
-/** Las denuncias en ese estado, la mas vieja primero. */
+/**
+ * Las denuncias en ese estado (hasta LIMITE_DENUNCIAS): las pendientes, la que
+ * espera hace mas primero; el historial, la ultima moderada primero.
+ */
 export async function listarDenuncias({ estado = ESTADOS_DENUNCIA.PENDIENTE } = {}) {
+  const orden =
+    estado === ESTADOS_DENUNCIA.PENDIENTE
+      ? 'q.denunciada_at, q.id_calificacion'
+      : 'q.moderada_at DESC, q.id_calificacion';
   const { rows } = await query(
     `SELECT ${COLUMNAS_DENUNCIA} ${JOINS_DENUNCIA}
       WHERE q.denuncia_estado = $1
-      ORDER BY q.denunciada_at, q.id_calificacion`,
+      ORDER BY ${orden}
+      LIMIT ${LIMITE_DENUNCIAS}`,
     [estado],
   );
   return rows;
@@ -93,6 +100,7 @@ export async function moderar(idCalificacion, idAdmin, accion) {
       [idCalificacion],
     );
     if (!rows[0]) throw ApiError.notFound('La reseña no existe');
+    if (!rows[0].denuncia_estado) throw ApiError.conflict('Esta reseña no fue denunciada');
     if (rows[0].denuncia_estado !== ESTADOS_DENUNCIA.PENDIENTE) {
       throw ApiError.conflict('Esta denuncia ya fue resuelta');
     }

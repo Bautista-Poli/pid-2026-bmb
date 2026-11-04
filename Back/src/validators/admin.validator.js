@@ -1,4 +1,4 @@
-import { ESTADOS_DENUNCIA } from '../services/denuncia-resena.service.js';
+import { ESTADOS_DENUNCIA } from '../utils/denuncias.js';
 import { ESTADOS_APROBACION } from '../utils/roles.js';
 import { campos } from './helpers.js';
 

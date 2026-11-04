@@ -121,6 +121,7 @@
           <select class="panel-resultados__select" [value]="orden()" (change)="ordenar($any($event.target).value)">
             <option value="DISTANCIA">Más cercano</option>
             <option value="PRECIO">Más barato</option>
+            <option value="REPUTACION">Mejor calificados</option>
           </select>
         </label>
       </div>
@@ -379,6 +380,9 @@
         </ui-chip>
         <ui-chip [activo]="panel().orden === 'PRECIO'" (alternar)="cambiar({ orden: 'PRECIO' })">
           <span class="filtros__chip-contenido"><ui-icono nombre="moneda" [tamano]="15" />Más barato</span>
+        </ui-chip>
+        <ui-chip [activo]="panel().orden === 'REPUTACION'" (alternar)="cambiar({ orden: 'REPUTACION' })">
+          <span class="filtros__chip-contenido"><ui-icono nombre="estrella" [tamano]="15" />Mejor calificados</span>
         </ui-chip>
         <ui-chip [activo]="panel().soloCubiertos" (alternar)="cambiar({ soloCubiertos: !panel().soloCubiertos })">
           <span class="filtros__chip-contenido"><ui-icono nombre="techo" [tamano]="15" />Cubierto</span>

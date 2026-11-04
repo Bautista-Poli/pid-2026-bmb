@@ -1,0 +1,168 @@
+// Calificacion del conductor por el propietario: solo sobre reservas
+// finalizadas o ausentes de un estacionamiento propio, una vez y dentro del
+// plazo. Y la reputacion del conductor que sale de esas calificaciones.
+import assert from 'node:assert/strict';
+import { after, before, describe, test } from 'node:test';
+
+import {
+  api,
+  cerrarApi,
+  crearEstacionamiento,
+  crearUsuario,
+  crearVehiculo,
+  franja,
+  levantarApi,
+  motivo,
+  query,
+} from './ayuda.mjs';
+
+before(() => levantarApi('calificacion-conductor'));
+after(() => cerrarApi());
+
+async function reservar(propietario, conductor, estacionamiento, cuando = franja()) {
+  const vehiculo = await crearVehiculo(conductor.token);
+  const { datos } = await api('POST', '/reservas', {
+    token: conductor.token,
+    body: { id_estacionamiento: estacionamiento.id_estacionamiento, id_vehiculo: vehiculo.id_vehiculo, ...cuando },
+  });
+  await api('PATCH', `/reservas/${datos.reserva.id_reserva}/confirmar`, { token: propietario.token });
+  return datos.reserva;
+}
+
+/** Deja la reserva usada (entro y salio) sin pasar por el QR. */
+function marcarUsada(idReserva, { egresoHace = '1 hour' } = {}) {
+  return query(
+    `UPDATE reserva
+        SET estado = 'FINALIZADA',
+            inicio = now() - interval '3 hours' - $2::interval,
+            fin = now() - $2::interval,
+            ingreso_real = now() - interval '3 hours' - $2::interval,
+            egreso_real = now() - $2::interval
+      WHERE id_reserva = $1`,
+    [idReserva, egresoHace],
+  );
+}
+
+/** Deja la reserva como ausente (el conductor no llego). */
+function marcarAusente(idReserva, { finHace = '1 hour' } = {}) {
+  return query(
+    `UPDATE reserva
+        SET estado = 'NO_SHOW',
+            inicio = now() - interval '2 hours' - $2::interval,
+            fin = now() - $2::interval
+      WHERE id_reserva = $1`,
+    [idReserva, finHace],
+  );
+}
+
+async function escenario() {
+  const propietario = await crearUsuario({ rol: 'PROPIETARIO' });
+  const estacionamiento = await crearEstacionamiento(propietario.token, { cocheras: 3 });
+  const conductor = await crearUsuario();
+  return { propietario, estacionamiento, conductor };
+}
+
+const calificarConductor = (propietario, idReserva, body = { puntaje: 4, etiquetas: ['PUNTUAL'] }) =>
+  api('POST', `/reservas/${idReserva}/calificacion-conductor`, { token: propietario.token, body });
+
+describe('el propietario califica al conductor', () => {
+  test('una finalizada: 201 y no se puede repetir', async () => {
+    const { propietario, estacionamiento, conductor } = await escenario();
+    const reserva = await reservar(propietario, conductor, estacionamiento);
+    await marcarUsada(reserva.id_reserva);
+
+    const primera = await calificarConductor(propietario, reserva.id_reserva);
+    assert.equal(primera.estado, 201);
+    assert.equal(primera.datos.calificacion.puntaje, 4);
+    assert.deepEqual(primera.datos.calificacion.etiquetas, ['PUNTUAL']);
+
+    const segunda = await calificarConductor(propietario, reserva.id_reserva);
+    assert.equal(segunda.estado, 409);
+    assert.match(motivo(segunda), /Ya calificaste/);
+  });
+
+  test('una ausente tambien se califica', async () => {
+    const { propietario, estacionamiento, conductor } = await escenario();
+    const reserva = await reservar(propietario, conductor, estacionamiento);
+    await marcarAusente(reserva.id_reserva);
+
+    assert.equal((await calificarConductor(propietario, reserva.id_reserva)).estado, 201);
+  });
+
+  test('una confirmada sin usar no se califica', async () => {
+    const { propietario, estacionamiento, conductor } = await escenario();
+    const reserva = await reservar(propietario, conductor, estacionamiento);
+
+    const respuesta = await calificarConductor(propietario, reserva.id_reserva);
+    assert.equal(respuesta.estado, 409);
+    assert.match(motivo(respuesta), /finalizada o ausente/);
+  });
+
+  test('vence a los 7 dias', async () => {
+    const { propietario, estacionamiento, conductor } = await escenario();
+    const usada = await reservar(propietario, conductor, estacionamiento, franja('08:00', '10:00', 1));
+    await marcarUsada(usada.id_reserva, { egresoHace: '8 days' });
+    const vieja = await calificarConductor(propietario, usada.id_reserva);
+    assert.equal(vieja.estado, 409);
+    assert.match(motivo(vieja), /plazo/);
+
+    const ausente = await reservar(propietario, conductor, estacionamiento, franja('08:00', '10:00', 2));
+    await marcarAusente(ausente.id_reserva, { finHace: '8 days' });
+    assert.equal((await calificarConductor(propietario, ausente.id_reserva)).estado, 409);
+  });
+
+  test('solo el propietario de ese estacionamiento', async () => {
+    const { propietario, estacionamiento, conductor } = await escenario();
+    const reserva = await reservar(propietario, conductor, estacionamiento);
+    await marcarUsada(reserva.id_reserva);
+
+    const otro = await crearUsuario({ rol: 'PROPIETARIO' });
+    assert.equal((await calificarConductor(otro, reserva.id_reserva)).estado, 403);
+    assert.equal((await calificarConductor(conductor, reserva.id_reserva)).estado, 403);
+  });
+
+  test('valida puntaje y etiquetas', async () => {
+    const { propietario, estacionamiento, conductor } = await escenario();
+    const reserva = await reservar(propietario, conductor, estacionamiento);
+    await marcarUsada(reserva.id_reserva);
+    const id = reserva.id_reserva;
+
+    assert.equal((await calificarConductor(propietario, id, { puntaje: 0 })).estado, 400);
+    assert.equal((await calificarConductor(propietario, id, { puntaje: 6 })).estado, 400);
+    assert.equal((await calificarConductor(propietario, id, {})).estado, 400);
+    assert.equal((await calificarConductor(propietario, id, { puntaje: 4, etiquetas: ['MUY_LIMPIO'] })).estado, 400);
+    assert.equal(
+      (await calificarConductor(propietario, id, { puntaje: 4, comentario: 'x'.repeat(501) })).estado,
+      400,
+    );
+
+    const normalizada = await calificarConductor(propietario, id, {
+      puntaje: 4,
+      etiquetas: ['puntual', 'PUNTUAL', ' respetuoso '],
+    });
+    assert.equal(normalizada.estado, 201);
+    assert.deepEqual(normalizada.datos.calificacion.etiquetas, ['PUNTUAL', 'RESPETUOSO']);
+  });
+
+  test('dos envios a la vez: una sola calificacion', async () => {
+    const { propietario, estacionamiento, conductor } = await escenario();
+    const reserva = await reservar(propietario, conductor, estacionamiento);
+    await marcarUsada(reserva.id_reserva);
+
+    const estados = (
+      await Promise.all([
+        calificarConductor(propietario, reserva.id_reserva),
+        calificarConductor(propietario, reserva.id_reserva),
+      ])
+    )
+      .map((r) => r.estado)
+      .sort();
+    assert.deepEqual(estados, [201, 409]);
+
+    const { rows } = await query(
+      `SELECT COUNT(*)::int AS n FROM calificacion WHERE id_reserva = $1 AND autor = 'PROPIETARIO'`,
+      [reserva.id_reserva],
+    );
+    assert.equal(rows[0].n, 1);
+  });
+});

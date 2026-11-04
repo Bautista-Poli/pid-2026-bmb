@@ -39,3 +39,8 @@ export const calificar = asyncHandler(async (req, res) => {
   const calificacion = await calificacionService.crear(req.params.id, req.usuario.id, req.body);
   res.status(201).json({ calificacion });
 });
+
+export const calificarConductor = asyncHandler(async (req, res) => {
+  const calificacion = await calificacionService.crearDelPropietario(req.params.id, req.usuario.id, req.body);
+  res.status(201).json({ calificacion });
+});

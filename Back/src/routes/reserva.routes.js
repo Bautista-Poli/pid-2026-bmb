@@ -4,7 +4,7 @@ import * as reservaController from '../controllers/reserva.controller.js';
 import { authenticate, requireRole } from '../middlewares/auth.js';
 import { validate } from '../middlewares/validate.js';
 import { ROLES } from '../utils/roles.js';
-import { validarCalificacion } from '../validators/calificacion.validator.js';
+import { validarCalificacion, validarCalificacionConductor } from '../validators/calificacion.validator.js';
 import { validarAcceso, validarReserva } from '../validators/reserva.validator.js';
 
 const router = Router();
@@ -24,6 +24,14 @@ router.post(
   ...soloConductor,
   validate(validarCalificacion),
   reservaController.calificar,
+);
+
+// Y el propietario califica al conductor de una reserva finalizada o ausente (una vez).
+router.post(
+  '/:id/calificacion-conductor',
+  ...soloPropietario,
+  validate(validarCalificacionConductor),
+  reservaController.calificarConductor,
 );
 
 // El ciclo lo maneja el propietario de la cochera. El ingreso y el egreso

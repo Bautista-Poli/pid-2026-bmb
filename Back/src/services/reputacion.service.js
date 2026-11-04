@@ -45,6 +45,18 @@ export const ETIQUETAS = Object.freeze([
 
 export const CODIGOS_ETIQUETA = ETIQUETAS.map((e) => e.codigo);
 
+/** Etiquetas que puede marcar el propietario al calificar al conductor. */
+export const ETIQUETAS_CONDUCTOR = Object.freeze([
+  { codigo: 'PUNTUAL', positiva: true },
+  { codigo: 'RESPETUOSO', positiva: true },
+  { codigo: 'CUIDO_LA_COCHERA', positiva: true },
+  { codigo: 'LLEGO_TARDE', positiva: false },
+  { codigo: 'SE_EXCEDIO', positiva: false },
+  { codigo: 'NO_AVISO_AUSENCIA', positiva: false },
+]);
+
+export const CODIGOS_ETIQUETA_CONDUCTOR = ETIQUETAS_CONDUCTOR.map((e) => e.codigo);
+
 /**
  * Nota general de una calificacion: el promedio de las cinco categorias si las
  * tiene, o su `puntaje` (las que se cargan sin detalle). Solo cuentan las del

@@ -441,6 +441,33 @@
     transform: scale(1.12);
   }
 
+  /* Anfitrion destacado: aro dorado en la gota y una estrella en la punta. */
+  .pin--destacado .pin__cabeza {
+    position: relative;
+    border-color: var(--color-oro);
+    box-shadow:
+      0 0 0 2px var(--color-papel),
+      var(--shadow-elevada);
+  }
+
+  .pin__sello {
+    position: absolute;
+    top: -9px;
+    right: -9px;
+    display: grid;
+    place-items: center;
+    width: 16px;
+    height: 16px;
+    border: 1.5px solid var(--color-papel);
+    border-radius: 999px;
+    background: var(--color-oro);
+    color: #0f172a;
+    font-size: 9px;
+    line-height: 1;
+    /* Contra-rotada: la gota esta girada -45deg. */
+    transform: rotate(45deg);
+  }
+
   .pin--activo .pin__precio {
     border-color: var(--pin-color);
     background: var(--pin-color);

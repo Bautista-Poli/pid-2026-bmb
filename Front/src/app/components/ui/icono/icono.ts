@@ -41,7 +41,8 @@ export type NombreIcono =
   | 'candado'
   | 'ojo'
   | 'ojo-tachado'
-  | 'alerta';
+  | 'alerta'
+  | 'estrella';
 
 /**
  * Icono de linea sobre un lienzo de 24x24. Todos comparten estilo (trazo de
@@ -242,6 +243,9 @@ export type NombreIcono =
           <path d="M10.3 4.2 2.9 17.3A2 2 0 0 0 4.6 20.3h14.8a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0Z" />
           <path d="M12 9.5v4.2" />
           <path d="M12 16.9h.01" />
+        }
+        @case ('estrella') {
+          <path d="M12 3.8l2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6L7.1 19l.9-5.5-4-3.9 5.5-.8Z" />
         }
       }
     </svg>

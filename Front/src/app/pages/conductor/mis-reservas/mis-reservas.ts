@@ -100,6 +100,9 @@ export class MisReservas {
       .sort((a, b) => inicioDe(b) - inicioDe(a)),
   );
 
+  /** La mas reciente que todavia puede calificar (entro y salio hace menos de 7 dias). */
+  protected readonly porCalificar = computed(() => this.pasadas().find((reserva) => reserva.calificable) ?? null);
+
   /** Si el historial muestra tambien las canceladas, expiradas y ausentes. */
   protected readonly mostrarSinUsar = signal(false);
 

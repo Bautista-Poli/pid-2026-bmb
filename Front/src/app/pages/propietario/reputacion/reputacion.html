@@ -1,0 +1,303 @@
+<div class="aparece mx-auto w-full max-w-[1240px] px-5 pt-5 pb-8 lg:px-9 lg:pt-8 lg:pb-11">
+  <header class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div>
+      <p class="eyebrow">Propietario</p>
+      <h1 class="titulo-vista mt-1.5">Reputación{{ nombre() ? ' · ' + nombre() : '' }}</h1>
+      <p class="mt-1 text-[13.5px] text-plomo">
+        Tu puntaje combina lo que califican los conductores y cómo operás el estacionamiento.
+      </p>
+    </div>
+
+    <div class="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+      <div class="inline-flex rounded-control border border-borde bg-papel p-1 shadow-tarjeta" role="group" aria-label="Período">
+        @for (periodo of periodos; track periodo.dias) {
+          <button
+            type="button"
+            class="min-h-9 rounded-boton px-3 text-[13px] font-semibold transition-colors duration-160 ease-out"
+            [class]="dias() === periodo.dias ? 'bg-acento text-sobre-acento' : 'text-grafito hover:bg-lienzo'"
+            [attr.aria-pressed]="dias() === periodo.dias"
+            (click)="elegirPeriodo(periodo.dias)"
+          >
+            {{ periodo.etiqueta }}
+          </button>
+        }
+      </div>
+      @if (recursoEstacionamientos.value().length > 1) {
+        <select
+          class="rounded-control border border-borde bg-papel px-3.5 py-2.5 text-[13px] text-grafito
+                 shadow-tarjeta focus:border-acento focus:outline-none"
+          aria-label="Estacionamiento"
+          (change)="elegirEstacionamiento($event)"
+        >
+          @for (lote of recursoEstacionamientos.value(); track lote.id) {
+            <option [value]="lote.id" [selected]="lote.id === estacionamientoId()">{{ lote.nombre }}</option>
+          }
+        </select>
+      }
+    </div>
+  </header>
+
+  @if (recursoEstacionamientos.isLoading() || (recurso.isLoading() && !recurso.value())) {
+    <div class="mt-6"><ui-cargando [cantidad]="3" /></div>
+  } @else if (!estacionamientoId()) {
+    <div class="mt-6">
+      <ui-estado-vacio
+        titulo="Todavía no tenés estacionamientos"
+        descripcion="Cuando publiques uno y lo usen, vas a ver acá su reputación."
+      >
+        <ui-boton routerLink="/propietario/estacionamientos/nuevo">Publicar estacionamiento</ui-boton>
+      </ui-estado-vacio>
+    </div>
+  } @else if (recurso.error(); as e) {
+    <div class="mt-6">
+      <ui-estado-vacio titulo="No pudimos cargar la reputación" [descripcion]="e.message">
+        <ui-boton (presionado)="recurso.reload()">Reintentar</ui-boton>
+      </ui-estado-vacio>
+    </div>
+  } @else if (recurso.value(); as datos) {
+    <div class="mt-6 flex flex-col gap-5 lg:gap-6" [class.opacity-60]="recurso.isLoading()">
+      <div class="grid gap-5 lg:grid-cols-[380px_minmax(0,1fr)] lg:gap-6">
+        <!-- Puntaje -->
+        <section
+          class="flex flex-col gap-4 rounded-tarjeta bg-acento p-5 text-sobre-acento shadow-elevada lg:p-6"
+          aria-label="Puntaje"
+        >
+          <div class="flex items-center gap-[18px]">
+            <div class="relative size-[104px] shrink-0">
+              <svg width="104" height="104" viewBox="0 0 104 104" aria-hidden="true">
+                <circle cx="52" cy="52" r="44" fill="none" stroke="currentColor" stroke-opacity="0.18" stroke-width="10" />
+                <circle
+                  cx="52"
+                  cy="52"
+                  r="44"
+                  fill="none"
+                  stroke="var(--color-oro)"
+                  stroke-width="10"
+                  stroke-linecap="round"
+                  [attr.stroke-dasharray]="arco(datos)"
+                  transform="rotate(-90 52 52)"
+                />
+              </svg>
+              <div class="absolute inset-0 flex flex-col items-center justify-center">
+                <span class="num-tabular text-[30px] leading-none font-bold">{{ datos.puntaje }}</span>
+                <span class="text-[11px] opacity-80">de 100</span>
+              </div>
+            </div>
+            <div class="flex min-w-0 flex-col gap-1.5">
+              @if (datos.destacado) {
+                <span
+                  class="inline-flex items-center gap-1.5 self-start rounded-etiqueta bg-oro px-2 py-1 text-[11px] font-bold tracking-[0.04em] text-[#0f172a]"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M12 3.8l2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6L7.1 19l.9-5.5-4-3.9 5.5-.8Z" />
+                  </svg>
+                  ANFITRIÓN DESTACADO
+                </span>
+              }
+              <p class="text-[13px] leading-snug opacity-90">{{ estadoInsignia() }}</p>
+              <p class="num-tabular text-[12px] opacity-75">
+                @if (cambio(); as texto) {
+                  {{ texto }} ·
+                }
+                {{ datos.calificaciones.cantidad }}
+                {{ datos.calificaciones.cantidad === 1 ? 'calificación' : 'calificaciones' }}
+              </p>
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-2.5 rounded-control bg-white/10 px-3.5 py-3">
+            <div>
+              <div class="flex items-center justify-between text-[12.5px]">
+                <span>Calificaciones (60%)</span>
+                <span class="num-tabular font-semibold">{{ datos.calificaciones.puntos }} / 60</span>
+              </div>
+              <div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/15">
+                <div class="h-full rounded-full bg-oro" [style.width.%]="(datos.calificaciones.puntos / 60) * 100"></div>
+              </div>
+            </div>
+            <div>
+              <div class="flex items-center justify-between text-[12.5px]">
+                <span>Operación (40%)</span>
+                <span class="num-tabular font-semibold">{{ datos.operacion.puntos }} / 40</span>
+              </div>
+              <div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/15">
+                <div class="h-full rounded-full bg-oro" [style.width.%]="(datos.operacion.puntos / 40) * 100"></div>
+              </div>
+            </div>
+          </div>
+
+          @if (datos.insignias.length > 0) {
+            <div class="flex flex-wrap gap-1.5">
+              @for (insignia of datos.insignias; track insignia) {
+                @if (insignia !== 'DESTACADO') {
+                  <span class="rounded-etiqueta bg-white/15 px-2 py-0.5 text-[11.5px] font-semibold">
+                    {{ textoInsignia[insignia] }}
+                  </span>
+                }
+              }
+            </div>
+          }
+        </section>
+
+        <!-- Categorias -->
+        <ui-tarjeta relleno="lg">
+          <div class="flex h-full flex-col gap-4">
+            <div class="flex items-baseline justify-between gap-3">
+              <h2 class="text-[16px] font-semibold text-tinta">Lo que califican los conductores</h2>
+              <span class="text-[12px] text-plomo">Promedio de 1 a 5</span>
+            </div>
+            @if (datos.calificaciones.cantidad === 0) {
+              <p class="text-[13px] text-plomo">
+                Todavía nadie calificó en este período. Los conductores califican después de entrar y salir;
+                mientras tanto, el puntaje toma un 4 de promedio.
+              </p>
+            } @else {
+              <ul class="flex flex-col gap-3">
+                @for (categoria of datos.calificaciones.categorias; track categoria.codigo) {
+                  @let tend = tendencia(categoria);
+                  <li class="grid grid-cols-[minmax(0,140px)_minmax(0,1fr)_auto_44px] items-center gap-3">
+                    <span class="truncate text-[13px] font-medium text-grafito">{{ categoria.nombre }}</span>
+                    <span class="h-2 overflow-hidden rounded-full bg-borde-sutil">
+                      <span
+                        class="block h-full rounded-full bg-acento"
+                        [style.width.%]="((categoria.promedio ?? 0) / 5) * 100"
+                      ></span>
+                    </span>
+                    <span class="num-tabular text-[13.5px] font-semibold text-tinta">{{ nota(categoria.promedio) }}</span>
+                    <span class="num-tabular text-right text-[12px] font-semibold" [class]="tend.clase">{{ tend.texto }}</span>
+                  </li>
+                }
+              </ul>
+            }
+            @if (etiquetasMarcadas().length > 0) {
+              <div class="mt-auto flex flex-wrap gap-1.5 border-t border-borde-sutil pt-3.5">
+                @for (etiqueta of etiquetasMarcadas(); track etiqueta.codigo) {
+                  <span
+                    class="num-tabular rounded-full border px-2.5 py-1 text-[12px] font-medium"
+                    [class]="etiqueta.positiva ? 'border-exito/25 bg-exito-suave text-exito' : 'border-baja/25 bg-baja/8 text-baja'"
+                  >
+                    {{ textoDeEtiqueta(etiqueta.codigo) }} · {{ etiqueta.cantidad }}
+                  </span>
+                }
+              </div>
+            }
+          </div>
+        </ui-tarjeta>
+      </div>
+
+      <div class="grid gap-5 lg:grid-cols-2 lg:gap-6">
+        <!-- Operacion -->
+        <ui-tarjeta relleno="lg">
+          <div class="flex flex-col gap-3.5">
+            <h2 class="text-[16px] font-semibold text-tinta">Operación <span class="font-normal text-plomo">(lo mide Parkit)</span></h2>
+            <ul class="flex flex-col">
+              @for (fila of filasOperacion(); track fila.titulo; let primera = $first) {
+                <li class="flex items-center justify-between gap-3 py-3" [class.border-t]="!primera" [class.border-borde-sutil]="!primera">
+                  <div class="min-w-0">
+                    <p class="text-[13.5px] font-medium text-tinta">{{ fila.titulo }}</p>
+                    <p class="mt-0.5 text-[12px] text-plomo">{{ fila.detalle }}</p>
+                  </div>
+                  <div class="flex shrink-0 items-center gap-3">
+                    <span class="num-tabular text-[15px] font-semibold text-tinta">{{ fila.valor }}</span>
+                    <span
+                      class="num-tabular rounded-etiqueta px-2 py-0.5 text-[11.5px] font-semibold"
+                      [class]="fila.puntos === 10 ? 'bg-exito-suave text-exito' : 'bg-baja/10 text-baja'"
+                    >
+                      {{ fila.puntos }}/10
+                    </span>
+                  </div>
+                </li>
+              }
+            </ul>
+          </div>
+        </ui-tarjeta>
+
+        <div class="flex flex-col gap-5 lg:gap-6">
+          <!-- Sugerencia -->
+          @if (datos.sugerencia; as sugerencia) {
+            <section class="rounded-tarjeta border border-oro/50 bg-oro-suave px-5 py-4" aria-label="Dónde ganás más puntos">
+              <p class="text-[13.5px] font-semibold text-oro-tinta">Dónde ganás más puntos</p>
+              <p class="mt-1 text-[13px] leading-relaxed text-grafito">
+                {{ sugerencia.nombre }} está en {{ nota(sugerencia.promedio) }}.
+                @if (sugerencia.etiqueta; as etiqueta) {
+                  {{ etiqueta.cantidad }} {{ etiqueta.cantidad === 1 ? 'conductor marcó' : 'conductores marcaron' }}
+                  “{{ textoDeEtiqueta(etiqueta.codigo).toLowerCase() }}”.
+                }
+                Subirla a {{ nota(sugerencia.objetivo) }} te suma unos {{ sugerencia.puntos }}
+                {{ sugerencia.puntos === 1 ? 'punto' : 'puntos' }}.
+              </p>
+            </section>
+          }
+
+          <!-- Opiniones -->
+          <ui-tarjeta relleno="lg">
+            <div class="flex flex-col gap-3">
+              <h2 class="text-[16px] font-semibold text-tinta">Opiniones recientes</h2>
+              @if (datos.opiniones.length === 0) {
+                <p class="text-[13px] text-plomo">Todavía no hay opiniones.</p>
+              } @else {
+                <ul class="flex flex-col">
+                  @for (opinion of datos.opiniones; track opinion.id; let primera = $first) {
+                    <li class="flex flex-col gap-1.5 py-3" [class.border-t]="!primera" [class.border-borde-sutil]="!primera">
+                      <div class="flex items-center justify-between gap-3">
+                        <span class="text-[13px] font-semibold text-tinta">
+                          {{ opinion.autor }}
+                          <span class="font-normal text-plomo">· {{ haceCuanto(opinion.creadaEn) }}</span>
+                        </span>
+                        <span class="num-tabular inline-flex items-center gap-1 text-[12.5px] font-semibold text-grafito">
+                          <svg width="12" height="12" viewBox="0 0 24 24" class="text-oro" fill="currentColor" aria-hidden="true">
+                            <path d="M12 3.8l2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6L7.1 19l.9-5.5-4-3.9 5.5-.8Z" />
+                          </svg>
+                          {{ nota(opinion.promedio) }}
+                        </span>
+                      </div>
+                      <p class="text-[13px] text-grafito" [class.text-plomo]="!opinion.comentario">
+                        {{ opinion.comentario ? '“' + opinion.comentario + '”' : 'Sin comentario' }}
+                      </p>
+                      @if (opinion.etiquetas.length > 0) {
+                        <div class="flex flex-wrap gap-1">
+                          @for (etiqueta of opinion.etiquetas; track etiqueta) {
+                            <span class="rounded-full bg-lienzo px-2 py-0.5 text-[11.5px] text-plomo">
+                              {{ textoDeEtiqueta(etiqueta) }}
+                            </span>
+                          }
+                        </div>
+                      }
+                      <div>
+                        @if (opinion.denunciaEstado; as estado) {
+                          <span class="text-[12px] text-plomo">{{ textoEstadoDenuncia[estado] }}</span>
+                        } @else {
+                          <button
+                            type="button"
+                            class="text-[12px] font-semibold text-plomo underline-offset-2 hover:text-ocupada hover:underline"
+                            (click)="aDenunciar.set(opinion.id)"
+                          >
+                            Denunciar
+                          </button>
+                        }
+                      </div>
+                    </li>
+                  }
+                </ul>
+              }
+            </div>
+          </ui-tarjeta>
+        </div>
+      </div>
+
+      <p class="text-[12px] text-plomo">
+        Cómo se calcula: el promedio de las cinco categorías vale hasta 60 puntos; confirmar a tiempo, resolver
+        incidencias sin denuncia, responder rápido en el chat y no cancelar reservas suman 10 cada uno. Con
+        {{ datos.umbralDestacado }} puntos o más y al menos {{ datos.minimoCalificaciones }} calificaciones sos
+        Anfitrión destacado: insignia dorada en la búsqueda y el mapa, y aparecés primero.
+      </p>
+    </div>
+  }
+</div>
+
+<app-denunciar-resena
+  [calificacionId]="aDenunciar()"
+  (cerrado)="aDenunciar.set(null)"
+  (denunciada)="opinionDenunciada()"
+  (fallo)="recurso.reload()"
+/>

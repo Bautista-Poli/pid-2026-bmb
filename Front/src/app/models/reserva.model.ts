@@ -97,6 +97,16 @@ export interface Reserva {
   devuelto: number;
   /** El reclamo abierto o denunciado sobre esta reserva, si hay. */
   reclamoAbierto: Id | null;
+  /** Si el conductor todavia puede calificarla (entro, salio y no pasaron 7 dias). */
+  calificable: boolean;
+  /** El promedio que le dio, o null si no la califico. */
+  calificacionPromedio: number | null;
+  /** Lo que le pusieron los propietarios al conductor (lo ve el propietario). */
+  reputacionConductor: { promedio: number | null; cantidad: number };
+  /** El puntaje que el propietario le dio al conductor en esta reserva, o null. */
+  calificacionAlConductor: number | null;
+  /** Si el propietario todavia puede calificar al conductor (finalizada o ausente, 7 dias). */
+  conductorCalificable: boolean;
 }
 
 /**

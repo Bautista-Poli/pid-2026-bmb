@@ -7,6 +7,7 @@ import { LIMITE_FIRMAS, limitarPorUsuario } from '../middlewares/limite.js';
 import { validate } from '../middlewares/validate.js';
 import { ROLES } from '../utils/roles.js';
 import { validarCambiosPlanAbono, validarPlanAbono } from '../validators/abono.validator.js';
+import { validarPeriodoReputacion } from '../validators/calificacion.validator.js';
 import {
   validarActualizacionCochera,
   validarBloqueoCochera,
@@ -46,6 +47,14 @@ router.get(
   '/:id/disponibilidad',
   validate(validarDisponibilidad, 'query'),
   estacionamientoController.disponibilidad,
+);
+
+// Propietario: su reputacion (calificaciones + operacion) en los ultimos 30 o 90 dias.
+router.get(
+  '/:id/reputacion',
+  ...soloPropietario,
+  validate(validarPeriodoReputacion, 'query'),
+  estacionamientoController.reputacion,
 );
 
 // Propietario: reservas recibidas y ABM de estacionamientos y cocheras.

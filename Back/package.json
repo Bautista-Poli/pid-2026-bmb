@@ -18,6 +18,7 @@
     "db:migrar-fotos-cloudinary:prod": "node src/db/migrar-fotos-cloudinary.js",
     "db:geocodificar": "node --env-file=.env src/db/geocodificar.js",
     "db:mover-reserva": "node --env-file=.env src/db/mover-reserva.js",
+    "db:calificaciones-demo": "node --env-file=.env src/db/calificaciones-demo.js",
     "test": "node --test --env-file=.env \"pruebas/*.test.mjs\"",
     "test:ci": "node --test \"pruebas/*.test.mjs\""
   },

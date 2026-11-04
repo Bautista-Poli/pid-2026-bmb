@@ -13,7 +13,7 @@ import {
 import { rxResource } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
 import { Observable, catchError, forkJoin, map, of } from 'rxjs';
-import { DetalleEstacionamiento, MapaEstacionamientos } from '@app/components/estacionamiento';
+import { DetalleEstacionamiento, InsigniasEstacionamiento, MapaEstacionamientos } from '@app/components/estacionamiento';
 import {
   CampoBusqueda,
   Cargando,
@@ -104,6 +104,7 @@ const PANEL_INICIAL: Panel = {
   precioMaximo: PRECIO_TOPE,
   orden: 'DISTANCIA',
   soloCubiertos: false,
+  soloDestacados: false,
 };
 
 const CLASE_ESTADO: Record<EstadoDisponibilidad, string> = {
@@ -123,6 +124,8 @@ interface Panel {
   precioMaximo: number;
   orden: OrdenEstacionamiento;
   soloCubiertos: boolean;
+  /** Solo los "Anfitrion destacado". */
+  soloDestacados: boolean;
 }
 
 /**
@@ -151,6 +154,7 @@ interface Panel {
     RouterLink,
     MapaEstacionamientos,
     DetalleEstacionamiento,
+    InsigniasEstacionamiento,
     CampoBusqueda,
     Cargando,
     Chip,
@@ -222,9 +226,10 @@ export class Mapa {
 
   /** Cuantos filtros del modal estan en uso (el orden no cuenta: tiene su propio selector). */
   protected readonly filtrosActivos = computed(() => {
-    const { desde, precioMinimo, precioMaximo, soloCubiertos } = this.aplicado();
-    return [desde, precioMinimo > 0 || precioMaximo < PRECIO_TOPE, soloCubiertos].filter(Boolean)
-      .length;
+    const { desde, precioMinimo, precioMaximo, soloCubiertos, soloDestacados } = this.aplicado();
+    return [desde, precioMinimo > 0 || precioMaximo < PRECIO_TOPE, soloCubiertos, soloDestacados].filter(
+      Boolean,
+    ).length;
   });
 
   protected readonly errorHorario = computed(() => {
@@ -444,6 +449,7 @@ export class Mapa {
       precioMinimo: panel.precioMinimo > 0 ? panel.precioMinimo : null,
       precioMaximo: panel.precioMaximo < PRECIO_TOPE ? panel.precioMaximo : null,
       soloCubiertos: panel.soloCubiertos,
+      soloDestacados: panel.soloDestacados,
       momento: momentoDe(panel),
       // Los que no sirven tambien se muestran (en gris y al final), no desaparecen.
       incluirNoDisponibles: true,

@@ -1,4 +1,14 @@
-import { MotivoReclamo, ResolucionIncidencia } from '@app/models';
+import {
+  CategoriaCalificacion,
+  CodigoInsignia,
+  EstadoDenunciaResena,
+  EtiquetaCalificacion,
+  EtiquetaConductor,
+  MotivoDenunciaResena,
+  MotivoReclamo,
+  PeriodoReputacion,
+  ResolucionIncidencia,
+} from '@app/models';
 import {
   EstadoAbono,
   EstadoAprobacion,
@@ -100,6 +110,60 @@ export interface EstacionamientoDto {
   foto_actualizada?: string | null;
   /** La galeria en orden; la primera es la portada. */
   fotos?: { id_foto: string; actualizada: string }[];
+  /** Reputacion de los ultimos 90 dias (ver reputacion.service.js del backend). */
+  calificaciones?: number;
+  calificacion_promedio?: number | null;
+  calificacion_categorias?: Record<CategoriaCalificacion, number | null> | null;
+  destacado?: boolean;
+  insignias?: { codigo: CodigoInsignia; texto: string }[];
+  puntaje_reputacion?: number;
+}
+
+export interface CalificacionDto {
+  id_calificacion: string;
+  id_reserva: string;
+  promedio: number;
+}
+
+export interface ReputacionDto {
+  dias: PeriodoReputacion;
+  puntaje: number;
+  puntaje_anterior: number | null;
+  destacado: boolean;
+  umbral_destacado: number;
+  minimo_calificaciones: number;
+  calificaciones: {
+    cantidad: number;
+    promedio: number | null;
+    puntos: number;
+    categorias: { codigo: CategoriaCalificacion; nombre: string; promedio: number | null; anterior: number | null }[];
+  };
+  operacion: {
+    puntos: number;
+    confirmacion: { puntos: number; porcentaje: number; vencidas: number; reservas: number };
+    incidencias: { puntos: number; sin_denuncia: number; total: number };
+    respuesta: { puntos: number; minutos: number | null };
+    cancelaciones: { puntos: number; propias: number };
+  };
+  insignias: { codigo: CodigoInsignia; texto: string }[];
+  etiquetas: { codigo: EtiquetaCalificacion; positiva: boolean; cantidad: number }[];
+  sugerencia: {
+    categoria: CategoriaCalificacion;
+    nombre: string;
+    promedio: number;
+    objetivo: number;
+    puntos: number;
+    etiqueta: { codigo: EtiquetaCalificacion; cantidad: number } | null;
+  } | null;
+  opiniones: {
+    id_calificacion: string;
+    autor: string;
+    created_at: string;
+    promedio: number;
+    comentario: string | null;
+    etiquetas: EtiquetaCalificacion[];
+    denuncia_estado?: EstadoDenunciaResena | null;
+  }[];
 }
 
 export interface VehiculoDto {
@@ -148,6 +212,12 @@ export interface ReservaDto {
   turno_abono: TurnoAbono | null;
   devuelto?: number;
   reclamo_abierto?: string | null;
+  calificable?: boolean;
+  calificacion_promedio?: number | null;
+  conductor_promedio?: number | null;
+  conductor_calificaciones?: number;
+  calificacion_al_conductor?: number | null;
+  conductor_calificable?: boolean;
 }
 
 export interface AccesoReservaDto {
@@ -257,4 +327,41 @@ export interface IncidenciaModeradaDto extends IncidenciaDetalladaDto {
     desde?: string;
     hasta?: string;
   };
+}
+
+export type OpinionDto = ReputacionDto['opiniones'][number];
+
+export interface ReputacionConductorDto {
+  promedio: number | null;
+  cantidad: number;
+  etiquetas: { codigo: EtiquetaConductor; cantidad: number }[];
+  resenas: {
+    id_calificacion: string;
+    puntaje: number;
+    etiquetas: EtiquetaConductor[];
+    comentario: string | null;
+    created_at: string;
+    estacionamiento: string;
+    denuncia_estado: EstadoDenunciaResena | null;
+  }[];
+}
+
+export interface ResenaDenunciadaDto {
+  id_calificacion: string;
+  autor: 'CONDUCTOR' | 'PROPIETARIO';
+  puntaje: number;
+  promedio: number | null;
+  etiquetas: string[];
+  comentario: string | null;
+  created_at: string;
+  oculta: boolean;
+  denuncia_estado: EstadoDenunciaResena;
+  denuncia_motivo: MotivoDenunciaResena;
+  denuncia_detalle: string | null;
+  denunciada_at: string;
+  moderada_at: string | null;
+  id_estacionamiento: string;
+  estacionamiento: string;
+  id_conductor: string;
+  conductor_nombre: string;
 }

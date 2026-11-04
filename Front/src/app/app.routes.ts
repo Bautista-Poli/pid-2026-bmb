@@ -56,6 +56,11 @@ export const routes: Routes = [
           import('./pages/conductor/mis-reservas/mis-reservas').then((m) => m.MisReservas),
       },
       {
+        path: 'calificar/:reservaId',
+        title: 'Parkit · Calificar',
+        loadComponent: () => import('./pages/conductor/calificar/calificar').then((m) => m.Calificar),
+      },
+      {
         path: 'abonos',
         title: 'Parkit · Mis abonos',
         loadComponent: () => import('./pages/conductor/abonos/abonos').then((m) => m.Abonos),
@@ -123,6 +128,11 @@ export const routes: Routes = [
         title: 'Parkit · Estadísticas',
         loadComponent: () =>
           import('./pages/propietario/estadisticas/estadisticas').then((m) => m.Estadisticas),
+      },
+      {
+        path: 'reputacion',
+        title: 'Parkit · Reputación',
+        loadComponent: () => import('./pages/propietario/reputacion/reputacion').then((m) => m.Reputacion),
       },
       {
         path: 'reservas',
@@ -221,6 +231,11 @@ export const routes: Routes = [
         path: 'disputas',
         title: 'Parkit · Disputas',
         loadComponent: () => import('./pages/admin/disputas/disputas').then((m) => m.Disputas),
+      },
+      {
+        path: 'resenas',
+        title: 'Parkit · Reseñas',
+        loadComponent: () => import('./pages/admin/resenas/resenas').then((m) => m.Resenas),
       },
       {
         path: 'disputas/:incidenciaId',

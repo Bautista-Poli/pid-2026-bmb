@@ -99,6 +99,16 @@ describe('el propietario califica al conductor', () => {
     assert.match(motivo(respuesta), /finalizada o ausente/);
   });
 
+  test('una cancelada no se califica', async () => {
+    const { propietario, estacionamiento, conductor } = await escenario();
+    const reserva = await reservar(propietario, conductor, estacionamiento);
+    await api('PATCH', `/reservas/${reserva.id_reserva}/cancelar`, { token: conductor.token });
+
+    const respuesta = await calificarConductor(propietario, reserva.id_reserva);
+    assert.equal(respuesta.estado, 409);
+    assert.match(motivo(respuesta), /finalizada o ausente/);
+  });
+
   test('vence a los 7 dias', async () => {
     const { propietario, estacionamiento, conductor } = await escenario();
     const usada = await reservar(propietario, conductor, estacionamiento, franja('08:00', '10:00', 1));
@@ -221,6 +231,19 @@ describe('reputacion del conductor', () => {
     assert.equal(porId[primera.id_reserva].conductor_calificable, false);
     assert.equal(porId[sinCalificar.id_reserva].calificacion_al_conductor, null);
     assert.equal(porId[sinCalificar.id_reserva].conductor_calificable, true);
+  });
+
+  test('el conductor no ve la nota que le puso cada estacionamiento', async () => {
+    const { propietario, estacionamiento, conductor } = await escenario();
+    const reserva = await reservar(propietario, conductor, estacionamiento);
+    await marcarUsada(reserva.id_reserva);
+    await calificarConductor(propietario, reserva.id_reserva, { puntaje: 2 });
+
+    const { datos } = await api('GET', '/reservas', { token: conductor.token });
+    const propia = datos.reservas.find((r) => r.id_reserva === reserva.id_reserva);
+    for (const campo of ['calificacion_al_conductor', 'conductor_calificable', 'conductor_promedio', 'conductor_calificaciones']) {
+      assert.ok(!(campo in propia), `no deberia venir ${campo}`);
+    }
   });
 
   test('no cambia la reputacion del estacionamiento', async () => {

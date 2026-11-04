@@ -155,22 +155,22 @@ const redondear = (valor, decimales = 1) =>
 
 /* ------------------------ reputacion del conductor ------------------------ */
 
-const DEL_PROPIETARIO = (idConductor) =>
-  `FROM calificacion qc WHERE qc.id_conductor = ${idConductor} AND qc.autor = 'PROPIETARIO'`;
-
 /**
- * Columnas `conductor_promedio` y `conductor_calificaciones` para el conductor
- * `idConductor` (expresion SQL): lo que le pusieron los propietarios, de toda
- * su historia.
+ * `LEFT JOIN LATERAL ... AS rc` con lo que le pusieron los propietarios al
+ * conductor `idConductor` (expresion SQL), de toda su historia: `rc.promedio`
+ * (null sin calificaciones) y `rc.cantidad`, en una sola pasada.
  */
-export const REPUTACION_CONDUCTOR = (idConductor) => `
-  (SELECT ROUND(AVG(qc.puntaje)::numeric, 1)::float ${DEL_PROPIETARIO(idConductor)}) AS conductor_promedio,
-  (SELECT COUNT(*)::int ${DEL_PROPIETARIO(idConductor)}) AS conductor_calificaciones`;
+export const lateralReputacionConductor = (idConductor) => `
+  LEFT JOIN LATERAL (
+    SELECT ROUND(AVG(qc.puntaje)::numeric, 1)::float AS promedio, COUNT(*)::int AS cantidad
+      FROM calificacion qc
+     WHERE qc.id_conductor = ${idConductor} AND qc.autor = 'PROPIETARIO'
+  ) rc ON TRUE`;
 
 /** Promedio, cantidad y las 3 etiquetas mas marcadas por los propietarios. */
 export async function reputacionDelConductor(idConductor) {
   const [{ rows: resumen }, { rows: etiquetas }] = await Promise.all([
-    query(`SELECT ${REPUTACION_CONDUCTOR('$1')}`, [idConductor]),
+    query(`SELECT rc.promedio, rc.cantidad FROM (SELECT 1) x ${lateralReputacionConductor('$1')}`, [idConductor]),
     query(
       `SELECT etiqueta AS codigo, COUNT(*)::int AS cantidad
          FROM calificacion qc, unnest(qc.etiquetas) AS etiqueta
@@ -182,8 +182,8 @@ export async function reputacionDelConductor(idConductor) {
     ),
   ]);
   return {
-    promedio: resumen[0].conductor_promedio,
-    cantidad: resumen[0].conductor_calificaciones,
+    promedio: resumen[0].promedio,
+    cantidad: resumen[0].cantidad,
     etiquetas,
   };
 }

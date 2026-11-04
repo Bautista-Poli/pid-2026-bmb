@@ -45,7 +45,7 @@ export const miReputacion = asyncHandler(async (req, res) => {
   res.json({ reputacion: await reputacionService.reputacionDelConductor(req.usuario.id) });
 });
 
-export const calificarConductor =asyncHandler(async (req, res) => {
+export const calificarConductor = asyncHandler(async (req, res) => {
   const calificacion = await calificacionService.crearDelPropietario(req.params.id, req.usuario.id, req.body);
   res.status(201).json({ calificacion });
 });

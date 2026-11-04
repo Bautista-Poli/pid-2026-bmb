@@ -6,6 +6,7 @@ import { after, before, describe, test } from 'node:test';
 
 import {
   api,
+  cambiarRol,
   cerrarApi,
   crearEstacionamiento,
   crearUsuario,
@@ -119,6 +120,19 @@ describe('el propietario califica al conductor', () => {
     const otro = await crearUsuario({ rol: 'PROPIETARIO' });
     assert.equal((await calificarConductor(otro, reserva.id_reserva)).estado, 403);
     assert.equal((await calificarConductor(conductor, reserva.id_reserva)).estado, 403);
+  });
+
+  test('nadie se califica a si mismo (con los dos perfiles, reservando en su estacionamiento)', async () => {
+    const dueno = await crearUsuario({ rol: 'PROPIETARIO', roles: ['PROPIETARIO', 'CONDUCTOR'] });
+    const estacionamiento = await crearEstacionamiento(dueno.token, { cocheras: 1 });
+    const comoConductor = { token: await cambiarRol(dueno.token, 'CONDUCTOR') };
+    const comoPropietario = { token: await cambiarRol(comoConductor.token, 'PROPIETARIO') };
+    const reserva = await reservar(comoPropietario, comoConductor, estacionamiento);
+    await marcarUsada(reserva.id_reserva);
+
+    const respuesta = await calificarConductor(comoPropietario, reserva.id_reserva, { puntaje: 5 });
+    assert.equal(respuesta.estado, 403);
+    assert.match(motivo(respuesta), /a vos mismo/);
   });
 
   test('valida puntaje y etiquetas', async () => {

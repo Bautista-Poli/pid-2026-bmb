@@ -99,6 +99,11 @@ export async function crearDelPropietario(idReserva, idPropietario, datos) {
     if (reserva.id_propietario !== idPropietario) {
       throw ApiError.forbidden('La reserva es de otro estacionamiento');
     }
+    // Con los dos perfiles se puede reservar en el estacionamiento propio: esa
+    // reserva no suma a la reputacion de nadie.
+    if (reserva.id_conductor === idPropietario) {
+      throw ApiError.forbidden('No podés calificarte a vos mismo');
+    }
 
     const finalizada =
       reserva.estado === ESTADOS_RESERVA.FINALIZADA && reserva.ingreso_real && reserva.egreso_real;

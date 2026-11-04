@@ -351,4 +351,30 @@ describe('insignias en la busqueda', () => {
     assert.equal(detalle.datos.estacionamiento.destacado, true);
     assert.equal(detalle.datos.estacionamiento.calificaciones, 5);
   });
+
+  test('sin destacados, ordena por puntaje', async () => {
+    const { propietario, estacionamiento: bueno } = await escenario();
+    const malo = await crearEstacionamiento(propietario.token, { cocheras: 3 });
+    await calificaciones(propietario, bueno, 2);
+    await calificaciones(propietario, malo, 2, { limpieza: 1, infraestructura: 1, atencion: 1, seguridad: 1, acceso: 1 });
+    const marca = `zz${crypto.randomUUID().slice(0, 6)}`;
+    await query(`UPDATE estacionamiento SET descripcion = $1 WHERE id_estacionamiento = ANY($2)`, [
+      marca,
+      [bueno.id_estacionamiento, malo.id_estacionamiento],
+    ]);
+    // Por nombre iria primero el malo: el orden lo tiene que dar el puntaje.
+    await query(`UPDATE estacionamiento SET nombre = 'ZZZ ' || nombre WHERE id_estacionamiento = $1`, [
+      bueno.id_estacionamiento,
+    ]);
+    await query(`UPDATE estacionamiento SET nombre = 'AAA ' || nombre WHERE id_estacionamiento = $1`, [
+      malo.id_estacionamiento,
+    ]);
+
+    const { datos } = await api('GET', `/estacionamientos?q=${marca}`);
+    const [primero, segundo] = datos.estacionamientos;
+    assert.equal(primero.id_estacionamiento, bueno.id_estacionamiento);
+    assert.equal(primero.destacado, false);
+    assert.equal(typeof primero.puntaje_reputacion, 'number');
+    assert.ok(primero.puntaje_reputacion > segundo.puntaje_reputacion);
+  });
 });

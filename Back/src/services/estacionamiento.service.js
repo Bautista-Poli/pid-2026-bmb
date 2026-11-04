@@ -299,7 +299,7 @@ export async function buscar(filtros) {
        FROM estacionamiento e
        ${reputacionPublica()}
       WHERE ${condiciones.join(' AND ')}
-      ORDER BY ${ES_DESTACADO} DESC, e.nombre
+      ORDER BY ${ES_DESTACADO} DESC, rep.puntaje DESC, e.nombre
       LIMIT $${parametros.length - 1} OFFSET $${parametros.length}`,
     parametros,
   );

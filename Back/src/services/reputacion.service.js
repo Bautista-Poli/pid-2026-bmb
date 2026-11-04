@@ -141,6 +141,7 @@ export function lateralReputacion(desde, hasta, alias = 'rep') {
 /** Columnas publicas de la reputacion para la busqueda y el detalle. */
 export const COLUMNAS_REPUTACION = `
   rep.cal_cantidad AS calificaciones,
+  rep.puntaje AS puntaje_reputacion,
   rep.cal_con_detalle AS calificaciones_con_detalle,
   ROUND(rep.prom_general::numeric, 1)::float AS calificacion_promedio,
   rep.prom_limpieza, rep.prom_infraestructura, rep.prom_atencion, rep.prom_seguridad, rep.prom_acceso,
@@ -219,6 +220,7 @@ export function darFormaReputacion(fila) {
   const conDetalle = fila.calificaciones_con_detalle ?? 0;
   delete fila.calificaciones_con_detalle;
   fila.calificaciones ??= 0;
+  fila.puntaje_reputacion = Number(fila.puntaje_reputacion ?? 0);
   fila.destacado = Boolean(fila.destacado);
   fila.calificacion_categorias = conDetalle > 0 ? promedios : null;
   fila.insignias = insigniasDe({ destacado: fila.destacado, conDetalle, promedios });

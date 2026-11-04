@@ -4,14 +4,15 @@ import { Observable, map } from 'rxjs';
 import {
   Calificacion,
   Id,
+  MotivoDenunciaResena,
   NuevaCalificacion,
   NuevaCalificacionConductor,
   PeriodoReputacion,
   ReputacionConductor,
   ReputacionEstacionamiento,
 } from '@app/models';
-import { CalificacionDto, ReputacionDto } from './api/api.dto';
-import { aCalificacion, aReputacion } from './api/api.mapeo';
+import { CalificacionDto, ReputacionConductorDto, ReputacionDto } from './api/api.dto';
+import { aCalificacion, aReputacion, aReputacionConductor } from './api/api.mapeo';
 
 /** Calificaciones del conductor y reputacion del estacionamiento. */
 @Injectable({ providedIn: 'root' })
@@ -45,8 +46,16 @@ export class CalificacionService {
   /** `GET /api/reservas/mi-reputacion` (conductor): lo que le pusieron los propietarios. */
   miReputacion(): Observable<ReputacionConductor> {
     return this.http
-      .get<{ reputacion: ReputacionConductor }>('/reservas/mi-reputacion')
-      .pipe(map(({ reputacion }) => reputacion));
+      .get<{ reputacion: ReputacionConductorDto }>('/reservas/mi-reputacion')
+      .pipe(map(({ reputacion }) => aReputacionConductor(reputacion)));
+  }
+
+  /** `POST /api/calificaciones/:id/denuncia`: la parte calificada denuncia una reseña (una vez). */
+  denunciar(calificacionId: Id, motivo: MotivoDenunciaResena, detalle: string): Observable<void> {
+    const texto = detalle.trim();
+    return this.http
+      .post<unknown>(`/calificaciones/${calificacionId}/denuncia`, { motivo, ...(texto ? { detalle: texto } : {}) })
+      .pipe(map(() => undefined));
   }
 
   /** `GET /api/estacionamientos/:id/reputacion?dias=30|90` (propietario). */

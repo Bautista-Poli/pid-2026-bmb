@@ -9,12 +9,14 @@ import {
   FechaISO,
   FechaHoraISO,
   Id,
+  EstadoDenunciaResena,
   Incidencia,
   IncidenciaModerada,
+  ResenaDenunciada,
   ResolucionIncidencia,
 } from '@app/models';
-import { EstacionamientoEnRevisionDto, IncidenciaDto, IncidenciaModeradaDto } from './api/api.dto';
-import { aEstacionamiento, aIncidencia, aIncidenciaModerada } from './api/api.mapeo';
+import { EstacionamientoEnRevisionDto, IncidenciaDto, IncidenciaModeradaDto, ResenaDenunciadaDto } from './api/api.dto';
+import { aEstacionamiento, aIncidencia, aIncidenciaModerada, aResenaDenunciada } from './api/api.mapeo';
 
 function aEnRevision(dto: EstacionamientoEnRevisionDto): EstacionamientoEnRevision {
   return { ...aEstacionamiento(dto), propietario: dto.propietario };
@@ -98,5 +100,22 @@ export class AdminService {
     return this.http
       .get<{ estadisticas: EstadisticasAdmin }>('/admin/estadisticas', { params: { desde, hasta } })
       .pipe(map(({ estadisticas }) => estadisticas));
+  }
+
+  /** `GET /api/admin/resenas?estado=`: reseñas denunciadas, la mas vieja primero. */
+  resenas(estado: EstadoDenunciaResena = 'PENDIENTE'): Observable<ResenaDenunciada[]> {
+    return this.http
+      .get<{ resenas: ResenaDenunciadaDto[] }>('/admin/resenas', { params: { estado } })
+      .pipe(map(({ resenas }) => resenas.map(aResenaDenunciada)));
+  }
+
+  /** `PATCH /api/admin/resenas/:id/desestimar`: cierra la denuncia sin cambiar nada. */
+  desestimarResena(id: Id): Observable<void> {
+    return this.http.patch<unknown>(`/admin/resenas/${id}/desestimar`, {}).pipe(map(() => undefined));
+  }
+
+  /** `PATCH /api/admin/resenas/:id/ocultar`: la reseña deja de contar y de mostrarse. */
+  ocultarResena(id: Id): Observable<void> {
+    return this.http.patch<unknown>(`/admin/resenas/${id}/ocultar`, {}).pipe(map(() => undefined));
   }
 }

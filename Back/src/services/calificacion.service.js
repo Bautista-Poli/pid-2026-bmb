@@ -24,9 +24,10 @@ export async function crear(idReserva, idConductor, datos) {
   return withTransaction(async (client) => {
     const { rows } = await client.query(
       `SELECT r.id_reserva, r.id_conductor, r.estado::text AS estado, r.ingreso_real, r.egreso_real,
-              c.id_estacionamiento
+              c.id_estacionamiento, e.id_propietario
          FROM reserva r
-         JOIN cochera c ON c.id_cochera = r.id_cochera
+         JOIN cochera c         ON c.id_cochera = r.id_cochera
+         JOIN estacionamiento e ON e.id_estacionamiento = c.id_estacionamiento
         WHERE r.id_reserva = $1
         FOR UPDATE OF r`,
       [idReserva],
@@ -34,6 +35,11 @@ export async function crear(idReserva, idConductor, datos) {
     const reserva = rows[0];
     if (!reserva) throw ApiError.notFound('La reserva no existe');
     if (reserva.id_conductor !== idConductor) throw ApiError.forbidden('La reserva es de otro conductor');
+    // Con los dos perfiles se puede reservar en el estacionamiento propio: esa
+    // reserva no suma a su reputacion.
+    if (reserva.id_propietario === idConductor) {
+      throw ApiError.forbidden('No podés calificar tu propio estacionamiento');
+    }
 
     const usada =
       reserva.estado === ESTADOS_RESERVA.FINALIZADA && reserva.ingreso_real && reserva.egreso_real;

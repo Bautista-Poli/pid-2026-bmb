@@ -115,12 +115,18 @@ export class EstacionamientoService {
 const distancia = (estacionamiento: Estacionamiento) =>
   estacionamiento.distanciaKm ?? Number.MAX_VALUE;
 
+const sinCalificar = (estacionamiento: Estacionamiento) => (estacionamiento.reputacion.cantidad === 0 ? 1 : 0);
+
 const COMPARADORES: Record<OrdenEstacionamiento, (a: Estacionamiento, b: Estacionamiento) => number> =
   {
     DISTANCIA: (a, b) => distancia(a) - distancia(b),
     PRECIO: (a, b) =>
       (a.tarifas.hora ?? Number.MAX_VALUE) - (b.tarifas.hora ?? Number.MAX_VALUE),
-    REPUTACION: (a, b) => b.reputacion.puntaje - a.reputacion.puntaje || distancia(a) - distancia(b),
+    // Sin calificaciones el puntaje supone un 4: van despues de los calificados.
+    REPUTACION: (a, b) =>
+      sinCalificar(a) - sinCalificar(b) ||
+      b.reputacion.puntaje - a.reputacion.puntaje ||
+      distancia(a) - distancia(b),
   };
 
 /** Con `origen`, calcula la distancia de cada estacionamiento; si no tiene coordenadas, queda sin distancia. */

@@ -4,7 +4,7 @@ import { ordenarEstacionamientos } from './estacionamiento.service';
 /** Lo minimo que miran los comparadores y la disponibilidad. */
 function est(
   id: string,
-  { puntaje = 0, distanciaKm = 1, disponible = true, destacado = false } = {},
+  { puntaje = 0, distanciaKm = 1, disponible = true, destacado = false, cantidad = 1 } = {},
 ): Estacionamiento {
   return {
     id,
@@ -12,7 +12,7 @@ function est(
     disponible,
     cocherasDisponibles: disponible ? 10 : 0,
     tarifas: { hora: 1000, estadia: null, jornada: null },
-    reputacion: { ...REPUTACION_VACIA, puntaje, destacado },
+    reputacion: { ...REPUTACION_VACIA, puntaje, destacado, cantidad },
   } as unknown as Estacionamiento;
 }
 
@@ -32,6 +32,11 @@ describe('ordenarEstacionamientos', () => {
   it('Mejor calificados: uno no disponible va al final aunque tenga mejor puntaje', () => {
     const lista = [est('lleno', { puntaje: 90, disponible: false }), est('libre', { puntaje: 60 })];
     expect(ids(ordenarEstacionamientos(lista, 'REPUTACION'))).toEqual(['libre', 'lleno']);
+  });
+
+  it('Mejor calificados: uno sin calificaciones va despues aunque su puntaje supuesto sea mayor', () => {
+    const lista = [est('nuevo', { puntaje: 85, cantidad: 0 }), est('calificado', { puntaje: 70, cantidad: 3 })];
+    expect(ids(ordenarEstacionamientos(lista, 'REPUTACION'))).toEqual(['calificado', 'nuevo']);
   });
 
   it('Cercania sigue poniendo primero al destacado', () => {

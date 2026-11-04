@@ -7,6 +7,7 @@ import { after, before, describe, test } from 'node:test';
 
 import {
   api,
+  cambiarRol,
   cerrarApi,
   crearEstacionamiento,
   crearUsuario,
@@ -114,6 +115,19 @@ describe('calificar una reserva', () => {
     const repetida = await calificar(conductor, reserva.id_reserva);
     assert.equal(repetida.estado, 409);
     assert.match(motivo(repetida), /Ya calificaste/);
+  });
+
+  test('nadie califica su propio estacionamiento (con los dos perfiles)', async () => {
+    const dueno = await crearUsuario({ rol: 'PROPIETARIO', roles: ['PROPIETARIO', 'CONDUCTOR'] });
+    const estacionamiento = await crearEstacionamiento(dueno.token, { cocheras: 1 });
+    const comoConductor = { token: await cambiarRol(dueno.token, 'CONDUCTOR') };
+    const comoPropietario = { token: await cambiarRol(comoConductor.token, 'PROPIETARIO') };
+    const reserva = await reservar(comoPropietario, comoConductor, estacionamiento);
+    await marcarUsada(reserva.id_reserva);
+
+    const respuesta = await calificar(comoConductor, reserva.id_reserva);
+    assert.equal(respuesta.estado, 403);
+    assert.match(motivo(respuesta), /tu propio estacionamiento/);
   });
 
   test('solo el conductor de la reserva', async () => {
@@ -350,6 +364,27 @@ describe('insignias en la busqueda', () => {
     const detalle = await api('GET', `/estacionamientos/${destacado.id_estacionamiento}`);
     assert.equal(detalle.datos.estacionamiento.destacado, true);
     assert.equal(detalle.datos.estacionamiento.calificaciones, 5);
+  });
+
+  test('los que tienen calificaciones van antes que los que no tienen ninguna', async () => {
+    const { propietario, estacionamiento: calificado } = await escenario();
+    const nuevo = await crearEstacionamiento(propietario.token, { cocheras: 3 });
+    // 3 en todo: puntaje menor que el de uno sin calificaciones (que supone 4).
+    await calificaciones(propietario, calificado, 2, { limpieza: 3, infraestructura: 3, atencion: 3, seguridad: 3, acceso: 3 });
+    const marca = `zz${crypto.randomUUID().slice(0, 6)}`;
+    await query(`UPDATE estacionamiento SET descripcion = $1 WHERE id_estacionamiento = ANY($2)`, [
+      marca,
+      [calificado.id_estacionamiento, nuevo.id_estacionamiento],
+    ]);
+    await query(`UPDATE estacionamiento SET nombre = 'ZZZ ' || nombre WHERE id_estacionamiento = $1`, [
+      calificado.id_estacionamiento,
+    ]);
+
+    const { datos } = await api('GET', `/estacionamientos?q=${marca}`);
+    const [primero, segundo] = datos.estacionamientos;
+    assert.equal(primero.id_estacionamiento, calificado.id_estacionamiento);
+    assert.ok(primero.puntaje_reputacion < segundo.puntaje_reputacion);
+    assert.equal(segundo.calificaciones, 0);
   });
 
   test('sin destacados, ordena por puntaje', async () => {

@@ -299,7 +299,8 @@ export async function buscar(filtros) {
        FROM estacionamiento e
        ${reputacionPublica()}
       WHERE ${condiciones.join(' AND ')}
-      ORDER BY ${ES_DESTACADO} DESC, rep.puntaje DESC, e.nombre
+      -- Sin calificaciones el puntaje supone un 4: van despues de los calificados.
+      ORDER BY ${ES_DESTACADO} DESC, (rep.cal_cantidad > 0) DESC, rep.puntaje DESC, e.nombre
       LIMIT $${parametros.length - 1} OFFSET $${parametros.length}`,
     parametros,
   );

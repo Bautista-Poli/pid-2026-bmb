@@ -953,8 +953,23 @@ ALTER TABLE calificacion
   ADD COLUMN IF NOT EXISTS denuncia_motivo  motivo_denuncia_resena,
   ADD COLUMN IF NOT EXISTS denuncia_detalle VARCHAR(500),
   ADD COLUMN IF NOT EXISTS denunciada_at    TIMESTAMPTZ,
-  ADD COLUMN IF NOT EXISTS moderada_por     UUID REFERENCES usuario (id_usuario),
+  ADD COLUMN IF NOT EXISTS moderada_por     UUID,
   ADD COLUMN IF NOT EXISTS moderada_at      TIMESTAMPTZ;
 
 CREATE INDEX IF NOT EXISTS idx_calificacion_denuncia
   ON calificacion (denunciada_at) WHERE denuncia_estado = 'PENDIENTE';
+
+-- Quien modero: si se borra ese administrador, la reseña queda moderada sin
+-- autor (como `revisado_por` y `resuelta_por`). La primera version creaba la
+-- FK sin ON DELETE (calificacion_moderada_por_fkey): se reemplaza.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'calificacion_moderada_por_fkey') THEN
+    ALTER TABLE calificacion DROP CONSTRAINT calificacion_moderada_por_fkey;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'calificacion_moderada_por_fk') THEN
+    ALTER TABLE calificacion ADD CONSTRAINT calificacion_moderada_por_fk
+      FOREIGN KEY (moderada_por) REFERENCES usuario (id_usuario) ON DELETE SET NULL;
+  END IF;
+END
+$$;

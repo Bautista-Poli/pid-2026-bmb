@@ -249,6 +249,19 @@ describe('moderacion del administrador', () => {
     assert.deepEqual(estados, [200, 409]);
   });
 
+  test('borrar al admin que modero deja la reseña moderada, sin autor de la moderacion', async () => {
+    const admin = await crearAdmin();
+    const e = await escenario();
+    const id = await resenaDelConductor(e);
+    await denunciar(e.propietario, id);
+    await moderar(admin, id, 'ocultar');
+
+    await query('DELETE FROM usuario WHERE id_usuario = $1', [admin.id]);
+    const { rows } = await query('SELECT denuncia_estado, moderada_por FROM calificacion WHERE id_calificacion = $1', [id]);
+    assert.equal(rows[0].denuncia_estado, 'OCULTA');
+    assert.equal(rows[0].moderada_por, null);
+  });
+
   test('solo el administrador', async () => {
     const e = await escenario();
     const id = await resenaDelConductor(e);

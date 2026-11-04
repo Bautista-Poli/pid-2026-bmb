@@ -1,3 +1,4 @@
+import * as calificacionService from '../services/calificacion.service.js';
 import * as reservaService from '../services/reserva.service.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
@@ -32,4 +33,9 @@ export const previaAcceso = asyncHandler(async (req, res) => {
 
 export const registrarAcceso = asyncHandler(async (req, res) => {
   res.json(await reservaService.registrarAcceso(req.usuario.id, req.body));
+});
+
+export const calificar = asyncHandler(async (req, res) => {
+  const calificacion = await calificacionService.crear(req.params.id, req.usuario.id, req.body);
+  res.status(201).json({ calificacion });
 });

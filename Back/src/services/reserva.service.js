@@ -14,6 +14,7 @@ import { finEfectivo, sinSolapamiento } from '../utils/solapamiento.js';
 import { CAMPOS_TARIFA, HORAS_POR_MODALIDAD, MODALIDADES, precioDeReserva } from '../utils/tarifas.js';
 import { ORDEN_NATURAL } from './cochera.service.js';
 import { validarAbonoParaReservar } from './abono.service.js';
+import { PLAZO_CALIFICACION_DIAS } from './calificacion.service.js';
 import { registrarEgresoEnIncidencia } from './incidencia.service.js';
 import { aceptaReservas, asegurarPropiedad } from './estacionamiento.service.js';
 
@@ -110,13 +111,24 @@ const selectDetalle = ({ conCodigo = false } = {}) => `
          (SELECT i.id_incidencia FROM incidencia i
            WHERE i.id_reserva = r.id_reserva AND i.abierta_por IS NOT NULL
              AND i.estado IN ('ABIERTA', 'DENUNCIADA')
-           LIMIT 1) AS reclamo_abierto
+           LIMIT 1) AS reclamo_abierto,
+         -- Calificacion: el promedio que dio (null si no califico) y si todavia puede.
+         q.promedio AS calificacion_promedio,
+         (q.promedio IS NULL AND r.estado = 'FINALIZADA'
+           AND r.ingreso_real IS NOT NULL AND r.egreso_real IS NOT NULL
+           AND r.egreso_real > now() - make_interval(days => ${PLAZO_CALIFICACION_DIAS})) AS calificable
     FROM reserva r
     JOIN vehiculo v        ON v.id_vehiculo = r.id_vehiculo
     JOIN cochera c         ON c.id_cochera = r.id_cochera
     JOIN estacionamiento e ON e.id_estacionamiento = c.id_estacionamiento
     JOIN usuario u         ON u.id_usuario = r.id_conductor
     LEFT JOIN abono a      ON a.id_abono = r.id_abono
+    LEFT JOIN LATERAL (
+      SELECT ROUND(COALESCE(
+               (cq.limpieza + cq.infraestructura + cq.atencion + cq.seguridad + cq.acceso) / 5.0, cq.puntaje
+             )::numeric, 1)::float AS promedio
+        FROM calificacion cq WHERE cq.id_reserva = r.id_reserva AND cq.autor = 'CONDUCTOR'
+    ) q ON TRUE
 `;
 
 /**

@@ -846,3 +846,88 @@ BEGIN
   END IF;
 END
 $$;
+
+-- Calificaciones (Sprint 3). Una por lado de cada reserva: el CONDUCTOR
+-- califica al estacionamiento y el PROPIETARIO al conductor (`autor`), con un
+-- `puntaje` general de 1 a 5. Si la tabla ya existe (la crea la funcionalidad
+-- de calificaciones), este CREATE no hace nada: tiene la misma definicion.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'autor_calificacion') THEN
+    CREATE TYPE autor_calificacion AS ENUM ('CONDUCTOR', 'PROPIETARIO');
+  END IF;
+END
+$$;
+
+CREATE TABLE IF NOT EXISTS calificacion (
+  id_calificacion    UUID               PRIMARY KEY DEFAULT gen_random_uuid(),
+  id_reserva         UUID               NOT NULL,
+  autor              autor_calificacion NOT NULL,
+  id_estacionamiento UUID               NOT NULL,
+  id_conductor       UUID               NOT NULL,
+  puntaje            SMALLINT           NOT NULL,
+  comentario         VARCHAR(500),
+  created_at         TIMESTAMPTZ        NOT NULL DEFAULT now(),
+  CONSTRAINT calificacion_reserva_fk
+    FOREIGN KEY (id_reserva) REFERENCES reserva (id_reserva) ON DELETE CASCADE,
+  CONSTRAINT calificacion_estacionamiento_fk
+    FOREIGN KEY (id_estacionamiento) REFERENCES estacionamiento (id_estacionamiento) ON DELETE CASCADE,
+  CONSTRAINT calificacion_conductor_fk
+    FOREIGN KEY (id_conductor) REFERENCES usuario (id_usuario) ON DELETE CASCADE,
+  CONSTRAINT calificacion_puntaje_valido CHECK (puntaje BETWEEN 1 AND 5),
+  CONSTRAINT calificacion_una_por_lado UNIQUE (id_reserva, autor)
+);
+
+CREATE INDEX IF NOT EXISTS idx_calificacion_estacionamiento ON calificacion (id_estacionamiento, autor);
+CREATE INDEX IF NOT EXISTS idx_calificacion_conductor       ON calificacion (id_conductor, autor);
+
+-- Detalle de la gamificacion "Anfitrion destacado": las cinco categorias (1 a
+-- 5) y etiquetas, solo en las del CONDUCTOR. Son opcionales: una calificacion
+-- con solo `puntaje` vale igual para la reputacion (ver reputacion.service.js).
+-- Cuando vienen, `puntaje` es su promedio redondeado (lo carga el servicio).
+ALTER TABLE calificacion
+  ADD COLUMN IF NOT EXISTS limpieza        SMALLINT,
+  ADD COLUMN IF NOT EXISTS infraestructura SMALLINT,
+  ADD COLUMN IF NOT EXISTS atencion        SMALLINT,
+  ADD COLUMN IF NOT EXISTS seguridad       SMALLINT,
+  ADD COLUMN IF NOT EXISTS acceso          SMALLINT,
+  ADD COLUMN IF NOT EXISTS etiquetas       TEXT[] NOT NULL DEFAULT '{}';
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'calificacion_categorias_validas') THEN
+    -- Las cinco juntas o ninguna, y de 1 a 5.
+    ALTER TABLE calificacion ADD CONSTRAINT calificacion_categorias_validas CHECK (
+      (limpieza IS NULL AND infraestructura IS NULL AND atencion IS NULL AND seguridad IS NULL AND acceso IS NULL)
+      OR (limpieza BETWEEN 1 AND 5 AND infraestructura BETWEEN 1 AND 5 AND atencion BETWEEN 1 AND 5
+          AND seguridad BETWEEN 1 AND 5 AND acceso BETWEEN 1 AND 5)
+    );
+  END IF;
+  -- El comentario de la pantalla de calificar admite hasta 500 caracteres.
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+     WHERE table_name = 'calificacion' AND column_name = 'comentario'
+       AND character_maximum_length < 500
+  ) THEN
+    ALTER TABLE calificacion ALTER COLUMN comentario TYPE VARCHAR(500);
+  END IF;
+END
+$$;
+
+-- La primera version de la gamificacion guardaba el detalle en una tabla
+-- aparte (calificacion_estacionamiento). Se pasa a `calificacion` y se borra.
+DO $$
+BEGIN
+  IF to_regclass('calificacion_estacionamiento') IS NOT NULL THEN
+    INSERT INTO calificacion
+      (id_reserva, autor, id_estacionamiento, id_conductor, puntaje, comentario, created_at,
+       limpieza, infraestructura, atencion, seguridad, acceso, etiquetas)
+    SELECT id_reserva, 'CONDUCTOR', id_estacionamiento, id_conductor,
+           ROUND((limpieza + infraestructura + atencion + seguridad + acceso) / 5.0),
+           comentario, created_at, limpieza, infraestructura, atencion, seguridad, acceso, etiquetas
+      FROM calificacion_estacionamiento
+    ON CONFLICT (id_reserva, autor) DO NOTHING;
+    DROP TABLE calificacion_estacionamiento;
+  END IF;
+END
+$$;

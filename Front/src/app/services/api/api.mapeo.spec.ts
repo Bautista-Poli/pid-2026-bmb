@@ -64,6 +64,34 @@ describe('aEstacionamiento', () => {
     expect(estacionamiento.motivoRechazo).toBe('Faltan fotos del frente');
     expect(estacionamiento.enviadoEn).toBe('2026-10-10T12:00:00Z');
   });
+  it('sin calificaciones la reputacion queda vacia', () => {
+    expect(aEstacionamiento(dto).reputacion).toEqual({
+      cantidad: 0,
+      promedio: null,
+      categorias: null,
+      destacado: false,
+      insignias: [],
+    });
+  });
+
+  it('mapea la reputacion: promedio, destacado e insignias por codigo', () => {
+    const { reputacion } = aEstacionamiento({
+      ...dto,
+      calificaciones: 12,
+      calificacion_promedio: 4.7,
+      calificacion_categorias: { limpieza: 4.8, infraestructura: 4.1, atencion: 4.9, seguridad: 4.6, acceso: 4.4 },
+      destacado: true,
+      insignias: [
+        { codigo: 'DESTACADO', texto: 'Anfitrion destacado' },
+        { codigo: 'IMPECABLE', texto: 'Impecable' },
+      ],
+    });
+    expect(reputacion.cantidad).toBe(12);
+    expect(reputacion.promedio).toBe(4.7);
+    expect(reputacion.destacado).toBe(true);
+    expect(reputacion.insignias).toEqual(['DESTACADO', 'IMPECABLE']);
+    expect(reputacion.categorias?.limpieza).toBe(4.8);
+  });
 });
 
 describe('aVehiculo', () => {

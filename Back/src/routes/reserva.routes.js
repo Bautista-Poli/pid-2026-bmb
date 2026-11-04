@@ -4,6 +4,7 @@ import * as reservaController from '../controllers/reserva.controller.js';
 import { authenticate, requireRole } from '../middlewares/auth.js';
 import { validate } from '../middlewares/validate.js';
 import { ROLES } from '../utils/roles.js';
+import { validarCalificacion } from '../validators/calificacion.validator.js';
 import { validarAcceso, validarReserva } from '../validators/reserva.validator.js';
 
 const router = Router();
@@ -16,6 +17,14 @@ router.post('/', ...soloConductor, validate(validarReserva), reservaController.c
 router.get('/', ...soloConductor, reservaController.listarMias);
 
 router.patch('/:id/cancelar', ...soloConductor, reservaController.cancelar);
+
+// Despues de entrar y salir, el conductor califica el estacionamiento (una vez).
+router.post(
+  '/:id/calificacion',
+  ...soloConductor,
+  validate(validarCalificacion),
+  reservaController.calificar,
+);
 
 // El ciclo lo maneja el propietario de la cochera. El ingreso y el egreso
 // solo se registran con el codigo de la reserva (ver /acceso, abajo).

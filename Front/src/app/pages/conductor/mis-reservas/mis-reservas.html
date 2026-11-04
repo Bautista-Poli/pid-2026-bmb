@@ -30,6 +30,21 @@
       </p>
     }
 
+    @if (porCalificar(); as reserva) {
+      <a class="invitacion-calificar aparece" [routerLink]="['/conductor/calificar', reserva.id]">
+        <span class="invitacion-calificar__icono" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 3.8l2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6L7.1 19l.9-5.5-4-3.9 5.5-.8Z" />
+          </svg>
+        </span>
+        <span class="invitacion-calificar__texto">
+          <strong>¿Cómo estuvo {{ reserva.estacionamiento.nombre }}?</strong>
+          <span>Calificá tu estadía: ayuda a otros conductores a elegir.</span>
+        </span>
+        <span class="invitacion-calificar__accion">Calificar</span>
+      </a>
+    }
+
     @if (recurso.isLoading()) {
       <ui-cargando [cantidad]="2" />
     } @else if (recurso.error(); as error) {

@@ -1,4 +1,5 @@
 import { FechaHoraISO, FechaISO, HoraHHmm, Id } from './api.model';
+import { ResumenReputacion } from './calificacion.model';
 import { Tarifas } from './tarifa.model';
 import { TipoVehiculo } from './vehiculo.model';
 
@@ -73,6 +74,8 @@ export interface Estacionamiento {
   motivoRechazo: string | null;
   /** Cuando entro a la cola de revision por ultima vez. */
   enviadoEn: FechaHoraISO;
+  /** Calificaciones e insignias de los ultimos 90 dias. */
+  reputacion: ResumenReputacion;
 }
 
 /** Datos de contacto del propietario, para que el administrador revise. */
@@ -116,6 +119,8 @@ export interface FiltrosEstacionamiento {
   precioMinimo?: number | null;
   precioMaximo?: number | null;
   soloCubiertos?: boolean;
+  /** Solo los "Anfitrion destacado". */
+  soloDestacados?: boolean;
   momento?: Momento | null;
   /** Con un momento: trae tambien los que no tienen cochera libre o estan cerrados, marcados con `disponible`. */
   incluirNoDisponibles?: boolean;

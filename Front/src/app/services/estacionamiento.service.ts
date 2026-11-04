@@ -144,9 +144,15 @@ export function ordenarEstacionamientos(
   orden: OrdenEstacionamiento | null | undefined,
 ): Estacionamiento[] {
   const comparar = COMPARADORES[orden ?? 'DISTANCIA'];
-  // Los que no se pueden usar van siempre al final, sea cual sea el orden.
+  // Los que no se pueden usar van siempre al final, sea cual sea el orden. Por
+  // cercania (el orden por defecto) los "Anfitrion destacado" van primero; si
+  // pidio el mas barato, manda el precio.
   const alFinal = (e: Estacionamiento) => (estadoDisponibilidad(e) === 'NO_DISPONIBLE' ? 1 : 0);
-  return [...items].sort((a, b) => alFinal(a) - alFinal(b) || comparar(a, b));
+  const destacadoPrimero = (e: Estacionamiento) =>
+    orden === 'PRECIO' || !e.reputacion.destacado ? 1 : 0;
+  return [...items].sort(
+    (a, b) => alFinal(a) - alFinal(b) || destacadoPrimero(a) - destacadoPrimero(b) || comparar(a, b),
+  );
 }
 
 function aParams(filtros: FiltrosEstacionamiento): HttpParams {
@@ -161,6 +167,7 @@ function aParams(filtros: FiltrosEstacionamiento): HttpParams {
   if (filtros.precioMinimo != null) params = params.set('tarifa_min', filtros.precioMinimo);
   if (filtros.precioMaximo != null) params = params.set('tarifa_max', filtros.precioMaximo);
   if (filtros.soloCubiertos) params = params.set('cubierto', true);
+  if (filtros.soloDestacados) params = params.set('destacados', true);
   if (filtros.area) {
     params = params
       .set('lat_min', filtros.area.latitudMinima)

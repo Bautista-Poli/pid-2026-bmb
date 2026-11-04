@@ -257,3 +257,110 @@ describe('moderacion del administrador', () => {
     assert.equal((await moderar(e.propietario, id, 'ocultar')).estado, 403);
   });
 });
+
+/** `n` conductores distintos califican el estacionamiento; devuelve los ids. */
+async function calificaciones(e, n, notas = NOTAS) {
+  const ids = [];
+  for (let i = 0; i < n; i++) {
+    ids.push(await resenaDelConductor({ ...e, conductor: await crearUsuario() }, notas));
+  }
+  return ids;
+}
+
+async function ocultar(id, denunciante) {
+  const admin = await crearAdmin();
+  await denunciar(denunciante, id);
+  const { estado } = await moderar(admin, id, 'ocultar');
+  assert.equal(estado, 200);
+}
+
+const miReputacion = (conductor) => api('GET', '/reservas/mi-reputacion', { token: conductor.token });
+
+describe('una reseña oculta deja de contar', () => {
+  test('del estacionamiento: sale del puntaje, el promedio y las opiniones', async () => {
+    const e = await escenario();
+    await resenaDelConductor(e, NOTAS);
+    const mala = await resenaDelConductor(e, notasDe(1), { comentario: 'Horrible, todo mal.' });
+    await ocultar(mala, e.propietario);
+
+    const { datos } = await api('GET', `/estacionamientos/${e.estacionamiento.id_estacionamiento}`);
+    assert.equal(datos.estacionamiento.calificaciones, 1);
+    assert.equal(datos.estacionamiento.calificacion_promedio, 5);
+    const { datos: reputacion } = await api(
+      'GET',
+      `/estacionamientos/${e.estacionamiento.id_estacionamiento}/reputacion`,
+      { token: e.propietario.token },
+    );
+    assert.ok(!reputacion.opiniones.some((o) => o.id_calificacion === mala));
+  });
+
+  test('del conductor: sale del promedio y de las reseñas', async () => {
+    const e = await escenario();
+    await resenaDelPropietario(e, 5);
+    const mala = await resenaDelPropietario(e, 1);
+    // Que las dos se vean en `resenas`: el conductor ya califico esas reservas o vencio el plazo.
+    await query(`UPDATE reserva SET egreso_real = now() - interval '8 days' WHERE id_conductor = $1`, [e.conductor.id]);
+    await ocultar(mala, e.conductor);
+
+    const { datos } = await miReputacion(e.conductor);
+    assert.equal(datos.reputacion.promedio, 5);
+    assert.equal(datos.reputacion.cantidad, 1);
+    assert.ok(!datos.reputacion.resenas.some((r) => r.id_calificacion === mala));
+  });
+
+  test('pierde el destacado si ya no llega al minimo', async () => {
+    const e = await escenario();
+    const ids = await calificaciones(e, 5);
+    const antes = await api('GET', `/estacionamientos/${e.estacionamiento.id_estacionamiento}`);
+    assert.equal(antes.datos.estacionamiento.destacado, true);
+
+    await ocultar(ids[0], e.propietario);
+    const despues = await api('GET', `/estacionamientos/${e.estacionamiento.id_estacionamiento}`);
+    assert.equal(despues.datos.estacionamiento.destacado, false);
+  });
+
+  test('las opiniones muestran el estado de la denuncia', async () => {
+    const admin = await crearAdmin();
+    const e = await escenario();
+    const pendiente = await resenaDelConductor(e, NOTAS, { comentario: 'Denunciada y pendiente.' });
+    const desestimada = await resenaDelConductor(e, NOTAS, { comentario: 'Denunciada y desestimada.' });
+    await denunciar(e.propietario, pendiente);
+    await denunciar(e.propietario, desestimada);
+    await moderar(admin, desestimada, 'desestimar');
+
+    const { datos } = await api('GET', `/estacionamientos/${e.estacionamiento.id_estacionamiento}/reputacion`, {
+      token: e.propietario.token,
+    });
+    const estado = (id) => datos.opiniones.find((o) => o.id_calificacion === id)?.denuncia_estado;
+    assert.equal(estado(pendiente), 'PENDIENTE');
+    assert.equal(estado(desestimada), 'DESESTIMADA');
+  });
+});
+
+describe('reseñas que recibio el conductor', () => {
+  test('solo las de reservas que ya califico o cuyo plazo vencio', async () => {
+    const e = await escenario();
+    const reservaA = await reservaUsada(e);
+    const resenaA = await resenaDelPropietario(e, 4, reservaA);
+
+    // El conductor todavia puede calificar A: no la ve, pero cuenta en el promedio.
+    let { datos } = await miReputacion(e.conductor);
+    assert.equal(datos.reputacion.cantidad, 1);
+    assert.ok(!datos.reputacion.resenas.some((r) => r.id_calificacion === resenaA));
+
+    await api('POST', `/reservas/${reservaA.id_reserva}/calificacion`, { token: e.conductor.token, body: NOTAS });
+    ({ datos } = await miReputacion(e.conductor));
+    const vista = datos.reputacion.resenas.find((r) => r.id_calificacion === resenaA);
+    assert.ok(vista);
+    assert.equal(vista.puntaje, 4);
+    assert.equal(vista.estacionamiento, e.estacionamiento.nombre);
+    assert.equal(vista.denuncia_estado, null);
+
+    // B: calificada por el propietario y con el plazo del conductor vencido.
+    const reservaB = await reservaUsada(e);
+    const resenaB = await resenaDelPropietario(e, 3, reservaB);
+    await query(`UPDATE reserva SET egreso_real = now() - interval '8 days' WHERE id_reserva = $1`, [reservaB.id_reserva]);
+    ({ datos } = await miReputacion(e.conductor));
+    assert.ok(datos.reputacion.resenas.some((r) => r.id_calificacion === resenaB));
+  });
+});

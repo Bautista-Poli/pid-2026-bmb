@@ -137,6 +137,19 @@ export interface ReputacionConductor {
   cantidad: number;
   /** Las mas marcadas, la mayor primero (hasta 3). */
   etiquetas: { codigo: EtiquetaConductor; cantidad: number }[];
+  /** Las que ya puede ver: de reservas que califico o cuyo plazo vencio (hasta 20). */
+  resenas: ResenaRecibida[];
+}
+
+export interface ResenaRecibida {
+  id: Id;
+  puntaje: number;
+  etiquetas: EtiquetaConductor[];
+  comentario: string | null;
+  creadaEn: FechaHoraISO;
+  /** El estacionamiento que lo califico. */
+  estacionamiento: string;
+  denunciaEstado: EstadoDenunciaResena | null;
 }
 
 /* ------------------------ reputacion del propietario ----------------------- */
@@ -163,6 +176,8 @@ export interface Opinion {
   promedio: number;
   comentario: string | null;
   etiquetas: EtiquetaCalificacion[];
+  /** null si nadie la denuncio. Las ocultas no llegan. */
+  denunciaEstado: EstadoDenunciaResena | null;
 }
 
 export interface SugerenciaReputacion {
@@ -207,4 +222,42 @@ export interface ReputacionEstacionamiento {
 /** "4,7" */
 export function formatearNota(nota: number | null | undefined): string {
   return nota == null ? '–' : nota.toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+}
+
+/* ---------------------------- denuncia de reseñas --------------------------- */
+
+export type MotivoDenunciaResena = 'OFENSIVA' | 'FALSA' | 'DATOS_PERSONALES' | 'OTRO';
+
+export const TEXTO_MOTIVO_DENUNCIA: Record<MotivoDenunciaResena, string> = {
+  OFENSIVA: 'Ofensiva',
+  FALSA: 'Falsa o no corresponde',
+  DATOS_PERSONALES: 'Datos personales',
+  OTRO: 'Otro',
+};
+
+export type EstadoDenunciaResena = 'PENDIENTE' | 'DESESTIMADA' | 'OCULTA';
+
+/** Lo que ve el denunciante de su denuncia (una oculta ya no se lista). */
+export const TEXTO_ESTADO_DENUNCIA: Record<EstadoDenunciaResena, string> = {
+  PENDIENTE: 'Denunciada',
+  DESESTIMADA: 'Denuncia desestimada',
+  OCULTA: 'Oculta por moderación',
+};
+
+/** Una reseña denunciada, como la ve el administrador. */
+export interface ResenaDenunciada {
+  id: Id;
+  autor: 'CONDUCTOR' | 'PROPIETARIO';
+  /** Del conductor: el promedio de las categorias; del propietario: su puntaje. */
+  nota: number;
+  etiquetas: string[];
+  comentario: string | null;
+  creadaEn: FechaHoraISO;
+  estacionamiento: { id: Id; nombre: string };
+  conductor: { id: Id; nombre: string };
+  motivo: MotivoDenunciaResena;
+  detalle: string | null;
+  denunciadaEn: FechaHoraISO;
+  estado: EstadoDenunciaResena;
+  moderadaEn: FechaHoraISO | null;
 }

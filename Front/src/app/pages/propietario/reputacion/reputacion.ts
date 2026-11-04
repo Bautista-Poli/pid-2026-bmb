@@ -1,14 +1,17 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { rxResource, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { map } from 'rxjs';
+import { DenunciarResena } from '@app/components/reclamo';
 import { Boton, Cargando, EstadoVacio, Tarjeta } from '@app/components/ui';
 import {
   CategoriaReputacion,
   Estacionamiento,
   EtiquetaCalificacion,
+  Id,
   PeriodoReputacion,
   ReputacionEstacionamiento,
+  TEXTO_ESTADO_DENUNCIA,
   TEXTO_ETIQUETA,
   TEXTO_INSIGNIA,
   formatearNota,
@@ -56,7 +59,7 @@ interface FilaOperacion {
 @Component({
   selector: 'app-reputacion',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Boton, Cargando, EstadoVacio, RouterLink, Tarjeta],
+  imports: [Boton, Cargando, DenunciarResena, EstadoVacio, RouterLink, Tarjeta],
   templateUrl: './reputacion.html',
 })
 export class Reputacion {
@@ -194,5 +197,16 @@ export class Reputacion {
   protected elegirEstacionamiento(evento: Event): void {
     const estacionamiento = (evento.target as HTMLSelectElement).value || null;
     void this.router.navigate([], { queryParams: { estacionamiento }, queryParamsHandling: 'merge', replaceUrl: true });
+  }
+
+  /* --------------------------- denuncia de reseñas -------------------------- */
+
+  protected readonly textoEstadoDenuncia = TEXTO_ESTADO_DENUNCIA;
+  /** Opinion que se esta denunciando: abre el modal. */
+  protected readonly aDenunciar = signal<Id | null>(null);
+
+  protected opinionDenunciada(): void {
+    this.aDenunciar.set(null);
+    this.recurso.reload();
   }
 }

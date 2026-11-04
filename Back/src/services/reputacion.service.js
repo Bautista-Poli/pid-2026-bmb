@@ -17,6 +17,7 @@
 // promedio >= 4,5 (tambien con ese minimo).
 import { query } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
+import { PLAZO_CALIFICACION_DIAS } from './calificacion.service.js';
 
 export const UMBRAL_DESTACADO = 80;
 export const MINIMO_CALIFICACIONES = 5;
@@ -64,7 +65,8 @@ export const CODIGOS_ETIQUETA_CONDUCTOR = ETIQUETAS_CONDUCTOR.map((e) => e.codig
  */
 const PROMEDIO_FILA = (a) =>
   `COALESCE((${a}.limpieza + ${a}.infraestructura + ${a}.atencion + ${a}.seguridad + ${a}.acceso) / 5.0, ${a}.puntaje)`;
-const DEL_CONDUCTOR = (a) => `${a}.autor = 'CONDUCTOR'`;
+// Las ocultas por moderacion (denuncia de reseñas) no cuentan ni se muestran.
+const DEL_CONDUCTOR = (a) => `${a}.autor = 'CONDUCTOR' AND NOT ${a}.oculta`;
 
 /**
  * `LEFT JOIN LATERAL ... AS rep` con la reputacion del estacionamiento `e` en
@@ -164,20 +166,46 @@ export const lateralReputacionConductor = (idConductor) => `
   LEFT JOIN LATERAL (
     SELECT ROUND(AVG(qc.puntaje)::numeric, 1)::float AS promedio, COUNT(*)::int AS cantidad
       FROM calificacion qc
-     WHERE qc.id_conductor = ${idConductor} AND qc.autor = 'PROPIETARIO'
+     WHERE qc.id_conductor = ${idConductor} AND qc.autor = 'PROPIETARIO' AND NOT qc.oculta
   ) rc ON TRUE`;
 
-/** Promedio, cantidad y las 3 etiquetas mas marcadas por los propietarios. */
+/**
+ * Reseñas que el conductor ya puede ver: las de reservas que el califico, o
+ * cuyo plazo para calificar vencio. Antes no, para que no vea la nota del
+ * propietario y responda en consecuencia al calificar el estacionamiento.
+ */
+export const RESENA_VISIBLE_PARA_EL_CONDUCTOR = `(
+  EXISTS (SELECT 1 FROM calificacion qq WHERE qq.id_reserva = r.id_reserva AND qq.autor = 'CONDUCTOR')
+  OR (r.estado = 'FINALIZADA' AND r.egreso_real <= now() - make_interval(days => ${PLAZO_CALIFICACION_DIAS}))
+  OR (r.estado = 'NO_SHOW' AND r.fin <= now() - make_interval(days => ${PLAZO_CALIFICACION_DIAS}))
+)`;
+
+/**
+ * Promedio, cantidad y las 3 etiquetas mas marcadas por los propietarios, y
+ * las ultimas 20 reseñas que ya puede ver (ver RESENA_VISIBLE_PARA_EL_CONDUCTOR).
+ */
 export async function reputacionDelConductor(idConductor) {
-  const [{ rows: resumen }, { rows: etiquetas }] = await Promise.all([
+  const [{ rows: resumen }, { rows: etiquetas }, { rows: resenas }] = await Promise.all([
     query(`SELECT rc.promedio, rc.cantidad FROM (SELECT 1) x ${lateralReputacionConductor('$1')}`, [idConductor]),
     query(
       `SELECT etiqueta AS codigo, COUNT(*)::int AS cantidad
          FROM calificacion qc, unnest(qc.etiquetas) AS etiqueta
-        WHERE qc.id_conductor = $1 AND qc.autor = 'PROPIETARIO'
+        WHERE qc.id_conductor = $1 AND qc.autor = 'PROPIETARIO' AND NOT qc.oculta
         GROUP BY etiqueta
         ORDER BY cantidad DESC, etiqueta
         LIMIT 3`,
+      [idConductor],
+    ),
+    query(
+      `SELECT qc.id_calificacion, qc.puntaje, qc.etiquetas, qc.comentario, qc.created_at,
+              e.nombre AS estacionamiento, qc.denuncia_estado::text AS denuncia_estado
+         FROM calificacion qc
+         JOIN reserva r         ON r.id_reserva = qc.id_reserva
+         JOIN estacionamiento e ON e.id_estacionamiento = qc.id_estacionamiento
+        WHERE qc.id_conductor = $1 AND qc.autor = 'PROPIETARIO' AND NOT qc.oculta
+          AND ${RESENA_VISIBLE_PARA_EL_CONDUCTOR}
+        ORDER BY qc.created_at DESC
+        LIMIT 20`,
       [idConductor],
     ),
   ]);
@@ -185,6 +213,7 @@ export async function reputacionDelConductor(idConductor) {
     promedio: resumen[0].promedio,
     cantidad: resumen[0].cantidad,
     etiquetas,
+    resenas,
   };
 }
 
@@ -298,6 +327,7 @@ export async function delEstacionamiento(idEstacionamiento, idPropietario, { dia
     ),
     query(
       `SELECT q.id_calificacion, q.created_at, q.comentario, q.etiquetas,
+              q.denuncia_estado::text AS denuncia_estado,
               ROUND(${PROMEDIO_FILA('q')}::numeric, 1)::float AS promedio,
               u.nombre, u.apellido
          FROM calificacion q
@@ -375,6 +405,7 @@ export async function delEstacionamiento(idEstacionamiento, idPropietario, { dia
       promedio: f.promedio,
       comentario: f.comentario,
       etiquetas: f.etiquetas,
+      denuncia_estado: f.denuncia_estado,
     })),
   };
 }

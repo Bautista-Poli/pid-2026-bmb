@@ -1,7 +1,10 @@
 import {
   CategoriaCalificacion,
   CodigoInsignia,
+  EstadoDenunciaResena,
   EtiquetaCalificacion,
+  EtiquetaConductor,
+  MotivoDenunciaResena,
   MotivoReclamo,
   PeriodoReputacion,
   ResolucionIncidencia,
@@ -159,6 +162,7 @@ export interface ReputacionDto {
     promedio: number;
     comentario: string | null;
     etiquetas: EtiquetaCalificacion[];
+    denuncia_estado?: EstadoDenunciaResena | null;
   }[];
 }
 
@@ -323,4 +327,41 @@ export interface IncidenciaModeradaDto extends IncidenciaDetalladaDto {
     desde?: string;
     hasta?: string;
   };
+}
+
+export type OpinionDto = ReputacionDto['opiniones'][number];
+
+export interface ReputacionConductorDto {
+  promedio: number | null;
+  cantidad: number;
+  etiquetas: { codigo: EtiquetaConductor; cantidad: number }[];
+  resenas: {
+    id_calificacion: string;
+    puntaje: number;
+    etiquetas: EtiquetaConductor[];
+    comentario: string | null;
+    created_at: string;
+    estacionamiento: string;
+    denuncia_estado: EstadoDenunciaResena | null;
+  }[];
+}
+
+export interface ResenaDenunciadaDto {
+  id_calificacion: string;
+  autor: 'CONDUCTOR' | 'PROPIETARIO';
+  puntaje: number;
+  promedio: number | null;
+  etiquetas: string[];
+  comentario: string | null;
+  created_at: string;
+  oculta: boolean;
+  denuncia_estado: EstadoDenunciaResena;
+  denuncia_motivo: MotivoDenunciaResena;
+  denuncia_detalle: string | null;
+  denunciada_at: string;
+  moderada_at: string | null;
+  id_estacionamiento: string;
+  estacionamiento: string;
+  id_conductor: string;
+  conductor_nombre: string;
 }

@@ -198,7 +198,7 @@ describe('reputacion del conductor', () => {
     const conductor = await crearUsuario();
     const { estado, datos } = await miReputacion(conductor);
     assert.equal(estado, 200);
-    assert.deepEqual(datos.reputacion, { promedio: null, cantidad: 0, etiquetas: [] });
+    assert.deepEqual(datos.reputacion, { promedio: null, cantidad: 0, etiquetas: [], resenas: [] });
   });
 
   test('promedio, cantidad y etiquetas mas marcadas; el propietario la ve en sus reservas', async () => {

@@ -931,3 +931,45 @@ BEGIN
   END IF;
 END
 $$;
+
+-- Denuncia de reseñas (Sprint 3). La parte calificada denuncia una reseña (una
+-- vez); el administrador la desestima o la oculta. Una oculta deja de contar en
+-- la reputacion y de mostrarse, pero sigue ocupando su lugar (no se vuelve a
+-- calificar esa reserva). `denuncia_estado` es NULL mientras nadie denuncio.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'estado_denuncia_resena') THEN
+    CREATE TYPE estado_denuncia_resena AS ENUM ('PENDIENTE', 'DESESTIMADA', 'OCULTA');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'motivo_denuncia_resena') THEN
+    CREATE TYPE motivo_denuncia_resena AS ENUM ('OFENSIVA', 'FALSA', 'DATOS_PERSONALES', 'OTRO');
+  END IF;
+END
+$$;
+
+ALTER TABLE calificacion
+  ADD COLUMN IF NOT EXISTS oculta           BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS denuncia_estado  estado_denuncia_resena,
+  ADD COLUMN IF NOT EXISTS denuncia_motivo  motivo_denuncia_resena,
+  ADD COLUMN IF NOT EXISTS denuncia_detalle VARCHAR(500),
+  ADD COLUMN IF NOT EXISTS denunciada_at    TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS moderada_por     UUID,
+  ADD COLUMN IF NOT EXISTS moderada_at      TIMESTAMPTZ;
+
+CREATE INDEX IF NOT EXISTS idx_calificacion_denuncia
+  ON calificacion (denunciada_at) WHERE denuncia_estado = 'PENDIENTE';
+
+-- Quien modero: si se borra ese administrador, la reseña queda moderada sin
+-- autor (como `revisado_por` y `resuelta_por`). La primera version creaba la
+-- FK sin ON DELETE (calificacion_moderada_por_fkey): se reemplaza.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'calificacion_moderada_por_fkey') THEN
+    ALTER TABLE calificacion DROP CONSTRAINT calificacion_moderada_por_fkey;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'calificacion_moderada_por_fk') THEN
+    ALTER TABLE calificacion ADD CONSTRAINT calificacion_moderada_por_fk
+      FOREIGN KEY (moderada_por) REFERENCES usuario (id_usuario) ON DELETE SET NULL;
+  END IF;
+END
+$$;

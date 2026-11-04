@@ -155,6 +155,7 @@
                   <td class="px-3 py-3.5">
                     {{ vehiculo(reserva) }}
                     <span class="num-tabular text-plomo">({{ reserva.vehiculo.patente }})</span>
+                    <ng-container [ngTemplateOutlet]="reputacion" [ngTemplateOutletContext]="{ $implicit: reserva }" />
                   </td>
                   <td class="num-tabular px-3 py-3.5 text-right whitespace-nowrap">
                     $ {{ reserva.precioTotal.toLocaleString('es-AR') }}
@@ -195,7 +196,8 @@
                         Marcar ausente
                       </button>
                     }
-                    @if (!pasoDe(reserva) && !puedeMarcarAusente(reserva)) {
+                    <ng-container [ngTemplateOutlet]="calificacion" [ngTemplateOutletContext]="{ $implicit: reserva }" />
+                    @if (!pasoDe(reserva) && !puedeMarcarAusente(reserva) && !conAccionDeCalificar(reserva)) {
                       @if (avanzaConCodigo(reserva)) {
                         <span class="text-[12px] text-plomo">Con el código</span>
                       } @else {
@@ -231,6 +233,7 @@
                       · {{ reserva.cochera.identificador }}
                     }
                   </p>
+                  <ng-container [ngTemplateOutlet]="reputacion" [ngTemplateOutletContext]="{ $implicit: reserva }" />
                 </div>
                 <ui-etiqueta [tono]="tonoEstado(reserva)">
                   {{ etiquetaEstado(reserva) }}
@@ -272,6 +275,7 @@
                 @if (!pasoDe(reserva) && !puedeMarcarAusente(reserva) && avanzaConCodigo(reserva)) {
                   <span class="text-[12px] text-plomo">Con el código</span>
                 }
+                <ng-container [ngTemplateOutlet]="calificacion" [ngTemplateOutletContext]="{ $implicit: reserva }" />
               </div>
             </li>
           }
@@ -305,3 +309,32 @@
     </div>
   }
 </ui-modal>
+
+<!-- Reputacion del conductor: la ve el propietario antes de confirmar. -->
+<ng-template #reputacion let-reserva>
+  @if (reputacionConductor(reserva); as texto) {
+    <p class="num-tabular mt-0.5 text-[11.5px] text-plomo" title="Lo que le pusieron otros estacionamientos">
+      {{ texto }}
+    </p>
+  } @else {
+    <p class="mt-0.5 text-[11.5px] text-humo">Sin calificaciones</p>
+  }
+</ng-template>
+
+<!-- Calificar al conductor (finalizada o ausente) o lo que ya le puso. -->
+<ng-template #calificacion let-reserva>
+  @if (reserva.conductorCalificable) {
+    <button
+      type="button"
+      class="inline-flex items-center rounded-boton bg-acento-suave px-3 py-1.5 text-[12px] font-semibold
+             whitespace-nowrap text-acento transition-colors duration-160 hover:bg-acento hover:text-sobre-acento"
+      (click)="aCalificar.set(reserva)"
+    >
+      Calificar conductor
+    </button>
+  } @else if (reserva.calificacionAlConductor !== null) {
+    <span class="num-tabular text-[12px] whitespace-nowrap text-plomo">Calificaste ★ {{ reserva.calificacionAlConductor }}</span>
+  }
+</ng-template>
+
+<app-calificar-conductor [reserva]="aCalificar()" (cerrado)="aCalificar.set(null)" (calificada)="conductorCalificado()" />

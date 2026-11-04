@@ -139,7 +139,7 @@ export interface AreaMapa {
   longitudMaxima: number;
 }
 
-export type OrdenEstacionamiento = 'DISTANCIA' | 'PRECIO';
+export type OrdenEstacionamiento = 'DISTANCIA' | 'PRECIO' | 'REPUTACION';
 
 /** Payload de `POST /api/estacionamientos`. */
 export interface NuevoEstacionamiento {

@@ -113,6 +113,7 @@ export interface EstacionamientoDto {
   calificacion_categorias?: Record<CategoriaCalificacion, number | null> | null;
   destacado?: boolean;
   insignias?: { codigo: CodigoInsignia; texto: string }[];
+  puntaje_reputacion?: number;
 }
 
 export interface CalificacionDto {
@@ -209,6 +210,10 @@ export interface ReservaDto {
   reclamo_abierto?: string | null;
   calificable?: boolean;
   calificacion_promedio?: number | null;
+  conductor_promedio?: number | null;
+  conductor_calificaciones?: number;
+  calificacion_al_conductor?: number | null;
+  conductor_calificable?: boolean;
 }
 
 export interface AccesoReservaDto {

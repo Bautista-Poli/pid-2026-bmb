@@ -130,6 +130,7 @@ export function aResumenReputacion(dto: EstacionamientoDto): ResumenReputacion {
     categorias: dto.calificacion_categorias ?? null,
     destacado: dto.destacado ?? false,
     insignias: (dto.insignias ?? []).map((i) => i.codigo),
+    puntaje: dto.puntaje_reputacion ?? 0,
   };
 }
 
@@ -351,6 +352,12 @@ export function aReserva(dto: ReservaDto): ReservaDetallada {
     reclamoAbierto: dto.reclamo_abierto ?? null,
     calificable: dto.calificable ?? false,
     calificacionPromedio: dto.calificacion_promedio ?? null,
+    reputacionConductor: {
+      promedio: dto.conductor_promedio ?? null,
+      cantidad: dto.conductor_calificaciones ?? 0,
+    },
+    calificacionAlConductor: dto.calificacion_al_conductor ?? null,
+    conductorCalificable: dto.conductor_calificable ?? false,
     estacionamiento: {
       id: dto.id_estacionamiento,
       nombre: dto.estacionamiento,

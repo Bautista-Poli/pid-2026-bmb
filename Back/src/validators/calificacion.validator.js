@@ -1,7 +1,22 @@
-import { CODIGOS_ETIQUETA } from '../services/reputacion.service.js';
+import { CODIGOS_ETIQUETA, CODIGOS_ETIQUETA_CONDUCTOR } from '../services/reputacion.service.js';
 import { campos } from './helpers.js';
 
 const NOTA = { min: 1, max: 5 };
+
+/** Normaliza `etiquetas` (sin repetidos, en mayusculas) en `valores`, o suma el error. */
+function validarEtiquetas(bruto, permitidas, valores, errores) {
+  const etiquetas = bruto ?? [];
+  if (!Array.isArray(etiquetas)) {
+    errores.push({ campo: 'etiquetas', mensaje: 'debe ser una lista' });
+    return;
+  }
+  const limpias = [...new Set(etiquetas.map((e) => String(e).trim().toUpperCase()))];
+  if (limpias.some((e) => !permitidas.includes(e))) {
+    errores.push({ campo: 'etiquetas', mensaje: `debe tener solo: ${permitidas.join(', ')}` });
+    return;
+  }
+  valores.etiquetas = limpias;
+}
 
 /** `POST /reservas/:id/calificacion`: las cinco categorias de 1 a 5, etiquetas y comentario opcionales. */
 export function validarCalificacion(body) {
@@ -13,20 +28,17 @@ export function validarCalificacion(body) {
     .entero('acceso', body.acceso, NOTA)
     .texto('comentario', body.comentario, { max: 500, requerido: false })
     .resultado();
+  validarEtiquetas(body.etiquetas, CODIGOS_ETIQUETA, valores, errores);
+  return { valores, errores };
+}
 
-  const etiquetas = body.etiquetas ?? [];
-  if (!Array.isArray(etiquetas)) {
-    errores.push({ campo: 'etiquetas', mensaje: 'debe ser una lista' });
-  } else {
-    const limpias = [...new Set(etiquetas.map((e) => String(e).trim().toUpperCase()))];
-    const invalidas = limpias.filter((e) => !CODIGOS_ETIQUETA.includes(e));
-    if (invalidas.length > 0) {
-      errores.push({ campo: 'etiquetas', mensaje: `debe tener solo: ${CODIGOS_ETIQUETA.join(', ')}` });
-    } else {
-      valores.etiquetas = limpias;
-    }
-  }
-
+/** `POST /reservas/:id/calificacion-conductor`: puntaje de 1 a 5, etiquetas y comentario opcionales. */
+export function validarCalificacionConductor(body) {
+  const { valores, errores } = campos(body)
+    .entero('puntaje', body.puntaje, NOTA)
+    .texto('comentario', body.comentario, { max: 500, requerido: false })
+    .resultado();
+  validarEtiquetas(body.etiquetas, CODIGOS_ETIQUETA_CONDUCTOR, valores, errores);
   return { valores, errores };
 }
 

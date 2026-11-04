@@ -9,3 +9,4 @@ export * from './tarjeta-reserva/tarjeta-reserva';
 export * from './reserva-hecha/reserva-hecha';
 export * from './qr-reserva/qr-reserva';
 export * from './ingresar-codigo/ingresar-codigo';
+export * from './calificar-conductor/calificar-conductor';

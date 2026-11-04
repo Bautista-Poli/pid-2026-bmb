@@ -114,6 +114,8 @@ export class Resenas {
         this.procesandoId.set(null);
         this.aOcultar.set(null);
         this.error.set(e.message);
+        // Otro admin pudo haberla resuelto: la cola se pone al dia.
+        this.recurso.reload();
       },
     });
   }

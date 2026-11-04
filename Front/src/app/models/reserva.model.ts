@@ -101,6 +101,12 @@ export interface Reserva {
   calificable: boolean;
   /** El promedio que le dio, o null si no la califico. */
   calificacionPromedio: number | null;
+  /** Lo que le pusieron los propietarios al conductor (lo ve el propietario). */
+  reputacionConductor: { promedio: number | null; cantidad: number };
+  /** El puntaje que el propietario le dio al conductor en esta reserva, o null. */
+  calificacionAlConductor: number | null;
+  /** Si el propietario todavia puede calificar al conductor (finalizada o ausente, 7 dias). */
+  conductorCalificable: boolean;
 }
 
 /**

@@ -74,6 +74,8 @@ export interface ResumenReputacion {
   categorias: PromediosCategoria | null;
   destacado: boolean;
   insignias: CodigoInsignia[];
+  /** Puntaje de 0 a 100 (calificaciones + operacion): ordena "Mejor calificados". */
+  puntaje: number;
 }
 
 export const REPUTACION_VACIA: ResumenReputacion = {
@@ -82,6 +84,7 @@ export const REPUTACION_VACIA: ResumenReputacion = {
   categorias: null,
   destacado: false,
   insignias: [],
+  puntaje: 0,
 };
 
 /** Payload de `POST /api/reservas/:id/calificacion`. */
@@ -95,6 +98,45 @@ export interface Calificacion {
   id: Id;
   reservaId: Id;
   promedio: number;
+}
+
+/* ------------------------ calificacion del conductor ----------------------- */
+
+/** Lo que marca el propietario al calificar al conductor de una reserva. */
+export type EtiquetaConductor =
+  | 'PUNTUAL'
+  | 'RESPETUOSO'
+  | 'CUIDO_LA_COCHERA'
+  | 'LLEGO_TARDE'
+  | 'SE_EXCEDIO'
+  | 'NO_AVISO_AUSENCIA';
+
+export const TEXTO_ETIQUETA_CONDUCTOR: Record<EtiquetaConductor, string> = {
+  PUNTUAL: 'Puntual',
+  RESPETUOSO: 'Respetuoso',
+  CUIDO_LA_COCHERA: 'Cuidó la cochera',
+  LLEGO_TARDE: 'Llegó tarde',
+  SE_EXCEDIO: 'Se excedió',
+  NO_AVISO_AUSENCIA: 'No avisó que no venía',
+};
+
+export const ETIQUETAS_CONDUCTOR_POSITIVAS: readonly EtiquetaConductor[] = ['PUNTUAL', 'RESPETUOSO', 'CUIDO_LA_COCHERA'];
+export const ETIQUETAS_CONDUCTOR_NEGATIVAS: readonly EtiquetaConductor[] = ['LLEGO_TARDE', 'SE_EXCEDIO', 'NO_AVISO_AUSENCIA'];
+
+/** Payload de `POST /api/reservas/:id/calificacion-conductor`. */
+export interface NuevaCalificacionConductor {
+  puntaje: number;
+  etiquetas: EtiquetaConductor[];
+  comentario: string;
+}
+
+/** Lo que le pusieron los propietarios al conductor, de toda su historia. */
+export interface ReputacionConductor {
+  /** De 1 a 5, o null sin calificaciones. */
+  promedio: number | null;
+  cantidad: number;
+  /** Las mas marcadas, la mayor primero (hasta 3). */
+  etiquetas: { codigo: EtiquetaConductor; cantidad: number }[];
 }
 
 /* ------------------------ reputacion del propietario ----------------------- */

@@ -1,7 +1,8 @@
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { ResenaDenunciada } from '@app/models';
+import { EstadoDenunciaResena } from '@app/models';
 import { AdminService } from '@app/services/admin.service';
 import { Resenas } from './resenas';
 
@@ -55,5 +56,43 @@ describe('Resenas (admin)', () => {
 
     expect(raiz.textContent).toContain('Esta denuncia ya fue resuelta');
     expect(pedidos).toBe(2);
+  });
+});
+
+describe('Resenas (admin): filtro y historial', () => {
+  async function render(estadoEnUrl: string, lista: ResenaDenunciada[]) {
+    const pedidos: EstadoDenunciaResena[] = [];
+    await TestBed.configureTestingModule({
+      imports: [Resenas],
+      providers: [
+        provideRouter([]),
+        { provide: ActivatedRoute, useValue: { queryParamMap: of(convertToParamMap({ estado: estadoEnUrl })) } },
+        {
+          provide: AdminService,
+          useValue: {
+            resenas: (estado: EstadoDenunciaResena) => {
+              pedidos.push(estado);
+              return of(lista);
+            },
+          },
+        },
+      ],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(Resenas);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return { raiz: fixture.nativeElement as HTMLElement, pedidos };
+  }
+
+  it('un estado invalido en la URL cae en Pendientes', async () => {
+    const { pedidos } = await render('XYZ', []);
+    expect(pedidos).toEqual(['PENDIENTE']);
+  });
+
+  it('en el historial muestra cuando se modero', async () => {
+    const desestimada = { ...PENDIENTE, estado: 'DESESTIMADA' as const, moderadaEn: '2026-11-03T15:30:00Z' };
+    const { raiz } = await render('DESESTIMADA', [desestimada]);
+    expect(raiz.textContent).toContain('Moderada');
   });
 });

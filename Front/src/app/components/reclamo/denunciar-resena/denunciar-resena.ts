@@ -66,6 +66,8 @@ export class DenunciarResena {
   readonly calificacionId = input<Id | null>(null);
   readonly cerrado = output<void>();
   readonly denunciada = output<void>();
+  /** Fallo la denuncia (p. ej. ya estaba denunciada): conviene recargar la lista. */
+  readonly fallo = output<void>();
 
   protected readonly detalleMax = DETALLE_MAX;
   protected readonly motivos = Object.entries(TEXTO_MOTIVO_DENUNCIA).map(([valor, etiqueta]) => ({
@@ -91,6 +93,7 @@ export class DenunciarResena {
       error: (e: Error) => {
         this.enviando.set(false);
         this.error.set(e.message);
+        this.fallo.emit();
       },
     });
   }

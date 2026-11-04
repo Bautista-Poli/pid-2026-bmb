@@ -46,10 +46,13 @@ export class Resenas {
   protected readonly textoMotivo = TEXTO_MOTIVO_DENUNCIA;
   protected readonly formatearNota = formatearNota;
 
-  /** El filtro vive en la URL (`?estado=`), como en Disputas. */
+  /** El filtro vive en la URL (`?estado=`), como en Disputas. Uno que no existe cae en Pendientes. */
   protected readonly estado = toSignal(
     this.ruta.queryParamMap.pipe(
-      map((params) => (params.get('estado') as EstadoDenunciaResena | null) ?? 'PENDIENTE'),
+      map((params) => {
+        const estado = params.get('estado');
+        return FILTROS.find((filtro) => filtro.estado === estado)?.estado ?? 'PENDIENTE';
+      }),
     ),
     { initialValue: 'PENDIENTE' as EstadoDenunciaResena },
   );

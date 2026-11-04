@@ -67,6 +67,9 @@
                   @if (resena.detalle) {
                     <p class="mt-0.5">{{ resena.detalle }}</p>
                   }
+                  @if (resena.moderadaEn) {
+                    <p class="num-tabular mt-0.5 text-plomo">Moderada {{ resena.moderadaEn | date: 'd MMM, HH:mm' }}</p>
+                  }
                 </div>
 
                 @if (resena.estado === 'PENDIENTE') {

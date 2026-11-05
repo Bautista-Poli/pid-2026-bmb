@@ -21,7 +21,7 @@
 import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
 import { ESTADOS_RESERVA, ROLES } from '../utils/roles.js';
-import { buscarAlternativa } from './cochera.service.js';
+import { buscarCocheraLibre } from './cochera.service.js';
 import { PAGADO_RESERVA, asegurarDentroDelTope, crearDevolucion } from './devolucion.service.js';
 
 const TIPOS_INCIDENCIA = Object.freeze({
@@ -176,14 +176,14 @@ export async function protegerReservasSiguientes() {
       const reserva = filas[0];
       if (!reserva) return null;
 
-      const alternativa = await buscarAlternativa(
-        client,
-        reserva.id_estacionamiento,
-        reserva.id_cochera,
-        reserva.id_tipo_vehiculo,
-        reserva.inicio,
-        reserva.fin,
-      );
+      const { libre } = await buscarCocheraLibre(client, {
+        idEstacionamiento: reserva.id_estacionamiento,
+        idTipoVehiculo: reserva.id_tipo_vehiculo,
+        inicio: reserva.inicio,
+        fin: reserva.fin,
+        excluir: reserva.id_cochera,
+      });
+      const alternativa = libre?.id_cochera;
       if (alternativa) {
         await client.query(
           'UPDATE reserva SET id_cochera = $1, motivo_reasignacion = $2 WHERE id_reserva = $3',

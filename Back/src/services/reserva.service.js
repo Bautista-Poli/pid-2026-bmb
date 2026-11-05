@@ -10,9 +10,9 @@ import {
   sumarDias,
 } from '../utils/horario.js';
 import { ESTADOS_COCHERA, ESTADOS_RESERVA, ESTADOS_VIGENTES, ORIGENES_CANCELACION } from '../utils/roles.js';
-import { finEfectivo, sinSolapamiento } from '../utils/solapamiento.js';
+import { cocheraReservable, finEfectivo, sinSolapamiento } from '../utils/solapamiento.js';
 import { CAMPOS_TARIFA, HORAS_POR_MODALIDAD, MODALIDADES, precioDeReserva } from '../utils/tarifas.js';
-import { ORDEN_NATURAL } from './cochera.service.js';
+import { buscarCocheraLibre } from './cochera.service.js';
 import { validarAbonoParaReservar } from './abono.service.js';
 import { PLAZO_CALIFICACION_DIAS } from './calificacion.service.js';
 import { lateralReputacionConductor } from './reputacion.service.js';
@@ -44,6 +44,10 @@ export const TOLERANCIA_NO_SHOW_MS = 15 * 60 * 1000;
  * la misma transaccion, lo que tenga que pasar ademas de mover `estado`
  * (hoy, solo el estado_actual de la cochera).
  */
+/** Efecto de una transicion: deja la cochera de la reserva en `estado` (estado fisico). */
+const ponerCocheraEn = (estado) => (client, reserva) =>
+  client.query('UPDATE cochera SET estado_actual = $1 WHERE id_cochera = $2', [estado, reserva.id_cochera]);
+
 const TRANSICIONES = {
   [ESTADOS_RESERVA.PENDIENTE]: {
     [ESTADOS_RESERVA.CONFIRMADA]: {},
@@ -51,11 +55,7 @@ const TRANSICIONES = {
   },
   [ESTADOS_RESERVA.CONFIRMADA]: {
     [ESTADOS_RESERVA.ACTIVA]: {
-      efecto: (client, reserva) =>
-        client.query('UPDATE cochera SET estado_actual = $1 WHERE id_cochera = $2', [
-          ESTADOS_COCHERA.OCUPADA,
-          reserva.id_cochera,
-        ]),
+      efecto: ponerCocheraEn(ESTADOS_COCHERA.OCUPADA),
     },
     [ESTADOS_RESERVA.CANCELADA]: {},
     // Automatica (vencerAusentes): la cochera nunca paso a OCUPADA, asi
@@ -64,11 +64,7 @@ const TRANSICIONES = {
   },
   [ESTADOS_RESERVA.ACTIVA]: {
     [ESTADOS_RESERVA.FINALIZADA]: {
-      efecto: (client, reserva) =>
-        client.query('UPDATE cochera SET estado_actual = $1 WHERE id_cochera = $2', [
-          ESTADOS_COCHERA.LIBRE,
-          reserva.id_cochera,
-        ]),
+      efecto: ponerCocheraEn(ESTADOS_COCHERA.LIBRE),
     },
     // No hay ACTIVA -> CANCELADA: una vez que el auto entro, ya no se cancela.
   },
@@ -355,38 +351,19 @@ async function asignarCochera(client, idEstacionamiento, vehiculo, inicio, fin, 
     throw ApiError.conflict('El estacionamiento no esta disponible para reservar');
   }
 
-  const { rows: candidatas } = await client.query(
-    `SELECT c.id_cochera
-       FROM cochera c
-      WHERE c.id_estacionamiento = $1
-        AND c.activo
-        AND NOT c.bloqueada
-        AND c.estado_actual <> $2
-        AND c.id_tipo_vehiculo = $3
-      ORDER BY c.id_cochera
-      FOR UPDATE`,
-    [idEstacionamiento, ESTADOS_COCHERA.INACTIVA, vehiculo.id_tipo_vehiculo],
-  );
-
-  if (candidatas.length === 0) {
+  const { candidatas, libre } = await buscarCocheraLibre(client, {
+    idEstacionamiento,
+    idTipoVehiculo: vehiculo.id_tipo_vehiculo,
+    inicio,
+    fin,
+  });
+  if (candidatas === 0) {
     throw ApiError.conflict('El estacionamiento no tiene cocheras para ese tipo de vehiculo');
   }
-
-  const { rows: libres } = await client.query(
-    `SELECT c.id_cochera, c.id_estacionamiento, c.identificador
-       FROM cochera c
-      WHERE c.id_cochera = ANY($1::uuid[])
-        AND ${sinSolapamiento('$2', '$3', '$4')}
-      ORDER BY ${ORDEN_NATURAL}
-      LIMIT 1`,
-    [candidatas.map((c) => c.id_cochera), ESTADOS_VIGENTES, inicio, fin],
-  );
-
-  if (!libres[0]) {
+  if (!libre) {
     throw ApiError.conflict('No quedan cocheras libres para ese vehiculo en esa franja horaria');
   }
-
-  return libres[0];
+  return libre;
 }
 
 /** Precio de la reserva segun la tarifa vigente; 409 si el estacionamiento no ofrece la modalidad. */
@@ -782,19 +759,10 @@ export async function disponibilidad(idEstacionamiento, { fecha, id_tipo_vehicul
         `SELECT COUNT(*)::int AS libres
            FROM cochera c
           WHERE c.id_estacionamiento = $1
-            AND c.activo
-            AND NOT c.bloqueada
-            AND c.estado_actual <> $2
-            AND ($3::smallint IS NULL OR c.id_tipo_vehiculo = $3)
-            AND ${sinSolapamiento('$4', '$5', '$6')}`,
-        [
-          idEstacionamiento,
-          ESTADOS_COCHERA.INACTIVA,
-          id_tipo_vehiculo ?? null,
-          ESTADOS_VIGENTES,
-          inicio,
-          fin,
-        ],
+            AND ${cocheraReservable()}
+            AND ($2::smallint IS NULL OR c.id_tipo_vehiculo = $2)
+            AND ${sinSolapamiento('$3', '$4', '$5')}`,
+        [idEstacionamiento, id_tipo_vehiculo ?? null, ESTADOS_VIGENTES, inicio, fin],
       );
       libres = conteo[0].libres;
       if (libres === 0) {
@@ -822,16 +790,14 @@ async function ingresosDelDia(idEstacionamiento, horarios, { fecha, id_tipo_vehi
             (SELECT COUNT(*)::int
                FROM cochera c
               WHERE c.id_estacionamiento = $1
-                AND c.activo
-                AND NOT c.bloqueada
-                AND c.estado_actual <> $2
-                AND ($3::smallint IS NULL OR c.id_tipo_vehiculo = $3)
-                AND ${sinSolapamiento('$4', 'i.inicio', 'i.inicio + make_interval(hours => $6::int)')}
+                AND ${cocheraReservable()}
+                AND ($2::smallint IS NULL OR c.id_tipo_vehiculo = $2)
+                AND ${sinSolapamiento('$3', 'i.inicio', 'i.inicio + make_interval(hours => $5::int)')}
             ) AS libres
-       FROM generate_series($5::timestamptz, $5::timestamptz + interval '23 hours', interval '1 hour')
+       FROM generate_series($4::timestamptz, $4::timestamptz + interval '23 hours', interval '1 hour')
             AS i(inicio)
       ORDER BY i.inicio`,
-    [idEstacionamiento, ESTADOS_COCHERA.INACTIVA, id_tipo_vehiculo ?? null, ESTADOS_VIGENTES, primero, horas],
+    [idEstacionamiento, id_tipo_vehiculo ?? null, ESTADOS_VIGENTES, primero, horas],
   );
 
   return rows.map(({ inicio, libres }) => {

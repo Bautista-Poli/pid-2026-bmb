@@ -19,12 +19,12 @@ import { query } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
 import { PLAZO_CALIFICACION_DIAS } from './calificacion.service.js';
 
-export const UMBRAL_DESTACADO = 80;
-export const MINIMO_CALIFICACIONES = 5;
-export const UMBRAL_CATEGORIA = 4.5;
+const UMBRAL_DESTACADO = 80;
+const MINIMO_CALIFICACIONES = 5;
+const UMBRAL_CATEGORIA = 4.5;
 export const DIAS_BUSQUEDA = 90;
 
-export const CATEGORIAS = Object.freeze([
+const CATEGORIAS = Object.freeze([
   { codigo: 'limpieza', nombre: 'Limpieza', insignia: 'IMPECABLE', texto: 'Impecable' },
   { codigo: 'infraestructura', nombre: 'Infraestructura', insignia: 'BUENA_INFRAESTRUCTURA', texto: 'Buena infraestructura' },
   { codigo: 'atencion', nombre: 'Atencion', insignia: 'BUENA_ATENCION', texto: 'Buena atencion' },
@@ -33,7 +33,7 @@ export const CATEGORIAS = Object.freeze([
 ]);
 
 /** Etiquetas que puede marcar el conductor; cada una apunta a una categoria. */
-export const ETIQUETAS = Object.freeze([
+const ETIQUETAS = Object.freeze([
   { codigo: 'MUY_LIMPIO', categoria: 'limpieza', positiva: true },
   { codigo: 'BIEN_ILUMINADO', categoria: 'infraestructura', positiva: true },
   { codigo: 'BUENA_ATENCION', categoria: 'atencion', positiva: true },
@@ -47,7 +47,7 @@ export const ETIQUETAS = Object.freeze([
 export const CODIGOS_ETIQUETA = ETIQUETAS.map((e) => e.codigo);
 
 /** Etiquetas que puede marcar el propietario al calificar al conductor. */
-export const ETIQUETAS_CONDUCTOR = Object.freeze([
+const ETIQUETAS_CONDUCTOR = Object.freeze([
   { codigo: 'PUNTUAL', positiva: true },
   { codigo: 'RESPETUOSO', positiva: true },
   { codigo: 'CUIDO_LA_COCHERA', positiva: true },
@@ -222,7 +222,7 @@ export async function reputacionDelConductor(idConductor) {
  * es cuantas calificaciones traen categorias (las de solo puntaje no cuentan
  * para las insignias de categoria).
  */
-export function insigniasDe({ destacado, conDetalle, promedios }) {
+function insigniasDe({ destacado, conDetalle, promedios }) {
   const insignias = [];
   if (destacado) insignias.push({ codigo: 'DESTACADO', texto: 'Anfitrion destacado' });
   if (conDetalle >= MINIMO_CALIFICACIONES) {
@@ -311,7 +311,10 @@ export async function delEstacionamiento(idEstacionamiento, idPropietario, { dia
     throw ApiError.forbidden('El estacionamiento pertenece a otro propietario');
   }
 
-  const ahora = new Date();
+  // La ventana se corta con la hora de la base (la de `created_at`), no la del
+  // servidor: si el reloj del servidor va atrasado, lo recien creado quedaria afuera.
+  const { rows: reloj } = await query('SELECT now() AS ahora');
+  const ahora = reloj[0].ahora;
   const desde = new Date(ahora.getTime() - dias * 86_400_000);
   const desdeAnterior = new Date(desde.getTime() - dias * 86_400_000);
 

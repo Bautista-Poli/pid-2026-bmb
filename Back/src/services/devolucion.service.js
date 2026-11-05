@@ -16,7 +16,7 @@ export const PAGADO_RESERVA = `CASE WHEN r.estado IN ('CANCELADA', 'NO_SHOW') TH
  * devolver tiene que tener bloqueada la reserva/abono (FOR UPDATE) para que
  * dos devoluciones simultaneas no pasen el tope.
  */
-export async function topeDe(ejecutor, { idReserva = null, idAbono = null }) {
+async function topeDe(ejecutor, { idReserva = null, idAbono = null }) {
   const { rows } = await ejecutor.query(
     `SELECT COALESCE(
               (SELECT ${PAGADO_RESERVA} FROM reserva r WHERE r.id_reserva = $1),

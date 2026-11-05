@@ -24,23 +24,15 @@ import { ESTADOS_RESERVA, ROLES } from '../utils/roles.js';
 import { buscarAlternativa } from './cochera.service.js';
 import { PAGADO_RESERVA, asegurarDentroDelTope, crearDevolucion } from './devolucion.service.js';
 
-export const TIPOS_INCIDENCIA = Object.freeze({
+const TIPOS_INCIDENCIA = Object.freeze({
   AUTO_EXCEDIDO: 'AUTO_EXCEDIDO',
   RESERVA_AFECTADA: 'RESERVA_AFECTADA',
   // Lo abre el conductor sobre una reserva o un abono suyo.
   RECLAMO: 'RECLAMO',
 });
 
-export const MOTIVOS_RECLAMO = Object.freeze([
-  'NO_HABIA_COCHERA',
-  'COBRO_INCORRECTO',
-  'DANO_AL_VEHICULO',
-  'MAL_SERVICIO',
-  'OTRO',
-]);
-
 // Pasado este plazo desde el fin de la reserva (o del abono) ya no se reclama.
-export const DIAS_PARA_RECLAMAR = 15;
+const DIAS_PARA_RECLAMAR = 15;
 
 export const CANALES = Object.freeze({
   GENERAL: 'GENERAL',
@@ -59,7 +51,7 @@ export const ESTADOS_INCIDENCIA = Object.freeze({
 const SISTEMA = 'SISTEMA';
 
 // Unos minutos de gracia antes de avisar: salir 2 minutos tarde no es un problema.
-export const MARGEN_EXCESO_MS = 15 * 60 * 1000;
+const MARGEN_EXCESO_MS = 15 * 60 * 1000;
 
 // La reserva siguiente se protege cuando ya puede ingresar (30 min antes de su
 // inicio, igual que MARGEN_INGRESO_MS en reserva.service.js).
@@ -72,9 +64,9 @@ const HORA = new Intl.DateTimeFormat('es-AR', {
   hour12: false,
 });
 
-export const AVISO_REASIGNADA_POR_EXCESO =
+const AVISO_REASIGNADA_POR_EXCESO =
   'Te reasignamos a otra cochera: la tuya sigue ocupada por el vehiculo anterior.';
-export const AVISO_AFECTADA_POR_EXCESO =
+const AVISO_AFECTADA_POR_EXCESO =
   'Tu cochera sigue ocupada por el vehiculo anterior y no habia otra libre. ' +
   'El estacionamiento te va a indicar donde estacionar.';
 
@@ -464,7 +456,7 @@ export async function denunciar(usuario, idIncidencia, { motivo }) {
 /* ----------------------------- reclamos ------------------------------- */
 
 /** RESUELTA y RETIRADA son finales: el hilo queda de solo lectura. */
-export function asegurarNoCerrada(incidencia) {
+function asegurarNoCerrada(incidencia) {
   if (incidencia.estado === ESTADOS_INCIDENCIA.RESUELTA) throw ApiError.conflict('La incidencia ya esta resuelta');
   if (incidencia.estado === ESTADOS_INCIDENCIA.RETIRADA) throw ApiError.conflict('El reclamo fue retirado');
 }

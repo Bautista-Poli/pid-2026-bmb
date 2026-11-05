@@ -16,7 +16,7 @@ import {
   objetoDe,
 } from './incidencia.service.js';
 
-export const RESOLUCIONES = Object.freeze({
+const RESOLUCIONES = Object.freeze({
   A_FAVOR_CONDUCTOR: 'A_FAVOR_CONDUCTOR',
   A_FAVOR_PROPIETARIO: 'A_FAVOR_PROPIETARIO',
 });

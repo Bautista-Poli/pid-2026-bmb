@@ -3,8 +3,8 @@
 // (generar_codigo_acceso() en schema.sql); aca solo se valida lo que llega.
 
 /** Sin 0 O 1 I L, que se confunden al leerlos o dictarlos. Tiene que coincidir con schema.sql. */
-export const ALFABETO_CODIGO = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-export const LARGO_CODIGO = 8;
+const ALFABETO_CODIGO = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+const LARGO_CODIGO = 8;
 
 const REGEX_CODIGO = new RegExp(`^[${ALFABETO_CODIGO}]{${LARGO_CODIGO}}$`);
 

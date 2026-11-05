@@ -17,7 +17,7 @@ import { ApiError } from '../utils/ApiError.js';
  */
 
 export const ZONA = `'America/Argentina/Buenos_Aires'`;
-export const DIA = 86_400_000;
+const DIA = 86_400_000;
 
 const OCUPAN = `('PENDIENTE', 'CONFIRMADA', 'ACTIVA', 'FINALIZADA')`;
 export const COBRADAS = `('FINALIZADA', 'ACTIVA')`;

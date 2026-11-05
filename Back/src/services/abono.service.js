@@ -96,7 +96,7 @@ export async function darDeBajaPlan(idEstacionamiento, idPropietario, idPlan) {
 /* --------------------------------- abonos --------------------------------- */
 
 /** Vigencia en dias corridos desde la compra (supuesto de la spec, pregunta 3). */
-export const DIAS_VIGENCIA = 30;
+const DIAS_VIGENCIA = 30;
 
 const ESTADOS_ABONO = Object.freeze({ VIGENTE: 'VIGENTE', CANCELADO: 'CANCELADO', VENCIDO: 'VENCIDO' });
 

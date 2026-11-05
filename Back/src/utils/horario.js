@@ -2,7 +2,7 @@
 // Argentina usa UTC-3 todo el anio (no tiene horario de verano), asi que las
 // fechas y horas "locales" que manda el front se interpretan con ese offset fijo.
 
-export const OFFSET_LOCAL = '-03:00';
+const OFFSET_LOCAL = '-03:00';
 const OFFSET_MS = -3 * 60 * 60 * 1000;
 
 /** Franjas que ofrece la pantalla de reserva. */

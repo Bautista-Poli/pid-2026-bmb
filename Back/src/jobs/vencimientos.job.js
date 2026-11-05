@@ -25,7 +25,7 @@ import { desbloquearVencidas } from '../services/cochera.service.js';
 import { detectarExcedidos, protegerReservasSiguientes } from '../services/incidencia.service.js';
 import { vencerAusentes, vencerPendientesSinConfirmar } from '../services/reserva.service.js';
 
-export const INTERVALO_MINIMO_MS = 60_000;
+const INTERVALO_MINIMO_MS = 60_000;
 
 async function revisar() {
   const canceladas = await vencerPendientesSinConfirmar();

@@ -158,7 +158,6 @@ variables del servicio de Railway (o sea, contra la base de producción). Desde
 `Back/`, con la CLI logueada y vinculada (`npx @railway/cli link`):
 
 ```bash
-npx @railway/cli run npm run db:migrar-fotos-cloudinary:prod   # pasa las fotos de la base a Cloudinary
 npx @railway/cli run npm run db:crear-admin:prod -- --email ... --nombre ... --apellido ...
 ```
 

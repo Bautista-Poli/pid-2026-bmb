@@ -88,7 +88,7 @@ export async function listarPorConductor(idConductor) {
   return rows;
 }
 
-export async function obtenerDelConductor(idVehiculo, idConductor) {
+async function obtenerDelConductor(idVehiculo, idConductor) {
   const { rows } = await query(
     `SELECT ${CAMPOS} FROM vehiculo WHERE id_vehiculo = $1 AND id_conductor = $2`,
     [idVehiculo, idConductor],

@@ -114,14 +114,3 @@ export async function borrar(publicId) {
     console.error(`[cloudinary] no se pudo borrar ${publicId}:`, error.message);
   }
 }
-
-/** Sube bytes que ya estan en el servidor (lo usa el script de migracion). */
-export function subirBytes(bytes, carpeta) {
-  configurar();
-  return new Promise((resolver, rechazar) => {
-    const subida = cloudinary.uploader.upload_stream({ public_id: `${carpeta}/${randomUUID()}` }, (error, resultado) =>
-      error ? rechazar(error) : resolver(resultado.public_id),
-    );
-    subida.end(bytes);
-  });
-}

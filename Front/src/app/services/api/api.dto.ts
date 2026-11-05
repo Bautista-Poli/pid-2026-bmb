@@ -1,3 +1,5 @@
+// DTOs: la forma exacta de las respuestas de la API (snake_case). Solo los usa
+// api.mapeo.ts, que los convierte a los modelos del front.
 import {
   CategoriaCalificacion,
   CodigoInsignia,

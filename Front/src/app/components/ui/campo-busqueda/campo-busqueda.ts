@@ -148,6 +148,7 @@ export class CampoBusqueda {
     this.busquedas.next(texto);
   }
 
+  /** Flechas para moverse por las sugerencias, Enter para elegir y Escape para cerrar. */
   protected teclear(evento: KeyboardEvent): void {
     if (!this.abierta()) return;
     const cantidad = this.sugerencias().length;

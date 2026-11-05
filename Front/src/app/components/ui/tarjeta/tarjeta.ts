@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
-export type RellenoTarjeta = 'ninguno' | 'sm' | 'md' | 'lg';
+type RellenoTarjeta = 'ninguno' | 'sm' | 'md' | 'lg';
 
 const RELLENOS: Record<RellenoTarjeta, string> = {
   ninguno: '',

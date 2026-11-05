@@ -1,3 +1,5 @@
+// Fotos de un estacionamiento (portada y galeria): guardar, servir y borrar.
+// Las nuevas viven en Cloudinary; las viejas, como bytes en la base.
 import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
 import * as cloudinary from './cloudinary.service.js';

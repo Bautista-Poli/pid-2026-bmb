@@ -1,3 +1,4 @@
+// Punto de color que indica un estado (libre, ocupada, …) al lado de un texto.
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
 export type TonoPunto = 'acento' | 'baja' | 'ocupada' | 'reservada';

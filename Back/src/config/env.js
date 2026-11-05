@@ -2,6 +2,7 @@
 // En desarrollo se cargan con `node --env-file=.env` (ver script "dev").
 // En Railway las inyecta la plataforma.
 
+/** Devuelve la variable o corta el arranque si falta. */
 function requerido(nombre, valor) {
   if (!valor) {
     throw new Error(

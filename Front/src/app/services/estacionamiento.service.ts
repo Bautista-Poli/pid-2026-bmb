@@ -162,6 +162,7 @@ export function ordenarEstacionamientos(
   );
 }
 
+/** Filtros de busqueda -> query params de GET /api/estacionamientos. */
 function aParams(filtros: FiltrosEstacionamiento): HttpParams {
   let params = new HttpParams().set('limit', LIMITE_BUSQUEDA);
   const busqueda = filtros.busqueda?.trim();

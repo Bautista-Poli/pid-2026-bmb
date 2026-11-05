@@ -10,6 +10,7 @@ import { ApiError } from '../utils/ApiError.js';
 /** Cada firma de Cloudinary habilita una subida: 30 cada 10 minutos sobran. */
 export const LIMITE_FIRMAS = Object.freeze({ maximo: 30, ventanaMs: 10 * 60 * 1000 });
 
+/** Middleware: como mucho `maximo` pedidos por usuario cada `ventanaMs`. */
 export function limitarPorUsuario({ maximo, ventanaMs }) {
   const pedidos = new Map();
 

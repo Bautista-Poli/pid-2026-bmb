@@ -206,6 +206,7 @@ export class Reservas {
   protected readonly aMarcarAusente = signal<ReservaDetallada | null>(null);
   protected readonly puedeMarcarAusente = (reserva: ReservaDetallada) => puedeMarcarAusente(reserva);
 
+  /** Marca la reserva como ausente (no-show) a mano y libera la cochera. */
   protected marcarAusente(reserva: ReservaDetallada): void {
     this.procesandoId.set(reserva.id);
     this.aviso.set(null);
@@ -243,6 +244,7 @@ export class Reservas {
     return reserva.conductorCalificable || reserva.calificacionAlConductor !== null;
   }
 
+  /** Cierra el modal, avisa y recarga la lista. */
   protected conductorCalificado(): void {
     const reserva = this.aCalificar();
     this.aCalificar.set(null);

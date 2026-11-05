@@ -101,6 +101,7 @@ export class Resenas {
     this.moderar(resena, 'ocultar');
   }
 
+  /** Desestima u oculta la reseña; siempre recarga la cola (otro admin pudo resolverla). */
   private moderar(resena: ResenaDenunciada, accion: 'desestimar' | 'ocultar'): void {
     this.procesandoId.set(resena.id);
     this.aviso.set(null);

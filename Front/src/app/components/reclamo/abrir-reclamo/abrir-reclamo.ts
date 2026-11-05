@@ -116,6 +116,7 @@ export class AbrirReclamo {
     return montoOk && this.largo() >= TEXTO_MIN && this.largo() <= TEXTO_MAX;
   }
 
+  /** Abre el reclamo (motivo, monto pedido y texto) y emite su id. */
   protected enviar(objeto: ObjetoReclamo): void {
     if (!this.valido(objeto) || this.enviando()) return;
     this.enviando.set(true);
@@ -146,6 +147,7 @@ export class AbrirReclamo {
     this.cerrado.emit();
   }
 
+  /** Vuelve el formulario a su estado inicial. */
   private limpiar(): void {
     this.motivo.set('NO_HABIA_COCHERA');
     this.monto.set(null);

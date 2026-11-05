@@ -1,3 +1,5 @@
+// App de Express: middlewares globales (cors, cookies, JSON, logs), las rutas bajo /api y
+// el manejo de errores al final. La arranca index.js; las pruebas la levantan directo.
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';

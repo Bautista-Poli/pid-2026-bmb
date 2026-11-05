@@ -9,6 +9,9 @@ interface Atajo {
   precio: string;
 }
 
+/** Nombre de las modalidades por bloque en el selector ("12 h · Estadía"). */
+const NOMBRE_BLOQUE: Record<'ESTADIA' | 'JORNADA', string> = { ESTADIA: 'Estadía', JORNADA: 'Jornada' };
+
 const pesos = (monto: number) => `$${monto.toLocaleString('es-AR')}`;
 
 /** Horas que se ofrecen como atajo, ademas de estadia y jornada. */
@@ -57,7 +60,7 @@ export class SelectorDuracion {
       const modalidad = modalidadPorHoras(h, tarifas)!;
       return {
         horas: h,
-        etiqueta: modalidad === 'HORA' ? `${h} h` : `${h} h · ${modalidad === 'ESTADIA' ? 'Estadía' : 'Jornada'}`,
+        etiqueta: modalidad === 'HORA' ? `${h} h` : `${h} h · ${NOMBRE_BLOQUE[modalidad]}`,
         precio: pesos(calcularPrecio(modalidad, tarifas, h)),
       };
     });

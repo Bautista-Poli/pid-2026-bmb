@@ -163,6 +163,7 @@ function detalleDe(p: PropiedadesPhoton, nombre: string): string {
     .join(', ');
 }
 
+/** Que tipo de lugar es un resultado de Photon (ciudad, calle, plaza…). */
 function tipoDe(p: PropiedadesPhoton): TipoLugar {
   if (p.osm_key === 'place') {
     if (LUGARES_POBLADOS.has(p.osm_value)) return 'ciudad';

@@ -80,6 +80,7 @@ export class DenunciarResena {
   protected readonly enviando = signal(false);
   protected readonly error = signal<string | null>(null);
 
+  /** Envia la denuncia; si falla, muestra el error y avisa para recargar la lista. */
   protected enviar(id: Id): void {
     if (this.enviando()) return;
     this.enviando.set(true);

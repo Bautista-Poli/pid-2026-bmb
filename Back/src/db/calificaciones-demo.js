@@ -30,6 +30,7 @@ const BAJAS = [
 
 const argumentos = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 
+/** Borra todo lo cargado por este script (usuarios @demo.parkit y lo que cuelga de ellos). */
 async function borrar() {
   const usuarios = `SELECT id_usuario FROM usuario WHERE email LIKE '%@${DOMINIO}'`;
   await pool.query(`DELETE FROM reserva WHERE id_conductor IN (${usuarios})`);
@@ -166,6 +167,7 @@ async function canceladaDemo(client, lugar, dias, canceladaPor) {
   );
 }
 
+/** El estacionamiento a calificar (por nombre o id) y una cochera para las reservas. */
 async function buscarLugar(client, busqueda) {
   const { rows } = await client.query(
     `SELECT e.id_estacionamiento, e.nombre, c.id_cochera, c.id_tipo_vehiculo
@@ -180,6 +182,7 @@ async function buscarLugar(client, busqueda) {
   return rows[0];
 }
 
+/** Carga `cantidad` conductores de demo que reservaron, usaron y calificaron. */
 async function cargar(busqueda, cantidad, tanda) {
   await withTransaction(async (client) => {
     const lugar = await buscarLugar(client, busqueda);

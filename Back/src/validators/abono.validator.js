@@ -1,9 +1,11 @@
+// Validadores de abonos (planes y compra). Los usa validate() en las rutas.
 import { NOMBRES_TURNO } from '../utils/turnos.js';
 import { campos } from './helpers.js';
 
 const OPCIONES_CUPOS = { min: 1, max: 100 };
 const OPCIONES_PRECIO = { min: 0, max: 99_999_999 };
 
+/** Alta de un plan: turno, cupos y precio. */
 export function validarPlanAbono(body) {
   return campos(body)
     .enumerado('turno', body.turno, NOMBRES_TURNO)
@@ -24,6 +26,7 @@ export function validarCambiosPlanAbono(body) {
   return { valores, errores };
 }
 
+/** Compra: el id del plan. */
 export function validarCompraAbono(body) {
   return campos(body).uuid('id_plan', body.id_plan).resultado();
 }

@@ -1,3 +1,4 @@
+// Validadores de las rutas del administrador (filtros, aprobar, rechazar, moderar).
 import { ESTADOS_DENUNCIA } from '../utils/denuncias.js';
 import { ESTADOS_APROBACION } from '../utils/roles.js';
 import { campos } from './helpers.js';
@@ -23,10 +24,12 @@ function conVersionVista(validador, body) {
   return resultado;
 }
 
+/** Aprobar: la version que vio el admin (enviado_en). */
 export function validarAprobacion(body) {
   return conVersionVista(campos(body), body);
 }
 
+/** Rechazar: motivo obligatorio y la version que vio el admin. */
 export function validarRechazo(body) {
   return conVersionVista(campos(body).texto('motivo', body.motivo, { min: 10, max: 300 }), body);
 }

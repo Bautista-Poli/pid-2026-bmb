@@ -1,7 +1,10 @@
+// Cocheras de un estacionamiento: alta (de a una o por lote), edicion, baja, bloqueo
+// por mantenimiento y la busqueda de una cochera libre (buscarCocheraLibre).
 import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
+import { armarSet } from '../utils/sql.js';
 import { ESTADOS_COCHERA, ESTADOS_RESERVA, ESTADOS_VIGENTES } from '../utils/roles.js';
-import { finEfectivo, sinSolapamiento } from '../utils/solapamiento.js';
+import { cocheraReservable, finEfectivo, sinSolapamiento } from '../utils/solapamiento.js';
 import { asegurarPropiedad } from './estacionamiento.service.js';
 
 const VIOLACION_UNIQUE = '23505';
@@ -144,13 +147,8 @@ export async function actualizar(idEstacionamiento, idPropietario, idCochera, da
     throw ApiError.badRequest('Para desactivar una cochera usa la baja (DELETE), no el estado');
   }
 
-  const asignaciones = [];
   const parametros = [];
-  for (const campo of CAMPOS_EDITABLES) {
-    if (datos[campo] === undefined) continue;
-    parametros.push(datos[campo]);
-    asignaciones.push(`${campo} = $${parametros.length}`);
-  }
+  const asignaciones = armarSet(CAMPOS_EDITABLES, datos, parametros);
   parametros.push(idCochera, idEstacionamiento);
 
   let rows;
@@ -224,25 +222,29 @@ export async function reactivar(idEstacionamiento, idPropietario, idCochera) {
   return rows[0];
 }
 
-/** Otra cochera libre del mismo estacionamiento, mismo tipo de vehiculo, para esa franja exacta. */
-export async function buscarAlternativa(client, idEstacionamiento, idCocheraOriginal, idTipoVehiculo, inicio, fin) {
+/**
+ * La primera cochera libre del estacionamiento para ese tipo de vehiculo y esa
+ * franja (opcionalmente sin contar `excluir`). Bloquea las candidatas con
+ * FOR UPDATE siempre en el mismo orden (por id) antes de buscar
+ * solapamientos: asi dos pedidos simultaneos no eligen la misma ni se
+ * bloquean entre si. Devuelve cuantas candidatas habia y la elegida (o null).
+ */
+export async function buscarCocheraLibre(client, { idEstacionamiento, idTipoVehiculo, inicio, fin, excluir = null }) {
   const { rows: candidatas } = await client.query(
     `SELECT c.id_cochera
        FROM cochera c
       WHERE c.id_estacionamiento = $1
-        AND c.id_cochera <> $2
-        AND c.activo
-        AND NOT c.bloqueada
-        AND c.estado_actual <> $3
-        AND c.id_tipo_vehiculo = $4
+        AND ${cocheraReservable()}
+        AND c.id_tipo_vehiculo = $2
+        AND ($3::uuid IS NULL OR c.id_cochera <> $3)
       ORDER BY c.id_cochera
       FOR UPDATE`,
-    [idEstacionamiento, idCocheraOriginal, ESTADOS_COCHERA.INACTIVA, idTipoVehiculo],
+    [idEstacionamiento, idTipoVehiculo, excluir],
   );
-  if (candidatas.length === 0) return null;
+  if (candidatas.length === 0) return { candidatas: 0, libre: null };
 
   const { rows: libres } = await client.query(
-    `SELECT c.id_cochera
+    `SELECT c.id_cochera, c.id_estacionamiento, c.identificador
        FROM cochera c
       WHERE c.id_cochera = ANY($1::uuid[])
         AND ${sinSolapamiento('$2', '$3', '$4')}
@@ -250,7 +252,7 @@ export async function buscarAlternativa(client, idEstacionamiento, idCocheraOrig
       LIMIT 1`,
     [candidatas.map((c) => c.id_cochera), ESTADOS_VIGENTES, inicio, fin],
   );
-  return libres[0]?.id_cochera ?? null;
+  return { candidatas: candidatas.length, libre: libres[0] ?? null };
 }
 
 const AVISO_REASIGNADA =
@@ -297,10 +299,14 @@ export async function bloquear(idEstacionamiento, idPropietario, idCochera, { mo
     const reasignadas = [];
     const sinAlternativa = [];
     for (const reserva of afectadas) {
-      const alternativa = await buscarAlternativa(
-        client, idEstacionamiento, idCochera, reserva.id_tipo_vehiculo, reserva.inicio, reserva.fin,
-      );
-      if (alternativa) reasignadas.push({ reserva, idCocheraNueva: alternativa });
+      const { libre } = await buscarCocheraLibre(client, {
+        idEstacionamiento,
+        idTipoVehiculo: reserva.id_tipo_vehiculo,
+        inicio: reserva.inicio,
+        fin: reserva.fin,
+        excluir: idCochera,
+      });
+      if (libre) reasignadas.push({ reserva, idCocheraNueva: libre.id_cochera });
       else sinAlternativa.push(reserva);
     }
 

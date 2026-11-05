@@ -1,3 +1,5 @@
+// Selector de la hora de ingreso del flujo de reserva: una opcion por hora, con la de
+// salida segun la duracion; las no disponibles se muestran con su motivo.
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { FechaISO, FranjaDisponible, HoraHHmm } from '@app/models';
 

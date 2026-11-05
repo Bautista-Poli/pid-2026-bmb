@@ -20,27 +20,20 @@
 // la acepta (o lo retira); si no se ponen de acuerdo, se denuncia.
 import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
+import { HORA_LOCAL, HOY_LOCAL_SQL } from '../utils/horario.js';
 import { ESTADOS_RESERVA, ROLES } from '../utils/roles.js';
-import { buscarAlternativa } from './cochera.service.js';
+import { buscarCocheraLibre } from './cochera.service.js';
 import { PAGADO_RESERVA, asegurarDentroDelTope, crearDevolucion } from './devolucion.service.js';
 
-export const TIPOS_INCIDENCIA = Object.freeze({
+const TIPOS_INCIDENCIA = Object.freeze({
   AUTO_EXCEDIDO: 'AUTO_EXCEDIDO',
   RESERVA_AFECTADA: 'RESERVA_AFECTADA',
   // Lo abre el conductor sobre una reserva o un abono suyo.
   RECLAMO: 'RECLAMO',
 });
 
-export const MOTIVOS_RECLAMO = Object.freeze([
-  'NO_HABIA_COCHERA',
-  'COBRO_INCORRECTO',
-  'DANO_AL_VEHICULO',
-  'MAL_SERVICIO',
-  'OTRO',
-]);
-
 // Pasado este plazo desde el fin de la reserva (o del abono) ya no se reclama.
-export const DIAS_PARA_RECLAMAR = 15;
+const DIAS_PARA_RECLAMAR = 15;
 
 export const CANALES = Object.freeze({
   GENERAL: 'GENERAL',
@@ -59,25 +52,19 @@ export const ESTADOS_INCIDENCIA = Object.freeze({
 const SISTEMA = 'SISTEMA';
 
 // Unos minutos de gracia antes de avisar: salir 2 minutos tarde no es un problema.
-export const MARGEN_EXCESO_MS = 15 * 60 * 1000;
+const MARGEN_EXCESO_MS = 15 * 60 * 1000;
 
 // La reserva siguiente se protege cuando ya puede ingresar (30 min antes de su
 // inicio, igual que MARGEN_INGRESO_MS en reserva.service.js).
 const ANTICIPACION_REASIGNACION_MS = 30 * 60 * 1000;
 
-const HORA = new Intl.DateTimeFormat('es-AR', {
-  timeZone: 'America/Argentina/Buenos_Aires',
-  hour: '2-digit',
-  minute: '2-digit',
-  hour12: false,
-});
-
-export const AVISO_REASIGNADA_POR_EXCESO =
+const AVISO_REASIGNADA_POR_EXCESO =
   'Te reasignamos a otra cochera: la tuya sigue ocupada por el vehiculo anterior.';
-export const AVISO_AFECTADA_POR_EXCESO =
+const AVISO_AFECTADA_POR_EXCESO =
   'Tu cochera sigue ocupada por el vehiculo anterior y no habia otra libre. ' +
   'El estacionamiento te va a indicar donde estacionar.';
 
+/** Suma un mensaje al chat de una incidencia (en el canal indicado). */
 export async function agregarMensaje(
   ejecutor, idIncidencia, rolAutor, texto, idAutor = null, canal = CANALES.GENERAL, montoPropuesto = null,
 ) {
@@ -128,7 +115,7 @@ export async function detectarExcedidos() {
         idEstacionamiento: r.id_estacionamiento,
         mensaje:
           `El vehiculo ${r.patente} tenia que salir de la cochera ${r.cochera} a las ` +
-          `${HORA.format(r.fin)} y sigue adentro. La cochera queda bloqueada hasta que se registre el egreso.`,
+          `${HORA_LOCAL.format(r.fin)} y sigue adentro. La cochera queda bloqueada hasta que se registre el egreso.`,
       }),
     );
     if (id) creadas += 1;
@@ -184,14 +171,14 @@ export async function protegerReservasSiguientes() {
       const reserva = filas[0];
       if (!reserva) return null;
 
-      const alternativa = await buscarAlternativa(
-        client,
-        reserva.id_estacionamiento,
-        reserva.id_cochera,
-        reserva.id_tipo_vehiculo,
-        reserva.inicio,
-        reserva.fin,
-      );
+      const { libre } = await buscarCocheraLibre(client, {
+        idEstacionamiento: reserva.id_estacionamiento,
+        idTipoVehiculo: reserva.id_tipo_vehiculo,
+        inicio: reserva.inicio,
+        fin: reserva.fin,
+        excluir: reserva.id_cochera,
+      });
+      const alternativa = libre?.id_cochera;
       if (alternativa) {
         await client.query(
           'UPDATE reserva SET id_cochera = $1, motivo_reasignacion = $2 WHERE id_reserva = $3',
@@ -209,7 +196,7 @@ export async function protegerReservasSiguientes() {
         idReserva: reserva.id_reserva,
         idEstacionamiento: reserva.id_estacionamiento,
         mensaje:
-          `La reserva de ${reserva.patente} (${HORA.format(reserva.inicio)} a ${HORA.format(reserva.fin)}) ` +
+          `La reserva de ${reserva.patente} (${HORA_LOCAL.format(reserva.inicio)} a ${HORA_LOCAL.format(reserva.fin)}) ` +
           `no se pudo reasignar: la cochera ${reserva.cochera} sigue ocupada por el vehiculo anterior ` +
           'y no hay otra libre en ese horario.',
       });
@@ -238,7 +225,7 @@ export async function registrarEgresoEnIncidencia(client, idReserva, egreso = ne
     client,
     rows[0].id_incidencia,
     SISTEMA,
-    `El vehiculo egreso a las ${HORA.format(egreso)}, ${minutos} min despues de su horario. La cochera quedo libre.`,
+    `El vehiculo egreso a las ${HORA_LOCAL.format(egreso)}, ${minutos} min despues de su horario. La cochera quedo libre.`,
   );
 }
 
@@ -275,6 +262,7 @@ export const SELECT_INCIDENCIA = `
     JOIN estacionamiento e ON e.id_estacionamiento = i.id_estacionamiento
 `;
 
+/** Convierte un monto de pg a numero, dejando null como null. */
 const aNumero = (valor) => (valor === null || valor === undefined ? null : Number(valor));
 
 /** Montos como numeros y el tope (lo pagado menos lo ya devuelto). */
@@ -313,6 +301,7 @@ const ORDEN_ESTADO = `CASE i.estado WHEN 'ABIERTA' THEN 0 WHEN 'DENUNCIADA' THEN
 const canalPrivadoDe = (usuario) =>
   usuario.rol === ROLES.PROPIETARIO ? CANALES.PROPIETARIO : CANALES.CONDUCTOR;
 
+/** Las incidencias que ve el usuario (las suyas), con el ultimo mensaje. */
 export async function listar(usuario) {
   // Cantidad y ultimo mensaje solo de lo que la parte puede ver.
   const privado = canalPrivadoDe(usuario);
@@ -365,6 +354,7 @@ async function conMensajes(ejecutor, usuario, incidencia) {
   };
 }
 
+/** El detalle de una incidencia con los chats que el usuario puede ver. */
 export async function obtener(usuario, idIncidencia) {
   const incidencia = await buscarParticipando({ query }, usuario, idIncidencia);
   return conMensajes({ query }, usuario, incidencia);
@@ -464,7 +454,7 @@ export async function denunciar(usuario, idIncidencia, { motivo }) {
 /* ----------------------------- reclamos ------------------------------- */
 
 /** RESUELTA y RETIRADA son finales: el hilo queda de solo lectura. */
-export function asegurarNoCerrada(incidencia) {
+function asegurarNoCerrada(incidencia) {
   if (incidencia.estado === ESTADOS_INCIDENCIA.RESUELTA) throw ApiError.conflict('La incidencia ya esta resuelta');
   if (incidencia.estado === ESTADOS_INCIDENCIA.RETIRADA) throw ApiError.conflict('El reclamo fue retirado');
 }
@@ -552,7 +542,6 @@ export async function retirar(usuario, idIncidencia) {
   return obtener(usuario, idIncidencia);
 }
 
-const HOY_LOCAL = `(now() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date`;
 const ESTADOS_RECLAMABLES = [
   ESTADOS_RESERVA.CONFIRMADA,
   ESTADOS_RESERVA.ACTIVA,
@@ -585,7 +574,7 @@ async function objetoReclamado(client, idConductor, { id_reserva: idReserva, id_
   }
 
   const { rows } = await client.query(
-    `SELECT id_conductor, id_estacionamiento, hasta < ${HOY_LOCAL} - $2::int AS vencido
+    `SELECT id_conductor, id_estacionamiento, hasta < ${HOY_LOCAL_SQL} - $2::int AS vencido
        FROM abono WHERE id_abono = $1
        FOR UPDATE`,
     [idAbono, DIAS_PARA_RECLAMAR],

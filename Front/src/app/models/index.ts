@@ -1,3 +1,4 @@
+// Punto unico de import de los modelos: `import { … } from '@app/models'`.
 export * from './api.model';
 export * from './usuario.model';
 export * from './vehiculo.model';

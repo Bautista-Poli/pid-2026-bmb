@@ -1,3 +1,4 @@
+// Vehiculos del conductor: ABM, predeterminado, fotos y el catalogo de tipos.
 import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
 import { errorPatente } from '../validators/vehiculo.validator.js';
@@ -73,6 +74,7 @@ export async function crear(idConductor, datos) {
   }
 }
 
+/** Los vehiculos activos del conductor, el predeterminado primero. */
 export async function listarPorConductor(idConductor) {
   const { rows } = await query(
     `SELECT v.id_vehiculo, v.id_conductor, v.id_tipo_vehiculo, v.patente,
@@ -88,7 +90,8 @@ export async function listarPorConductor(idConductor) {
   return rows;
 }
 
-export async function obtenerDelConductor(idVehiculo, idConductor) {
+/** Un vehiculo del conductor; 404 si no existe o es de otro. */
+async function obtenerDelConductor(idVehiculo, idConductor) {
   const { rows } = await query(
     `SELECT ${CAMPOS} FROM vehiculo WHERE id_vehiculo = $1 AND id_conductor = $2`,
     [idVehiculo, idConductor],
@@ -177,6 +180,7 @@ export async function darDeBaja(idVehiculo, idConductor) {
   return rows[0];
 }
 
+/** El catalogo de tipos de vehiculo (Auto, Moto, Camioneta). */
 export async function listarTipos() {
   const { rows } = await query(
     'SELECT id_tipo_vehiculo, nombre FROM tipo_vehiculo ORDER BY id_tipo_vehiculo',

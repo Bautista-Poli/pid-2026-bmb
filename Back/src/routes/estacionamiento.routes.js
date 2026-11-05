@@ -1,3 +1,5 @@
+// Rutas de /api/estacionamientos: lo publico (busqueda, detalle, fotos, disponibilidad)
+// y lo del propietario (ABM, cocheras, planes de abono, reservas recibidas, reputacion).
 import express, { Router } from 'express';
 
 import * as abonoController from '../controllers/abono.controller.js';

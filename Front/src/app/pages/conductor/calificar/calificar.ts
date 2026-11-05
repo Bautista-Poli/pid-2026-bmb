@@ -88,6 +88,7 @@ export class Calificar {
     this.notas.update((actual) => ({ ...actual, [categoria]: valor }));
   }
 
+  /** Marca o desmarca una etiqueta. */
   protected alternar(etiqueta: EtiquetaCalificacion): void {
     this.elegidas.update((actual) => {
       const nuevas = new Set(actual);
@@ -101,6 +102,7 @@ export class Calificar {
     return `${categoria}: ${valor} ${valor === 1 ? 'estrella' : 'estrellas'}`;
   }
 
+  /** Guarda la calificacion (5 categorias, etiquetas y comentario) y vuelve a Mis reservas. */
   protected enviar(): void {
     const reserva = this.reserva();
     const notas = this.notas();

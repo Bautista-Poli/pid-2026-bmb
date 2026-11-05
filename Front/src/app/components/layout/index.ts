@@ -1,3 +1,4 @@
+// Exporta las piezas del layout (barra lateral, barra superior, tabs, menu de usuario).
 /* Navegacion del shell: la misma lista de items en dos formas. */
 export * from './navegacion.model';
 export * from './barra-lateral/barra-lateral';

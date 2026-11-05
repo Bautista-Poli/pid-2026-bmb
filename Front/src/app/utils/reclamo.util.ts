@@ -2,7 +2,7 @@ import { Abono, EstadoReserva, ReservaDetallada } from '@app/models';
 import { aInstante } from './fecha.util';
 
 /** Igual que el back (DIAS_PARA_RECLAMAR): pasado este plazo desde el fin ya no se reclama. */
-export const DIAS_PARA_RECLAMAR = 15;
+const DIAS_PARA_RECLAMAR = 15;
 const DIA_MS = 86_400_000;
 
 /** Las que tuvieron (o tienen) un pago en juego. Una pendiente todavia no se confirmo. */

@@ -60,7 +60,7 @@
       <div class="grid gap-5 lg:grid-cols-[380px_minmax(0,1fr)] lg:gap-6">
         <!-- Puntaje -->
         <section
-          class="flex flex-col gap-4 rounded-tarjeta bg-acento p-5 text-sobre-acento shadow-elevada lg:p-6"
+          class="tarjeta-puntaje flex flex-col gap-4 rounded-tarjeta border p-5 shadow-elevada lg:p-6"
           aria-label="Puntaje"
         >
           <div class="flex items-center gap-[18px]">
@@ -79,7 +79,7 @@
                   [attr.d]="ARCO_VELOCIMETRO"
                   pathLength="100"
                   fill="none"
-                  stroke="var(--color-oro)"
+                  stroke="var(--puntaje-arco)"
                   stroke-width="10"
                   stroke-linecap="round"
                   [attr.stroke-dasharray]="datos.puntaje + ' 100'"
@@ -102,7 +102,7 @@
                   <path d="M60 22 L63 60 L57 60 Z" fill="currentColor" />
                 </g>
                 <circle cx="60" cy="60" r="5.5" fill="currentColor" />
-                <circle cx="60" cy="60" r="2" fill="var(--color-oro)" />
+                <circle cx="60" cy="60" r="2" fill="var(--puntaje-arco)" />
                 <text x="60" y="94" text-anchor="middle" fill="currentColor" class="num-tabular" font-size="26" font-weight="700">
                   {{ datos.puntaje }}
                 </text>
@@ -143,7 +143,7 @@
                 <span class="num-tabular font-semibold">{{ datos.calificaciones.puntos }} / 60</span>
               </div>
               <div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/15">
-                <div class="h-full rounded-full bg-oro" [style.width.%]="(datos.calificaciones.puntos / 60) * 100"></div>
+                <div class="h-full rounded-full bg-[var(--puntaje-arco)]" [style.width.%]="(datos.calificaciones.puntos / 60) * 100"></div>
               </div>
             </div>
             <div>
@@ -152,7 +152,7 @@
                 <span class="num-tabular font-semibold">{{ datos.operacion.puntos }} / 40</span>
               </div>
               <div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/15">
-                <div class="h-full rounded-full bg-oro" [style.width.%]="(datos.operacion.puntos / 40) * 100"></div>
+                <div class="h-full rounded-full bg-[var(--puntaje-arco)]" [style.width.%]="(datos.operacion.puntos / 40) * 100"></div>
               </div>
             </div>
           </div>

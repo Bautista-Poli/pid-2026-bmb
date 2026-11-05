@@ -1,5 +1,6 @@
 import * as adminEstadisticaService from '../services/admin-estadistica.service.js';
 import * as adminService from '../services/admin.service.js';
+import * as denunciaService from '../services/denuncia-resena.service.js';
 import * as moderacionService from '../services/moderacion.service.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
@@ -42,4 +43,16 @@ export const resolverIncidencia = asyncHandler(async (req, res) => {
 
 export const estadisticas = asyncHandler(async (req, res) => {
   res.json({ estadisticas: await adminEstadisticaService.estadisticas(req.query) });
+});
+
+export const listarResenas = asyncHandler(async (req, res) => {
+  res.json({ resenas: await denunciaService.listarDenuncias(req.query) });
+});
+
+export const desestimarResena = asyncHandler(async (req, res) => {
+  res.json({ resena: await denunciaService.moderar(req.params.id, req.usuario.id, 'DESESTIMAR') });
+});
+
+export const ocultarResena = asyncHandler(async (req, res) => {
+  res.json({ resena: await denunciaService.moderar(req.params.id, req.usuario.id, 'OCULTAR') });
 });

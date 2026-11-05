@@ -127,6 +127,7 @@ const OPCIONES_NIVEL: { nivel: CodigoNivel | null; texto: string }[] = [
 const ORDENES: { orden: OrdenEstacionamiento; texto: string }[] = [
   { orden: 'DISTANCIA', texto: 'Más cercano' },
   { orden: 'PRECIO', texto: 'Más barato' },
+  { orden: 'REPUTACION', texto: 'Mejor calificados' },
 ];
 
 const CLASE_ESTADO: Record<EstadoDisponibilidad, string> = {
@@ -243,6 +244,11 @@ export class Mapa {
   protected readonly panel = signal<Panel>(PANEL_INICIAL);
   protected readonly opcionesNivel = OPCIONES_NIVEL;
   protected readonly ordenes = ORDENES;
+  protected readonly iconoOrden: Record<OrdenEstacionamiento, NombreIcono> = {
+    DISTANCIA: 'explorar',
+    PRECIO: 'moneda',
+    REPUTACION: 'estrella',
+  };
   /** Los filtros en uso. */
   private readonly aplicado = signal<Panel>(PANEL_INICIAL);
 

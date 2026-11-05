@@ -1,6 +1,16 @@
 import { NuevaReserva, NuevoEstacionamiento } from '@app/models';
 import { EstacionamientoDto, ReservaDto, VehiculoDto } from './api.dto';
-import { aAbono, aEstacionamiento, aPayloadEstacionamiento, aPayloadReserva, aReserva, aVehiculo } from './api.mapeo';
+import {
+  aAbono,
+  aEstacionamiento,
+  aOpinion,
+  aPayloadEstacionamiento,
+  aPayloadReserva,
+  aReputacionConductor,
+  aResenaDenunciada,
+  aReserva,
+  aVehiculo,
+} from './api.mapeo';
 
 const BASE: NuevoEstacionamiento = {
   nombre: 'Cochera Centro',
@@ -72,7 +82,12 @@ describe('aEstacionamiento', () => {
       destacado: false,
       nivel: null,
       insignias: [],
+      puntaje: 0,
     });
+  });
+
+  it('mapea el puntaje de reputacion', () => {
+    expect(aEstacionamiento({ ...dto, puntaje_reputacion: 91 }).reputacion.puntaje).toBe(91);
   });
 
   it('mapea la reputacion: promedio, destacado e insignias por codigo', () => {
@@ -213,5 +228,86 @@ describe('aReserva con abono', () => {
 
     expect(reserva.modalidad).toBe('HORA');
     expect(reserva.abono).toEqual({ id: 'a1', turno: 'MANANA' });
+  });
+});
+
+describe('aReserva: calificacion del conductor', () => {
+  const base = {
+    id_reserva: 'r1', id_conductor: 'c1',
+    inicio: '2026-10-09T11:00:00.000Z', fin: '2026-10-09T13:00:00.000Z',
+    estado: 'FINALIZADA', created_at: '2026-10-08T12:00:00.000Z',
+    ingreso_real: null, egreso_real: null,
+    id_vehiculo: 'v1', patente: 'AB123CD', marca: null, modelo: null, id_tipo_vehiculo: 1,
+    id_cochera: 'k1', cochera: 'P-1', cochera_sector: null, cochera_cubierta: false,
+    id_estacionamiento: 'e1', estacionamiento: 'Centro', direccion: 'Calle 1',
+    precio_total: 4000, modalidad: 'HORA', motivo_reasignacion: null,
+    id_abono: null, turno_abono: null,
+  } as ReservaDto;
+
+  it('mapea la reputacion del conductor y lo que le puso el propietario', () => {
+    const reserva = aReserva({
+      ...base,
+      conductor_promedio: 4.5,
+      conductor_calificaciones: 2,
+      calificacion_al_conductor: 5,
+      conductor_calificable: false,
+    });
+
+    expect(reserva.reputacionConductor).toEqual({ promedio: 4.5, cantidad: 2 });
+    expect(reserva.calificacionAlConductor).toBe(5);
+    expect(reserva.conductorCalificable).toBe(false);
+  });
+
+  it('sin esos campos: sin calificaciones y no calificable', () => {
+    const reserva = aReserva(base);
+
+    expect(reserva.reputacionConductor).toEqual({ promedio: null, cantidad: 0 });
+    expect(reserva.calificacionAlConductor).toBeNull();
+    expect(reserva.conductorCalificable).toBe(false);
+  });
+});
+
+describe('denuncia de reseñas', () => {
+  const denunciada = {
+    id_calificacion: 'q1', autor: 'CONDUCTOR' as const, puntaje: 4, promedio: 4.2,
+    etiquetas: ['MUY_LIMPIO'], comentario: 'Bien', created_at: '2026-11-01T12:00:00Z',
+    oculta: false, denuncia_estado: 'PENDIENTE' as const, denuncia_motivo: 'FALSA' as const,
+    denuncia_detalle: 'No estuvo', denunciada_at: '2026-11-02T12:00:00Z', moderada_at: null,
+    id_estacionamiento: 'e1', estacionamiento: 'Centro', id_conductor: 'c1', conductor_nombre: 'Ana Paz',
+  };
+
+  it('aResenaDenunciada: la nota del conductor es el promedio de las categorias', () => {
+    const resena = aResenaDenunciada(denunciada);
+    expect(resena.nota).toBe(4.2);
+    expect(resena.autor).toBe('CONDUCTOR');
+    expect(resena.motivo).toBe('FALSA');
+    expect(resena.detalle).toBe('No estuvo');
+    expect(resena.estacionamiento).toEqual({ id: 'e1', nombre: 'Centro' });
+    expect(resena.conductor).toEqual({ id: 'c1', nombre: 'Ana Paz' });
+    expect(resena.estado).toBe('PENDIENTE');
+  });
+
+  it('aResenaDenunciada: la del propietario usa el puntaje', () => {
+    expect(aResenaDenunciada({ ...denunciada, autor: 'PROPIETARIO', puntaje: 2, promedio: null }).nota).toBe(2);
+  });
+
+  it('aOpinion: trae el estado de la denuncia', () => {
+    const base = { id_calificacion: 'q1', autor: 'Ana P.', created_at: '2026-11-01T12:00:00Z', promedio: 4, comentario: null, etiquetas: [] };
+    expect(aOpinion({ ...base, denuncia_estado: 'PENDIENTE' }).denunciaEstado).toBe('PENDIENTE');
+    expect(aOpinion(base).denunciaEstado).toBeNull();
+  });
+
+  it('aReputacionConductor: mapea las reseñas recibidas', () => {
+    const reputacion = aReputacionConductor({
+      promedio: 4, cantidad: 1, etiquetas: [{ codigo: 'PUNTUAL', cantidad: 1 }],
+      resenas: [{
+        id_calificacion: 'q2', puntaje: 4, etiquetas: ['PUNTUAL'], comentario: 'Llegó a horario',
+        created_at: '2026-11-01T12:00:00Z', estacionamiento: 'Centro', denuncia_estado: null,
+      }],
+    });
+    expect(reputacion.resenas).toEqual([{
+      id: 'q2', puntaje: 4, etiquetas: ['PUNTUAL'], comentario: 'Llegó a horario',
+      creadaEn: '2026-11-01T12:00:00Z', estacionamiento: 'Centro', denunciaEstado: null,
+    }]);
   });
 });

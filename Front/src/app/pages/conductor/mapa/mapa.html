@@ -371,7 +371,7 @@
       </div>
     </div>
 
-    <!-- Orden: dos opciones, una u otra -->
+    <!-- Orden: una opcion por vez -->
     <div class="filtros__bloque filtros__bloque--chips">
       <span class="filtros__titulo" id="filtros-orden">Ordenar por</span>
       <div class="segmentado" role="group" aria-labelledby="filtros-orden">
@@ -383,7 +383,7 @@
             [attr.aria-pressed]="panel().orden === opcion.orden"
             (click)="cambiar({ orden: opcion.orden })"
           >
-            <ui-icono [nombre]="opcion.orden === 'DISTANCIA' ? 'explorar' : 'moneda'" [tamano]="15" />
+            <ui-icono [nombre]="iconoOrden[opcion.orden]" [tamano]="15" />
             {{ opcion.texto }}
           </button>
         }

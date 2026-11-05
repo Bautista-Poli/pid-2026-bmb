@@ -36,6 +36,7 @@ const NAVEGACION: Record<RolUsuario, ItemNavegacion[]> = {
     { ruta: '/admin/tablero', etiqueta: 'Inicio', icono: 'inicio' },
     { ruta: '/admin/pendientes', etiqueta: 'Revisión', icono: 'estacionamiento' },
     { ruta: '/admin/disputas', etiqueta: 'Disputas', icono: 'alerta' },
+    { ruta: '/admin/resenas', etiqueta: 'Reseñas', icono: 'estrella' },
     { ruta: '/admin/perfil', etiqueta: 'Configuración', icono: 'configuracion' },
   ],
 };

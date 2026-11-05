@@ -304,6 +304,19 @@
                           }
                         </div>
                       }
+                      <div>
+                        @if (opinion.denunciaEstado; as estado) {
+                          <span class="text-[12px] text-plomo">{{ textoEstadoDenuncia[estado] }}</span>
+                        } @else {
+                          <button
+                            type="button"
+                            class="text-[12px] font-semibold text-plomo underline-offset-2 hover:text-ocupada hover:underline"
+                            (click)="aDenunciar.set(opinion.id)"
+                          >
+                            Denunciar
+                          </button>
+                        }
+                      </div>
                     </li>
                   }
                 </ul>
@@ -323,3 +336,10 @@
     </div>
   }
 </div>
+
+<app-denunciar-resena
+  [calificacionId]="aDenunciar()"
+  (cerrado)="aDenunciar.set(null)"
+  (denunciada)="opinionDenunciada()"
+  (fallo)="recurso.reload()"
+/>

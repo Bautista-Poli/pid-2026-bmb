@@ -8,6 +8,7 @@ import {
   validarAprobacion,
   validarFiltroAdmin,
   validarFiltroIncidencias,
+  validarFiltroResenas,
   validarMensajeModeracion,
   validarRechazo,
   validarResolucionModeracion,
@@ -41,6 +42,11 @@ router.patch(
   validate(validarResolucionModeracion),
   adminController.resolverIncidencia,
 );
+
+// Moderacion de reseñas denunciadas: desestimar u ocultar.
+router.get('/resenas', validate(validarFiltroResenas, 'query'), adminController.listarResenas);
+router.patch('/resenas/:id/desestimar', adminController.desestimarResena);
+router.patch('/resenas/:id/ocultar', adminController.ocultarResena);
 
 // Dashboard: lo que hay para revisar, conflictos y actividad de la plataforma.
 router.get('/estadisticas', validate(validarPeriodo, 'query'), adminController.estadisticas);

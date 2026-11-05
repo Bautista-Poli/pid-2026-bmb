@@ -115,11 +115,18 @@ export class EstacionamientoService {
 const distancia = (estacionamiento: Estacionamiento) =>
   estacionamiento.distanciaKm ?? Number.MAX_VALUE;
 
+const sinCalificar = (estacionamiento: Estacionamiento) => (estacionamiento.reputacion.cantidad === 0 ? 1 : 0);
+
 const COMPARADORES: Record<OrdenEstacionamiento, (a: Estacionamiento, b: Estacionamiento) => number> =
   {
     DISTANCIA: (a, b) => distancia(a) - distancia(b),
     PRECIO: (a, b) =>
       (a.tarifas.hora ?? Number.MAX_VALUE) - (b.tarifas.hora ?? Number.MAX_VALUE),
+    // Sin calificaciones el puntaje supone un 4: van despues de los calificados.
+    REPUTACION: (a, b) =>
+      sinCalificar(a) - sinCalificar(b) ||
+      b.reputacion.puntaje - a.reputacion.puntaje ||
+      distancia(a) - distancia(b),
   };
 
 /** Con `origen`, calcula la distancia de cada estacionamiento; si no tiene coordenadas, queda sin distancia. */
@@ -146,10 +153,10 @@ export function ordenarEstacionamientos(
   const comparar = COMPARADORES[orden ?? 'DISTANCIA'];
   // Los que no se pueden usar van siempre al final, sea cual sea el orden. Por
   // cercania (el orden por defecto) los "Anfitrion destacado" van primero; si
-  // pidio el mas barato, manda el precio.
+  // pidio el mas barato o el mejor calificado, manda ese criterio.
   const alFinal = (e: Estacionamiento) => (estadoDisponibilidad(e) === 'NO_DISPONIBLE' ? 1 : 0);
-  const destacadoPrimero = (e: Estacionamiento) =>
-    orden === 'PRECIO' || !e.reputacion.destacado ? 1 : 0;
+  const porCercania = (orden ?? 'DISTANCIA') === 'DISTANCIA';
+  const destacadoPrimero = (e: Estacionamiento) => (porCercania && e.reputacion.destacado ? 0 : 1);
   return [...items].sort(
     (a, b) => alFinal(a) - alFinal(b) || destacadoPrimero(a) - destacadoPrimero(b) || comparar(a, b),
   );

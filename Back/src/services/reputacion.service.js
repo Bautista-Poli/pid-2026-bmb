@@ -17,6 +17,7 @@
 // promedio >= 4,5 (tambien con ese minimo).
 import { query } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
+import { PLAZO_CALIFICACION_DIAS } from './calificacion.service.js';
 
 export const UMBRAL_DESTACADO = 80;
 export const MINIMO_CALIFICACIONES = 5;
@@ -71,6 +72,18 @@ export const ETIQUETAS = Object.freeze([
 
 export const CODIGOS_ETIQUETA = ETIQUETAS.map((e) => e.codigo);
 
+/** Etiquetas que puede marcar el propietario al calificar al conductor. */
+export const ETIQUETAS_CONDUCTOR = Object.freeze([
+  { codigo: 'PUNTUAL', positiva: true },
+  { codigo: 'RESPETUOSO', positiva: true },
+  { codigo: 'CUIDO_LA_COCHERA', positiva: true },
+  { codigo: 'LLEGO_TARDE', positiva: false },
+  { codigo: 'SE_EXCEDIO', positiva: false },
+  { codigo: 'NO_AVISO_AUSENCIA', positiva: false },
+]);
+
+export const CODIGOS_ETIQUETA_CONDUCTOR = ETIQUETAS_CONDUCTOR.map((e) => e.codigo);
+
 /**
  * Nota general de una calificacion: el promedio de las cinco categorias si las
  * tiene, o su `puntaje` (las que se cargan sin detalle). Solo cuentan las del
@@ -78,7 +91,8 @@ export const CODIGOS_ETIQUETA = ETIQUETAS.map((e) => e.codigo);
  */
 const PROMEDIO_FILA = (a) =>
   `COALESCE((${a}.limpieza + ${a}.infraestructura + ${a}.atencion + ${a}.seguridad + ${a}.acceso) / 5.0, ${a}.puntaje)`;
-const DEL_CONDUCTOR = (a) => `${a}.autor = 'CONDUCTOR'`;
+// Las ocultas por moderacion (denuncia de reseñas) no cuentan ni se muestran.
+const DEL_CONDUCTOR = (a) => `${a}.autor = 'CONDUCTOR' AND NOT ${a}.oculta`;
 
 /**
  * `LEFT JOIN LATERAL ... AS rep` con la reputacion del estacionamiento `e` en
@@ -155,7 +169,7 @@ export function lateralReputacion(desde, hasta, alias = 'rep') {
 /** Columnas publicas de la reputacion para la busqueda y el detalle. */
 export const COLUMNAS_REPUTACION = `
   rep.cal_cantidad AS calificaciones,
-  rep.puntaje AS reputacion_puntaje,
+  rep.puntaje AS puntaje_reputacion,
   rep.cal_con_detalle AS calificaciones_con_detalle,
   ROUND(rep.prom_general::numeric, 1)::float AS calificacion_promedio,
   rep.prom_limpieza, rep.prom_infraestructura, rep.prom_atencion, rep.prom_seguridad, rep.prom_acceso,
@@ -176,6 +190,68 @@ export const ES_DESTACADO = `(rep.puntaje >= ${UMBRAL_DESTACADO} AND rep.cal_can
 
 const redondear = (valor, decimales = 1) =>
   valor == null ? null : Math.round(valor * 10 ** decimales) / 10 ** decimales;
+
+/* ------------------------ reputacion del conductor ------------------------ */
+
+/**
+ * `LEFT JOIN LATERAL ... AS rc` con lo que le pusieron los propietarios al
+ * conductor `idConductor` (expresion SQL), de toda su historia: `rc.promedio`
+ * (null sin calificaciones) y `rc.cantidad`, en una sola pasada.
+ */
+export const lateralReputacionConductor = (idConductor) => `
+  LEFT JOIN LATERAL (
+    SELECT ROUND(AVG(qc.puntaje)::numeric, 1)::float AS promedio, COUNT(*)::int AS cantidad
+      FROM calificacion qc
+     WHERE qc.id_conductor = ${idConductor} AND qc.autor = 'PROPIETARIO' AND NOT qc.oculta
+  ) rc ON TRUE`;
+
+/**
+ * Reseñas que el conductor ya puede ver: las de reservas que el califico, o
+ * cuyo plazo para calificar vencio. Antes no, para que no vea la nota del
+ * propietario y responda en consecuencia al calificar el estacionamiento.
+ */
+export const RESENA_VISIBLE_PARA_EL_CONDUCTOR = `(
+  EXISTS (SELECT 1 FROM calificacion qq WHERE qq.id_reserva = r.id_reserva AND qq.autor = 'CONDUCTOR')
+  OR (r.estado = 'FINALIZADA' AND r.egreso_real <= now() - make_interval(days => ${PLAZO_CALIFICACION_DIAS}))
+  OR (r.estado = 'NO_SHOW' AND r.fin <= now() - make_interval(days => ${PLAZO_CALIFICACION_DIAS}))
+)`;
+
+/**
+ * Promedio, cantidad y las 3 etiquetas mas marcadas por los propietarios, y
+ * las ultimas 20 reseñas que ya puede ver (ver RESENA_VISIBLE_PARA_EL_CONDUCTOR).
+ */
+export async function reputacionDelConductor(idConductor) {
+  const [{ rows: resumen }, { rows: etiquetas }, { rows: resenas }] = await Promise.all([
+    query(`SELECT rc.promedio, rc.cantidad FROM (SELECT 1) x ${lateralReputacionConductor('$1')}`, [idConductor]),
+    query(
+      `SELECT etiqueta AS codigo, COUNT(*)::int AS cantidad
+         FROM calificacion qc, unnest(qc.etiquetas) AS etiqueta
+        WHERE qc.id_conductor = $1 AND qc.autor = 'PROPIETARIO' AND NOT qc.oculta
+        GROUP BY etiqueta
+        ORDER BY cantidad DESC, etiqueta
+        LIMIT 3`,
+      [idConductor],
+    ),
+    query(
+      `SELECT qc.id_calificacion, qc.puntaje, qc.etiquetas, qc.comentario, qc.created_at,
+              e.nombre AS estacionamiento, qc.denuncia_estado::text AS denuncia_estado
+         FROM calificacion qc
+         JOIN reserva r         ON r.id_reserva = qc.id_reserva
+         JOIN estacionamiento e ON e.id_estacionamiento = qc.id_estacionamiento
+        WHERE qc.id_conductor = $1 AND qc.autor = 'PROPIETARIO' AND NOT qc.oculta
+          AND ${RESENA_VISIBLE_PARA_EL_CONDUCTOR}
+        ORDER BY qc.created_at DESC
+        LIMIT 20`,
+      [idConductor],
+    ),
+  ]);
+  return {
+    promedio: resumen[0].promedio,
+    cantidad: resumen[0].cantidad,
+    etiquetas,
+    resenas,
+  };
+}
 
 /**
  * Insignias a partir de destacado y los promedios por categoria. `conDetalle`
@@ -209,8 +285,8 @@ export function darFormaReputacion(fila) {
   const conDetalle = fila.calificaciones_con_detalle ?? 0;
   delete fila.calificaciones_con_detalle;
   fila.calificaciones ??= 0;
-  fila.nivel = nivelDe(fila.reputacion_puntaje, fila.calificaciones);
-  delete fila.reputacion_puntaje;
+  fila.puntaje_reputacion = Number(fila.puntaje_reputacion ?? 0);
+  fila.nivel = nivelDe(fila.puntaje_reputacion, fila.calificaciones);
   fila.destacado = Boolean(fila.destacado);
   fila.calificacion_categorias = conDetalle > 0 ? promedios : null;
   fila.insignias = insigniasDe({ destacado: fila.destacado, conDetalle, promedios });
@@ -288,6 +364,7 @@ export async function delEstacionamiento(idEstacionamiento, idPropietario, { dia
     ),
     query(
       `SELECT q.id_calificacion, q.created_at, q.comentario, q.etiquetas,
+              q.denuncia_estado::text AS denuncia_estado,
               ROUND(${PROMEDIO_FILA('q')}::numeric, 1)::float AS promedio,
               u.nombre, u.apellido
          FROM calificacion q
@@ -368,6 +445,7 @@ export async function delEstacionamiento(idEstacionamiento, idPropietario, { dia
       promedio: f.promedio,
       comentario: f.comentario,
       etiquetas: f.etiquetas,
+      denuncia_estado: f.denuncia_estado,
     })),
   };
 }

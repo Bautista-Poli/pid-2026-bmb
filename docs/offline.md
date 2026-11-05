@@ -6,7 +6,7 @@ Con `OFFLINE=true` el back no usa ningún servicio externo:
 |---|---|---|
 | Base de datos | Neon | Postgres instalado en la máquina (Homebrew, **sin Docker**) |
 | Fotos | Cloudinary | Disco: `Back/datos-locales/fotos/<public_id>.<ext>`, servidas por `/api/fotos-locales/...` |
-| Mapa | Mosaicos de CARTO / OSM | `Back/datos-locales/mapa/amba.pmtiles` (Protomaps, AMBA hasta zoom 15, ~46 MB) |
+| Mapa | Mosaicos de CARTO / OSM | `Back/datos-locales/mapa/caba.pmtiles` (Protomaps, solo CABA hasta zoom 15, ~13 MB) |
 | Direcciones | Georef / Nominatim / Photon | No se consultan: provincia de una lista fija, ciudad y calle a mano, y el propietario marca el punto en el mapa. El buscador del mapa busca barrios y estacionamientos de la base |
 | Fuente Inter | — | Viene empaquetada en el front (`@fontsource/inter`), online y offline |
 
@@ -36,7 +36,7 @@ base de producción, con datos personales.
 | `offline:copiar` | `pg_dump` de producción a `datos-locales/produccion.dump` | Sí |
 | `offline:restaurar` | Carga el dump en la base local (**la borra antes**) y vuelve a migrar | No |
 | `offline:fotos` | Baja de Cloudinary las fotos que referencia la base (las que ya están no) | Sí |
-| `offline:mapa` | Recorta el mapa de AMBA del último build de Protomaps | Sí |
+| `offline:mapa` | Recorta el mapa de CABA del último build de Protomaps | Sí |
 
 Los scripts que escriben en la base se niegan a correr si `DATABASE_URL` no es
 `localhost`, así nunca pisan una base remota.

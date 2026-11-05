@@ -3,7 +3,7 @@ import { environment } from '../../environments/environment';
 
 /*
  * El fondo de los mapas de Leaflet (mapa del conductor y selector de ubicacion):
- * mosaicos de CARTO u OpenStreetMap, o en modo offline el mapa local de AMBA.
+ * mosaicos de CARTO u OpenStreetMap, o en modo offline el mapa local de CABA.
  */
 
 const CLAVE_CARTO = environment.mapa.claveCarto;
@@ -28,11 +28,11 @@ const ATRIBUCION = CLAVE_CARTO
   : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
 
 /**
- * Modo offline: el mapa de AMBA en un solo archivo (Protomaps, datos de
+ * Modo offline: el mapa de CABA en un solo archivo (Protomaps, datos de
  * OpenStreetMap) que sirve el back (`npm run offline:mapa`, ver docs/offline.md).
  * Trae datos hasta zoom 15; mas cerca se agranda lo de ese nivel.
  */
-const MAPA_LOCAL = '/api/mapa/amba.pmtiles';
+const MAPA_LOCAL = '/api/mapa/caba.pmtiles';
 const ZOOM_MAXIMO_DATOS_LOCALES = 15;
 const ATRIBUCION_LOCAL = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · Protomaps';
 

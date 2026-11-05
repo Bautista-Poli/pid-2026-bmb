@@ -1,14 +1,14 @@
-// Baja el mapa de AMBA a datos-locales/mapa/amba.pmtiles (npm run offline:mapa; necesita
+// Baja el mapa de CABA a datos-locales/mapa/caba.pmtiles (npm run offline:mapa; necesita
 // internet y la CLI `pmtiles`). Es un recorte del mapa mundial de Protomaps (datos de
-// OpenStreetMap), ~50 MB, que el front dibuja sin pedir nada afuera.
+// OpenStreetMap) que el front dibuja sin pedir nada afuera.
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { config } from '../config/env.js';
 import { correr, fallo } from './comun.js';
 
-// CABA y conurbano, con margen: oeste, sur, este, norte.
-const BBOX = '-59.0,-35.0,-57.85,-34.3';
+// La Ciudad de Buenos Aires con un margen chico: oeste, sur, este, norte.
+const BBOX = '-58.54,-34.71,-58.33,-34.52';
 // Hasta zoom 15 se leen los nombres de las calles; 16 o mas triplica el tamano.
 const ZOOM_MAXIMO = 15;
 
@@ -22,7 +22,7 @@ async function ultimoBuild() {
 
 try {
   await mkdir(config.datosLocales.mapa, { recursive: true });
-  const destino = join(config.datosLocales.mapa, 'amba.pmtiles');
+  const destino = join(config.datosLocales.mapa, 'caba.pmtiles');
   const origen = await ultimoBuild();
   console.log(`[offline] recortando ${origen} -> ${destino}`);
   await correr('pmtiles', ['extract', origen, destino, `--bbox=${BBOX}`, `--maxzoom=${ZOOM_MAXIMO}`]);

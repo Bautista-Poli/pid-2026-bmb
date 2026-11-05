@@ -3,6 +3,7 @@ import { ApiError } from '../utils/ApiError.js';
 import { normalizarCodigo } from '../utils/codigoAcceso.js';
 import {
   FRANJAS_ESTANDAR,
+  HORA_LOCAL,
   instanteLocal,
   motivoFueraDeHorario,
   motivoIngresoFueraDeHorario,
@@ -616,13 +617,6 @@ async function aplicarEgreso(client, reserva) {
 
 const ACCIONES_ACCESO = Object.freeze({ INGRESO: 'INGRESO', EGRESO: 'EGRESO' });
 
-const HORA_LOCAL = new Intl.DateTimeFormat('es-AR', {
-  timeZone: 'America/Argentina/Buenos_Aires',
-  hour: '2-digit',
-  minute: '2-digit',
-  hour12: false,
-});
-
 /** Mismo mensaje para un codigo inexistente, mal formado o de un estacionamiento ajeno. */
 const CODIGO_INVALIDO = 'El codigo no corresponde a ninguna reserva de tus estacionamientos';
 
@@ -836,6 +830,19 @@ async function ingresosDelDia(idEstacionamiento, horarios, { fecha, id_tipo_vehi
  * confirmacion/ingreso/egreso que este pasando al mismo tiempo.
  */
 
+/**
+ * Procesa cada reserva vencida en su propia transaccion: `procesar(client, id)`
+ * la vuelve a buscar con FOR UPDATE (pudo cambiar desde la consulta) y devuelve
+ * true si la movio. Devuelve cuantas se movieron.
+ */
+async function procesarVencidas(ids, procesar) {
+  let movidas = 0;
+  for (const id of ids) {
+    if (await withTransaction((client) => procesar(client, id))) movidas += 1;
+  }
+  return movidas;
+}
+
 /** PENDIENTE que nunca se confirmo y ya empezo su franja: se cancela. */
 export async function vencerPendientesSinConfirmar() {
   const { rows } = await query(
@@ -843,22 +850,17 @@ export async function vencerPendientesSinConfirmar() {
     [ESTADOS_RESERVA.PENDIENTE],
   );
 
-  let canceladas = 0;
-  for (const { id_reserva } of rows) {
-    const proceso = await withTransaction(async (client) => {
-      const { rows: filas } = await client.query(
-        `SELECT id_reserva, estado FROM reserva WHERE id_reserva = $1 AND estado = $2 FOR UPDATE`,
-        [id_reserva, ESTADOS_RESERVA.PENDIENTE],
-      );
-      if (!filas[0]) return false;
-      await cambiarEstado(client, filas[0], ESTADOS_RESERVA.CANCELADA, {
-        canceladaPor: ORIGENES_CANCELACION.SISTEMA,
-      });
-      return true;
+  return procesarVencidas(rows.map((r) => r.id_reserva), async (client, id) => {
+    const { rows: filas } = await client.query(
+      `SELECT id_reserva, estado FROM reserva WHERE id_reserva = $1 AND estado = $2 FOR UPDATE`,
+      [id, ESTADOS_RESERVA.PENDIENTE],
+    );
+    if (!filas[0]) return false;
+    await cambiarEstado(client, filas[0], ESTADOS_RESERVA.CANCELADA, {
+      canceladaPor: ORIGENES_CANCELACION.SISTEMA,
     });
-    if (proceso) canceladas += 1;
-  }
-  return canceladas;
+    return true;
+  });
 }
 
 /**
@@ -875,20 +877,15 @@ export async function vencerAusentes() {
     [ESTADOS_RESERVA.CONFIRMADA, TOLERANCIA_NO_SHOW_MS],
   );
 
-  let ausentes = 0;
-  for (const { id_reserva } of rows) {
-    const proceso = await withTransaction(async (client) => {
-      const { rows: filas } = await client.query(
-        `SELECT id_reserva, estado FROM reserva
-          WHERE id_reserva = $1 AND estado = $2 AND ingreso_real IS NULL
-          FOR UPDATE`,
-        [id_reserva, ESTADOS_RESERVA.CONFIRMADA],
-      );
-      if (!filas[0]) return false;
-      await cambiarEstado(client, filas[0], ESTADOS_RESERVA.NO_SHOW);
-      return true;
-    });
-    if (proceso) ausentes += 1;
-  }
-  return ausentes;
+  return procesarVencidas(rows.map((r) => r.id_reserva), async (client, id) => {
+    const { rows: filas } = await client.query(
+      `SELECT id_reserva, estado FROM reserva
+        WHERE id_reserva = $1 AND estado = $2 AND ingreso_real IS NULL
+        FOR UPDATE`,
+      [id, ESTADOS_RESERVA.CONFIRMADA],
+    );
+    if (!filas[0]) return false;
+    await cambiarEstado(client, filas[0], ESTADOS_RESERVA.NO_SHOW);
+    return true;
+  });
 }

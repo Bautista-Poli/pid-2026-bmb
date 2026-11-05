@@ -20,6 +20,7 @@
 // la acepta (o lo retira); si no se ponen de acuerdo, se denuncia.
 import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
+import { HORA_LOCAL, HOY_LOCAL_SQL } from '../utils/horario.js';
 import { ESTADOS_RESERVA, ROLES } from '../utils/roles.js';
 import { buscarCocheraLibre } from './cochera.service.js';
 import { PAGADO_RESERVA, asegurarDentroDelTope, crearDevolucion } from './devolucion.service.js';
@@ -56,13 +57,6 @@ const MARGEN_EXCESO_MS = 15 * 60 * 1000;
 // La reserva siguiente se protege cuando ya puede ingresar (30 min antes de su
 // inicio, igual que MARGEN_INGRESO_MS en reserva.service.js).
 const ANTICIPACION_REASIGNACION_MS = 30 * 60 * 1000;
-
-const HORA = new Intl.DateTimeFormat('es-AR', {
-  timeZone: 'America/Argentina/Buenos_Aires',
-  hour: '2-digit',
-  minute: '2-digit',
-  hour12: false,
-});
 
 const AVISO_REASIGNADA_POR_EXCESO =
   'Te reasignamos a otra cochera: la tuya sigue ocupada por el vehiculo anterior.';
@@ -120,7 +114,7 @@ export async function detectarExcedidos() {
         idEstacionamiento: r.id_estacionamiento,
         mensaje:
           `El vehiculo ${r.patente} tenia que salir de la cochera ${r.cochera} a las ` +
-          `${HORA.format(r.fin)} y sigue adentro. La cochera queda bloqueada hasta que se registre el egreso.`,
+          `${HORA_LOCAL.format(r.fin)} y sigue adentro. La cochera queda bloqueada hasta que se registre el egreso.`,
       }),
     );
     if (id) creadas += 1;
@@ -201,7 +195,7 @@ export async function protegerReservasSiguientes() {
         idReserva: reserva.id_reserva,
         idEstacionamiento: reserva.id_estacionamiento,
         mensaje:
-          `La reserva de ${reserva.patente} (${HORA.format(reserva.inicio)} a ${HORA.format(reserva.fin)}) ` +
+          `La reserva de ${reserva.patente} (${HORA_LOCAL.format(reserva.inicio)} a ${HORA_LOCAL.format(reserva.fin)}) ` +
           `no se pudo reasignar: la cochera ${reserva.cochera} sigue ocupada por el vehiculo anterior ` +
           'y no hay otra libre en ese horario.',
       });
@@ -230,7 +224,7 @@ export async function registrarEgresoEnIncidencia(client, idReserva, egreso = ne
     client,
     rows[0].id_incidencia,
     SISTEMA,
-    `El vehiculo egreso a las ${HORA.format(egreso)}, ${minutos} min despues de su horario. La cochera quedo libre.`,
+    `El vehiculo egreso a las ${HORA_LOCAL.format(egreso)}, ${minutos} min despues de su horario. La cochera quedo libre.`,
   );
 }
 
@@ -544,7 +538,6 @@ export async function retirar(usuario, idIncidencia) {
   return obtener(usuario, idIncidencia);
 }
 
-const HOY_LOCAL = `(now() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date`;
 const ESTADOS_RECLAMABLES = [
   ESTADOS_RESERVA.CONFIRMADA,
   ESTADOS_RESERVA.ACTIVA,
@@ -577,7 +570,7 @@ async function objetoReclamado(client, idConductor, { id_reserva: idReserva, id_
   }
 
   const { rows } = await client.query(
-    `SELECT id_conductor, id_estacionamiento, hasta < ${HOY_LOCAL} - $2::int AS vencido
+    `SELECT id_conductor, id_estacionamiento, hasta < ${HOY_LOCAL_SQL} - $2::int AS vencido
        FROM abono WHERE id_abono = $1
        FOR UPDATE`,
     [idAbono, DIAS_PARA_RECLAMAR],

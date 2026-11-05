@@ -1,5 +1,6 @@
 import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
+import { armarSet } from '../utils/sql.js';
 import { ESTADOS_COCHERA, ESTADOS_RESERVA, ESTADOS_VIGENTES } from '../utils/roles.js';
 import { cocheraReservable, finEfectivo, sinSolapamiento } from '../utils/solapamiento.js';
 import { asegurarPropiedad } from './estacionamiento.service.js';
@@ -144,13 +145,8 @@ export async function actualizar(idEstacionamiento, idPropietario, idCochera, da
     throw ApiError.badRequest('Para desactivar una cochera usa la baja (DELETE), no el estado');
   }
 
-  const asignaciones = [];
   const parametros = [];
-  for (const campo of CAMPOS_EDITABLES) {
-    if (datos[campo] === undefined) continue;
-    parametros.push(datos[campo]);
-    asignaciones.push(`${campo} = $${parametros.length}`);
-  }
+  const asignaciones = armarSet(CAMPOS_EDITABLES, datos, parametros);
   parametros.push(idCochera, idEstacionamiento);
 
   let rows;

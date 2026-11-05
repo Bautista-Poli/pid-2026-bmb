@@ -1,5 +1,6 @@
 import { query } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
+import { ZONA_HORARIA } from '../utils/horario.js';
 
 /**
  * Estadisticas del propietario para un periodo de dias locales (hora
@@ -16,7 +17,7 @@ import { ApiError } from '../utils/ApiError.js';
  *   - Ingresos: FINALIZADA y ACTIVA (las de abono valen 0) + abonos vendidos.
  */
 
-export const ZONA = `'America/Argentina/Buenos_Aires'`;
+export const ZONA = `'${ZONA_HORARIA}'`;
 const DIA = 86_400_000;
 
 const OCUPAN = `('PENDIENTE', 'CONFIRMADA', 'ACTIVA', 'FINALIZADA')`;

@@ -1,5 +1,7 @@
 import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
+import { armarSet } from '../utils/sql.js';
+import { ZONA_HORARIA } from '../utils/horario.js';
 import { sinSolapamiento } from '../utils/solapamiento.js';
 import { CAMPOS_TARIFA } from '../utils/tarifas.js';
 import { ESTADOS_APROBACION, ESTADOS_COCHERA, ESTADOS_VIGENTES } from '../utils/roles.js';
@@ -98,17 +100,14 @@ export const AGREGADOS = `
     LIMIT 1) AS foto_actualizada
 `;
 
-/** Zona horaria del negocio (ver utils/horario.js: UTC-3 todo el anio). */
-const ZONA_LOCAL = `'America/Argentina/Buenos_Aires'`;
-
 /**
  * Condicion SQL "el estacionamiento `e` atiende durante [inicio, fin)", en hora
  * argentina y el mismo dia. Sin horarios cargados no se restringe (igual que al
  * reservar, ver `motivoFueraDeHorario`).
  */
 function abiertoEntre(inicio, fin) {
-  const desde = `(${inicio} AT TIME ZONE ${ZONA_LOCAL})`;
-  const hasta = `(${fin} AT TIME ZONE ${ZONA_LOCAL})`;
+  const desde = `(${inicio} AT TIME ZONE '${ZONA_HORARIA}')`;
+  const hasta = `(${fin} AT TIME ZONE '${ZONA_HORARIA}')`;
   return `(
     NOT EXISTS (SELECT 1 FROM horario h WHERE h.id_estacionamiento = e.id_estacionamiento)
     OR EXISTS (
@@ -493,14 +492,8 @@ export async function actualizar(idEstacionamiento, idPropietario, entrada) {
 
   await withTransaction(async (client) => {
     await asegurarAlgunaTarifa(client, idEstacionamiento, datos);
-    const asignaciones = [];
     const parametros = [];
-
-    for (const campo of CAMPOS_EDITABLES) {
-      if (datos[campo] === undefined) continue;
-      parametros.push(datos[campo]);
-      asignaciones.push(`${campo} = $${parametros.length}`);
-    }
+    const asignaciones = armarSet(CAMPOS_EDITABLES, datos, parametros);
 
     const { cambio, estado } = await cambiosDeRevision(client, idEstacionamiento, datos);
     if (cambio && estado === ESTADOS_APROBACION.APROBADO) {

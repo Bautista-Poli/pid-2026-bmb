@@ -3,7 +3,7 @@
 // reserva descuenta un uso (ver validarAbonoParaReservar y reserva.service.js).
 import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
-import { partesLocales } from '../utils/horario.js';
+import { HOY_LOCAL_SQL, partesLocales } from '../utils/horario.js';
 import { motivoFueraDeTurno, TURNOS } from '../utils/turnos.js';
 import { aceptaReservas, asegurarPropiedad } from './estacionamiento.service.js';
 
@@ -101,7 +101,6 @@ const DIAS_VIGENCIA = 30;
 const ESTADOS_ABONO = Object.freeze({ VIGENTE: 'VIGENTE', CANCELADO: 'CANCELADO', VENCIDO: 'VENCIDO' });
 
 /** "Hoy" del negocio: la fecha en Argentina, no la del servidor. */
-const HOY_LOCAL = `(now() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date`;
 
 /**
  * `desde`/`hasta` van como texto: pg convierte un DATE en un Date de JS a la
@@ -153,7 +152,7 @@ export async function comprar(idConductor, { id_plan }) {
     const { rows: creado } = await client.query(
       `INSERT INTO abono
          (id_conductor, id_estacionamiento, id_plan, turno, cupos_totales, precio_total, desde, hasta)
-       VALUES ($1, $2, $3, $4, $5, $6, ${HOY_LOCAL}, ${HOY_LOCAL} + $7::int)
+       VALUES ($1, $2, $3, $4, $5, $6, ${HOY_LOCAL_SQL}, ${HOY_LOCAL_SQL} + $7::int)
        RETURNING id_abono`,
       [idConductor, plan.id_estacionamiento, plan.id_plan, plan.turno, plan.cupos, plan.precio, DIAS_VIGENCIA - 1],
     );
@@ -211,7 +210,7 @@ export async function cancelar(idAbono, idConductor) {
 /** Abonos vigentes cuya fecha `hasta` ya paso: los llama el job de vencimientos. */
 export async function vencerAbonos() {
   const { rowCount } = await query(
-    `UPDATE abono SET estado = 'VENCIDO' WHERE estado = 'VIGENTE' AND hasta < ${HOY_LOCAL}`,
+    `UPDATE abono SET estado = 'VENCIDO' WHERE estado = 'VIGENTE' AND hasta < ${HOY_LOCAL_SQL}`,
   );
   return rowCount;
 }

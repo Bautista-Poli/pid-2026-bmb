@@ -3,6 +3,20 @@
 // fechas y horas "locales" que manda el front se interpretan con ese offset fijo.
 
 const OFFSET_LOCAL = '-03:00';
+
+/** Zona horaria del negocio, para `AT TIME ZONE` en SQL y para `Intl`. */
+export const ZONA_HORARIA = 'America/Argentina/Buenos_Aires';
+
+/** La fecha de hoy en Argentina, como expresion SQL. */
+export const HOY_LOCAL_SQL = `(now() AT TIME ZONE '${ZONA_HORARIA}')::date`;
+
+/** "14:05": hora y minutos en Argentina (24 h), para mensajes. */
+export const HORA_LOCAL = new Intl.DateTimeFormat('es-AR', {
+  timeZone: ZONA_HORARIA,
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+});
 const OFFSET_MS = -3 * 60 * 60 * 1000;
 
 /** Franjas que ofrece la pantalla de reserva. */

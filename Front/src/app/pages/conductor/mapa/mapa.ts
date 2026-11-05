@@ -31,10 +31,10 @@ import {
   FechaISO,
   FiltrosEstacionamiento,
   HoraHHmm,
+  ICONO_TIPO_VEHICULO,
   Id,
   Momento,
   OrdenEstacionamiento,
-  TipoVehiculo,
   Vehiculo,
 } from '@app/models';
 import {
@@ -60,7 +60,7 @@ import {
   resumenHorario,
 } from '@app/utils/disponibilidad.util';
 import { minutosAPie } from '@app/utils/distancia.util';
-import { aFechaISO, desdeFechaISO } from '@app/utils/fecha.util';
+import { aFechaISO, diaCorto } from '@app/utils/fecha.util';
 
 /** Tope del rango de precios (por hora). En el tope, el maximo no filtra. */
 const PRECIO_TOPE = 5000;
@@ -88,12 +88,6 @@ const HORAS_MAXIMAS = 12;
 
 /** Estacionamientos por pagina en la lista (en el mapa van todos los de la zona). */
 const POR_PAGINA = 10;
-
-const ICONO_TIPO: Record<TipoVehiculo, NombreIcono> = {
-  AUTO: 'auto',
-  CAMIONETA: 'camioneta',
-  MOTO: 'moto',
-};
 
 /** Sin filtros: ahora, cualquier precio, ordenado por cercania. */
 const PANEL_INICIAL: Panel = {
@@ -176,7 +170,7 @@ export class Mapa {
   private readonly injector = inject(Injector);
 
   protected readonly descripcion = descripcionVehiculo;
-  protected readonly iconoTipo = ICONO_TIPO;
+  protected readonly iconoTipo = ICONO_TIPO_VEHICULO;
   protected readonly etiquetaEstado = ETIQUETA_ESTADO;
   protected readonly claseEstado = CLASE_ESTADO;
   protected readonly precioTope = PRECIO_TOPE;
@@ -526,12 +520,7 @@ export class Mapa {
     const { fecha, desde, horas } = this.aplicado();
     const hasta = desde ? horaFin(desde, horas) : null;
     if (!desde || !hasta) return 'Ahora';
-    const dia = desdeFechaISO(fecha).toLocaleDateString('es-AR', {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
-    });
-    return `${dia.charAt(0).toUpperCase()}${dia.slice(1).replace(/,/g, '')} · ${desde} – ${hasta}`;
+    return `${diaCorto(fecha)} · ${desde} – ${hasta}`;
   });
 
   /** Tocar una tarjeta de la lista abre su ficha. */

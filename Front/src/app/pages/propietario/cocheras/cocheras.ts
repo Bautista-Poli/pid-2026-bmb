@@ -22,19 +22,20 @@ import {
   Icono,
   Miniatura,
   Modal,
-  NombreIcono,
   TonoEtiqueta,
 } from '@app/components/ui';
 import {
   Cochera,
   direccionCorta,
-  EstadoCochera,
   Estacionamiento,
+  EstadoCochera,
   ETIQUETA_ESTADO_COCHERA,
   ETIQUETA_TIPO_VEHICULO,
+  ICONO_TIPO_VEHICULO,
   Id,
   NuevaCochera,
   ReservaDetallada,
+  TIPOS_VEHICULO,
   TipoVehiculo,
 } from '@app/models';
 import { AuthService } from '@app/services/auth.service';
@@ -43,14 +44,6 @@ import { CocheraService } from '@app/services/cochera.service';
 import { EstacionamientoService } from '@app/services/estacionamiento.service';
 import { ReservaService } from '@app/services/reserva.service';
 import { aInstante, desdeFechaISO } from '@app/utils/fecha.util';
-
-const TIPOS: TipoVehiculo[] = ['AUTO', 'MOTO', 'CAMIONETA'];
-
-const ICONO_TIPO: Record<TipoVehiculo, NombreIcono> = {
-  AUTO: 'auto',
-  MOTO: 'moto',
-  CAMIONETA: 'camioneta',
-};
 
 /** Plantas comunes; al elegir una se sugiere tambien el prefijo. */
 const SUGERENCIAS_PLANTA = [
@@ -146,8 +139,8 @@ export class Cocheras {
   /** Desde la ruta con id; sin id, la pantalla muestra el primer estacionamiento. */
   readonly estacionamientoId = input<Id>();
 
-  protected readonly tipos = TIPOS;
-  protected readonly iconoTipo = ICONO_TIPO;
+  protected readonly tipos = TIPOS_VEHICULO;
+  protected readonly iconoTipo = ICONO_TIPO_VEHICULO;
   protected readonly etiquetaTipo = ETIQUETA_TIPO_VEHICULO;
   protected readonly etiquetaEstado = ETIQUETA_ESTADO_COCHERA;
   protected readonly tonoEstado = TONO_ESTADO;

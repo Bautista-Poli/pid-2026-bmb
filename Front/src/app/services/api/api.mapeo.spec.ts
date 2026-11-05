@@ -4,6 +4,7 @@ import {
   aAbono,
   aEstacionamiento,
   aOpinion,
+  aPayloadCochera,
   aPayloadEstacionamiento,
   aPayloadReserva,
   aReputacionConductor,
@@ -306,5 +307,23 @@ describe('denuncia de reseñas', () => {
       id: 'q2', puntaje: 4, etiquetas: ['PUNTUAL'], comentario: 'Llegó a horario',
       creadaEn: '2026-11-01T12:00:00Z', estacionamiento: 'Centro', denunciaEstado: null,
     }]);
+  });
+});
+
+describe('aPayloadCochera', () => {
+  it('alta: todos los campos, con el id del tipo de vehiculo', () => {
+    expect(
+      aPayloadCochera({ identificador: '7', tipoVehiculo: 'MOTO', sector: 'PB', cubierta: true, estado: 'LIBRE' }),
+    ).toEqual({ identificador: '7', id_tipo_vehiculo: 2, sector: 'PB', cubierta: true, estado_actual: 'LIBRE' });
+  });
+
+  it('cambios: solo lo que vino; un sector vacio no se manda', () => {
+    expect(aPayloadCochera({ sector: '' })).toEqual({
+      identificador: undefined,
+      id_tipo_vehiculo: undefined,
+      sector: undefined,
+      cubierta: undefined,
+      estado_actual: undefined,
+    });
   });
 });

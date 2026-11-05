@@ -72,3 +72,9 @@ function aMinutos(hora: HoraHHmm): number {
   const [h, m] = hora.split(':').map(Number);
   return h * 60 + m;
 }
+
+/** "Sáb 3 oct": dia de la semana con mayuscula, numero y mes, sin comas. */
+export function diaCorto(fecha: FechaISO): string {
+  const dia = desdeFechaISO(fecha).toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' });
+  return `${dia.charAt(0).toUpperCase()}${dia.slice(1).replace(/,/g, '')}`;
+}

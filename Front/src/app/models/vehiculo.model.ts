@@ -8,6 +8,16 @@ export const ETIQUETA_TIPO_VEHICULO: Record<TipoVehiculo, string> = {
   MOTO: 'Moto',
 };
 
+/** Los tipos en el orden en que se ofrecen en los formularios y filtros. */
+export const TIPOS_VEHICULO: readonly TipoVehiculo[] = ['AUTO', 'MOTO', 'CAMIONETA'];
+
+/** Icono de `<ui-icono>` para cada tipo de vehiculo. */
+export const ICONO_TIPO_VEHICULO = {
+  AUTO: 'auto',
+  CAMIONETA: 'camioneta',
+  MOTO: 'moto',
+} as const satisfies Record<TipoVehiculo, string>;
+
 /** Vehiculo registrado por un usuario con rol CONDUCTOR. */
 export interface Vehiculo {
   id: Id;

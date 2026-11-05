@@ -12,7 +12,6 @@ import {
   Cochera,
   Estacionamiento,
   EstadoCochera,
-  EstadoReserva,
   FechaHoraISO,
   FranjaAtencion,
   FranjaDisponible,
@@ -37,7 +36,7 @@ import {
 import { aInstante, DIAS_POR_NUMERO, partesLocales } from '@app/utils/fecha.util';
 import { CalificacionDto, ReputacionDto } from './api.dto';
 import { OpinionDto, ReputacionConductorDto, ResenaDenunciadaDto } from './api.dto';
-import { AbonoDto, AccesoReservaDto, IncidenciaDetalladaDto, IncidenciaDto, IncidenciaModeradaDto, MensajeIncidenciaDto, CocheraDto, EstacionamientoDto, EstadoReservaDto, FranjaDto, HorarioDto, PlanAbonoDto, ReservaDto, UsuarioDto, VehiculoDto } from './api.dto';
+import { AbonoDto, AccesoReservaDto, IncidenciaDetalladaDto, IncidenciaDto, IncidenciaModeradaDto, MensajeIncidenciaDto, CocheraDto, EstacionamientoDto, FranjaDto, HorarioDto, PlanAbonoDto, ReservaDto, UsuarioDto, VehiculoDto } from './api.dto';
 
 /*
  * Traduccion entre la API (snake_case, ids de catalogo, instantes ISO) y los
@@ -51,11 +50,10 @@ export const ID_TIPO_VEHICULO: Record<TipoVehiculo, number> = {
   CAMIONETA: 3,
 };
 
-const TIPO_POR_ID: Record<number, TipoVehiculo> = {
-  1: 'AUTO',
-  2: 'MOTO',
-  3: 'CAMIONETA',
-};
+/** El inverso de ID_TIPO_VEHICULO: id del catalogo -> tipo. */
+const TIPO_POR_ID = Object.fromEntries(
+  Object.entries(ID_TIPO_VEHICULO).map(([tipo, id]) => [id, tipo]),
+) as Record<number, TipoVehiculo>;
 
 /* --------------------------------- usuario -------------------------------- */
 
@@ -291,10 +289,11 @@ export function aCochera(dto: CocheraDto): Cochera {
   };
 }
 
-export function aPayloadCochera(datos: NuevaCochera) {
+/** Payload de alta (todos los campos) o de cambios (solo los que vinieron) de una cochera. */
+export function aPayloadCochera(datos: Partial<NuevaCochera>) {
   return {
     identificador: datos.identificador,
-    id_tipo_vehiculo: ID_TIPO_VEHICULO[datos.tipoVehiculo],
+    id_tipo_vehiculo: datos.tipoVehiculo && ID_TIPO_VEHICULO[datos.tipoVehiculo],
     sector: datos.sector || undefined,
     cubierta: datos.cubierta,
     estado_actual: datos.estado,
@@ -310,16 +309,6 @@ export function aPayloadLotes(lotes: LoteCocheras[]) {
       id_tipo_vehiculo: ID_TIPO_VEHICULO[lote.tipoVehiculo],
       cubierta: lote.cubierta,
     })),
-  };
-}
-
-export function aPayloadCambiosCochera(cambios: Partial<NuevaCochera>) {
-  return {
-    identificador: cambios.identificador,
-    id_tipo_vehiculo: cambios.tipoVehiculo && ID_TIPO_VEHICULO[cambios.tipoVehiculo],
-    sector: cambios.sector || undefined,
-    cubierta: cambios.cubierta,
-    estado_actual: cambios.estado,
   };
 }
 

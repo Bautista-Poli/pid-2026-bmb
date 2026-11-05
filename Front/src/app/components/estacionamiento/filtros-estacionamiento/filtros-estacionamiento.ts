@@ -2,13 +2,11 @@ import { ChangeDetectionStrategy, Component, computed, model, signal } from '@an
 import {
   ETIQUETA_TIPO_VEHICULO,
   FiltrosEstacionamiento as Filtros,
-  TipoVehiculo,
+  TIPOS_VEHICULO,
 } from '@app/models';
 import { Boton, CampoBusqueda, Chip, Modal } from '@app/components/ui';
 
 /** Orden de los chips segun el diseno. */
-const TIPOS: TipoVehiculo[] = ['AUTO', 'MOTO', 'CAMIONETA'];
-
 /** Rangos rapidos del panel de precio, al estilo "Precio" de los marketplaces. */
 const RANGOS_PRECIO: { etiqueta: string; minimo: number | null; maximo: number | null }[] = [
   { etiqueta: 'Hasta $1.000', minimo: null, maximo: 1000 },
@@ -32,7 +30,7 @@ const RANGOS_PRECIO: { etiqueta: string; minimo: number | null; maximo: number |
 export class FiltrosEstacionamiento {
   readonly filtros = model.required<Filtros>();
 
-  protected readonly tipos = TIPOS;
+  protected readonly tipos = TIPOS_VEHICULO;
   protected readonly etiquetaTipo = ETIQUETA_TIPO_VEHICULO;
   protected readonly rangos = RANGOS_PRECIO;
 

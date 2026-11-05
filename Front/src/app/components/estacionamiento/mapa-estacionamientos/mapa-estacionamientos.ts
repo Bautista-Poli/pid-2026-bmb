@@ -267,7 +267,7 @@ export class MapaEstacionamientos {
         title: estacionamiento.nombre,
         riseOnHover: true,
         // Los no disponibles quedan debajo: si se pisan, se ve el que sirve.
-        zIndexOffset: activo ? 1000 : estadoDisponibilidad(estacionamiento) === 'NO_DISPONIBLE' ? -500 : 0,
+        zIndexOffset: capaDelPin(activo, estadoDisponibilidad(estacionamiento) === 'NO_DISPONIBLE'),
       });
       pin.on('click', () => this.seleccionar.emit(estacionamiento.id));
       this.capaPines.addLayer(pin);
@@ -370,4 +370,11 @@ function areaDe(mapa: L.Map): AreaMapa {
 function mismoPunto(a: Coordenadas | null | undefined, b: Coordenadas | null | undefined): boolean {
   if (!a || !b) return a === b;
   return a.latitud === b.latitud && a.longitud === b.longitud;
+}
+
+/** El pin elegido va arriba de todo; los no disponibles, debajo de los que sirven. */
+function capaDelPin(activo: boolean, noDisponible: boolean): number {
+  if (activo) return 1000;
+  if (noDisponible) return -500;
+  return 0;
 }

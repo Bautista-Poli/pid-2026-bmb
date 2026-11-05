@@ -25,8 +25,11 @@ const ABREVIATURA: Record<DiaSemana, string> = {
 const esTodoElDia = (franja: FranjaAtencion) =>
   franja.desde === '00:00' && (franja.hasta === '23:59' || franja.hasta === '24:00');
 
-const textoFranja = (franja: FranjaAtencion | undefined) =>
-  !franja ? 'Cerrado' : esTodoElDia(franja) ? '24 h' : `${franja.desde} – ${franja.hasta}`;
+function textoFranja(franja: FranjaAtencion | undefined): string {
+  if (!franja) return 'Cerrado';
+  if (esTodoElDia(franja)) return '24 h';
+  return `${franja.desde} – ${franja.hasta}`;
+}
 
 interface EstadoApertura {
   abierto: boolean;

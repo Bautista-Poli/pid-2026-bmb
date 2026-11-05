@@ -3,7 +3,7 @@
 // el puntaje, las insignias y "Anfitrion destacado" sin juntar calificaciones reales.
 //   npm run db:calificaciones-demo -- "Garage Centro"          (6 calificaciones altas)
 //   npm run db:calificaciones-demo -- "Garage Centro" 3 bajas  (3 calificaciones flojas)
-//   npm run db:calificaciones-demo -- --presentacion            (4 perfiles armados, ver PERFILES)
+//   npm run db:calificaciones-demo -- --presentacion            (un perfil por nivel, ver PERFILES)
 //   npm run db:calificaciones-demo -- --presentacion "A" "B"    (los perfiles en esos, en orden)
 //   npm run db:calificaciones-demo -- --borrar                  (saca todo lo de demo)
 // El estacionamiento se busca por nombre (o por su id). Los usuarios de demo
@@ -47,7 +47,7 @@ async function borrar() {
  */
 const PERFILES = [
   {
-    nombre: 'Anfitrion destacado',
+    nombre: 'Diamante (Anfitrion destacado)',
     calificaciones: [
       [1, [5, 5, 5, 5, 5], ['MUY_LIMPIO', 'BUENA_ATENCION'], 'Impecable, y el encargado super amable.'],
       [2, [5, 5, 5, 5, 5], ['SEGURO'], null],
@@ -65,20 +65,34 @@ const PERFILES = [
     canceladasPorElDueno: 0,
   },
   {
-    // Buen puntaje pero todavia pocas calificaciones: "te falta 1 calificacion".
-    nombre: 'Casi destacado',
+    nombre: 'Esmeralda',
     calificaciones: [
-      [2, [5, 4, 5, 5, 4], ['SEGURO'], 'Todo en orden.'],
-      [5, [5, 5, 4, 5, 5], ['MUY_LIMPIO'], null],
-      [10, [4, 4, 5, 5, 5], ['BUENA_ATENCION'], 'Muy buena atencion.'],
-      [18, [5, 4, 5, 4, 5], [], null],
+      [1, [5, 4, 5, 4, 4], ['BUENA_ATENCION'], 'Muy amables, todo rapido.'],
+      [3, [4, 4, 5, 5, 4], ['SEGURO'], null],
+      [5, [5, 4, 4, 5, 4], ['MUY_LIMPIO'], null],
+      [8, [4, 4, 5, 4, 5], ['FACIL_DE_LLEGAR'], 'Facil de encontrar.'],
+      [12, [5, 4, 4, 4, 4], [], null],
+      [17, [4, 5, 5, 4, 4], ['BUENA_ATENCION'], null],
+    ],
+    vencidas: 0,
+    canceladasPorElDueno: 0,
+  },
+  {
+    nombre: 'Platino',
+    calificaciones: [
+      [2, [4, 4, 4, 4, 4], ['SEGURO'], 'Correcto, sin sorpresas.'],
+      [4, [4, 3, 4, 4, 4], [], null],
+      [7, [4, 4, 5, 4, 3], ['BUENA_ATENCION'], null],
+      [11, [4, 4, 4, 4, 4], [], 'Cumple.'],
+      [15, [4, 3, 4, 5, 4], ['POCA_ILUMINACION'], null],
+      [22, [4, 4, 4, 4, 4], [], null],
     ],
     vencidas: 0,
     canceladasPorElDueno: 0,
   },
   {
     // La infraestructura tira para abajo (sugerencia) y dejo vencer reservas.
-    nombre: 'A mejorar',
+    nombre: 'Oro',
     calificaciones: [
       [1, [4, 2, 4, 4, 4], ['POCA_ILUMINACION'], 'De noche el subsuelo esta muy oscuro.'],
       [3, [5, 3, 4, 4, 4], ['POCA_ILUMINACION'], null],
@@ -92,7 +106,19 @@ const PERFILES = [
     canceladasPorElDueno: 1,
   },
   {
-    nombre: 'Puntaje bajo',
+    nombre: 'Plata',
+    calificaciones: [
+      [2, [3, 3, 4, 3, 3], [], 'Normal, nada especial.'],
+      [5, [3, 3, 3, 4, 3], ['POCA_LIMPIEZA'], null],
+      [9, [4, 3, 3, 3, 3], [], null],
+      [13, [3, 3, 3, 3, 4], ['DIFICIL_DE_MANIOBRAR'], 'Las cocheras son muy justas.'],
+      [18, [3, 4, 3, 3, 3], [], null],
+    ],
+    vencidas: 2,
+    canceladasPorElDueno: 2,
+  },
+  {
+    nombre: 'Cobre',
     calificaciones: [
       [2, [2, 2, 2, 3, 2], ['POCA_LIMPIEZA', 'DIFICIL_DE_MANIOBRAR'], 'Sucio y muy justo para maniobrar.'],
       [4, [3, 2, 1, 3, 2], ['POCA_ILUMINACION'], 'Nadie atendia y estaba oscuro.'],
@@ -102,6 +128,18 @@ const PERFILES = [
     ],
     vencidas: 2,
     canceladasPorElDueno: 2,
+  },
+  {
+    // Buen puntaje pero todavia pocas calificaciones: sin nivel, "te falta 1 calificacion".
+    nombre: 'Sin nivel todavia',
+    calificaciones: [
+      [2, [5, 4, 5, 5, 4], ['SEGURO'], 'Todo en orden.'],
+      [5, [5, 5, 4, 5, 5], ['MUY_LIMPIO'], null],
+      [10, [4, 4, 5, 5, 5], ['BUENA_ATENCION'], 'Muy buena atencion.'],
+      [18, [5, 4, 5, 4, 5], [], null],
+    ],
+    vencidas: 0,
+    canceladasPorElDueno: 0,
   },
 ];
 

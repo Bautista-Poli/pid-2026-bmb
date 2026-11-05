@@ -13,6 +13,7 @@ import {
   COLUMNAS_REPUTACION,
   DIAS_BUSQUEDA,
   ES_DESTACADO,
+  condicionNivelMinimo,
   darFormaReputacion,
   lateralReputacion,
 } from './reputacion.service.js';
@@ -229,6 +230,8 @@ export async function buscar(filtros) {
   }
 
   if (filtros.destacados) condiciones.push(ES_DESTACADO);
+  // "Oro o mas", "solo Diamante"...: nivel minimo de reputacion.
+  if (filtros.nivel_minimo) condiciones.push(condicionNivelMinimo(filtros.nivel_minimo));
 
   if (filtros.cubierto !== undefined) {
     parametros.push(filtros.cubierto);

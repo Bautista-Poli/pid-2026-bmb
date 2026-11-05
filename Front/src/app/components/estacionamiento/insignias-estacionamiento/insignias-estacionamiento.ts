@@ -1,37 +1,38 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { CodigoInsignia, ResumenReputacion, TEXTO_INSIGNIA, formatearNota } from '@app/models';
+import { NivelEstacionamiento } from '../nivel-estacionamiento/nivel-estacionamiento';
 
 /** Estrella rellena (la de linea esta en `ui-icono`). */
 const ESTRELLA = 'M12 3.8l2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6L7.1 19l.9-5.5-4-3.9 5.5-.8Z';
 
 /**
- * Insignias y calificacion de un estacionamiento: la pastilla dorada de
- * "Anfitrion destacado", las de categoria ("Impecable", "Seguro"...) y la nota
+ * Insignias y calificacion de un estacionamiento: el nivel (Cobre a
+ * Diamante), las de categoria ("Impecable", "Seguro"...) y la nota
  * como cinco estrellas (llenas, media y vacias, redondeada a la media
  * estrella) con la cantidad de calificaciones: ★★★★⯪ (47). Sin
  * calificaciones no muestra nada.
  *
  * `modo`:
  *  - `completo`: todas las insignias y la nota (tarjeta del listado, detalle).
- *  - `compacto`: solo las estrellas de la nota (filas del mapa). El "destacado"
- *    lo pone quien lo usa al lado del nombre: junto a las estrellas se
- *    confundiria con una estrella mas.
+ *  - `compacto`: solo las estrellas de la nota (filas del mapa). El nivel lo
+ *    pone quien lo usa al lado del nombre, separado de las estrellas.
  */
 @Component({
   selector: 'app-insignias-estacionamiento',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [NivelEstacionamiento],
   template: `
     @if (visible()) {
       <span class="flex flex-wrap items-center gap-1.5">
         @if (modo() === 'completo') {
+          <!-- El nivel reemplaza a la pastilla "Anfitrion destacado": Platino o mas ya lo es. -->
+          @if (reputacion().nivel; as nivel) {
+            <app-nivel-estacionamiento [nivel]="nivel" />
+          }
           @for (insignia of insignias(); track insignia.codigo) {
             <span
-              class="inline-flex items-center gap-1 rounded-etiqueta px-[7px] py-[3px] text-[11px] font-semibold"
-              [class]="insignia.codigo === 'DESTACADO' ? 'bg-oro-suave text-oro-tinta' : 'bg-acento-suave text-acento-fuerte'"
+              class="inline-flex items-center gap-1 rounded-etiqueta bg-acento-suave px-[7px] py-[3px] text-[11px] font-semibold text-acento-fuerte"
             >
-              @if (insignia.codigo === 'DESTACADO') {
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path [attr.d]="estrella" /></svg>
-              }
               {{ insignia.texto }}
             </span>
           }
@@ -71,7 +72,7 @@ export class InsigniasEstacionamiento {
   protected readonly estrella = ESTRELLA;
 
   protected readonly visible = computed(
-    () => this.reputacion().cantidad > 0 || (this.modo() === 'completo' && this.reputacion().destacado),
+    () => this.reputacion().cantidad > 0 || (this.modo() === 'completo' && this.reputacion().nivel != null),
   );
   protected readonly nota = computed(() => formatearNota(this.reputacion().promedio));
 
@@ -81,6 +82,8 @@ export class InsigniasEstacionamiento {
     return [0, 1, 2, 3, 4].map((i) => Math.min(1, Math.max(0, (mitades - i * 2) / 2)));
   });
   protected readonly insignias = computed(() =>
-    this.reputacion().insignias.map((codigo: CodigoInsignia) => ({ codigo, texto: TEXTO_INSIGNIA[codigo] })),
+    this.reputacion()
+      .insignias.filter((codigo: CodigoInsignia) => codigo !== 'DESTACADO')
+      .map((codigo: CodigoInsignia) => ({ codigo, texto: TEXTO_INSIGNIA[codigo] })),
   );
 }

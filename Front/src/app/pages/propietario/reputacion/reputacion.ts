@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { rxResource, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { map } from 'rxjs';
+import { NivelEstacionamiento } from '@app/components/estacionamiento';
 import { DenunciarResena } from '@app/components/reclamo';
 import { Boton, Cargando, EstadoVacio, Tarjeta } from '@app/components/ui';
 import {
@@ -14,6 +15,7 @@ import {
   TEXTO_ESTADO_DENUNCIA,
   TEXTO_ETIQUETA,
   TEXTO_INSIGNIA,
+  NOMBRE_NIVEL,
   formatearNota,
 } from '@app/models';
 import { AuthService } from '@app/services/auth.service';
@@ -59,7 +61,7 @@ interface FilaOperacion {
 @Component({
   selector: 'app-reputacion',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Boton, Cargando, DenunciarResena, EstadoVacio, RouterLink, Tarjeta],
+  imports: [Boton, Cargando, DenunciarResena, EstadoVacio, NivelEstacionamiento, RouterLink, Tarjeta],
   templateUrl: './reputacion.html',
 })
 export class Reputacion {
@@ -116,21 +118,34 @@ export class Reputacion {
     return `${diferencia > 0 ? '+' : '−'}${Math.abs(diferencia)} desde el período anterior`;
   });
 
-  /** Que le falta para la insignia, o como conservarla. */
-  protected readonly estadoInsignia = computed(() => {
+  /** Que le falta para tener nivel o para el siguiente, y si es destacado. */
+  protected readonly estadoNivel = computed(() => {
     const datos = this.recurso.value();
     if (!datos) return '';
-    if (datos.destacado) return `Mantenelo en ${datos.umbralDestacado} o más para conservar la insignia.`;
-    const faltanPuntos = Math.max(0, datos.umbralDestacado - datos.puntaje);
-    const faltanCalificaciones = Math.max(0, datos.minimoCalificaciones - datos.calificaciones.cantidad);
-    const partes = [
-      { n: faltanPuntos, uno: 'punto', varios: 'puntos' },
-      { n: faltanCalificaciones, uno: 'calificación', varios: 'calificaciones' },
-    ].filter((p) => p.n > 0);
-    const texto = partes.map((p) => `${p.n} ${p.n === 1 ? p.uno : p.varios}`).join(' y ');
-    const verbo = partes.length === 1 && partes[0].n === 1 ? 'falta' : 'faltan';
-    return `Te ${verbo} ${texto} para ser Anfitrión destacado.`;
+    const faltanCalificaciones = datos.minimoCalificaciones - datos.calificaciones.cantidad;
+    if (!datos.nivel) {
+      return faltanCalificaciones === 1
+        ? 'Te falta 1 calificación para tener nivel.'
+        : `Te faltan ${faltanCalificaciones} calificaciones para tener nivel.`;
+    }
+    const siguiente = datos.siguienteNivel;
+    if (!siguiente) return 'Llegaste al nivel máximo. Mantenelo para no bajar.';
+    const puntos = siguiente.faltan === 1 ? '1 punto' : `${siguiente.faltan} puntos`;
+    return `Te faltan ${puntos} para ${NOMBRE_NIVEL[siguiente.codigo]}.`;
   });
+
+  /** "80 a 87" / "95 o más" */
+  protected rango(datos: ReputacionEstacionamiento, indice: number): string {
+    const actual = datos.niveles[indice];
+    const siguiente = datos.niveles[indice + 1];
+    return siguiente ? `${actual.desde} a ${siguiente.desde - 1}` : `${actual.desde} o más`;
+  }
+
+  /** Si ese nivel ya quedo atras (o es el actual). Sin nivel, ninguno. */
+  protected alcanzado(datos: ReputacionEstacionamiento, indice: number): boolean {
+    if (!datos.nivel) return false;
+    return indice <= datos.niveles.findIndex((n) => n.codigo === datos.nivel);
+  }
 
   protected tendencia(categoria: CategoriaReputacion): { texto: string; clase: string } {
     if (categoria.promedio == null || categoria.anterior == null) return { texto: '', clase: '' };

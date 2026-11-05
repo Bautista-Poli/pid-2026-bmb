@@ -56,6 +56,8 @@ import {
   normalizar,
 } from '@app/services/georef.service';
 import { LugaresService } from '@app/services/lugares.service';
+import { EntornoService } from '@app/services/entorno.service';
+import { buscarDestinosLocales } from '@app/utils/destinos-locales.util';
 import { UbicacionService } from '@app/services/ubicacion.service';
 import { VehiculoService } from '@app/services/vehiculo.service';
 import {
@@ -189,6 +191,8 @@ export class Mapa {
   private readonly vehiculos = inject(VehiculoService);
   private readonly georef = inject(GeorefService);
   private readonly lugares = inject(LugaresService);
+  /** Offline el buscador no consulta Georef ni Photon: busca en lo que ya hay en la base. */
+  private readonly offline = inject(EntornoService).offline();
   private readonly ubicacion = inject(UbicacionService);
   private readonly router = inject(Router);
   private readonly injector = inject(Injector);
@@ -415,9 +419,17 @@ export class Mapa {
    *   3. Photon (OpenStreetMap): plazas, lugares conocidos, estaciones, calles
    *      y ciudades, primero los cercanos.
    * Van en ese orden (de lo mas preciso a lo mas general), sin repetidos. Si
-   * una fuente falla, se muestran las otras.
+   * una fuente falla, se muestran las otras. Offline, barrios y estacionamientos
+   * de la base (buscarDestinosLocales).
    */
   protected readonly buscarDirecciones = (texto: string): Observable<Sugerencia[]> => {
+    if (this.offline) {
+      return of(
+        buscarDestinosLocales(texto, this.todos.value())
+          .slice(0, MAX_SUGERENCIAS)
+          .map((lugar) => ({ nombre: lugar.nombre, detalle: lugar.detalle, dato: lugar, icono: ICONO_LUGAR[lugar.tipo ?? 'lugar'] })),
+      );
+    }
     const zonas = this.zonas();
     const provincias = [...new Set(zonas.map((zona) => zona.provincia))];
     const sinFallar = (fuente: Observable<DireccionGeoref[]>) =>

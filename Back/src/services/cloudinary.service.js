@@ -1,11 +1,13 @@
 // Fotos en Cloudinary: firma para que el navegador suba directo, verificacion de lo
-// subido, URL de cada foto y borrado. Lo usan los services de fotos.
+// subido, URL de cada foto y borrado. Lo usan los services de fotos. Con OFFLINE=true
+// cada funcion delega en fotos-locales.service.js (disco), con el mismo contrato.
 import { randomUUID } from 'node:crypto';
 
 import { v2 as cloudinary } from 'cloudinary';
 
 import { config } from '../config/env.js';
 import { ApiError } from '../utils/ApiError.js';
+import * as local from './fotos-locales.service.js';
 
 /**
  * Fotos en Cloudinary. El flujo de una subida:
@@ -44,6 +46,7 @@ export function carpetaDe(tipo, id) {
  * solo pisa esa misma foto. Cloudinary la acepta durante una hora.
  */
 export function firmarSubida(carpeta) {
+  if (config.offline) return local.firmarSubida(`${carpeta}/${randomUUID()}`, FORMATOS.join(','));
   if (!config.cloudinary.configurada) {
     throw new ApiError(503, 'La subida de fotos no esta disponible en este momento');
   }
@@ -75,6 +78,7 @@ export async function verificar(publicId, carpeta) {
     publicId.startsWith(`${carpeta}/`) &&
     NOMBRE_VALIDO.test(publicId.slice(carpeta.length + 1));
   if (!propio) throw ApiError.badRequest('La foto no corresponde a este recurso');
+  if (config.offline) return local.verificar(publicId);
   if (!config.cloudinary.habilitada) return;
 
   configurar();
@@ -95,6 +99,7 @@ export async function verificar(publicId, carpeta) {
 
 /** URL publica, con formato y calidad automaticos y un ancho maximo. */
 export function url(publicId, { ancho = 1600 } = {}) {
+  if (config.offline) return local.url(publicId);
   configurar();
   return cloudinary.url(publicId, {
     secure: true,
@@ -107,6 +112,7 @@ export function url(publicId, { ancho = 1600 } = {}) {
  * base ya no la referencie; una foto huerfana en Cloudinary no rompe nada.
  */
 export async function borrar(publicId) {
+  if (publicId && config.offline) return local.borrar(publicId);
   if (!publicId || !config.cloudinary.habilitada) return;
   configurar();
   try {

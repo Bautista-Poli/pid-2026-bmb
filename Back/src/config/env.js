@@ -1,6 +1,8 @@
 // Variables de entorno centralizadas.
 // En desarrollo se cargan con `node --env-file=.env` (ver script "dev").
 // En Railway las inyecta la plataforma.
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 /** Devuelve la variable o corta el arranque si falta. */
 function requerido(nombre, valor) {
@@ -14,11 +16,35 @@ function requerido(nombre, valor) {
 
 const nodeEnv = process.env.NODE_ENV || 'development';
 
+/** Back/datos-locales: fotos y mapa del modo offline (no se suben al repo). */
+const DATOS_LOCALES_POR_DEFECTO = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'datos-locales');
+
+/** OFFLINE=true: todo local (fotos en disco, mapa propio, sin geocodificar). */
+const esOffline = () => (process.env.OFFLINE ?? 'false') === 'true';
+
 export const config = {
   nodeEnv,
   isProduction: nodeEnv === 'production',
   port: Number(process.env.PORT) || 3000,
   apiPrefix: process.env.API_PREFIX || '/api',
+
+  // Modo offline (ver docs/offline.md): la app entera anda sin internet. Las
+  // fotos se guardan en disco en vez de Cloudinary, el mapa sale de un archivo
+  // local y no se geocodifica. Getters: las pruebas lo prenden despues de importar.
+  get offline() {
+    return esOffline();
+  },
+  datosLocales: {
+    get carpeta() {
+      return resolve(process.env.DATOS_LOCALES_DIR || DATOS_LOCALES_POR_DEFECTO);
+    },
+    get fotos() {
+      return join(this.carpeta, 'fotos');
+    },
+    get mapa() {
+      return join(this.carpeta, 'mapa');
+    },
+  },
 
   db: {
     // Railway expone DATABASE_URL automaticamente al vincular el servicio Postgres.
@@ -42,7 +68,8 @@ export const config = {
   // despues de importar la app.
   geocodificacion: {
     get habilitada() {
-      return (process.env.GEOCODING_ENABLED ?? (nodeEnv === 'test' ? 'false' : 'true')) === 'true';
+      const porDefecto = nodeEnv === 'test' || esOffline() ? 'false' : 'true';
+      return (process.env.GEOCODING_ENABLED ?? porDefecto) === 'true';
     },
     georefUrl: process.env.GEOREF_URL || 'https://apis.datos.gob.ar/georef/api',
     nominatimUrl: process.env.NOMINATIM_URL || 'https://nominatim.openstreetmap.org',

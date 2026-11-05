@@ -21,13 +21,18 @@ import { RouterLink } from '@angular/router';
 import { Observable, catchError, map, of } from 'rxjs';
 import { Boton, CampoAutocompletar, Sugerencia, Tarjeta } from '@app/components/ui';
 import { FotoEstacionamiento } from '../foto-estacionamiento/foto-estacionamiento';
+import { SelectorUbicacion } from '../selector-ubicacion/selector-ubicacion';
 import { DiaSemana, Direccion, Estacionamiento, NuevoEstacionamiento } from '@app/models';
+import { EntornoService } from '@app/services/entorno.service';
 import {
   GeorefService,
+  ID_CABA,
   LugarGeoref,
+  PROVINCIAS,
   filtrarLugares,
   normalizar,
 } from '@app/services/georef.service';
+import { Coordenadas } from '@app/utils/distancia.util';
 import { opcionesHora } from '@app/utils/horario-semana.util';
 
 const DIAS: { dia: DiaSemana; etiqueta: string }[] = [
@@ -64,12 +69,14 @@ function algunaTarifa(grupo: AbstractControl): ValidationErrors | null {
 @Component({
   selector: 'app-formulario-estacionamiento',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, RouterLink, Boton, CampoAutocompletar, FotoEstacionamiento, Tarjeta],
+  imports: [ReactiveFormsModule, RouterLink, Boton, CampoAutocompletar, FotoEstacionamiento, SelectorUbicacion, Tarjeta],
   templateUrl: './formulario-estacionamiento.html',
 })
 export class FormularioEstacionamiento {
   private readonly fb = inject(FormBuilder);
   private readonly georef = inject(GeorefService);
+  /** Offline: sin Georef (provincias de una lista fija, ciudad y calle a mano) y el punto se marca en el mapa. */
+  protected readonly offline = inject(EntornoService).offline();
 
   /** Estacionamiento a editar. `null` (el default) es el modo alta. */
   readonly estacionamiento = input<Estacionamiento | null>(null);
@@ -140,7 +147,7 @@ export class FormularioEstacionamiento {
 
   protected readonly errorProvincias = signal(false);
   protected readonly provincias = toSignal(
-    this.georef.provincias$.pipe(
+    (this.offline ? of(PROVINCIAS) : this.georef.provincias$).pipe(
       catchError(() => {
         this.errorProvincias.set(true);
         return of([] as LugarGeoref[]);
@@ -160,6 +167,11 @@ export class FormularioEstacionamiento {
 
   /** La direccion guardada no coincide con Georef (cargada antes de este cambio). */
   protected readonly direccionDesactualizada = signal(false);
+
+  /** Solo offline: el punto que marco el propietario en el mapa. */
+  protected readonly ubicacion = signal<Coordenadas | null>(null);
+  private readonly intentoEnviar = signal(false);
+  protected readonly faltaUbicacion = computed(() => this.offline && this.intentoEnviar() && !this.ubicacion());
 
   protected readonly buscarCiudades = (texto: string): Observable<Sugerencia[]> => {
     const provinciaId = this.provinciaId();
@@ -225,6 +237,9 @@ export class FormularioEstacionamiento {
       untracked(() => {
 
         const { direccion } = estacionamiento;
+        if (direccion.latitud != null && direccion.longitud != null) {
+          this.ubicacion.set({ latitud: direccion.latitud, longitud: direccion.longitud });
+        }
         // En orden: cada campo de la cadena borra los que dependen de el.
         provincia.setValue(direccion.provincia);
         ciudad.setValue(direccion.ciudad);
@@ -265,7 +280,8 @@ export class FormularioEstacionamiento {
     effect(() => {
       const estacionamiento = this.estacionamiento();
       const provincias = this.provincias();
-      if (!estacionamiento || provincias.length === 0) return;
+      // Offline no hay contra que verificar.
+      if (!estacionamiento || provincias.length === 0 || this.offline) return;
       untracked(() => this.verificarDireccionGuardada(estacionamiento.direccion, provincias));
     });
   }
@@ -280,6 +296,11 @@ export class FormularioEstacionamiento {
     if (!provincia) return;
 
     const { provincia: controlProvincia, ciudad } = this.formulario.controls;
+    if (this.offline) {
+      // Sin Georef: la unica provincia de una sola ciudad es CABA, que se llama igual.
+      if (provincia.id === ID_CABA && !ciudad.value) ciudad.setValue(provincia.nombre);
+      return;
+    }
     this.georef
       .ciudadesDe(provincia.id)
       .pipe(catchError(() => of([] as LugarGeoref[])))
@@ -341,7 +362,8 @@ export class FormularioEstacionamiento {
 
   /** Valida el formulario, arma los datos del estacionamiento y los emite al padre. */
   protected enviar(): void {
-    if (this.formulario.invalid) {
+    this.intentoEnviar.set(true);
+    if (this.formulario.invalid || this.faltaUbicacion()) {
       this.formulario.markAllAsTouched();
       return;
     }
@@ -359,9 +381,10 @@ export class FormularioEstacionamiento {
         ciudad: valores.ciudad.trim(),
         provincia: valores.provincia.trim(),
         codigoPostal: valores.codigoPostal.trim(),
-        // El formulario no pide coordenadas: las que ya estaban se conservan.
-        latitud: this.estacionamiento()?.direccion.latitud ?? null,
-        longitud: this.estacionamiento()?.direccion.longitud ?? null,
+        // Online no se piden (las calcula el back al verificar la direccion) y
+        // se mandan las que ya estaban; offline, las que marco el propietario.
+        latitud: this.offline ? this.ubicacion()!.latitud : (this.estacionamiento()?.direccion.latitud ?? null),
+        longitud: this.offline ? this.ubicacion()!.longitud : (this.estacionamiento()?.direccion.longitud ?? null),
       },
       barrioZona: valores.barrioZona.trim() || null,
       telefonoContacto: valores.telefono.trim() || null,

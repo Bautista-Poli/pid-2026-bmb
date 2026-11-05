@@ -17,7 +17,15 @@
     "db:mover-reserva": "node --env-file=.env src/db/mover-reserva.js",
     "db:calificaciones-demo": "node --env-file=.env src/db/calificaciones-demo.js",
     "test": "node --test --env-file=.env \"pruebas/*.test.mjs\"",
-    "test:ci": "node --test \"pruebas/*.test.mjs\""
+    "test:ci": "node --test \"pruebas/*.test.mjs\"",
+    "dev:offline": "node --watch --env-file=.env.offline src/index.js",
+    "offline:base": "node --env-file=.env.offline src/offline/crear-base.js && npm run offline:migrar",
+    "offline:migrar": "node --env-file=.env.offline src/db/migrate.js",
+    "offline:copiar": "node --env-file=.env.offline src/offline/copiar-produccion.js",
+    "offline:restaurar": "node --env-file=.env.offline src/offline/restaurar.js && npm run offline:migrar",
+    "offline:fotos": "node --env-file=.env.offline src/offline/bajar-fotos.js",
+    "offline:mapa": "node --env-file=.env.offline src/offline/bajar-mapa.js",
+    "offline:preparar": "npm run offline:base && npm run offline:copiar && npm run offline:restaurar && npm run offline:fotos && npm run offline:mapa"
   },
   "keywords": [
     "parkit",

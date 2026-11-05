@@ -27,8 +27,29 @@ const PERIODOS: { dias: PeriodoReputacion; etiqueta: string }[] = [
   { dias: 90, etiqueta: 'Últimos 90 días' },
 ];
 
-/** Perimetro del anillo del puntaje (r = 44). */
-const PERIMETRO = 2 * Math.PI * 44;
+/** Velocimetro del puntaje: centro (60, 60), radio 48, barrido de 240 grados. */
+const CENTRO = 60;
+const RADIO = 48;
+const BARRIDO = 240;
+
+/** Punto a `radio` del centro, girado `grados` desde las 12 en sentido horario. */
+function punto(grados: number, radio: number): { x: number; y: number } {
+  const rad = (grados * Math.PI) / 180;
+  return { x: CENTRO + radio * Math.sin(rad), y: CENTRO - radio * Math.cos(rad) };
+}
+
+const INICIO = punto(-BARRIDO / 2, RADIO);
+const FIN = punto(BARRIDO / 2, RADIO);
+const ARCO = `M ${INICIO.x} ${INICIO.y} A ${RADIO} ${RADIO} 0 1 1 ${FIN.x} ${FIN.y}`;
+
+/** Una marca cada 10 puntos; las de 0, 50 y 100 son mas largas. */
+const MARCAS = Array.from({ length: 11 }, (_, i) => {
+  const grados = -BARRIDO / 2 + (BARRIDO * i) / 10;
+  const mayor = i % 5 === 0;
+  const desde = punto(grados, mayor ? 32 : 35);
+  const hasta = punto(grados, 39);
+  return { x1: desde.x, y1: desde.y, x2: hasta.x, y2: hasta.y, mayor };
+});
 
 const FECHA_CORTA = new Intl.DateTimeFormat('es-AR', { day: 'numeric', month: 'short' });
 
@@ -72,7 +93,6 @@ export class Reputacion {
   private readonly ruta = inject(ActivatedRoute);
 
   protected readonly periodos = PERIODOS;
-  protected readonly perimetro = PERIMETRO;
   protected readonly textoEtiqueta = TEXTO_ETIQUETA;
   protected readonly textoInsignia = TEXTO_INSIGNIA;
   protected readonly nota = formatearNota;
@@ -105,9 +125,13 @@ export class Reputacion {
     stream: ({ params }) => this.calificaciones.reputacion(params.id, params.dias),
   });
 
-  /** Largo del arco dorado del anillo. */
-  protected arco(datos: ReputacionEstacionamiento): string {
-    return `${(datos.puntaje / 100) * PERIMETRO} ${PERIMETRO}`;
+  protected readonly ARCO_VELOCIMETRO = ARCO;
+  protected readonly MARCAS_VELOCIMETRO = MARCAS;
+
+  /** Giro de la aguja: -120 grados en 0 puntos, +120 en 100. */
+  protected anguloAguja(datos: ReputacionEstacionamiento): number {
+    const puntaje = Math.min(100, Math.max(0, datos.puntaje));
+    return -BARRIDO / 2 + (BARRIDO * puntaje) / 100;
   }
 
   protected readonly cambio = computed(() => {

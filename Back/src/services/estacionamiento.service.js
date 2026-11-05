@@ -1,6 +1,7 @@
 // Estacionamientos: alta (verificando la direccion), busqueda publica con filtros,
 // detalle, edicion (vuelve a revision si cambia nombre o direccion) y baja.
 import { query, withTransaction } from '../config/database.js';
+import { config } from '../config/env.js';
 import { ApiError } from '../utils/ApiError.js';
 import { armarSet } from '../utils/sql.js';
 import { ZONA_HORARIA } from '../utils/horario.js';
@@ -422,8 +423,10 @@ async function asegurarAlgunaTarifa(client, idEstacionamiento, datos) {
  *   - si no cambio pero el estacionamiento no tiene coordenadas, se intenta
  *     completarlas. No se rechaza: puede ser una direccion cargada antes de
  *     que existiera la validacion, y no tiene que trabar editar otros datos.
+ * En modo offline no hay geocodificacion: valen las que marco el propietario.
  */
 async function completarCoordenadas(idEstacionamiento, entrada) {
+  if (config.offline) return entrada;
   const { rows } = await query(
     `SELECT ${[...CAMPOS_DIRECCION, 'latitud', 'longitud'].join(', ')}
        FROM estacionamiento WHERE id_estacionamiento = $1`,

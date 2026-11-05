@@ -5,6 +5,10 @@ docs/superpowers/
 .env
 .env.*
 !.env.example
+!.env.offline.example
+
+# Modo offline: fotos, mapa y copia de la base de produccion (datos personales).
+Back/datos-locales/
 
 # Espacio de trabajo local de superpowers (registros, credenciales de prueba).
 .superpowers/

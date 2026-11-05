@@ -15,10 +15,11 @@ import {
 import * as L from 'leaflet';
 import { Icono } from '@app/components/ui';
 import { AreaMapa, Estacionamiento, Id } from '@app/models';
+import { EntornoService } from '@app/services/entorno.service';
 import { TemaService } from '@app/services/tema.service';
 import { EstadoDisponibilidad, estadoDisponibilidad } from '@app/utils/disponibilidad.util';
 import { Coordenadas } from '@app/utils/distancia.util';
-import { environment } from '../../../../environments/environment';
+import { crearFondoMapa, usaFiltroOsm } from '@app/utils/fondo-mapa.util';
 
 /** Obelisco: donde arranca el mapa si todavia no hay nada para mostrar. */
 const CENTRO_INICIAL: L.LatLngTuple = [-34.6037, -58.3816];
@@ -28,27 +29,6 @@ const ZOOM_DESTINO = 15;
 
 /** Zoom al centrarse en el conductor: un poco mas abierto, para ver opciones alrededor. */
 const ZOOM_UBICACION = 14;
-
-const CLAVE_CARTO = environment.mapa.claveCarto;
-const OSM = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-
-/**
- * Mosaicos de CARTO (datos de OpenStreetMap): "Voyager" de dia y "Dark Matter"
- * de noche. Necesitan la clave de `environments/environment.ts`; sin clave el
- * mapa usa los mosaicos de OpenStreetMap, apagados y oscurecidos con un filtro
- * CSS (`.mapa-osm` en styles.css).
- * `{r}` pide la version de alta resolucion en pantallas retina.
- */
-const MOSAICOS = CLAVE_CARTO
-  ? {
-      claro: `https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=${CLAVE_CARTO}`,
-      oscuro: `https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png?key=${CLAVE_CARTO}`,
-    }
-  : { claro: OSM, oscuro: OSM };
-
-const ATRIBUCION = CLAVE_CARTO
-  ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · &copy; <a href="https://carto.com/attributions">CARTO</a>'
-  : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
 
 const CLASE_ESTADO: Record<EstadoDisponibilidad, string> = {
   DISPONIBLE: 'pin--disponible',
@@ -136,14 +116,16 @@ const CLASE_ESTADO: Record<EstadoDisponibilidad, string> = {
   `,
   host: {
     class: 'relative block overflow-hidden',
-    // Solo sin clave de CARTO: el filtro que apaga (y oscurece) los mosaicos de OSM.
-    '[class.mapa-osm]': '!usaCarto',
-    '[class.mapa-osm--oscuro]': '!usaCarto && tema.esOscuro()',
+    // Solo con los mosaicos de OSM: el filtro que los apaga (y oscurece).
+    '[class.mapa-osm]': 'usaOsm',
+    '[class.mapa-osm--oscuro]': 'usaOsm && tema.esOscuro()',
   },
 })
 export class MapaEstacionamientos {
   protected readonly tema = inject(TemaService);
-  protected readonly usaCarto = Boolean(CLAVE_CARTO);
+  /** Offline el mapa sale del archivo local, sin pedir mosaicos afuera. */
+  private readonly offline = inject(EntornoService).offline();
+  protected readonly usaOsm = usaFiltroOsm(this.offline);
 
   readonly estacionamientos = input.required<Estacionamiento[]>();
   /** Donde esta el conductor (punto azul). */
@@ -166,7 +148,7 @@ export class MapaEstacionamientos {
   private readonly listo = signal(false);
 
   private mapa?: L.Map;
-  private mosaicos?: L.TileLayer;
+  private mosaicos?: L.Layer;
   private readonly capaPines = L.layerGroup();
   private marcadorUbicacion?: L.Marker;
   private marcadorDestino?: L.Marker;
@@ -200,8 +182,8 @@ export class MapaEstacionamientos {
     // Mosaicos claros u oscuros segun el tema de la app.
     effect(() => {
       if (!this.listo()) return;
-      const url = this.tema.esOscuro() ? MOSAICOS.oscuro : MOSAICOS.claro;
-      untracked(() => this.mosaicos?.setUrl(url));
+      const oscuro = this.tema.esOscuro();
+      untracked(() => void this.ponerFondo(oscuro));
     });
   }
 
@@ -223,6 +205,14 @@ export class MapaEstacionamientos {
     this.mapa?.flyTo([punto.latitud, punto.longitud], Math.max(this.mapa.getZoom(), ZOOM_DESTINO));
   }
 
+  /** El fondo del mapa para el tema (ver crearFondoMapa). */
+  private async ponerFondo(oscuro: boolean): Promise<void> {
+    const fondo = await crearFondoMapa(oscuro, this.offline);
+    if (!this.mapa) return;
+    this.mosaicos?.remove();
+    this.mosaicos = fondo.addTo(this.mapa);
+  }
+
   /** Crea el mapa de Leaflet con su capa de pines y avisa cuando se mueve. */
   private crearMapa(): void {
     const elemento = this.contenedor().nativeElement;
@@ -230,10 +220,6 @@ export class MapaEstacionamientos {
       CENTRO_INICIAL,
       13,
     );
-    this.mosaicos = L.tileLayer(this.tema.esOscuro() ? MOSAICOS.oscuro : MOSAICOS.claro, {
-      attribution: ATRIBUCION,
-      maxZoom: CLAVE_CARTO ? 20 : 19,
-    }).addTo(this.mapa);
     this.capaPines.addTo(this.mapa);
 
     const mapa = this.mapa;

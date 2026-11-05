@@ -50,4 +50,22 @@ describe('CloudinaryService', () => {
     pedido.flush({ public_id: 'parkit-dev/vehiculos/v1/abc' });
     expect(publicId).toBe('parkit-dev/vehiculos/v1/abc');
   });
+
+  it('en modo offline sube la imagen cruda a la API, con la firma en la query', () => {
+    const archivo = new Blob(['x'], { type: 'image/webp' });
+    let publicId: string | undefined;
+
+    servicio.subir(archivo, { ...firma, urlSubida: '/fotos-locales' }).subscribe((id) => (publicId = id));
+
+    const pedido = http.expectOne((req) => req.url === '/api/fotos-locales');
+    expect(pedido.request.method).toBe('POST');
+    expect(pedido.request.body).toBe(archivo);
+    expect(pedido.request.headers.get('Content-Type')).toBe('image/webp');
+    expect(pedido.request.params.get('public_id')).toBe('parkit-dev/vehiculos/v1/abc');
+    expect(pedido.request.params.get('timestamp')).toBe('1700000000');
+    expect(pedido.request.params.get('signature')).toBe('firma-abc');
+
+    pedido.flush({ public_id: 'parkit-dev/vehiculos/v1/abc' });
+    expect(publicId).toBe('parkit-dev/vehiculos/v1/abc');
+  });
 });

@@ -22,6 +22,7 @@ function esSobre(usuario, resena) {
   return false;
 }
 
+/** La parte calificada denuncia una reseña (queda PENDIENTE y sigue contando). */
 export async function denunciar(idCalificacion, usuario, { motivo, detalle }) {
   return withTransaction(async (client) => {
     const { rows } = await client.query(

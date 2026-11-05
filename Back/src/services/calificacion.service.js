@@ -20,6 +20,7 @@ const COLUMNAS = `id_calificacion, id_reserva, id_estacionamiento, puntaje, limp
 const puntajeGeneral = (d) =>
   Math.round((d.limpieza + d.infraestructura + d.atencion + d.seguridad + d.acceso) / 5);
 
+/** El conductor califica el estacionamiento de una reserva usada (una vez, 7 dias). */
 export async function crear(idReserva, idConductor, datos) {
   return withTransaction(async (client) => {
     const { rows } = await client.query(

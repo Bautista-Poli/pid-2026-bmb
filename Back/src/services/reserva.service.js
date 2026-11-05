@@ -1,3 +1,5 @@
+// Reservas: crear sin sobreventa, listar, cancelar, el ciclo del propietario
+// (confirmar, ausente, ingreso/egreso por codigo), disponibilidad y vencimientos.
 import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
 import { normalizarCodigo } from '../utils/codigoAcceso.js';
@@ -406,6 +408,7 @@ async function obtenerDetalle(ejecutor, idReserva, { conCodigo = false, vista } 
   return rows[0];
 }
 
+/** Las reservas del conductor, la mas nueva primero (con su codigo de acceso). */
 export async function listarPorConductor(idConductor) {
   const { rows } = await query(
     `${selectDetalle({ conCodigo: true, vista: 'CONDUCTOR' })} WHERE r.id_conductor = $1 ORDER BY r.inicio DESC`,
@@ -620,6 +623,7 @@ const ACCIONES_ACCESO = Object.freeze({ INGRESO: 'INGRESO', EGRESO: 'EGRESO' });
 /** Mismo mensaje para un codigo inexistente, mal formado o de un estacionamiento ajeno. */
 const CODIGO_INVALIDO = 'El codigo no corresponde a ninguna reserva de tus estacionamientos';
 
+/** La reserva de ese codigo en un estacionamiento del propietario; 404 si no. */
 async function buscarReservaPorCodigo(ejecutor, idPropietario, bruto, { bloquear = false } = {}) {
   const codigo = normalizarCodigo(bruto);
   if (!codigo) throw ApiError.notFound(CODIGO_INVALIDO);

@@ -39,6 +39,7 @@ function normalizarYCruzarPatente(validador) {
   return resultado;
 }
 
+/** Alta de un vehiculo: patente, tipo y datos opcionales. */
 export function validarVehiculo(body) {
   const validador = campos(body)
     .texto('patente', body.patente, { min: 5, max: 12 })

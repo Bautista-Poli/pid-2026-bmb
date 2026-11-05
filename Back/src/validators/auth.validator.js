@@ -5,6 +5,7 @@ import { campos } from './helpers.js';
 // script db:crear-admin y no se combina con los demas.
 const PERFILES = [ROLES.CONDUCTOR, ROLES.PROPIETARIO];
 
+/** Registro: nombre, apellido, email, contraseña y perfil inicial. */
 export function validarRegistro(body) {
   return campos(body)
     .texto('nombre', body.nombre, { min: 2, max: 80 })
@@ -17,6 +18,7 @@ export function validarRegistro(body) {
     .resultado();
 }
 
+/** Login: email y contraseña. */
 export function validarLogin(body) {
   return campos(body)
     .email('email', body.email)
@@ -24,6 +26,7 @@ export function validarLogin(body) {
     .resultado();
 }
 
+/** Cambio de perfil activo: CONDUCTOR o PROPIETARIO. */
 export function validarCambioRol(body) {
   return campos(body).enumerado('rol', body.rol, PERFILES).resultado();
 }

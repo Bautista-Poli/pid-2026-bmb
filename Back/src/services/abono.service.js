@@ -37,6 +37,7 @@ async function asegurarQueAbreEnElTurno(idEstacionamiento, turno) {
   }
 }
 
+/** El propietario ofrece un plan de abono (uno activo por turno y estacionamiento). */
 export async function crearPlan(idEstacionamiento, idPropietario, { turno, cupos, precio }) {
   await asegurarPropiedad(idEstacionamiento, idPropietario);
   await asegurarQueAbreEnElTurno(idEstacionamiento, turno);
@@ -125,8 +126,10 @@ const SELECT_ABONO = `
     JOIN usuario u         ON u.id_usuario = a.id_conductor
 `;
 
+/** Suma `cupos_restantes` (los totales menos los ya usados) a un abono. */
 const conRestantes = (abono) => ({ ...abono, cupos_restantes: abono.cupos_totales - abono.cupos_usados });
 
+/** Un abono con sus datos y cupos restantes. */
 async function obtenerAbono(ejecutor, idAbono) {
   const { rows } = await ejecutor.query(`${SELECT_ABONO} WHERE a.id_abono = $1`, [idAbono]);
   return conRestantes(rows[0]);
@@ -161,6 +164,7 @@ export async function comprar(idConductor, { id_plan }) {
   });
 }
 
+/** Los abonos del conductor, con sus cupos. */
 export async function listarPorConductor(idConductor) {
   const { rows } = await query(`${SELECT_ABONO} WHERE a.id_conductor = $1 ORDER BY a.created_at DESC`, [
     idConductor,
@@ -168,6 +172,7 @@ export async function listarPorConductor(idConductor) {
   return rows.map(conRestantes);
 }
 
+/** Los abonos vendidos de un estacionamiento (vista del propietario). */
 export async function listarPorEstacionamiento(idEstacionamiento, idPropietario) {
   await asegurarPropiedad(idEstacionamiento, idPropietario);
   const { rows } = await query(

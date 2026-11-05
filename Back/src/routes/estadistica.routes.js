@@ -1,3 +1,4 @@
+// Rutas de /api/estadisticas: el dashboard del propietario.
 import { Router } from 'express';
 
 import * as estadisticaController from '../controllers/estadistica.controller.js';

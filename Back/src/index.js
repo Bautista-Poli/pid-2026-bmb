@@ -1,8 +1,11 @@
+// Punto de entrada del servidor: conecta la base, escucha el puerto, activa los
+// vencimientos a demanda y cierra todo prolijo al recibir SIGINT/SIGTERM.
 import app from './app.js';
 import { config } from './config/env.js';
 import { connectDatabase, disconnectDatabase } from './config/database.js';
 import { activarVencimientosADemanda, desactivarVencimientosADemanda } from './jobs/vencimientos.job.js';
 
+/** Arranca el servidor; si falla la conexion inicial, el proceso termina. */
 async function main() {
   await connectDatabase();
 

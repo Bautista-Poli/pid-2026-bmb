@@ -27,6 +27,7 @@ import { vencerAusentes, vencerPendientesSinConfirmar } from '../services/reserv
 
 const INTERVALO_MINIMO_MS = 60_000;
 
+/** Una pasada de todos los vencimientos; loguea solo si cambio algo. */
 async function revisar() {
   const canceladas = await vencerPendientesSinConfirmar();
   const ausentes = await vencerAusentes();
@@ -91,6 +92,7 @@ export function activarVencimientosADemanda() {
   disparador = crearDisparador();
 }
 
+/** Lo llama index.js al apagar: los pedidos ya no disparan revisiones. */
 export function desactivarVencimientosADemanda() {
   disparador = null;
 }

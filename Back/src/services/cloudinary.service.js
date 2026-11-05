@@ -1,3 +1,5 @@
+// Fotos en Cloudinary: firma para que el navegador suba directo, verificacion de lo
+// subido, URL de cada foto y borrado. Lo usan los services de fotos.
 import { randomUUID } from 'node:crypto';
 
 import { v2 as cloudinary } from 'cloudinary';

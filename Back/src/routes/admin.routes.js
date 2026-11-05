@@ -1,3 +1,4 @@
+// Rutas de /api/admin. Todas exigen sesion y el perfil ADMINISTRADOR (router.use).
 import { Router } from 'express';
 
 import * as adminController from '../controllers/admin.controller.js';

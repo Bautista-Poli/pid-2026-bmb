@@ -1,3 +1,5 @@
+// Estacionamientos: alta (verificando la direccion), busqueda publica con filtros,
+// detalle, edicion (vuelve a revision si cambia nombre o direccion) y baja.
 import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
 import { armarSet } from '../utils/sql.js';
@@ -21,6 +23,7 @@ const reputacionPublica = () => lateralReputacion(`now() - interval '${DIAS_BUSQ
 const CAMPOS_DIRECCION = ['calle', 'numero', 'ciudad', 'provincia'];
 // Si cambia alguno de estos en uno aprobado, vuelve a la cola de revision.
 const CAMPOS_REVISION = ['nombre', ...CAMPOS_DIRECCION];
+/** Si los datos ya traen latitud y longitud. */
 const tieneCoordenadas = (datos) => datos.latitud != null && datos.longitud != null;
 
 const DIRECCION_INEXISTENTE =
@@ -361,6 +364,7 @@ export async function asegurarPropiedad(idEstacionamiento, idPropietario) {
   return rows[0];
 }
 
+/** Los estacionamientos del propietario, con sus agregados y reputacion. */
 export async function listarPorPropietario(idPropietario) {
   const { rows } = await query(
     `SELECT ${CAMPOS_E}, ${AGREGADOS}, ${COLUMNAS_REPUTACION}

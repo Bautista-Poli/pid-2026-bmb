@@ -1,3 +1,5 @@
+// Rutas de /api/reservas: las del conductor (crear, cancelar, calificar) y las del
+// propietario (confirmar, ausente, acceso por codigo, calificar al conductor).
 import { Router } from 'express';
 
 import * as reservaController from '../controllers/reserva.controller.js';

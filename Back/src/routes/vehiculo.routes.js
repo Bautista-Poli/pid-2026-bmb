@@ -1,3 +1,4 @@
+// Rutas de /api/vehiculos: el catalogo de tipos (publico) y el ABM del conductor.
 import { Router } from 'express';
 
 import * as vehiculoController from '../controllers/vehiculo.controller.js';

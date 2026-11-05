@@ -64,6 +64,7 @@ const AVISO_AFECTADA_POR_EXCESO =
   'Tu cochera sigue ocupada por el vehiculo anterior y no habia otra libre. ' +
   'El estacionamiento te va a indicar donde estacionar.';
 
+/** Suma un mensaje al chat de una incidencia (en el canal indicado). */
 export async function agregarMensaje(
   ejecutor, idIncidencia, rolAutor, texto, idAutor = null, canal = CANALES.GENERAL, montoPropuesto = null,
 ) {
@@ -261,6 +262,7 @@ export const SELECT_INCIDENCIA = `
     JOIN estacionamiento e ON e.id_estacionamiento = i.id_estacionamiento
 `;
 
+/** Convierte un monto de pg a numero, dejando null como null. */
 const aNumero = (valor) => (valor === null || valor === undefined ? null : Number(valor));
 
 /** Montos como numeros y el tope (lo pagado menos lo ya devuelto). */
@@ -299,6 +301,7 @@ const ORDEN_ESTADO = `CASE i.estado WHEN 'ABIERTA' THEN 0 WHEN 'DENUNCIADA' THEN
 const canalPrivadoDe = (usuario) =>
   usuario.rol === ROLES.PROPIETARIO ? CANALES.PROPIETARIO : CANALES.CONDUCTOR;
 
+/** Las incidencias que ve el usuario (las suyas), con el ultimo mensaje. */
 export async function listar(usuario) {
   // Cantidad y ultimo mensaje solo de lo que la parte puede ver.
   const privado = canalPrivadoDe(usuario);
@@ -351,6 +354,7 @@ async function conMensajes(ejecutor, usuario, incidencia) {
   };
 }
 
+/** El detalle de una incidencia con los chats que el usuario puede ver. */
 export async function obtener(usuario, idIncidencia) {
   const incidencia = await buscarParticipando({ query }, usuario, idIncidencia);
   return conMensajes({ query }, usuario, incidencia);

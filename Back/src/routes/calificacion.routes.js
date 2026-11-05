@@ -1,3 +1,4 @@
+// Rutas de /api/calificaciones: la denuncia de una reseña por la parte calificada.
 import { Router } from 'express';
 
 import * as calificacionController from '../controllers/calificacion.controller.js';

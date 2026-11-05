@@ -31,6 +31,7 @@ export async function listar({ estado = ESTADOS_INCIDENCIA.DENUNCIADA } = {}) {
   return rows.map(conMontos);
 }
 
+/** Una incidencia por id (bloqueada si se va a modificar); 404 si no existe. */
 async function buscar(ejecutor, idIncidencia, { bloquear = false } = {}) {
   const { rows } = await ejecutor.query(
     `${SELECT_INCIDENCIA} WHERE i.id_incidencia = $1 ${bloquear ? 'FOR NO KEY UPDATE OF i' : ''}`,
@@ -85,6 +86,7 @@ export async function obtener(idIncidencia) {
   };
 }
 
+/** La moderacion solo actua sobre incidencias denunciadas. */
 function asegurarDenunciada(incidencia) {
   if (incidencia.estado !== ESTADOS_INCIDENCIA.DENUNCIADA) {
     throw ApiError.conflict('La moderacion interviene solo en incidencias denunciadas');

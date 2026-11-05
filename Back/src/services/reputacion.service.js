@@ -152,6 +152,7 @@ export const COLUMNAS_REPUTACION = `
 /** Condicion SQL de "anfitrion destacado" (para filtrar). */
 export const ES_DESTACADO = `(rep.puntaje >= ${UMBRAL_DESTACADO} AND rep.cal_cantidad >= ${MINIMO_CALIFICACIONES})`;
 
+/** Redondea a `decimales` (null queda null). */
 const redondear = (valor, decimales = 1) =>
   valor == null ? null : Math.round(valor * 10 ** decimales) / 10 ** decimales;
 
@@ -256,6 +257,7 @@ export function darFormaReputacion(fila) {
   return fila;
 }
 
+/** La reputacion de un estacionamiento en la ventana [desde, hasta). */
 async function calcular(idEstacionamiento, desde, hasta) {
   const { rows } = await query(
     `SELECT rep.* FROM estacionamiento e

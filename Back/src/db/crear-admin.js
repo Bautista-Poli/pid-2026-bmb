@@ -49,6 +49,7 @@ async function preguntar(texto, { oculto = false } = {}) {
   return respuesta;
 }
 
+/** Crea (o reactiva) el usuario administrador con email y contraseña dados. */
 async function crearAdmin() {
   const { email, nombre, apellido } = values;
   if (!email || !nombre || !apellido) {

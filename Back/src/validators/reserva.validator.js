@@ -1,6 +1,8 @@
+// Validadores de reservas: crear (franja, modalidad, abono) y acceso por codigo.
 import { MODALIDADES, motivoDuracionInvalida } from '../utils/tarifas.js';
 import { campos } from './helpers.js';
 
+/** Si el campo vino en el pedido (aunque sea null). */
 const vino = (valor) => valor !== undefined && valor !== null && valor !== '';
 
 /**

@@ -1,3 +1,5 @@
+// Conexion a Postgres (pool de pg). `query` para una consulta suelta y
+// `withTransaction` para varias que tienen que pasar todas o ninguna.
 import pg from 'pg';
 
 import { config } from './env.js';
@@ -53,6 +55,7 @@ export async function connectDatabase() {
   console.log(`[db] conectado a "${rows[0].db}"`);
 }
 
+/** Cierra el pool (al apagar el servidor). */
 export async function disconnectDatabase() {
   await pool.end();
 }

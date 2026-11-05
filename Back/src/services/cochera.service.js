@@ -1,3 +1,5 @@
+// Cocheras de un estacionamiento: alta (de a una o por lote), edicion, baja, bloqueo
+// por mantenimiento y la busqueda de una cochera libre (buscarCocheraLibre).
 import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
 import { armarSet } from '../utils/sql.js';

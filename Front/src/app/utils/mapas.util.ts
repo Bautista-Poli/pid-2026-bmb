@@ -1,6 +1,6 @@
 import { Direccion, direccionCorta } from '@app/models';
 
-export interface LinkComoLlegar {
+interface LinkComoLlegar {
   app: 'Google Maps' | 'Waze' | 'Apple Maps';
   url: string;
 }

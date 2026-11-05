@@ -1,7 +1,7 @@
 import { FechaISO } from './api.model';
 
 /** Un valor del periodo y el del periodo anterior de igual largo. */
-export interface ValorComparado {
+interface ValorComparado {
   valor: number;
   anterior: number;
 }
@@ -44,7 +44,7 @@ export interface EstadisticasPropietario {
 }
 
 /** Por que un estacionamiento aparece como problematico en el dashboard del admin. */
-export type RazonProblematico = 'CANCELACIONES' | 'RECLAMOS';
+type RazonProblematico = 'CANCELACIONES' | 'RECLAMOS';
 
 export const ETIQUETA_RAZON_PROBLEMATICO: Record<RazonProblematico, string> = {
   CANCELACIONES: 'Cancela mucho',
@@ -52,7 +52,7 @@ export const ETIQUETA_RAZON_PROBLEMATICO: Record<RazonProblematico, string> = {
 };
 
 /** Eventos de cocheras bloqueadas (por un auto que se excedio) en el periodo. */
-export interface BloqueosAdmin {
+interface BloqueosAdmin {
   reasignadas: number;
   canceladas: number;
   autosExcedidos: number;

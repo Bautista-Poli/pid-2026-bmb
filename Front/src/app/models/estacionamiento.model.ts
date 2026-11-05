@@ -79,7 +79,7 @@ export interface Estacionamiento {
 }
 
 /** Datos de contacto del propietario, para que el administrador revise. */
-export interface PropietarioEnRevision {
+interface PropietarioEnRevision {
   nombre: string;
   apellido: string;
   email: string;

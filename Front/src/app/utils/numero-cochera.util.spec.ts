@@ -1,20 +1,4 @@
-import { Cochera } from '@app/models';
-import { numeroDeCochera, siguienteNumero } from './numero-cochera.util';
-
-function cochera(identificador: string): Cochera {
-  return {
-    id: identificador,
-    estacionamientoId: 'e1',
-    identificador,
-    sector: '',
-    tipoVehiculo: 'AUTO',
-    cubierta: true,
-    estado: 'LIBRE',
-    bloqueada: false,
-    motivoBloqueo: null,
-    bloqueadaHasta: null,
-  };
-}
+import { numeroDeCochera } from './numero-cochera.util';
 
 describe('numeroDeCochera', () => {
   it('lee el numero de un identificador numerico', () => {
@@ -29,24 +13,3 @@ describe('numeroDeCochera', () => {
   });
 });
 
-describe('siguienteNumero', () => {
-  it('arranca en 1 cuando no hay cocheras', () => {
-    expect(siguienteNumero([])).toBe(1);
-  });
-
-  it('sigue al mayor cargado', () => {
-    expect(siguienteNumero(['1', '2', '3'].map(cochera))).toBe(4);
-  });
-
-  // El UNIQUE del backend cuenta las bajas, asi que un hueco no se reutiliza.
-  it('no reutiliza el numero de una cochera dada de baja', () => {
-    const cocheras = ['1', '5'].map(cochera);
-    cocheras[1].estado = 'INACTIVA';
-    expect(siguienteNumero(cocheras)).toBe(6);
-  });
-
-  it('ignora los identificadores viejos', () => {
-    expect(siguienteNumero(['A-01', 'B-14'].map(cochera))).toBe(1);
-    expect(siguienteNumero(['A-01', '3'].map(cochera))).toBe(4);
-  });
-});

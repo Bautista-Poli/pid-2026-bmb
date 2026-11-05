@@ -7,7 +7,7 @@ import { FechaHoraISO, Id } from './api.model';
  */
 export type CategoriaCalificacion = 'limpieza' | 'infraestructura' | 'atencion' | 'seguridad' | 'acceso';
 
-export interface InfoCategoria {
+interface InfoCategoria {
   codigo: CategoriaCalificacion;
   nombre: string;
   ayuda: string;
@@ -64,7 +64,7 @@ export const TEXTO_INSIGNIA: Record<CodigoInsignia, string> = {
 };
 
 /** Promedios de 1 a 5 por categoria (null si nadie califico esa ventana). */
-export type PromediosCategoria = Record<CategoriaCalificacion, number | null>;
+type PromediosCategoria = Record<CategoriaCalificacion, number | null>;
 
 /** Lo publico de la reputacion: viene con cada estacionamiento (ultimos 90 dias). */
 export interface ResumenReputacion {
@@ -141,7 +141,7 @@ export interface ReputacionConductor {
   resenas: ResenaRecibida[];
 }
 
-export interface ResenaRecibida {
+interface ResenaRecibida {
   id: Id;
   puntaje: number;
   etiquetas: EtiquetaConductor[];
@@ -164,7 +164,7 @@ export interface CategoriaReputacion {
   anterior: number | null;
 }
 
-export interface IndicadorOperacion {
+interface IndicadorOperacion {
   /** De 0 a 10. */
   puntos: number;
 }
@@ -180,7 +180,7 @@ export interface Opinion {
   denunciaEstado: EstadoDenunciaResena | null;
 }
 
-export interface SugerenciaReputacion {
+interface SugerenciaReputacion {
   categoria: CategoriaCalificacion;
   nombre: string;
   promedio: number;

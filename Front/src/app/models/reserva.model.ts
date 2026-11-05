@@ -14,7 +14,7 @@ export type EstadoReserva =
   /** El vehiculo no llego dentro de la tolerancia: la cochera se libero. */
   | 'NO_SHOW';
 
-export const ETIQUETA_ESTADO_RESERVA: Record<EstadoReserva, string> = {
+const ETIQUETA_ESTADO_RESERVA: Record<EstadoReserva, string> = {
   PENDIENTE: 'Pendiente',
   CONFIRMADA: 'Confirmada',
   ACTIVA: 'En curso',
@@ -141,7 +141,7 @@ export interface ConsultaDisponibilidad {
 }
 
 /** Por que no se puede reservar una franja. */
-export type CausaNoDisponible = 'HORARIO' | 'PASADO' | 'SIN_COCHERA';
+type CausaNoDisponible = 'HORARIO' | 'PASADO' | 'SIN_COCHERA';
 
 /** Franja ofrecida por el backend para una fecha dada. */
 export interface FranjaDisponible {
@@ -177,14 +177,14 @@ export const BORRADOR_VACIO: BorradorReserva = {
 };
 
 /** Estados sobre los que el conductor todavia puede accionar. */
-export const ESTADOS_ACTIVOS: EstadoReserva[] = ['PENDIENTE', 'CONFIRMADA', 'ACTIVA'];
+const ESTADOS_ACTIVOS: EstadoReserva[] = ['PENDIENTE', 'CONFIRMADA', 'ACTIVA'];
 
 export function esReservaActiva(reserva: Reserva): boolean {
   return ESTADOS_ACTIVOS.includes(reserva.estado);
 }
 
 /** Lo que registra el QR de la reserva segun su estado. */
-export type AccionAcceso = 'INGRESO' | 'EGRESO';
+type AccionAcceso = 'INGRESO' | 'EGRESO';
 
 /** Vista previa (`GET /reservas/acceso/:codigo`) y resultado (`POST /reservas/acceso`). */
 export interface AccesoReserva {

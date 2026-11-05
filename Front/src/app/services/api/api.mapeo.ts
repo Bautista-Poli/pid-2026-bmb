@@ -127,7 +127,7 @@ export function aEstacionamiento(dto: EstacionamientoDto): Estacionamiento {
 
 /* ------------------------------- reputacion ------------------------------- */
 
-export function aResumenReputacion(dto: EstacionamientoDto): ResumenReputacion {
+function aResumenReputacion(dto: EstacionamientoDto): ResumenReputacion {
   return {
     cantidad: dto.calificaciones ?? 0,
     promedio: dto.calificacion_promedio ?? null,
@@ -539,7 +539,7 @@ export function aIncidencia(dto: IncidenciaDto): Incidencia {
   };
 }
 
-export function aMensajeIncidencia(dto: MensajeIncidenciaDto): MensajeIncidencia {
+function aMensajeIncidencia(dto: MensajeIncidenciaDto): MensajeIncidencia {
   const autor = [dto.autor_nombre, dto.autor_apellido].filter(Boolean).join(' ');
   return {
     id: dto.id_mensaje,

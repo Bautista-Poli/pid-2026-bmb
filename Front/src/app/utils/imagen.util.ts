@@ -1,5 +1,5 @@
 /** Lado mayor con el que se suben las fotos: de sobra para la app y ahorra cupo de Cloudinary. */
-export const LADO_MAXIMO = 1600;
+const LADO_MAXIMO = 1600;
 
 /**
  * Achica la foto en el navegador antes de subirla (las de celular pesan 4 o

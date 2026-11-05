@@ -7,13 +7,13 @@ import { ReservaService } from './reserva.service';
  * Misma tolerancia que el backend (TOLERANCIA_NO_SHOW_MS): sin ingreso a los
  * 15 min del inicio, la reserva pasa a NO_SHOW y la cochera se libera.
  */
-export const TOLERANCIA_NO_SHOW_MS = 15 * 60 * 1000;
+const TOLERANCIA_NO_SHOW_MS = 15 * 60 * 1000;
 
 const inicioDe = (reserva: Reserva) => Date.parse(aInstante(reserva.fecha, reserva.horaDesde));
 const finDe = (reserva: Reserva) => Date.parse(aInstante(reserva.fechaHasta, reserva.horaHasta));
 
 /** Ultimo instante en que se acepta el ingreso: inicio + tolerancia, sin pasar del fin. */
-export function limiteIngreso(reserva: Reserva): number {
+function limiteIngreso(reserva: Reserva): number {
   return Math.min(inicioDe(reserva) + TOLERANCIA_NO_SHOW_MS, finDe(reserva));
 }
 
@@ -58,7 +58,7 @@ export function reservaEnJuego(reserva: Reserva): boolean {
  * al propietario cuando sale bien. Lo comparten el panel y "Reservas
  * recibidas", que ofrecen el mismo boton (Confirmar).
  */
-export interface PasoReserva {
+interface PasoReserva {
   llamada: Observable<Reserva>;
   aviso: string;
 }

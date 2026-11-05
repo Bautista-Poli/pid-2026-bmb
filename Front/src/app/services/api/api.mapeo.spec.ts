@@ -70,6 +70,7 @@ describe('aEstacionamiento', () => {
       promedio: null,
       categorias: null,
       destacado: false,
+      nivel: null,
       insignias: [],
     });
   });
@@ -81,6 +82,7 @@ describe('aEstacionamiento', () => {
       calificacion_promedio: 4.7,
       calificacion_categorias: { limpieza: 4.8, infraestructura: 4.1, atencion: 4.9, seguridad: 4.6, acceso: 4.4 },
       destacado: true,
+      nivel: 'DIAMANTE',
       insignias: [
         { codigo: 'DESTACADO', texto: 'Anfitrion destacado' },
         { codigo: 'IMPECABLE', texto: 'Impecable' },
@@ -89,6 +91,7 @@ describe('aEstacionamiento', () => {
     expect(reputacion.cantidad).toBe(12);
     expect(reputacion.promedio).toBe(4.7);
     expect(reputacion.destacado).toBe(true);
+    expect(reputacion.nivel).toBe('DIAMANTE');
     expect(reputacion.insignias).toEqual(['DESTACADO', 'IMPECABLE']);
     expect(reputacion.categorias?.limpieza).toBe(4.8);
   });

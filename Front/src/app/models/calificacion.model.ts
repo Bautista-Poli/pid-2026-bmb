@@ -63,6 +63,25 @@ export const TEXTO_INSIGNIA: Record<CodigoInsignia, string> = {
   FACIL_ACCESO: 'Fácil acceso',
 };
 
+/** Niveles segun el puntaje, de menor a mayor (los define el backend). */
+export type CodigoNivel = 'COBRE' | 'PLATA' | 'ORO' | 'PLATINO' | 'ESMERALDA' | 'DIAMANTE';
+
+export const NOMBRE_NIVEL: Record<CodigoNivel, string> = {
+  COBRE: 'Cobre',
+  PLATA: 'Plata',
+  ORO: 'Oro',
+  PLATINO: 'Platino',
+  ESMERALDA: 'Esmeralda',
+  DIAMANTE: 'Diamante',
+};
+
+export interface Nivel {
+  codigo: CodigoNivel;
+  nombre: string;
+  /** Puntaje desde el que se alcanza. */
+  desde: number;
+}
+
 /** Promedios de 1 a 5 por categoria (null si nadie califico esa ventana). */
 export type PromediosCategoria = Record<CategoriaCalificacion, number | null>;
 
@@ -73,6 +92,8 @@ export interface ResumenReputacion {
   promedio: number | null;
   categorias: PromediosCategoria | null;
   destacado: boolean;
+  /** Null mientras no tenga el minimo de calificaciones. */
+  nivel: CodigoNivel | null;
   insignias: CodigoInsignia[];
 }
 
@@ -81,6 +102,7 @@ export const REPUTACION_VACIA: ResumenReputacion = {
   promedio: null,
   categorias: null,
   destacado: false,
+  nivel: null,
   insignias: [],
 };
 
@@ -139,6 +161,10 @@ export interface ReputacionEstacionamiento {
   puntaje: number;
   puntajeAnterior: number | null;
   destacado: boolean;
+  nivel: CodigoNivel | null;
+  /** El que sigue y cuantos puntos faltan; null si ya es Diamante. */
+  siguienteNivel: { codigo: CodigoNivel; desde: number; faltan: number } | null;
+  niveles: Nivel[];
   umbralDestacado: number;
   minimoCalificaciones: number;
   calificaciones: {

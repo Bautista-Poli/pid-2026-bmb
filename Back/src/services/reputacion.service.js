@@ -23,6 +23,32 @@ export const MINIMO_CALIFICACIONES = 5;
 export const UMBRAL_CATEGORIA = 4.5;
 export const DIAS_BUSQUEDA = 90;
 
+/**
+ * Niveles segun el puntaje, de menor a mayor. Hace falta un minimo de
+ * calificaciones (MINIMO_CALIFICACIONES) para tener nivel: sin opiniones el
+ * puntaje es casi todo supuesto. Platino o mas coincide con "Anfitrion destacado".
+ */
+export const NIVELES = Object.freeze([
+  { codigo: 'COBRE', nombre: 'Cobre', desde: 0 },
+  { codigo: 'PLATA', nombre: 'Plata', desde: 50 },
+  { codigo: 'ORO', nombre: 'Oro', desde: 65 },
+  { codigo: 'PLATINO', nombre: 'Platino', desde: UMBRAL_DESTACADO },
+  { codigo: 'ESMERALDA', nombre: 'Esmeralda', desde: 88 },
+  { codigo: 'DIAMANTE', nombre: 'Diamante', desde: 95 },
+]);
+
+/** El codigo del nivel, o null si todavia no tiene suficientes calificaciones. */
+export function nivelDe(puntaje, cantidad) {
+  if (puntaje == null || cantidad < MINIMO_CALIFICACIONES) return null;
+  return NIVELES.findLast((n) => puntaje >= n.desde).codigo;
+}
+
+/** El nivel que sigue y cuantos puntos faltan (null si ya es Diamante). */
+function siguienteNivel(puntaje) {
+  const siguiente = NIVELES.find((n) => n.desde > puntaje);
+  return siguiente ? { codigo: siguiente.codigo, desde: siguiente.desde, faltan: siguiente.desde - puntaje } : null;
+}
+
 export const CATEGORIAS = Object.freeze([
   { codigo: 'limpieza', nombre: 'Limpieza', insignia: 'IMPECABLE', texto: 'Impecable' },
   { codigo: 'infraestructura', nombre: 'Infraestructura', insignia: 'BUENA_INFRAESTRUCTURA', texto: 'Buena infraestructura' },
@@ -129,10 +155,21 @@ export function lateralReputacion(desde, hasta, alias = 'rep') {
 /** Columnas publicas de la reputacion para la busqueda y el detalle. */
 export const COLUMNAS_REPUTACION = `
   rep.cal_cantidad AS calificaciones,
+  rep.puntaje AS reputacion_puntaje,
   rep.cal_con_detalle AS calificaciones_con_detalle,
   ROUND(rep.prom_general::numeric, 1)::float AS calificacion_promedio,
   rep.prom_limpieza, rep.prom_infraestructura, rep.prom_atencion, rep.prom_seguridad, rep.prom_acceso,
   (rep.puntaje >= ${UMBRAL_DESTACADO} AND rep.cal_cantidad >= ${MINIMO_CALIFICACIONES}) AS destacado`;
+
+/**
+ * Condicion SQL de "nivel `codigo` o mas" (para filtrar). El umbral sale de
+ * NIVELES, nunca del pedido: `codigo` ya viene validado.
+ */
+export function condicionNivelMinimo(codigo) {
+  const nivel = NIVELES.find((n) => n.codigo === codigo);
+  if (!nivel) throw new Error(`Nivel desconocido: ${codigo}`);
+  return `(rep.cal_cantidad >= ${MINIMO_CALIFICACIONES} AND rep.puntaje >= ${Number(nivel.desde)})`;
+}
 
 /** Condicion SQL de "anfitrion destacado" (para filtrar). */
 export const ES_DESTACADO = `(rep.puntaje >= ${UMBRAL_DESTACADO} AND rep.cal_cantidad >= ${MINIMO_CALIFICACIONES})`;
@@ -172,6 +209,8 @@ export function darFormaReputacion(fila) {
   const conDetalle = fila.calificaciones_con_detalle ?? 0;
   delete fila.calificaciones_con_detalle;
   fila.calificaciones ??= 0;
+  fila.nivel = nivelDe(fila.reputacion_puntaje, fila.calificaciones);
+  delete fila.reputacion_puntaje;
   fila.destacado = Boolean(fila.destacado);
   fila.calificacion_categorias = conDetalle > 0 ? promedios : null;
   fila.insignias = insigniasDe({ destacado: fila.destacado, conDetalle, promedios });
@@ -304,6 +343,9 @@ export async function delEstacionamiento(idEstacionamiento, idPropietario, { dia
     puntaje_anterior:
       anterior.cal_cantidad + anterior.reservas_total + anterior.incidencias_total > 0 ? anterior.puntaje : null,
     destacado,
+    nivel: nivelDe(actual.puntaje, actual.cal_cantidad),
+    siguiente_nivel: siguienteNivel(actual.puntaje),
+    niveles: NIVELES,
     umbral_destacado: UMBRAL_DESTACADO,
     minimo_calificaciones: MINIMO_CALIFICACIONES,
     calificaciones: {

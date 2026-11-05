@@ -129,6 +129,7 @@ export function aResumenReputacion(dto: EstacionamientoDto): ResumenReputacion {
     promedio: dto.calificacion_promedio ?? null,
     categorias: dto.calificacion_categorias ?? null,
     destacado: dto.destacado ?? false,
+    nivel: dto.nivel ?? null,
     insignias: (dto.insignias ?? []).map((i) => i.codigo),
   };
 }
@@ -144,6 +145,9 @@ export function aReputacion(dto: ReputacionDto): ReputacionEstacionamiento {
     puntaje: dto.puntaje,
     puntajeAnterior: dto.puntaje_anterior,
     destacado: dto.destacado,
+    nivel: dto.nivel,
+    siguienteNivel: dto.siguiente_nivel,
+    niveles: dto.niveles,
     umbralDestacado: dto.umbral_destacado,
     minimoCalificaciones: dto.minimo_calificaciones,
     calificaciones: dto.calificaciones,

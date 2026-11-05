@@ -177,6 +177,13 @@ describe('reputacion del estacionamiento', () => {
     assert.equal(datos.calificaciones.cantidad, 0);
     assert.equal(datos.puntaje_anterior, null);
     assert.deepEqual(datos.insignias, []);
+    // Sin calificaciones no hay nivel, aunque el puntaje supuesto sea alto.
+    assert.equal(datos.nivel, null);
+    assert.deepEqual(datos.siguiente_nivel, { codigo: 'ESMERALDA', desde: 88, faltan: 3 });
+    assert.deepEqual(
+      datos.niveles.map((n) => n.codigo),
+      ['COBRE', 'PLATA', 'ORO', 'PLATINO', 'ESMERALDA', 'DIAMANTE'],
+    );
   });
 
   test('con suficientes calificaciones altas es destacado y gana las insignias de categoria', async () => {
@@ -193,6 +200,8 @@ describe('reputacion del estacionamiento', () => {
     assert.equal(datos.calificaciones.promedio, 5);
     assert.equal(datos.puntaje, 100);
     assert.equal(datos.destacado, true);
+    assert.equal(datos.nivel, 'DIAMANTE');
+    assert.equal(datos.siguiente_nivel, null);
     const codigos = datos.insignias.map((i) => i.codigo);
     assert.deepEqual(codigos, ['DESTACADO', 'IMPECABLE', 'BUENA_INFRAESTRUCTURA', 'BUENA_ATENCION', 'SEGURO', 'FACIL_ACCESO']);
     assert.equal(datos.etiquetas.find((e) => e.codigo === 'MUY_LIMPIO').cantidad, 5);
@@ -329,6 +338,8 @@ describe('insignias en la busqueda', () => {
     const [primero, segundo] = datos.estacionamientos;
     assert.equal(primero.id_estacionamiento, destacado.id_estacionamiento);
     assert.equal(primero.destacado, true);
+    assert.equal(primero.nivel, 'DIAMANTE');
+    assert.ok(!('reputacion_puntaje' in primero));
     assert.equal(primero.calificaciones, 5);
     assert.equal(primero.calificacion_promedio, 5);
     assert.equal(primero.calificacion_categorias.limpieza, 5);
@@ -336,6 +347,7 @@ describe('insignias en la busqueda', () => {
     assert.ok(!('prom_limpieza' in primero));
 
     assert.equal(segundo.destacado, false);
+    assert.equal(segundo.nivel, null);
     assert.equal(segundo.calificaciones, 0);
     assert.equal(segundo.calificacion_promedio, null);
     assert.equal(segundo.calificacion_categorias, null);
@@ -347,8 +359,31 @@ describe('insignias en la busqueda', () => {
       [destacado.id_estacionamiento],
     );
 
+    // Nivel minimo: el destacado es Diamante (100); el comun no tiene nivel.
+    const ids = (r) => r.datos.estacionamientos.map((e) => e.id_estacionamiento);
+    const soloDiamante = await api('GET', `/estacionamientos?q=${marca}&nivel_minimo=DIAMANTE`);
+    assert.deepEqual(ids(soloDiamante), [destacado.id_estacionamiento]);
+    const desdeCobre = await api('GET', `/estacionamientos?q=${marca}&nivel_minimo=cobre`);
+    assert.deepEqual(ids(desdeCobre), [destacado.id_estacionamiento]);
+    const nivelRaro = await api('GET', `/estacionamientos?q=${marca}&nivel_minimo=RUBI`);
+    assert.equal(nivelRaro.estado, 400);
+
     const detalle = await api('GET', `/estacionamientos/${destacado.id_estacionamiento}`);
     assert.equal(detalle.datos.estacionamiento.destacado, true);
     assert.equal(detalle.datos.estacionamiento.calificaciones, 5);
+  });
+});
+
+describe('niveles', () => {
+  test('cada nivel arranca en su puntaje y pide el minimo de calificaciones', async () => {
+    const { nivelDe } = await import('../src/services/reputacion.service.js');
+    assert.equal(nivelDe(30, 5), 'COBRE');
+    assert.equal(nivelDe(50, 5), 'PLATA');
+    assert.equal(nivelDe(64, 9), 'PLATA');
+    assert.equal(nivelDe(65, 5), 'ORO');
+    assert.equal(nivelDe(80, 5), 'PLATINO');
+    assert.equal(nivelDe(88, 5), 'ESMERALDA');
+    assert.equal(nivelDe(95, 5), 'DIAMANTE');
+    assert.equal(nivelDe(100, 4), null);
   });
 });

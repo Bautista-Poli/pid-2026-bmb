@@ -167,7 +167,7 @@ function aParams(filtros: FiltrosEstacionamiento): HttpParams {
   if (filtros.precioMinimo != null) params = params.set('tarifa_min', filtros.precioMinimo);
   if (filtros.precioMaximo != null) params = params.set('tarifa_max', filtros.precioMaximo);
   if (filtros.soloCubiertos) params = params.set('cubierto', true);
-  if (filtros.soloDestacados) params = params.set('destacados', true);
+  if (filtros.nivelMinimo) params = params.set('nivel_minimo', filtros.nivelMinimo);
   if (filtros.area) {
     params = params
       .set('lat_min', filtros.area.latitudMinima)

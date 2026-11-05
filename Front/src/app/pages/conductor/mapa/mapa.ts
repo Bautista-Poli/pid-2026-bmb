@@ -13,7 +13,12 @@ import {
 import { rxResource } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
 import { Observable, catchError, forkJoin, map, of } from 'rxjs';
-import { DetalleEstacionamiento, InsigniasEstacionamiento, MapaEstacionamientos } from '@app/components/estacionamiento';
+import {
+  DetalleEstacionamiento,
+  InsigniasEstacionamiento,
+  MapaEstacionamientos,
+  NivelEstacionamiento,
+} from '@app/components/estacionamiento';
 import {
   CampoBusqueda,
   Cargando,
@@ -26,6 +31,7 @@ import {
 } from '@app/components/ui';
 import {
   AreaMapa,
+  CodigoNivel,
   descripcionVehiculo,
   Estacionamiento,
   FechaISO,
@@ -104,8 +110,24 @@ const PANEL_INICIAL: Panel = {
   precioMaximo: PRECIO_TOPE,
   orden: 'DISTANCIA',
   soloCubiertos: false,
-  soloDestacados: false,
+  nivelMinimo: null,
 };
+
+/** Opciones de "Nivel del estacionamiento": todos, o de ese nivel para arriba. */
+const OPCIONES_NIVEL: { nivel: CodigoNivel | null; texto: string }[] = [
+  { nivel: null, texto: 'Todos' },
+  { nivel: 'COBRE', texto: 'Cobre o más' },
+  { nivel: 'PLATA', texto: 'Plata o más' },
+  { nivel: 'ORO', texto: 'Oro o más' },
+  { nivel: 'PLATINO', texto: 'Platino o más' },
+  { nivel: 'ESMERALDA', texto: 'Esmeralda o más' },
+  { nivel: 'DIAMANTE', texto: 'Solo Diamante' },
+];
+
+const ORDENES: { orden: OrdenEstacionamiento; texto: string }[] = [
+  { orden: 'DISTANCIA', texto: 'Más cercano' },
+  { orden: 'PRECIO', texto: 'Más barato' },
+];
 
 const CLASE_ESTADO: Record<EstadoDisponibilidad, string> = {
   DISPONIBLE: 'bg-exito-suave text-exito',
@@ -124,8 +146,8 @@ interface Panel {
   precioMaximo: number;
   orden: OrdenEstacionamiento;
   soloCubiertos: boolean;
-  /** Solo los "Anfitrion destacado". */
-  soloDestacados: boolean;
+  /** "Oro o mas", "solo Diamante"...; null: todos. */
+  nivelMinimo: CodigoNivel | null;
 }
 
 /**
@@ -155,6 +177,7 @@ interface Panel {
     MapaEstacionamientos,
     DetalleEstacionamiento,
     InsigniasEstacionamiento,
+    NivelEstacionamiento,
     CampoBusqueda,
     Cargando,
     Chip,
@@ -218,6 +241,8 @@ export class Mapa {
 
   /** Borrador del modal de filtros. */
   protected readonly panel = signal<Panel>(PANEL_INICIAL);
+  protected readonly opcionesNivel = OPCIONES_NIVEL;
+  protected readonly ordenes = ORDENES;
   /** Los filtros en uso. */
   private readonly aplicado = signal<Panel>(PANEL_INICIAL);
 
@@ -226,8 +251,8 @@ export class Mapa {
 
   /** Cuantos filtros del modal estan en uso (el orden no cuenta: tiene su propio selector). */
   protected readonly filtrosActivos = computed(() => {
-    const { desde, precioMinimo, precioMaximo, soloCubiertos, soloDestacados } = this.aplicado();
-    return [desde, precioMinimo > 0 || precioMaximo < PRECIO_TOPE, soloCubiertos, soloDestacados].filter(
+    const { desde, precioMinimo, precioMaximo, soloCubiertos, nivelMinimo } = this.aplicado();
+    return [desde, precioMinimo > 0 || precioMaximo < PRECIO_TOPE, soloCubiertos, nivelMinimo].filter(
       Boolean,
     ).length;
   });
@@ -449,7 +474,7 @@ export class Mapa {
       precioMinimo: panel.precioMinimo > 0 ? panel.precioMinimo : null,
       precioMaximo: panel.precioMaximo < PRECIO_TOPE ? panel.precioMaximo : null,
       soloCubiertos: panel.soloCubiertos,
-      soloDestacados: panel.soloDestacados,
+      nivelMinimo: panel.nivelMinimo,
       momento: momentoDe(panel),
       // Los que no sirven tambien se muestran (en gris y al final), no desaparecen.
       incluirNoDisponibles: true,

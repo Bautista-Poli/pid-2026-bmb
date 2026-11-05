@@ -9,3 +9,4 @@ export * from './detalle-estacionamiento/detalle-estacionamiento';
 export * from './galeria-fotos/galeria-fotos';
 export * from './planes-abono/planes-abono';
 export * from './insignias-estacionamiento/insignias-estacionamiento';
+export * from './nivel-estacionamiento/nivel-estacionamiento';

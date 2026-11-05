@@ -1,5 +1,5 @@
 import { FechaHoraISO, FechaISO, HoraHHmm, Id } from './api.model';
-import { ResumenReputacion } from './calificacion.model';
+import { CodigoNivel, ResumenReputacion } from './calificacion.model';
 import { Tarifas } from './tarifa.model';
 import { TipoVehiculo } from './vehiculo.model';
 
@@ -119,8 +119,8 @@ export interface FiltrosEstacionamiento {
   precioMinimo?: number | null;
   precioMaximo?: number | null;
   soloCubiertos?: boolean;
-  /** Solo los "Anfitrion destacado". */
-  soloDestacados?: boolean;
+  /** Solo los de ese nivel de reputacion o mas ("Oro o mas"); null: todos. */
+  nivelMinimo?: CodigoNivel | null;
   momento?: Momento | null;
   /** Con un momento: trae tambien los que no tienen cochera libre o estan cerrados, marcados con `disponible`. */
   incluirNoDisponibles?: boolean;

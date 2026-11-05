@@ -41,16 +41,16 @@ const MARGEN_INGRESO_MS = 30 * 60 * 1000;
 // por estacionamiento.
 export const TOLERANCIA_NO_SHOW_MS = 15 * 60 * 1000;
 
+/** Efecto de una transicion: deja la cochera de la reserva en `estado` (estado fisico). */
+const ponerCocheraEn = (estado) => (client, reserva) =>
+  client.query('UPDATE cochera SET estado_actual = $1 WHERE id_cochera = $2', [estado, reserva.id_cochera]);
+
 /**
  * Transiciones de estado permitidas: TRANSICIONES[desde][hacia]. Si la
  * combinacion no esta, cambiarEstado() la rechaza. `efecto` corre, dentro de
  * la misma transaccion, lo que tenga que pasar ademas de mover `estado`
  * (hoy, solo el estado_actual de la cochera).
  */
-/** Efecto de una transicion: deja la cochera de la reserva en `estado` (estado fisico). */
-const ponerCocheraEn = (estado) => (client, reserva) =>
-  client.query('UPDATE cochera SET estado_actual = $1 WHERE id_cochera = $2', [estado, reserva.id_cochera]);
-
 const TRANSICIONES = {
   [ESTADOS_RESERVA.PENDIENTE]: {
     [ESTADOS_RESERVA.CONFIRMADA]: {},
@@ -408,7 +408,7 @@ async function obtenerDetalle(ejecutor, idReserva, { conCodigo = false, vista } 
   return rows[0];
 }
 
-/** Las reservas del conductor, la mas nueva primero (con su codigo de acceso). */
+/** Las reservas del conductor, de la que empieza mas tarde a la mas temprana (con su codigo de acceso). */
 export async function listarPorConductor(idConductor) {
   const { rows } = await query(
     `${selectDetalle({ conCodigo: true, vista: 'CONDUCTOR' })} WHERE r.id_conductor = $1 ORDER BY r.inicio DESC`,

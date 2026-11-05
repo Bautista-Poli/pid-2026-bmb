@@ -5,7 +5,7 @@ import { CAMPOS_TARIFA, MODALIDADES } from '../utils/tarifas.js';
 import { campos } from './helpers.js';
 
 const REGEX_FECHA = /^\d{4}-\d{2}-\d{2}$/;
-/** Si el campo vino en el pedido (aunque sea null). */
+/** Si el campo vino con valor: undefined, null y '' cuentan como que no vino. */
 const vino = (valor) => valor !== undefined && valor !== null && valor !== '';
 const CAMPOS_EDITABLES = [
   'nombre', 'descripcion', 'calle', 'numero', 'ciudad', 'provincia', 'codigo_postal',

@@ -45,7 +45,10 @@ export const eliminarCuenta = asyncHandler(async (req, res) => {
   res.status(204).end();
 });
 
-/** La cookie es httpOnly: el front no la puede borrar solo, necesita este endpoint. */
+/**
+ * POST /api/auth/logout (publico)
+ * La cookie es httpOnly: el front no la puede borrar solo, necesita este endpoint.
+ */
 export const logout = asyncHandler(async (_req, res) => {
   borrarCookieSesion(res);
   res.status(204).end();

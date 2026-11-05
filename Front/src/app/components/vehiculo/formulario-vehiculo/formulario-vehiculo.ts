@@ -16,7 +16,6 @@ import {
   Vehiculo,
 } from '@app/models';
 
-/** Orden de los chips, igual que en los filtros de explorar. */
 /**
  * Formatos de patente argentina por tipo, viejo y Mercosur. Mismas reglas que
  * el backend (vehiculo.validator.js); la moto es la unica distinta.

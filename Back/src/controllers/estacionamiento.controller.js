@@ -178,7 +178,10 @@ function imagenDelBody(req) {
   return { mime, bytes };
 }
 
-/** Las fotos son publicas: el detalle del estacionamiento se navega sin sesion. */
+/**
+ * GET /api/estacionamientos/:id/foto (publico)
+ * Las fotos son publicas: el detalle del estacionamiento se navega sin sesion.
+ */
 export const obtenerFoto = asyncHandler(async (req, res) => {
   const foto = await fotoService.obtenerPortada(req.params.id);
   if (!foto) throw ApiError.notFound('El estacionamiento no tiene foto');
@@ -191,7 +194,10 @@ export const guardarFoto = asyncHandler(async (req, res) => {
   res.json({ foto });
 });
 
-/** Firma para que el navegador suba una foto directo a Cloudinary. */
+/**
+ * POST /api/estacionamientos/:id/fotos/firma (propietario)
+ * Firma para que el navegador suba una foto directo a Cloudinary.
+ */
 export const firmarFoto = asyncHandler(async (req, res) => {
   const firma = await fotoService.firmar(req.params.id, req.usuario.id);
   res.json({ firma });

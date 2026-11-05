@@ -101,8 +101,6 @@ const DIAS_VIGENCIA = 30;
 
 const ESTADOS_ABONO = Object.freeze({ VIGENTE: 'VIGENTE', CANCELADO: 'CANCELADO', VENCIDO: 'VENCIDO' });
 
-/** "Hoy" del negocio: la fecha en Argentina, no la del servidor. */
-
 /**
  * `desde`/`hasta` van como texto: pg convierte un DATE en un Date de JS a la
  * medianoche del servidor y la fecha se puede correr un dia. Los usos

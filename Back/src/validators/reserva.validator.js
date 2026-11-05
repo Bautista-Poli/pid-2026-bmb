@@ -2,7 +2,7 @@
 import { MODALIDADES, motivoDuracionInvalida } from '../utils/tarifas.js';
 import { campos } from './helpers.js';
 
-/** Si el campo vino en el pedido (aunque sea null). */
+/** Si el campo vino con valor: undefined, null y '' cuentan como que no vino. */
 const vino = (valor) => valor !== undefined && valor !== null && valor !== '';
 
 /**

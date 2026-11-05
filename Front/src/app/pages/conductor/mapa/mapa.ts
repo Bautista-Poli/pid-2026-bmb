@@ -13,7 +13,12 @@ import {
 import { rxResource } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
 import { Observable, catchError, forkJoin, map, of } from 'rxjs';
-import { DetalleEstacionamiento, InsigniasEstacionamiento, MapaEstacionamientos } from '@app/components/estacionamiento';
+import {
+  DetalleEstacionamiento,
+  InsigniasEstacionamiento,
+  MapaEstacionamientos,
+  NivelEstacionamiento,
+} from '@app/components/estacionamiento';
 import {
   CampoBusqueda,
   Cargando,
@@ -26,15 +31,16 @@ import {
 } from '@app/components/ui';
 import {
   AreaMapa,
+  CodigoNivel,
   descripcionVehiculo,
   Estacionamiento,
   FechaISO,
   FiltrosEstacionamiento,
   HoraHHmm,
+  ICONO_TIPO_VEHICULO,
   Id,
   Momento,
   OrdenEstacionamiento,
-  TipoVehiculo,
   Vehiculo,
 } from '@app/models';
 import {
@@ -60,7 +66,7 @@ import {
   resumenHorario,
 } from '@app/utils/disponibilidad.util';
 import { minutosAPie } from '@app/utils/distancia.util';
-import { aFechaISO, desdeFechaISO } from '@app/utils/fecha.util';
+import { aFechaISO, diaCorto } from '@app/utils/fecha.util';
 
 /** Tope del rango de precios (por hora). En el tope, el maximo no filtra. */
 const PRECIO_TOPE = 5000;
@@ -89,12 +95,6 @@ const HORAS_MAXIMAS = 12;
 /** Estacionamientos por pagina en la lista (en el mapa van todos los de la zona). */
 const POR_PAGINA = 10;
 
-const ICONO_TIPO: Record<TipoVehiculo, NombreIcono> = {
-  AUTO: 'auto',
-  CAMIONETA: 'camioneta',
-  MOTO: 'moto',
-};
-
 /** Sin filtros: ahora, cualquier precio, ordenado por cercania. */
 const PANEL_INICIAL: Panel = {
   fecha: aFechaISO(new Date()),
@@ -104,8 +104,25 @@ const PANEL_INICIAL: Panel = {
   precioMaximo: PRECIO_TOPE,
   orden: 'DISTANCIA',
   soloCubiertos: false,
-  soloDestacados: false,
+  nivelMinimo: null,
 };
+
+/** Opciones de "Nivel del estacionamiento": todos, o de ese nivel para arriba. */
+const OPCIONES_NIVEL: { nivel: CodigoNivel | null; texto: string }[] = [
+  { nivel: null, texto: 'Todos' },
+  { nivel: 'COBRE', texto: 'Cobre o más' },
+  { nivel: 'PLATA', texto: 'Plata o más' },
+  { nivel: 'ORO', texto: 'Oro o más' },
+  { nivel: 'PLATINO', texto: 'Platino o más' },
+  { nivel: 'ESMERALDA', texto: 'Esmeralda o más' },
+  { nivel: 'DIAMANTE', texto: 'Solo Diamante' },
+];
+
+const ORDENES: { orden: OrdenEstacionamiento; texto: string }[] = [
+  { orden: 'DISTANCIA', texto: 'Más cercano' },
+  { orden: 'PRECIO', texto: 'Más barato' },
+  { orden: 'REPUTACION', texto: 'Mejor calificados' },
+];
 
 const CLASE_ESTADO: Record<EstadoDisponibilidad, string> = {
   DISPONIBLE: 'bg-exito-suave text-exito',
@@ -124,8 +141,8 @@ interface Panel {
   precioMaximo: number;
   orden: OrdenEstacionamiento;
   soloCubiertos: boolean;
-  /** Solo los "Anfitrion destacado". */
-  soloDestacados: boolean;
+  /** "Oro o mas", "solo Diamante"...; null: todos. */
+  nivelMinimo: CodigoNivel | null;
 }
 
 /**
@@ -155,6 +172,7 @@ interface Panel {
     MapaEstacionamientos,
     DetalleEstacionamiento,
     InsigniasEstacionamiento,
+    NivelEstacionamiento,
     CampoBusqueda,
     Cargando,
     Chip,
@@ -176,7 +194,7 @@ export class Mapa {
   private readonly injector = inject(Injector);
 
   protected readonly descripcion = descripcionVehiculo;
-  protected readonly iconoTipo = ICONO_TIPO;
+  protected readonly iconoTipo = ICONO_TIPO_VEHICULO;
   protected readonly etiquetaEstado = ETIQUETA_ESTADO;
   protected readonly claseEstado = CLASE_ESTADO;
   protected readonly precioTope = PRECIO_TOPE;
@@ -218,6 +236,13 @@ export class Mapa {
 
   /** Borrador del modal de filtros. */
   protected readonly panel = signal<Panel>(PANEL_INICIAL);
+  protected readonly opcionesNivel = OPCIONES_NIVEL;
+  protected readonly ordenes = ORDENES;
+  protected readonly iconoOrden: Record<OrdenEstacionamiento, NombreIcono> = {
+    DISTANCIA: 'explorar',
+    PRECIO: 'moneda',
+    REPUTACION: 'estrella',
+  };
   /** Los filtros en uso. */
   private readonly aplicado = signal<Panel>(PANEL_INICIAL);
 
@@ -226,8 +251,8 @@ export class Mapa {
 
   /** Cuantos filtros del modal estan en uso (el orden no cuenta: tiene su propio selector). */
   protected readonly filtrosActivos = computed(() => {
-    const { desde, precioMinimo, precioMaximo, soloCubiertos, soloDestacados } = this.aplicado();
-    return [desde, precioMinimo > 0 || precioMaximo < PRECIO_TOPE, soloCubiertos, soloDestacados].filter(
+    const { desde, precioMinimo, precioMaximo, soloCubiertos, nivelMinimo } = this.aplicado();
+    return [desde, precioMinimo > 0 || precioMaximo < PRECIO_TOPE, soloCubiertos, nivelMinimo].filter(
       Boolean,
     ).length;
   });
@@ -279,6 +304,7 @@ export class Mapa {
     this.filtrosAbiertos.set(true);
   }
 
+  /** Aplica los filtros del modal y lo cierra. */
   protected aplicarFiltros(): void {
     this.intentoBuscar.set(true);
     if (this.errorHorario()) return;
@@ -287,6 +313,7 @@ export class Mapa {
     this.filtrosAbiertos.set(false);
   }
 
+  /** Vuelve los filtros a los iniciales (sin tocar el orden). */
   protected limpiarFiltros(): void {
     const limpio = { ...PANEL_INICIAL, orden: this.orden() };
     this.panel.set(limpio);
@@ -324,6 +351,7 @@ export class Mapa {
     this.textoAplicado.set(this.destino() ? '' : this.texto().trim());
   }
 
+  /** Centra la busqueda en el lugar elegido. */
   protected elegirDestino(sugerencia: Sugerencia): void {
     const destino = sugerencia.dato as DireccionGeoref;
     this.destino.set(destino);
@@ -331,6 +359,7 @@ export class Mapa {
     this.textoAplicado.set('');
   }
 
+  /** Centra la busqueda en la ubicacion del usuario. */
   protected usarMiUbicacion(): void {
     this.destino.set(null);
     this.texto.set('');
@@ -449,7 +478,7 @@ export class Mapa {
       precioMinimo: panel.precioMinimo > 0 ? panel.precioMinimo : null,
       precioMaximo: panel.precioMaximo < PRECIO_TOPE ? panel.precioMaximo : null,
       soloCubiertos: panel.soloCubiertos,
-      soloDestacados: panel.soloDestacados,
+      nivelMinimo: panel.nivelMinimo,
       momento: momentoDe(panel),
       // Los que no sirven tambien se muestran (en gris y al final), no desaparecen.
       incluirNoDisponibles: true,
@@ -526,12 +555,7 @@ export class Mapa {
     const { fecha, desde, horas } = this.aplicado();
     const hasta = desde ? horaFin(desde, horas) : null;
     if (!desde || !hasta) return 'Ahora';
-    const dia = desdeFechaISO(fecha).toLocaleDateString('es-AR', {
-      weekday: 'short',
-      day: 'numeric',
-      month: 'short',
-    });
-    return `${dia.charAt(0).toUpperCase()}${dia.slice(1).replace(/,/g, '')} · ${desde} – ${hasta}`;
+    return `${diaCorto(fecha)} · ${desde} – ${hasta}`;
   });
 
   /** Tocar una tarjeta de la lista abre su ficha. */

@@ -21,19 +21,6 @@ export function distanciaKm(origen: Coordenadas, destino: Coordenadas): number {
     Math.cos(aRadianes(origen.latitud)) * Math.cos(aRadianes(destino.latitud)) * Math.sin(dLon / 2) ** 2;
   return 2 * RADIO_TIERRA_KM * Math.asin(Math.sqrt(a));
 }
-
-/**
- * Distancia desde `origen` hasta un lugar cuyas coordenadas pueden faltar
- * (estacionamientos cargados antes de geocodificar). `undefined` si falta algo.
- */
-export function distanciaHasta(
-  origen: Coordenadas | null,
-  destino: { latitud: number | null; longitud: number | null },
-): number | undefined {
-  if (!origen || destino.latitud == null || destino.longitud == null) return undefined;
-  return distanciaKm(origen, { latitud: destino.latitud, longitud: destino.longitud });
-}
-
 /**
  * Comparador para `sort`: el mas cercano primero. Los que no tienen distancia
  * (sin coordenadas o sin ubicacion del usuario) van al final, en el orden que

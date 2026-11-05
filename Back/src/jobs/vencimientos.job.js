@@ -25,8 +25,9 @@ import { desbloquearVencidas } from '../services/cochera.service.js';
 import { detectarExcedidos, protegerReservasSiguientes } from '../services/incidencia.service.js';
 import { vencerAusentes, vencerPendientesSinConfirmar } from '../services/reserva.service.js';
 
-export const INTERVALO_MINIMO_MS = 60_000;
+const INTERVALO_MINIMO_MS = 60_000;
 
+/** Una pasada de todos los vencimientos; loguea solo si cambio algo. */
 async function revisar() {
   const canceladas = await vencerPendientesSinConfirmar();
   const ausentes = await vencerAusentes();
@@ -91,6 +92,7 @@ export function activarVencimientosADemanda() {
   disparador = crearDisparador();
 }
 
+/** Lo llama index.js al apagar: los pedidos ya no disparan revisiones. */
 export function desactivarVencimientosADemanda() {
   disparador = null;
 }

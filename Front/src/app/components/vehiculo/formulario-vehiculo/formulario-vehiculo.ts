@@ -8,10 +8,13 @@ import {
 } from '@angular/forms';
 import { FotoEstacionamiento } from '@app/components/estacionamiento/foto-estacionamiento/foto-estacionamiento';
 import { Boton, Chip } from '@app/components/ui';
-import { ETIQUETA_TIPO_VEHICULO, NuevoVehiculo, TipoVehiculo, Vehiculo } from '@app/models';
-
-/** Orden de los chips, igual que en los filtros de explorar. */
-const TIPOS: TipoVehiculo[] = ['AUTO', 'MOTO', 'CAMIONETA'];
+import {
+  ETIQUETA_TIPO_VEHICULO,
+  NuevoVehiculo,
+  TIPOS_VEHICULO,
+  TipoVehiculo,
+  Vehiculo,
+} from '@app/models';
 
 /**
  * Formatos de patente argentina por tipo, viejo y Mercosur. Mismas reglas que
@@ -64,7 +67,7 @@ export class FormularioVehiculo {
    */
   readonly fotoElegida = output<File | null>();
 
-  protected readonly tipos = TIPOS;
+  protected readonly tipos = TIPOS_VEHICULO;
   protected readonly etiquetaTipo = ETIQUETA_TIPO_VEHICULO;
 
   /** Mismas reglas que valida el backend (vehiculo.validator.js). */
@@ -106,6 +109,7 @@ export class FormularioVehiculo {
     this.formulario.controls.tipo.setValue(tipo);
   }
 
+  /** Valida el formulario y emite los datos del vehiculo. */
   protected enviar(): void {
     if (this.formulario.invalid) {
       this.formulario.markAllAsTouched();

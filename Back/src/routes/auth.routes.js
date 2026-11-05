@@ -1,3 +1,4 @@
+// Rutas de /api/auth: registro, login, logout, perfil y cambio de perfil activo.
 import { Router } from 'express';
 
 import * as authController from '../controllers/auth.controller.js';

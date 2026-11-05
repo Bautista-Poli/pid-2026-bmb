@@ -1,3 +1,4 @@
+// Componente raiz: solo contiene el <router-outlet> donde se dibuja cada pantalla.
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { EstadoNavegacion } from '@app/services/estado-navegacion';

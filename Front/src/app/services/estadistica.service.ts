@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { EstadisticasPropietario, FechaISO, Id } from '@app/models';
 
-export interface FiltroEstadisticas {
+interface FiltroEstadisticas {
   desde: FechaISO;
   hasta: FechaISO;
   /** Uno solo, o todos los del propietario si no viene. */

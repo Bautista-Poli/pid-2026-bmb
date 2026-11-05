@@ -1,3 +1,5 @@
+// Cuentas: registro, login (bcrypt + JWT), perfil, perfiles habilitados y baja. Lo
+// llama auth.controller; la cookie la pone utils/cookies.js.
 import bcrypt from 'bcrypt';
 
 import { config } from '../config/env.js';
@@ -16,6 +18,7 @@ const VIOLACION_UNIQUE = '23505';
 
 const CAMPOS_EDITABLES = ['nombre', 'apellido', 'email', 'telefono'];
 
+/** Alta de cuenta: valida que el email no exista y guarda la contraseña hasheada. */
 export async function registrar({ nombre, apellido, email, password, rol, telefono = null }) {
   const passwordHash = await bcrypt.hash(password, config.bcryptRounds);
 
@@ -38,6 +41,7 @@ export async function registrar({ nombre, apellido, email, password, rol, telefo
   return { usuario, token: firmarToken(usuario) };
 }
 
+/** Verifica email y contraseña; devuelve el usuario y el token de sesion. */
 export async function login({ email, password }) {
   const { rows } = await query(
     `SELECT ${CAMPOS_PUBLICOS}, password_hash FROM usuario WHERE email = $1`,
@@ -63,6 +67,7 @@ export async function login({ email, password }) {
   return { usuario, token: firmarToken(usuario) };
 }
 
+/** El usuario de la sesion (sin la contraseña). */
 export async function obtenerPerfil(idUsuario) {
   const { rows } = await query(
     `SELECT ${CAMPOS_PUBLICOS} FROM usuario WHERE id_usuario = $1`,

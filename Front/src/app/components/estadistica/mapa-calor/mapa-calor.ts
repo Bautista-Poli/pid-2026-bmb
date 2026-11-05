@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
 /** Una celda con datos; las que no vienen valen 0. `diaSemana`: 0 = domingo. */
-export interface CeldaDemanda {
+interface CeldaDemanda {
   diaSemana: number;
   hora: number;
   reservas: number;

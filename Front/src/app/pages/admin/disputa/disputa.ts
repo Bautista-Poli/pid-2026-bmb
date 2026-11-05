@@ -89,6 +89,7 @@ export class Disputa {
     this.monto.set(valor === '' ? null : Number(valor));
   }
 
+  /** Si se puede resolver: fundamento con largo valido y, a favor del conductor, un monto dentro del tope. */
   protected resolucionValida(d: IncidenciaModerada): boolean {
     const largo = this.fundamento().trim().length;
     if (largo < FUNDAMENTO_MIN || largo > FUNDAMENTO_MAX) return false;
@@ -97,6 +98,7 @@ export class Disputa {
     return this.resolucion() === 'A_FAVOR_CONDUCTOR' && monto !== null && monto > 0 && monto <= d.tope;
   }
 
+  /** Manda un mensaje al chat privado con una de las partes. */
   protected escribir(d: IncidenciaModerada): void {
     const texto = this.borrador().trim();
     const canal = this.canal();
@@ -116,6 +118,7 @@ export class Disputa {
     });
   }
 
+  /** Resuelve la disputa (con devolucion si es a favor del conductor). */
   protected resolver(d: IncidenciaModerada): void {
     const resolucion = this.resolucion();
     if (!resolucion || !this.resolucionValida(d) || this.resolviendo()) return;

@@ -1,5 +1,9 @@
+// Estacionamientos: alta (verificando la direccion), busqueda publica con filtros,
+// detalle, edicion (vuelve a revision si cambia nombre o direccion) y baja.
 import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
+import { armarSet } from '../utils/sql.js';
+import { ZONA_HORARIA } from '../utils/horario.js';
 import { sinSolapamiento } from '../utils/solapamiento.js';
 import { CAMPOS_TARIFA } from '../utils/tarifas.js';
 import { ESTADOS_APROBACION, ESTADOS_COCHERA, ESTADOS_VIGENTES } from '../utils/roles.js';
@@ -9,6 +13,7 @@ import {
   COLUMNAS_REPUTACION,
   DIAS_BUSQUEDA,
   ES_DESTACADO,
+  condicionNivelMinimo,
   darFormaReputacion,
   lateralReputacion,
 } from './reputacion.service.js';
@@ -19,6 +24,7 @@ const reputacionPublica = () => lateralReputacion(`now() - interval '${DIAS_BUSQ
 const CAMPOS_DIRECCION = ['calle', 'numero', 'ciudad', 'provincia'];
 // Si cambia alguno de estos en uno aprobado, vuelve a la cola de revision.
 const CAMPOS_REVISION = ['nombre', ...CAMPOS_DIRECCION];
+/** Si los datos ya traen latitud y longitud. */
 const tieneCoordenadas = (datos) => datos.latitud != null && datos.longitud != null;
 
 const DIRECCION_INEXISTENTE =
@@ -98,17 +104,14 @@ export const AGREGADOS = `
     LIMIT 1) AS foto_actualizada
 `;
 
-/** Zona horaria del negocio (ver utils/horario.js: UTC-3 todo el anio). */
-const ZONA_LOCAL = `'America/Argentina/Buenos_Aires'`;
-
 /**
  * Condicion SQL "el estacionamiento `e` atiende durante [inicio, fin)", en hora
  * argentina y el mismo dia. Sin horarios cargados no se restringe (igual que al
  * reservar, ver `motivoFueraDeHorario`).
  */
 function abiertoEntre(inicio, fin) {
-  const desde = `(${inicio} AT TIME ZONE ${ZONA_LOCAL})`;
-  const hasta = `(${fin} AT TIME ZONE ${ZONA_LOCAL})`;
+  const desde = `(${inicio} AT TIME ZONE '${ZONA_HORARIA}')`;
+  const hasta = `(${fin} AT TIME ZONE '${ZONA_HORARIA}')`;
   return `(
     NOT EXISTS (SELECT 1 FROM horario h WHERE h.id_estacionamiento = e.id_estacionamiento)
     OR EXISTS (
@@ -227,6 +230,8 @@ export async function buscar(filtros) {
   }
 
   if (filtros.destacados) condiciones.push(ES_DESTACADO);
+  // "Oro o mas", "solo Diamante"...: nivel minimo de reputacion.
+  if (filtros.nivel_minimo) condiciones.push(condicionNivelMinimo(filtros.nivel_minimo));
 
   if (filtros.cubierto !== undefined) {
     parametros.push(filtros.cubierto);
@@ -362,6 +367,7 @@ export async function asegurarPropiedad(idEstacionamiento, idPropietario) {
   return rows[0];
 }
 
+/** Los estacionamientos del propietario, con sus agregados y reputacion. */
 export async function listarPorPropietario(idPropietario) {
   const { rows } = await query(
     `SELECT ${CAMPOS_E}, ${AGREGADOS}, ${COLUMNAS_REPUTACION}
@@ -493,14 +499,8 @@ export async function actualizar(idEstacionamiento, idPropietario, entrada) {
 
   await withTransaction(async (client) => {
     await asegurarAlgunaTarifa(client, idEstacionamiento, datos);
-    const asignaciones = [];
     const parametros = [];
-
-    for (const campo of CAMPOS_EDITABLES) {
-      if (datos[campo] === undefined) continue;
-      parametros.push(datos[campo]);
-      asignaciones.push(`${campo} = $${parametros.length}`);
-    }
+    const asignaciones = armarSet(CAMPOS_EDITABLES, datos, parametros);
 
     const { cambio, estado } = await cambiosDeRevision(client, idEstacionamiento, datos);
     if (cambio && estado === ESTADOS_APROBACION.APROBADO) {

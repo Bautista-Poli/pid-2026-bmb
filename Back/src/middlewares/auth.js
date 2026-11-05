@@ -1,3 +1,5 @@
+// Middlewares de sesion: `authenticate` (cookie -> req.usuario), `authenticateOpcional`
+// y `requireRole` (corta si el perfil activo no es el pedido).
 import { query } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
 import { verificarToken } from '../utils/jwt.js';

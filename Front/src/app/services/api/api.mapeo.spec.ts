@@ -4,6 +4,7 @@ import {
   aAbono,
   aEstacionamiento,
   aOpinion,
+  aPayloadCochera,
   aPayloadEstacionamiento,
   aPayloadReserva,
   aReputacionConductor,
@@ -80,6 +81,7 @@ describe('aEstacionamiento', () => {
       promedio: null,
       categorias: null,
       destacado: false,
+      nivel: null,
       insignias: [],
       puntaje: 0,
     });
@@ -96,6 +98,7 @@ describe('aEstacionamiento', () => {
       calificacion_promedio: 4.7,
       calificacion_categorias: { limpieza: 4.8, infraestructura: 4.1, atencion: 4.9, seguridad: 4.6, acceso: 4.4 },
       destacado: true,
+      nivel: 'DIAMANTE',
       insignias: [
         { codigo: 'DESTACADO', texto: 'Anfitrion destacado' },
         { codigo: 'IMPECABLE', texto: 'Impecable' },
@@ -104,6 +107,7 @@ describe('aEstacionamiento', () => {
     expect(reputacion.cantidad).toBe(12);
     expect(reputacion.promedio).toBe(4.7);
     expect(reputacion.destacado).toBe(true);
+    expect(reputacion.nivel).toBe('DIAMANTE');
     expect(reputacion.insignias).toEqual(['DESTACADO', 'IMPECABLE']);
     expect(reputacion.categorias?.limpieza).toBe(4.8);
   });
@@ -306,5 +310,23 @@ describe('denuncia de reseñas', () => {
       id: 'q2', puntaje: 4, etiquetas: ['PUNTUAL'], comentario: 'Llegó a horario',
       creadaEn: '2026-11-01T12:00:00Z', estacionamiento: 'Centro', denunciaEstado: null,
     }]);
+  });
+});
+
+describe('aPayloadCochera', () => {
+  it('alta: todos los campos, con el id del tipo de vehiculo', () => {
+    expect(
+      aPayloadCochera({ identificador: '7', tipoVehiculo: 'MOTO', sector: 'PB', cubierta: true, estado: 'LIBRE' }),
+    ).toEqual({ identificador: '7', id_tipo_vehiculo: 2, sector: 'PB', cubierta: true, estado_actual: 'LIBRE' });
+  });
+
+  it('cambios: solo lo que vino; un sector vacio no se manda', () => {
+    expect(aPayloadCochera({ sector: '' })).toEqual({
+      identificador: undefined,
+      id_tipo_vehiculo: undefined,
+      sector: undefined,
+      cubierta: undefined,
+      estado_actual: undefined,
+    });
   });
 });

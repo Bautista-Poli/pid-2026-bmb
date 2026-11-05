@@ -223,6 +223,7 @@ export class MapaEstacionamientos {
     this.mapa?.flyTo([punto.latitud, punto.longitud], Math.max(this.mapa.getZoom(), ZOOM_DESTINO));
   }
 
+  /** Crea el mapa de Leaflet con su capa de pines y avisa cuando se mueve. */
   private crearMapa(): void {
     const elemento = this.contenedor().nativeElement;
     this.mapa = L.map(elemento, { zoomControl: false, attributionControl: true }).setView(
@@ -267,7 +268,7 @@ export class MapaEstacionamientos {
         title: estacionamiento.nombre,
         riseOnHover: true,
         // Los no disponibles quedan debajo: si se pisan, se ve el que sirve.
-        zIndexOffset: activo ? 1000 : estadoDisponibilidad(estacionamiento) === 'NO_DISPONIBLE' ? -500 : 0,
+        zIndexOffset: capaDelPin(activo, estadoDisponibilidad(estacionamiento) === 'NO_DISPONIBLE'),
       });
       pin.on('click', () => this.seleccionar.emit(estacionamiento.id));
       this.capaPines.addLayer(pin);
@@ -342,6 +343,7 @@ function etiquetaPin(estacionamiento: Estacionamiento): string {
   return precio == null ? 'P' : `$${precio.toLocaleString('es-AR')}`;
 }
 
+/** El pin de un estacionamiento: color por disponibilidad, precio y sello si es destacado. */
 function iconoPin(estacionamiento: Estacionamiento, activo: boolean): L.DivIcon {
   const estado = estadoDisponibilidad(estacionamiento);
   const destacado = estacionamiento.reputacion.destacado;
@@ -357,6 +359,7 @@ function iconoPin(estacionamiento: Estacionamiento, activo: boolean): L.DivIcon 
   });
 }
 
+/** La zona visible del mapa (para pedir los estacionamientos de esa area). */
 function areaDe(mapa: L.Map): AreaMapa {
   const limites = mapa.getBounds();
   return {
@@ -370,4 +373,11 @@ function areaDe(mapa: L.Map): AreaMapa {
 function mismoPunto(a: Coordenadas | null | undefined, b: Coordenadas | null | undefined): boolean {
   if (!a || !b) return a === b;
   return a.latitud === b.latitud && a.longitud === b.longitud;
+}
+
+/** El pin elegido va arriba de todo; los no disponibles, debajo de los que sirven. */
+function capaDelPin(activo: boolean, noDisponible: boolean): number {
+  if (activo) return 1000;
+  if (noDisponible) return -500;
+  return 0;
 }

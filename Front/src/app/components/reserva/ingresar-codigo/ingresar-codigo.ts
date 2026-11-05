@@ -38,6 +38,7 @@ export class IngresarCodigo {
   protected readonly abierto = signal(false);
   protected readonly error = signal<string | null>(null);
 
+  /** Normaliza el codigo tipeado y navega a la pantalla de acceso con ese codigo. */
   protected ir(bruto: string): void {
     const codigo = normalizarCodigo(bruto);
     if (!codigo) {

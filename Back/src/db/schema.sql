@@ -672,7 +672,7 @@ CREATE INDEX IF NOT EXISTS idx_estacionamiento_aprobacion
 
 -- Fotos en Cloudinary (Sprint 3). Las fotos nuevas guardan el `public_id` de
 -- Cloudinary en vez de los bytes; las viejas siguen con sus bytes hasta que
--- las mueva el script db:migrar-fotos-cloudinary. Cada fila tiene una de las dos.
+-- las movio un script de migracion (ya corrido, se borro). Cada fila tiene una de las dos.
 ALTER TABLE estacionamiento_imagen
   ADD COLUMN IF NOT EXISTS public_id VARCHAR(200),
   ALTER COLUMN mime  DROP NOT NULL,

@@ -48,6 +48,7 @@ export class PlanesEstacionamiento {
     this.error.set(null);
   }
 
+  /** Compra el plan de abono y va a Mis abonos. */
   protected comprar(plan: PlanAbono): void {
     this.comprandoId.set(plan.id);
     this.error.set(null);

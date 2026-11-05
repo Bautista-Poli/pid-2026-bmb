@@ -171,7 +171,7 @@ export class ReservaService {
       .pipe(map(aAccesoReserva));
   }
 
-  private transicion(id: Id, paso: 'confirmar' | 'ingreso' | 'egreso' | 'ausente'): Observable<Reserva> {
+  private transicion(id: Id, paso: 'confirmar' | 'ausente'): Observable<Reserva> {
     return this.http
       .patch<{ reserva: ReservaDto }>(`${this.ruta}/${id}/${paso}`, {})
       .pipe(map(({ reserva }) => aReserva(reserva)));

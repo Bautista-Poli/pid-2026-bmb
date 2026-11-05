@@ -31,6 +31,7 @@ export class Ingresar {
   protected readonly enviando = signal(false);
   protected readonly error = signal<string | null>(null);
 
+  /** Valida el formulario y llama a ingresar. */
   protected enviar(): void {
     if (this.formulario.invalid) {
       this.formulario.markAllAsTouched();
@@ -40,6 +41,7 @@ export class Ingresar {
     this.ingresar(this.formulario.getRawValue());
   }
 
+  /** Inicia sesion y navega al inicio del perfil activo. */
   private ingresar(credenciales: Credenciales): void {
     this.enviando.set(true);
     this.error.set(null);

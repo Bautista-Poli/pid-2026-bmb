@@ -68,12 +68,13 @@ export function proximosDias(cantidad: number, desde: Date = new Date()): Date[]
   });
 }
 
-export function aMinutos(hora: HoraHHmm): number {
+function aMinutos(hora: HoraHHmm): number {
   const [h, m] = hora.split(':').map(Number);
   return h * 60 + m;
 }
 
-/** Duracion en horas entre dos horarios de la misma jornada. */
-export function duracionEnHoras(desde: HoraHHmm, hasta: HoraHHmm): number {
-  return Math.max(0, (aMinutos(hasta) - aMinutos(desde)) / 60);
+/** "Sáb 3 oct": dia de la semana con mayuscula, numero y mes, sin comas. */
+export function diaCorto(fecha: FechaISO): string {
+  const dia = desdeFechaISO(fecha).toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' });
+  return `${dia.charAt(0).toUpperCase()}${dia.slice(1).replace(/,/g, '')}`;
 }

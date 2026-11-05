@@ -80,6 +80,7 @@ export class AltaVehiculo {
     });
   }
 
+  /** Sube la foto (si eligio una) y vuelve al listado. */
   private subirFotoYVolver(id: string): void {
     if (!this.foto) {
       this.volverAlListado();
@@ -98,6 +99,7 @@ export class AltaVehiculo {
     });
   }
 
+  /** Navega a Mis vehiculos. */
   private volverAlListado(): void {
     const volver = this.rutaVolver();
     void this.router.navigate(['/conductor/vehiculos'], {

@@ -1,6 +1,9 @@
+// DTOs: la forma exacta de las respuestas de la API (snake_case). Solo los usa
+// api.mapeo.ts, que los convierte a los modelos del front.
 import {
   CategoriaCalificacion,
   CodigoInsignia,
+  CodigoNivel,
   EstadoDenunciaResena,
   EtiquetaCalificacion,
   EtiquetaConductor,
@@ -115,6 +118,7 @@ export interface EstacionamientoDto {
   calificacion_promedio?: number | null;
   calificacion_categorias?: Record<CategoriaCalificacion, number | null> | null;
   destacado?: boolean;
+  nivel?: CodigoNivel | null;
   insignias?: { codigo: CodigoInsignia; texto: string }[];
   puntaje_reputacion?: number;
 }
@@ -130,6 +134,9 @@ export interface ReputacionDto {
   puntaje: number;
   puntaje_anterior: number | null;
   destacado: boolean;
+  nivel: CodigoNivel | null;
+  siguiente_nivel: { codigo: CodigoNivel; desde: number; faltan: number } | null;
+  niveles: { codigo: CodigoNivel; nombre: string; desde: number }[];
   umbral_destacado: number;
   minimo_calificaciones: number;
   calificaciones: {

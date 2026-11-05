@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 
-export type VarianteBoton = 'primario' | 'secundario' | 'fantasma' | 'peligro';
-export type TamanoBoton = 'sm' | 'md';
+type VarianteBoton = 'primario' | 'secundario' | 'fantasma' | 'peligro';
+type TamanoBoton = 'sm' | 'md';
 
 const VARIANTES: Record<VarianteBoton, string> = {
   // Primario: acento solido con elevacion; es la unica accion de cada vista.

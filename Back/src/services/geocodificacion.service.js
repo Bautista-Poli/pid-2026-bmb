@@ -48,6 +48,7 @@ export async function geocodificar(direccion) {
   return { encontrada: true, latitud: null, longitud: null, ...coordenadas };
 }
 
+/** Pide un recurso a la API de Georef y devuelve el JSON. */
 async function georef(recurso, params) {
   const respuesta = await fetch(
     `${config.geocodificacion.georefUrl}/${recurso}?${new URLSearchParams(params)}`,
@@ -118,6 +119,7 @@ function normalizar(texto) {
 let cola = Promise.resolve();
 let ultimaBusqueda = 0;
 
+/** Promesa que se resuelve a los `ms` milisegundos. */
 const esperar = (ms) => new Promise((resolver) => setTimeout(resolver, ms));
 
 /** Encadena la tarea respetando el intervalo minimo entre requests a Nominatim. */

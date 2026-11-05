@@ -2,21 +2,6 @@ import { TonoPunto } from '@app/components/ui';
 import { DiaSemana, Estacionamiento, EstadoCochera, FranjaAtencion, HoraHHmm } from '@app/models';
 import { aFechaISO, diaSemanaDe } from './fecha.util';
 
-/**
- * Regla de disponibilidad del handoff:
- *   0 libres     -> ocupada  · "Sin cocheras libres"
- *   1-4 libres   -> baja     · "N cocheras libres"
- *   5 o mas      -> acento   · "N cocheras libres"
- */
-export function tonoDisponibilidad(libres: number): TonoPunto {
-  if (libres === 0) return 'ocupada';
-  return libres < 5 ? 'baja' : 'acento';
-}
-
-export function textoDisponibilidad(libres: number): string {
-  return libres === 0 ? 'Sin cocheras libres' : `${libres} cocheras libres`;
-}
-
 /** Color del punto en la cuadricula del propietario. */
 export const TONO_ESTADO_COCHERA: Record<EstadoCochera, TonoPunto> = {
   LIBRE: 'acento',
@@ -49,7 +34,7 @@ export function formatearDistancia(km: number | undefined): string | null {
   return `${km.toLocaleString('es-AR', { maximumFractionDigits: 1 })} km`;
 }
 
-/** Estado para el mapa y su leyenda: mismos cortes que `tonoDisponibilidad`. */
+/** Estado para el mapa y su leyenda: 0 libres, de 1 a 4 libres, 5 o mas. */
 export type EstadoDisponibilidad = 'DISPONIBLE' | 'POCA' | 'NO_DISPONIBLE';
 
 export const ETIQUETA_ESTADO: Record<EstadoDisponibilidad, string> = {

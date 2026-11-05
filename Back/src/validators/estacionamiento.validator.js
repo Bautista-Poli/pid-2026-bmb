@@ -1,8 +1,12 @@
+// Validadores de estacionamientos y cocheras: alta, cambios, busqueda, disponibilidad,
+// lotes y bloqueo. Devuelven { valores, errores } y validate() responde 400.
+import { NIVELES } from '../services/reputacion.service.js';
 import { ESTADOS_COCHERA } from '../utils/roles.js';
 import { CAMPOS_TARIFA, MODALIDADES } from '../utils/tarifas.js';
 import { campos } from './helpers.js';
 
 const REGEX_FECHA = /^\d{4}-\d{2}-\d{2}$/;
+/** Si el campo vino con valor: undefined, null y '' cuentan como que no vino. */
 const vino = (valor) => valor !== undefined && valor !== null && valor !== '';
 const CAMPOS_EDITABLES = [
   'nombre', 'descripcion', 'calle', 'numero', 'ciudad', 'provincia', 'codigo_postal',
@@ -23,6 +27,7 @@ const CAMPOS_COCHERA_EDITABLES = [
   'estado_actual',
 ];
 
+/** Alta de un estacionamiento: datos, direccion, tarifas y horarios. */
 export function validarEstacionamiento(body) {
   const validador = campos(body)
     .texto('nombre', body.nombre, { min: 3, max: 120 })
@@ -156,6 +161,7 @@ export function validarCambiosEstacionamiento(body) {
   return { valores, errores };
 }
 
+/** Alta de una cochera: identificador, tipo de vehiculo, sector y techo. */
 export function validarCochera(body) {
   return campos(body)
     .texto('identificador', body.identificador, { min: 1, max: 20 })
@@ -260,6 +266,8 @@ export function validarActualizacionCochera(body) {
  * `lat_min`, `lat_max`, `lng_min` y `lng_max` (juntos) limitan la busqueda a
  * un rectangulo: la parte del mapa que se esta viendo.
  */
+const CODIGOS_NIVEL = NIVELES.map((n) => n.codigo);
+
 export function validarBusqueda(query) {
   const { valores, errores } = campos(query)
     .texto('q', query.q, { requerido: false, max: 120 })
@@ -269,6 +277,7 @@ export function validarBusqueda(query) {
     .numero('tarifa_max', query.tarifa_max, { requerido: false, min: 0 })
     .booleano('cubierto', query.cubierto, { requerido: false })
     .booleano('destacados', query.destacados, { requerido: false })
+    .enumerado('nivel_minimo', query.nivel_minimo, CODIGOS_NIVEL, { requerido: false })
     .booleano('disponible_ahora', query.disponible_ahora, { requerido: false })
     .booleano('incluir_no_disponibles', query.incluir_no_disponibles, { requerido: false })
     .fechaHora('inicio', query.inicio, { requerido: false })

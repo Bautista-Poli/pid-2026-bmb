@@ -53,6 +53,7 @@ export class AltaEstacionamiento {
     });
   }
 
+  /** Sube la foto (si eligio una) y va a cargar las cocheras. */
   private subirFotoYNavegar(id: Id): void {
     if (!this.foto) {
       this.enviando.set(false);

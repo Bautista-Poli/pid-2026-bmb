@@ -19,12 +19,38 @@ import { query } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
 import { PLAZO_CALIFICACION_DIAS } from './calificacion.service.js';
 
-export const UMBRAL_DESTACADO = 80;
-export const MINIMO_CALIFICACIONES = 5;
-export const UMBRAL_CATEGORIA = 4.5;
+const UMBRAL_DESTACADO = 80;
+const MINIMO_CALIFICACIONES = 5;
+const UMBRAL_CATEGORIA = 4.5;
 export const DIAS_BUSQUEDA = 90;
 
-export const CATEGORIAS = Object.freeze([
+/**
+ * Niveles segun el puntaje, de menor a mayor. Hace falta un minimo de
+ * calificaciones (MINIMO_CALIFICACIONES) para tener nivel: sin opiniones el
+ * puntaje es casi todo supuesto. Platino o mas coincide con "Anfitrion destacado".
+ */
+export const NIVELES = Object.freeze([
+  { codigo: 'COBRE', nombre: 'Cobre', desde: 0 },
+  { codigo: 'PLATA', nombre: 'Plata', desde: 50 },
+  { codigo: 'ORO', nombre: 'Oro', desde: 65 },
+  { codigo: 'PLATINO', nombre: 'Platino', desde: UMBRAL_DESTACADO },
+  { codigo: 'ESMERALDA', nombre: 'Esmeralda', desde: 88 },
+  { codigo: 'DIAMANTE', nombre: 'Diamante', desde: 95 },
+]);
+
+/** El codigo del nivel, o null si todavia no tiene suficientes calificaciones. */
+export function nivelDe(puntaje, cantidad) {
+  if (puntaje == null || cantidad < MINIMO_CALIFICACIONES) return null;
+  return NIVELES.findLast((n) => puntaje >= n.desde).codigo;
+}
+
+/** El nivel que sigue y cuantos puntos faltan (null si ya es Diamante). */
+function siguienteNivel(puntaje) {
+  const siguiente = NIVELES.find((n) => n.desde > puntaje);
+  return siguiente ? { codigo: siguiente.codigo, desde: siguiente.desde, faltan: siguiente.desde - puntaje } : null;
+}
+
+const CATEGORIAS = Object.freeze([
   { codigo: 'limpieza', nombre: 'Limpieza', insignia: 'IMPECABLE', texto: 'Impecable' },
   { codigo: 'infraestructura', nombre: 'Infraestructura', insignia: 'BUENA_INFRAESTRUCTURA', texto: 'Buena infraestructura' },
   { codigo: 'atencion', nombre: 'Atencion', insignia: 'BUENA_ATENCION', texto: 'Buena atencion' },
@@ -33,7 +59,7 @@ export const CATEGORIAS = Object.freeze([
 ]);
 
 /** Etiquetas que puede marcar el conductor; cada una apunta a una categoria. */
-export const ETIQUETAS = Object.freeze([
+const ETIQUETAS = Object.freeze([
   { codigo: 'MUY_LIMPIO', categoria: 'limpieza', positiva: true },
   { codigo: 'BIEN_ILUMINADO', categoria: 'infraestructura', positiva: true },
   { codigo: 'BUENA_ATENCION', categoria: 'atencion', positiva: true },
@@ -47,7 +73,7 @@ export const ETIQUETAS = Object.freeze([
 export const CODIGOS_ETIQUETA = ETIQUETAS.map((e) => e.codigo);
 
 /** Etiquetas que puede marcar el propietario al calificar al conductor. */
-export const ETIQUETAS_CONDUCTOR = Object.freeze([
+const ETIQUETAS_CONDUCTOR = Object.freeze([
   { codigo: 'PUNTUAL', positiva: true },
   { codigo: 'RESPETUOSO', positiva: true },
   { codigo: 'CUIDO_LA_COCHERA', positiva: true },
@@ -149,9 +175,20 @@ export const COLUMNAS_REPUTACION = `
   rep.prom_limpieza, rep.prom_infraestructura, rep.prom_atencion, rep.prom_seguridad, rep.prom_acceso,
   (rep.puntaje >= ${UMBRAL_DESTACADO} AND rep.cal_cantidad >= ${MINIMO_CALIFICACIONES}) AS destacado`;
 
+/**
+ * Condicion SQL de "nivel `codigo` o mas" (para filtrar). El umbral sale de
+ * NIVELES, nunca del pedido: `codigo` ya viene validado.
+ */
+export function condicionNivelMinimo(codigo) {
+  const nivel = NIVELES.find((n) => n.codigo === codigo);
+  if (!nivel) throw new Error(`Nivel desconocido: ${codigo}`);
+  return `(rep.cal_cantidad >= ${MINIMO_CALIFICACIONES} AND rep.puntaje >= ${Number(nivel.desde)})`;
+}
+
 /** Condicion SQL de "anfitrion destacado" (para filtrar). */
 export const ES_DESTACADO = `(rep.puntaje >= ${UMBRAL_DESTACADO} AND rep.cal_cantidad >= ${MINIMO_CALIFICACIONES})`;
 
+/** Redondea a `decimales` (null queda null). */
 const redondear = (valor, decimales = 1) =>
   valor == null ? null : Math.round(valor * 10 ** decimales) / 10 ** decimales;
 
@@ -222,7 +259,7 @@ export async function reputacionDelConductor(idConductor) {
  * es cuantas calificaciones traen categorias (las de solo puntaje no cuentan
  * para las insignias de categoria).
  */
-export function insigniasDe({ destacado, conDetalle, promedios }) {
+function insigniasDe({ destacado, conDetalle, promedios }) {
   const insignias = [];
   if (destacado) insignias.push({ codigo: 'DESTACADO', texto: 'Anfitrion destacado' });
   if (conDetalle >= MINIMO_CALIFICACIONES) {
@@ -250,12 +287,14 @@ export function darFormaReputacion(fila) {
   delete fila.calificaciones_con_detalle;
   fila.calificaciones ??= 0;
   fila.puntaje_reputacion = Number(fila.puntaje_reputacion ?? 0);
+  fila.nivel = nivelDe(fila.puntaje_reputacion, fila.calificaciones);
   fila.destacado = Boolean(fila.destacado);
   fila.calificacion_categorias = conDetalle > 0 ? promedios : null;
   fila.insignias = insigniasDe({ destacado: fila.destacado, conDetalle, promedios });
   return fila;
 }
 
+/** La reputacion de un estacionamiento en la ventana [desde, hasta). */
 async function calcular(idEstacionamiento, desde, hasta) {
   const { rows } = await query(
     `SELECT rep.* FROM estacionamiento e
@@ -311,7 +350,10 @@ export async function delEstacionamiento(idEstacionamiento, idPropietario, { dia
     throw ApiError.forbidden('El estacionamiento pertenece a otro propietario');
   }
 
-  const ahora = new Date();
+  // La ventana se corta con la hora de la base (la de `created_at`), no la del
+  // servidor: si el reloj del servidor va atrasado, lo recien creado quedaria afuera.
+  const { rows: reloj } = await query('SELECT now() AS ahora');
+  const ahora = reloj[0].ahora;
   const desde = new Date(ahora.getTime() - dias * 86_400_000);
   const desdeAnterior = new Date(desde.getTime() - dias * 86_400_000);
 
@@ -383,6 +425,9 @@ export async function delEstacionamiento(idEstacionamiento, idPropietario, { dia
     puntaje_anterior:
       anterior.cal_cantidad + anterior.reservas_total + anterior.incidencias_total > 0 ? anterior.puntaje : null,
     destacado,
+    nivel: nivelDe(actual.puntaje, actual.cal_cantidad),
+    siguiente_nivel: siguienteNivel(actual.puntaje),
+    niveles: NIVELES,
     umbral_destacado: UMBRAL_DESTACADO,
     minimo_calificaciones: MINIMO_CALIFICACIONES,
     calificaciones: {

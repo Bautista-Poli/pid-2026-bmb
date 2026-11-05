@@ -1,3 +1,5 @@
+// Rutas de /api/incidencias: las ven conductor y propietario; cada accion pide el
+// perfil que corresponde (soloConductor, soloPropietario, participante).
 import { Router } from 'express';
 
 import * as incidenciaController from '../controllers/incidencia.controller.js';

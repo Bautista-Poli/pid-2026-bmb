@@ -1,3 +1,5 @@
+// Configuracion global de la app: router, HttpClient con los interceptores (prefijo /api y
+// errores), y la carga de la sesion antes de habilitar las rutas.
 import { registerLocaleData } from '@angular/common';
 import localeEsAr from '@angular/common/locales/es-AR';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';

@@ -1,3 +1,5 @@
+// Input con sugerencias (provincia, ciudad, calle): filtra mientras se escribe y se
+// maneja con flechas y Enter.
 import {
   ChangeDetectionStrategy,
   Component,
@@ -149,6 +151,7 @@ export class CampoAutocompletar implements ControlValueAccessor {
       });
   }
 
+  /** Actualiza el texto y abre la lista de sugerencias. */
   protected escribir(texto: string): void {
     this.texto.set(texto);
     // Lo escrito a mano no es un valor valido hasta que se elija de la lista.
@@ -165,6 +168,7 @@ export class CampoAutocompletar implements ControlValueAccessor {
     }
   }
 
+  /** Flechas para moverse por las sugerencias, Enter para elegir y Escape para cerrar. */
   protected teclear(evento: KeyboardEvent): void {
     const cantidad = this.sugerencias().length;
     switch (evento.key) {
@@ -191,6 +195,7 @@ export class CampoAutocompletar implements ControlValueAccessor {
     }
   }
 
+  /** Toma una sugerencia, la emite y cierra la lista. */
   protected elegir(sugerencia: Sugerencia): void {
     this.texto.set(sugerencia.nombre);
     this.abierta.set(false);

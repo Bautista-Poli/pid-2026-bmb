@@ -22,19 +22,20 @@ import {
   Icono,
   Miniatura,
   Modal,
-  NombreIcono,
   TonoEtiqueta,
 } from '@app/components/ui';
 import {
   Cochera,
   direccionCorta,
-  EstadoCochera,
   Estacionamiento,
+  EstadoCochera,
   ETIQUETA_ESTADO_COCHERA,
   ETIQUETA_TIPO_VEHICULO,
+  ICONO_TIPO_VEHICULO,
   Id,
   NuevaCochera,
   ReservaDetallada,
+  TIPOS_VEHICULO,
   TipoVehiculo,
 } from '@app/models';
 import { AuthService } from '@app/services/auth.service';
@@ -43,14 +44,6 @@ import { CocheraService } from '@app/services/cochera.service';
 import { EstacionamientoService } from '@app/services/estacionamiento.service';
 import { ReservaService } from '@app/services/reserva.service';
 import { aInstante, desdeFechaISO } from '@app/utils/fecha.util';
-
-const TIPOS: TipoVehiculo[] = ['AUTO', 'MOTO', 'CAMIONETA'];
-
-const ICONO_TIPO: Record<TipoVehiculo, NombreIcono> = {
-  AUTO: 'auto',
-  MOTO: 'moto',
-  CAMIONETA: 'camioneta',
-};
 
 /** Plantas comunes; al elegir una se sugiere tambien el prefijo. */
 const SUGERENCIAS_PLANTA = [
@@ -146,8 +139,8 @@ export class Cocheras {
   /** Desde la ruta con id; sin id, la pantalla muestra el primer estacionamiento. */
   readonly estacionamientoId = input<Id>();
 
-  protected readonly tipos = TIPOS;
-  protected readonly iconoTipo = ICONO_TIPO;
+  protected readonly tipos = TIPOS_VEHICULO;
+  protected readonly iconoTipo = ICONO_TIPO_VEHICULO;
   protected readonly etiquetaTipo = ETIQUETA_TIPO_VEHICULO;
   protected readonly etiquetaEstado = ETIQUETA_ESTADO_COCHERA;
   protected readonly tonoEstado = TONO_ESTADO;
@@ -289,6 +282,7 @@ export class Cocheras {
     this.reiniciarMasivo();
   }
 
+  /** Selecciona (o deselecciona) todas las cocheras de una planta. */
   protected elegirTodaLaPlanta(): void {
     const planta = this.plantaActiva();
     if (!planta) return;
@@ -338,6 +332,7 @@ export class Cocheras {
     this.formulario.markAsDirty();
   }
 
+  /** Llena la ficha con los datos de la cochera elegida. */
   private cargarFormulario(cochera: Cochera): void {
     this.formulario.reset({
       identificador: cochera.identificador,
@@ -347,6 +342,7 @@ export class Cocheras {
     });
   }
 
+  /** Guarda los cambios de la cochera de la ficha. */
   protected guardar(): void {
     const cochera = this.unica();
     if (!cochera) return;
@@ -400,6 +396,7 @@ export class Cocheras {
     return (evento.target as HTMLInputElement).value;
   }
 
+  /** Aplica tipo y techo a todas las cocheras elegidas. */
   protected aplicarMasivo(): void {
     const lista = this.elegidas().filter((c) => c.estado !== 'INACTIVA');
     if (lista.length === 0 || !this.hayCambiosMasivos()) return;
@@ -432,6 +429,7 @@ export class Cocheras {
     pedido?.accion();
   }
 
+  /** Pide confirmacion y da de baja la cochera (cancela sus reservas vigentes). */
   protected pedirBaja(): void {
     const lista = this.elegidas().filter((c) => c.estado !== 'INACTIVA');
     if (lista.length === 0) return;
@@ -451,6 +449,7 @@ export class Cocheras {
     });
   }
 
+  /** Reactiva una cochera dada de baja. */
   protected reactivar(cochera: Cochera): void {
     this.ejecutar(
       [this.cocheras.reactivar(cochera)],
@@ -471,6 +470,7 @@ export class Cocheras {
     hasta: [''],
   });
 
+  /** Abre el modal para bloquear la cochera por mantenimiento. */
   protected abrirBloqueo(cochera: Cochera): void {
     this.bloqueando.set(cochera);
     this.necesitaForzar.set(false);
@@ -529,6 +529,7 @@ export class Cocheras {
       });
   }
 
+  /** Saca el bloqueo de la cochera. */
   protected desbloquear(cochera: Cochera): void {
     this.ejecutar(
       [this.cocheras.desbloquear(cochera)],
@@ -536,6 +537,7 @@ export class Cocheras {
     );
   }
 
+  /** Pide confirmacion y borra la cochera (solo si nunca tuvo reservas). */
   protected pedirEliminacion(cochera: Cochera): void {
     this.confirmacion.set({
       titulo: `Eliminar ${cochera.identificador}`,
@@ -573,6 +575,7 @@ export class Cocheras {
     return [...cargadas, ...SUGERENCIAS_PLANTA.filter((s) => !nombres.has(s.detalle.toLowerCase()))];
   });
 
+  /** Abre el modal de alta por cantidad con un lote vacio. */
   protected abrirAlta(planta?: string): void {
     this.lotes.clear();
     this.lotes.push(this.nuevoLote());
@@ -675,6 +678,7 @@ export class Cocheras {
 
   protected readonly errorAlta = signal<string | null>(null);
 
+  /** Crea todas las cocheras de los lotes cargados. */
   protected crearLotes(): void {
     if (this.lotes.invalid) {
       this.lotes.markAllAsTouched();
@@ -737,6 +741,7 @@ export class Cocheras {
     });
   }
 
+  /** Formulario de un lote: cantidad, sector, prefijo, tipo y techo. */
   private nuevoLote() {
     return this.fb.nonNullable.group({
       cantidad: [10, [Validators.required, Validators.min(1), Validators.max(200)]],

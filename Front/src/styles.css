@@ -625,3 +625,95 @@
     color: var(--color-acento);
   }
 }
+
+/* ------------------------------------------------------------------------ */
+/* Niveles de reputacion: pastilla con gema (ver nivel-estacionamiento.ts).  */
+/* Cada nivel define su gema y, en claro, fondo/tinta/borde; en oscuro se    */
+/* derivan de la gema.                                                       */
+/* ------------------------------------------------------------------------ */
+@layer components {
+  .nivel {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 7px 2px 5px;
+    border: 1px solid var(--nivel-borde);
+    border-radius: var(--radius-etiqueta);
+    background: var(--nivel-fondo);
+    color: var(--nivel-tinta);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.35;
+    white-space: nowrap;
+  }
+
+  .nivel__gema {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+    color: var(--nivel-gema);
+  }
+
+  .nivel--grande {
+    gap: 6px;
+    padding: 4px 10px 4px 7px;
+    font-size: 12.5px;
+  }
+
+  .nivel--grande .nivel__gema {
+    width: 16px;
+    height: 16px;
+  }
+
+  .nivel--cobre {
+    --nivel-gema: #b4632d;
+    --nivel-fondo: #f8e9de;
+    --nivel-tinta: #8a4518;
+    --nivel-borde: #ecc9ae;
+  }
+  .nivel--plata {
+    --nivel-gema: #8a97a8;
+    --nivel-fondo: #eef1f5;
+    --nivel-tinta: #475569;
+    --nivel-borde: #d5dbe3;
+  }
+  .nivel--oro {
+    --nivel-gema: #e0a106;
+    --nivel-fondo: #fef3c7;
+    --nivel-tinta: #8a5a00;
+    --nivel-borde: #f6dc8a;
+  }
+  .nivel--platino {
+    --nivel-gema: #6f9fb8;
+    --nivel-fondo: #e8f1f6;
+    --nivel-tinta: #2f5d73;
+    --nivel-borde: #c4dae6;
+  }
+  .nivel--esmeralda {
+    --nivel-gema: #10a37a;
+    --nivel-fondo: #dcf7ec;
+    --nivel-tinta: #05664a;
+    --nivel-borde: #a9e6cd;
+  }
+  .nivel--diamante {
+    --nivel-gema: #5b7cfa;
+    --nivel-fondo: #e8ecff;
+    --nivel-tinta: #3138a8;
+    --nivel-borde: #c3cdfd;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='claro']) .nivel {
+    background: color-mix(in oklab, var(--nivel-gema) 20%, transparent);
+    border-color: color-mix(in oklab, var(--nivel-gema) 45%, transparent);
+    color: color-mix(in oklab, var(--nivel-gema) 45%, white);
+  }
+}
+
+:root[data-theme='oscuro'] .nivel {
+  background: color-mix(in oklab, var(--nivel-gema) 20%, transparent);
+  border-color: color-mix(in oklab, var(--nivel-gema) 45%, transparent);
+  color: color-mix(in oklab, var(--nivel-gema) 45%, white);
+}

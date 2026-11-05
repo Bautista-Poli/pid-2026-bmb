@@ -8,6 +8,7 @@ import { pool } from '../config/database.js';
 
 const carpeta = dirname(fileURLToPath(import.meta.url));
 
+/** Corre un archivo .sql entero contra la base. */
 async function ejecutarArchivo(nombre) {
   const sql = await readFile(join(carpeta, nombre), 'utf8');
   await pool.query(sql);

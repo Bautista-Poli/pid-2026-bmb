@@ -5,6 +5,7 @@ const REGEX_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const REGEX_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const REGEX_HORA = /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
 
+/** Arma el validador encadenable (texto, entero, enumerado, …) sobre `datos`. */
 export function campos(datos) {
   const valores = {};
   const errores = [];

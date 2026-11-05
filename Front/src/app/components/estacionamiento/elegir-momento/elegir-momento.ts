@@ -79,6 +79,7 @@ export class ElegirMomento {
     this.resolverUbicacion((ubicacion) => this.elegido.emit({ ubicacion, momento: { tipo: 'AHORA' } }));
   }
 
+  /** Valida la franja elegida y emite la busqueda con la ubicacion resuelta. */
   protected buscarFranja(): void {
     this.intentadoFranja.set(true);
     if (this.errorFranja()) return;

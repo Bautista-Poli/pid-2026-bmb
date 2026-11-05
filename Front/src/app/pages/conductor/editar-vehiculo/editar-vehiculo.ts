@@ -47,6 +47,7 @@ export class EditarVehiculo {
     this.foto = archivo;
   }
 
+  /** Sube o reemplaza la foto del vehiculo. */
   private guardarFoto(id: Id): void {
     if (this.foto === undefined) {
       this.volverAlListado();

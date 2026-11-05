@@ -153,6 +153,7 @@ export class Explorar {
     void this.router.navigate(['/conductor/reservar', estacionamiento.id]);
   }
 
+  /** Texto de donde se busco ("Cerca de mi ubicacion", la direccion o la zona). */
   private resumenUbicacion(exploracion: Exploracion): string {
     const ubicacion = exploracion.ubicacion;
     if (ubicacion.tipo === 'ACTUAL') return 'Cerca de mi ubicación';
@@ -160,6 +161,7 @@ export class Explorar {
     return ubicacion.zona;
   }
 
+  /** Texto de cuando se busco ("Ahora" o el dia y la franja). */
   private resumenMomento(exploracion: Exploracion): string {
     const momento = exploracion.momento;
     if (momento.tipo === 'AHORA') return 'Ahora';

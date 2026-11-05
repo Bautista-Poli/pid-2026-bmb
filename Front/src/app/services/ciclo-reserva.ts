@@ -63,6 +63,7 @@ interface PasoReserva {
   aviso: string;
 }
 
+/** Ejecuta el siguiente paso del ciclo de la reserva (hoy, confirmar). */
 export function avanzarReserva(
   servicio: ReservaService,
   reserva: ReservaDetallada,

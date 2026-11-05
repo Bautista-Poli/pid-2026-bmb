@@ -1,3 +1,4 @@
+// Exporta los componentes de estacionamientos (tarjeta, detalle, mapa, filtros, formulario…).
 /* Piezas de estacionamiento: el listado del conductor y el formulario del propietario. */
 export * from './tarjeta-estacionamiento/tarjeta-estacionamiento';
 export * from './filtros-estacionamiento/filtros-estacionamiento';

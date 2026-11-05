@@ -156,6 +156,7 @@ export class Incidencias {
     inject(DestroyRef).onDestroy(() => clearInterval(reloj));
   }
 
+  /** Abre el detalle de una incidencia. */
   protected abrir(incidencia: Incidencia): void {
     this.seleccionId.set(incidencia.id);
     this.canal.set('GENERAL');
@@ -189,6 +190,7 @@ export class Incidencias {
     this.montoPropuesto.set(valor === '' ? null : Number(valor));
   }
 
+  /** Manda un mensaje al chat (o una propuesta de devolucion). */
   protected enviar(incidencia: IncidenciaDetallada): void {
     const texto = this.borrador().trim();
     if (!texto || this.enviando() || this.propuestaExcedida()) return;
@@ -222,6 +224,7 @@ export class Incidencias {
     () => this.accion() !== 'DENUNCIAR' || this.textoAccion().trim().length >= 5,
   );
 
+  /** Ejecuta la accion elegida (resolver, denunciar, aceptar o retirar) y recarga. */
   protected confirmarAccion(incidencia: IncidenciaDetallada): void {
     const accion = this.accion();
     if (!accion || !this.accionValida() || this.procesando()) return;

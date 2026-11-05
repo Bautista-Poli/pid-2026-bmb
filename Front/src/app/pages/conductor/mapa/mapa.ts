@@ -273,6 +273,7 @@ export class Mapa {
     this.filtrosAbiertos.set(true);
   }
 
+  /** Aplica los filtros del modal y lo cierra. */
   protected aplicarFiltros(): void {
     this.intentoBuscar.set(true);
     if (this.errorHorario()) return;
@@ -281,6 +282,7 @@ export class Mapa {
     this.filtrosAbiertos.set(false);
   }
 
+  /** Vuelve los filtros a los iniciales (sin tocar el orden). */
   protected limpiarFiltros(): void {
     const limpio = { ...PANEL_INICIAL, orden: this.orden() };
     this.panel.set(limpio);
@@ -318,6 +320,7 @@ export class Mapa {
     this.textoAplicado.set(this.destino() ? '' : this.texto().trim());
   }
 
+  /** Centra la busqueda en el lugar elegido. */
   protected elegirDestino(sugerencia: Sugerencia): void {
     const destino = sugerencia.dato as DireccionGeoref;
     this.destino.set(destino);
@@ -325,6 +328,7 @@ export class Mapa {
     this.textoAplicado.set('');
   }
 
+  /** Centra la busqueda en la ubicacion del usuario. */
   protected usarMiUbicacion(): void {
     this.destino.set(null);
     this.texto.set('');

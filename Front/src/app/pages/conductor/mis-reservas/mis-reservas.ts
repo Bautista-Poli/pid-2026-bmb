@@ -65,6 +65,7 @@ export class MisReservas {
   /** Reserva sobre la que el conductor abre un reclamo: mientras no sea null, el modal esta abierto. */
   protected readonly aReclamar = signal<ObjetoReclamo | null>(null);
 
+  /** Abre el modal de reclamo sobre una reserva (tope: lo pagado menos lo devuelto). */
   protected pedirReclamo(reserva: ReservaDetallada): void {
     this.aReclamar.set({
       tipo: 'reserva',

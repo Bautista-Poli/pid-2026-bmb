@@ -1,3 +1,5 @@
+// Tarjeta de un KPI del dashboard: etiqueta, valor grande, icono y la variacion contra
+// el periodo anterior (verde si sube, rojo si baja).
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { Icono, NombreIcono, Tarjeta } from '@app/components/ui';
 import { Variacion } from '@app/utils/periodo.util';

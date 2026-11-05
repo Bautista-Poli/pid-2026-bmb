@@ -1,3 +1,4 @@
+// Imagen chica (foto de estacionamiento o vehiculo) con un respaldo si no hay foto.
 import { NgOptimizedImage } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { Icono, NombreIcono } from '../icono/icono';

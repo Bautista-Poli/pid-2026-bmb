@@ -86,6 +86,7 @@ export class LayoutApp {
 
   protected readonly cambiandoRol = signal(false);
 
+  /** Cambia el perfil activo (conductor/propietario) y navega a su inicio. */
   protected cambiarRol(): void {
     const rol = this.rolAlternativo();
     if (!rol || this.cambiandoRol()) return;

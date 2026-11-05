@@ -1,3 +1,4 @@
+// Etiqueta de color (badge) para estados: el tono adelanta el estado antes de leerlo.
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
 export type TonoEtiqueta = 'neutro' | 'acento' | 'exito' | 'aviso' | 'peligro';

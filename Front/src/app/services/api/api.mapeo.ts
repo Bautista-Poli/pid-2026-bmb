@@ -57,6 +57,7 @@ const TIPO_POR_ID = Object.fromEntries(
 
 /* --------------------------------- usuario -------------------------------- */
 
+/** UsuarioDto -> Usuario. */
 export function aUsuario(dto: UsuarioDto): Usuario {
   return {
     id: dto.id_usuario,
@@ -77,6 +78,7 @@ export function aPayloadRegistro(datos: RegistroUsuario) {
 
 /* ----------------------------- estacionamiento ---------------------------- */
 
+/** Un horario de la API -> franja de atencion (dia y horas HH:MM). */
 function aFranjaAtencion(dto: HorarioDto): FranjaAtencion {
   return {
     dia: DIAS_POR_NUMERO[dto.dia_semana],
@@ -85,6 +87,7 @@ function aFranjaAtencion(dto: HorarioDto): FranjaAtencion {
   };
 }
 
+/** EstacionamientoDto -> Estacionamiento (direccion, tarifas, fotos, reputacion…). */
 export function aEstacionamiento(dto: EstacionamientoDto): Estacionamiento {
   return {
     id: dto.id_estacionamiento,
@@ -125,6 +128,7 @@ export function aEstacionamiento(dto: EstacionamientoDto): Estacionamiento {
 
 /* ------------------------------- reputacion ------------------------------- */
 
+/** La reputacion publica que viene con cada estacionamiento. */
 function aResumenReputacion(dto: EstacionamientoDto): ResumenReputacion {
   return {
     cantidad: dto.calificaciones ?? 0,
@@ -140,6 +144,7 @@ export function aCalificacion(dto: CalificacionDto): Calificacion {
   return { id: dto.id_calificacion, reservaId: dto.id_reserva, promedio: dto.promedio };
 }
 
+/** ReputacionDto -> la pantalla de Reputacion del propietario. */
 export function aReputacion(dto: ReputacionDto): ReputacionEstacionamiento {
   const { operacion } = dto;
   return {
@@ -168,6 +173,7 @@ export function aReputacion(dto: ReputacionDto): ReputacionEstacionamiento {
   };
 }
 
+/** Una opinion de la pantalla de Reputacion (con el estado de su denuncia). */
 export function aOpinion(o: OpinionDto): Opinion {
   return {
     id: o.id_calificacion,
@@ -180,6 +186,7 @@ export function aOpinion(o: OpinionDto): Opinion {
   };
 }
 
+/** La reputacion del conductor y las reseñas que recibio. */
 export function aReputacionConductor(dto: ReputacionConductorDto): ReputacionConductor {
   return {
     promedio: dto.promedio,
@@ -197,6 +204,7 @@ export function aReputacionConductor(dto: ReputacionConductorDto): ReputacionCon
   };
 }
 
+/** Una reseña denunciada, para la cola del administrador. */
 export function aResenaDenunciada(dto: ResenaDenunciadaDto): ResenaDenunciada {
   return {
     id: dto.id_calificacion,
@@ -226,6 +234,7 @@ function urlDeFoto(dto: EstacionamientoDto): string | null {
   return `/api/estacionamientos/${dto.id_estacionamiento}/foto?v=${version}`;
 }
 
+/** Las URLs de las fotos de la galeria (con ?v= para saltear la cache). */
 function urlsDeGaleria(dto: EstacionamientoDto): string[] {
   return (dto.fotos ?? []).map(
     ({ id_foto, actualizada }) =>
@@ -233,6 +242,7 @@ function urlsDeGaleria(dto: EstacionamientoDto): string[] {
   );
 }
 
+/** NuevoEstacionamiento -> body de la API (snake_case). */
 export function aPayloadEstacionamiento(datos: NuevoEstacionamiento) {
   const { direccion } = datos;
   return {
@@ -274,6 +284,7 @@ function estadoDeCochera(dto: CocheraDto): EstadoCochera {
   return dto.estado_actual;
 }
 
+/** CocheraDto -> Cochera. */
 export function aCochera(dto: CocheraDto): Cochera {
   return {
     id: dto.id_cochera,
@@ -300,6 +311,7 @@ export function aPayloadCochera(datos: Partial<NuevaCochera>) {
   };
 }
 
+/** Lotes de cocheras -> body de la API. */
 export function aPayloadLotes(lotes: LoteCocheras[]) {
   return {
     lotes: lotes.map((lote) => ({
@@ -314,6 +326,7 @@ export function aPayloadLotes(lotes: LoteCocheras[]) {
 
 /* -------------------------------- vehiculo -------------------------------- */
 
+/** VehiculoDto -> Vehiculo. */
 export function aVehiculo(dto: VehiculoDto): Vehiculo {
   return {
     id: dto.id_vehiculo,
@@ -330,6 +343,7 @@ export function aVehiculo(dto: VehiculoDto): Vehiculo {
   };
 }
 
+/** Vehiculo nuevo o cambios -> body de la API. */
 export function aPayloadVehiculo(datos: NuevoVehiculo) {
   return {
     patente: datos.patente,
@@ -355,6 +369,7 @@ export function aPayloadCambiosVehiculo(cambios: CambiosVehiculo) {
 
 /* --------------------------------- reserva -------------------------------- */
 
+/** ReservaDto -> ReservaDetallada (fecha y horas locales, estacionamiento, vehiculo…). */
 export function aReserva(dto: ReservaDto): ReservaDetallada {
   const desde = partesLocales(dto.inicio);
   const hasta = partesLocales(dto.fin);
@@ -438,6 +453,7 @@ function finDeReserva(datos: NuevaReserva, inicio: FechaHoraISO): FechaHoraISO {
   return new Date(Date.parse(inicio) + horas * 3_600_000).toISOString();
 }
 
+/** Una franja de disponibilidad de la API -> FranjaDisponible. */
 export function aFranja(dto: FranjaDto): FranjaDisponible {
   return {
     horaDesde: dto.hora_desde,
@@ -451,6 +467,7 @@ export function aFranja(dto: FranjaDto): FranjaDisponible {
 
 /* --------------------------------- abonos --------------------------------- */
 
+/** PlanAbonoDto -> PlanAbono. */
 export function aPlanAbono(dto: PlanAbonoDto): PlanAbono {
   return {
     id: dto.id_plan,
@@ -461,6 +478,7 @@ export function aPlanAbono(dto: PlanAbonoDto): PlanAbono {
   };
 }
 
+/** AbonoDto -> Abono. */
 export function aAbono(dto: AbonoDto): Abono {
   return {
     id: dto.id_abono,
@@ -480,6 +498,7 @@ export function aAbono(dto: AbonoDto): Abono {
   };
 }
 
+/** Reserva con abono -> body de la API. */
 export function aPayloadReservaConAbono(datos: NuevaReservaConAbono) {
   return {
     id_abono: datos.abonoId,
@@ -489,6 +508,7 @@ export function aPayloadReservaConAbono(datos: NuevaReservaConAbono) {
   };
 }
 
+/** IncidenciaDto -> Incidencia. */
 export function aIncidencia(dto: IncidenciaDto): Incidencia {
   return {
     id: dto.id_incidencia,
@@ -528,6 +548,7 @@ export function aIncidencia(dto: IncidenciaDto): Incidencia {
   };
 }
 
+/** Un mensaje del chat de una incidencia. */
 function aMensajeIncidencia(dto: MensajeIncidenciaDto): MensajeIncidencia {
   const autor = [dto.autor_nombre, dto.autor_apellido].filter(Boolean).join(' ');
   return {
@@ -541,6 +562,7 @@ function aMensajeIncidencia(dto: MensajeIncidenciaDto): MensajeIncidencia {
   };
 }
 
+/** Incidencia con sus mensajes. */
 export function aIncidenciaDetallada(dto: IncidenciaDetalladaDto): IncidenciaDetallada {
   return {
     ...aIncidencia(dto),
@@ -549,6 +571,7 @@ export function aIncidenciaDetallada(dto: IncidenciaDetalladaDto): IncidenciaDet
   };
 }
 
+/** Incidencia como la ve el administrador (los tres chats). */
 export function aIncidenciaModerada(dto: IncidenciaModeradaDto): IncidenciaModerada {
   const r = dto.resumen ?? {};
   return {
@@ -566,6 +589,7 @@ export function aIncidenciaModerada(dto: IncidenciaModeradaDto): IncidenciaModer
   };
 }
 
+/** Reclamo nuevo -> body de la API. */
 export function aPayloadReclamo(datos: NuevoReclamo) {
   return {
     ...(datos.reservaId ? { id_reserva: datos.reservaId } : { id_abono: datos.abonoId }),

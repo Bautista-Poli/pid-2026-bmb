@@ -223,6 +223,7 @@ export class MapaEstacionamientos {
     this.mapa?.flyTo([punto.latitud, punto.longitud], Math.max(this.mapa.getZoom(), ZOOM_DESTINO));
   }
 
+  /** Crea el mapa de Leaflet con su capa de pines y avisa cuando se mueve. */
   private crearMapa(): void {
     const elemento = this.contenedor().nativeElement;
     this.mapa = L.map(elemento, { zoomControl: false, attributionControl: true }).setView(
@@ -342,6 +343,7 @@ function etiquetaPin(estacionamiento: Estacionamiento): string {
   return precio == null ? 'P' : `$${precio.toLocaleString('es-AR')}`;
 }
 
+/** El pin de un estacionamiento: color por disponibilidad, precio y sello si es destacado. */
 function iconoPin(estacionamiento: Estacionamiento, activo: boolean): L.DivIcon {
   const estado = estadoDisponibilidad(estacionamiento);
   const destacado = estacionamiento.reputacion.destacado;
@@ -357,6 +359,7 @@ function iconoPin(estacionamiento: Estacionamiento, activo: boolean): L.DivIcon 
   });
 }
 
+/** La zona visible del mapa (para pedir los estacionamientos de esa area). */
 function areaDe(mapa: L.Map): AreaMapa {
   const limites = mapa.getBounds();
   return {

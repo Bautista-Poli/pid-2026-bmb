@@ -1,3 +1,4 @@
+// Modelos de vehiculos: tipos, etiquetas e iconos por tipo.
 import { Id } from './api.model';
 
 export type TipoVehiculo = 'AUTO' | 'CAMIONETA' | 'MOTO';

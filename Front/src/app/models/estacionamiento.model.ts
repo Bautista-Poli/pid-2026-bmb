@@ -1,3 +1,5 @@
+// Modelos de estacionamientos: direccion, tarifas, horarios, filtros de busqueda y
+// helpers de pantalla. La traduccion desde la API esta en services/api/api.mapeo.ts.
 import { FechaHoraISO, FechaISO, HoraHHmm, Id } from './api.model';
 import { ResumenReputacion } from './calificacion.model';
 import { Tarifas } from './tarifa.model';

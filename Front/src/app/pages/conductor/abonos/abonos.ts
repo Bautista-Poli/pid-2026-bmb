@@ -29,6 +29,7 @@ export class Abonos {
   /** Abono sobre el que el conductor abre un reclamo: mientras no sea null, el modal esta abierto. */
   protected readonly aReclamar = signal<ObjetoReclamo | null>(null);
 
+  /** Abre el modal de reclamo sobre un abono (tope: lo pagado menos lo devuelto). */
   protected pedirReclamo(abono: Abono): void {
     this.aReclamar.set({
       tipo: 'abono',
@@ -53,6 +54,7 @@ export class Abonos {
     defaultValue: [] as Abono[],
   });
 
+  /** Cancela el abono y recarga la lista. */
   protected cancelar(abono: Abono): void {
     this.cancelando.set(true);
     this.error.set(null);

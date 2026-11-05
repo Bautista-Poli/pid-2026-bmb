@@ -117,6 +117,7 @@ export class CalificarConductor {
     );
   }
 
+  /** Guarda la calificacion del conductor (estrellas, etiquetas y comentario). */
   protected enviar(reserva: ReservaDetallada): void {
     if (this.puntaje() === 0 || this.enviando()) return;
     this.enviando.set(true);
@@ -145,6 +146,7 @@ export class CalificarConductor {
     this.cerrado.emit();
   }
 
+  /** Vuelve el formulario a su estado inicial. */
   private limpiar(): void {
     this.puntaje.set(0);
     this.etiquetas.set([]);

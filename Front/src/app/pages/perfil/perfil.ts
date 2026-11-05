@@ -41,6 +41,7 @@ function esInvalido(control: AbstractControl | null): boolean {
   return Boolean(control?.invalid && control.touched);
 }
 
+/** Validador: la nueva contraseña y su repeticion coinciden. */
 function passwordsIguales(grupo: AbstractControl): ValidationErrors | null {
   const { password, repetirPassword } = grupo.value;
   return password && repetirPassword && password !== repetirPassword
@@ -165,6 +166,7 @@ export class Perfil {
     this.tema.elegir(preferencia);
   }
 
+  /** Abre el modal de cambio de contraseña con el formulario limpio. */
   protected abrirModalClave(): void {
     this.clave.reset();
     this.errorClave.set(null);
@@ -190,6 +192,7 @@ export class Perfil {
     return this.clave.controls.repetirPassword.touched && this.clave.hasError('passwordsDistintas');
   }
 
+  /** Guarda nombre, telefono y perfiles habilitados; si cambio el activo, navega a su inicio. */
   protected guardarDatos(): void {
     if (this.datos.invalid) {
       this.datos.markAllAsTouched();
@@ -230,6 +233,7 @@ export class Perfil {
     });
   }
 
+  /** Cambia la contraseña (pide la actual). */
   protected cambiarPassword(): void {
     if (this.clave.invalid) {
       this.clave.markAllAsTouched();
@@ -256,6 +260,7 @@ export class Perfil {
     });
   }
 
+  /** Da de baja la cuenta y vuelve al ingreso. */
   protected eliminarCuenta(): void {
     const seguro = confirm(
       '¿Eliminar tu cuenta? Se cancelan tus reservas futuras y no vas a poder volver a entrar.',

@@ -1,3 +1,4 @@
+// Exporta los componentes del flujo de reserva y de los listados de reservas.
 /* Piezas del flujo de reserva y de los listados de reservas. */
 export * from './selector-vehiculo/selector-vehiculo';
 export * from './selector-fecha/selector-fecha';

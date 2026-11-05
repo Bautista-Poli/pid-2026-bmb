@@ -110,6 +110,7 @@ export class FormularioVehiculo {
     this.formulario.controls.tipo.setValue(tipo);
   }
 
+  /** Valida el formulario y emite los datos del vehiculo. */
   protected enviar(): void {
     if (this.formulario.invalid) {
       this.formulario.markAllAsTouched();

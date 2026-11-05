@@ -1,3 +1,5 @@
+// Modelos de reservas: estados, modalidades, el borrador del flujo de reserva y las
+// etiquetas que se muestran segun quien mira.
 import { TurnoAbono } from './abono.model';
 import { FechaHoraISO, FechaISO, HoraHHmm, Id } from './api.model';
 import { Cochera } from './cochera.model';

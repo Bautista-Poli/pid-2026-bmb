@@ -335,6 +335,7 @@ export class Tablero {
     return { sube: delta > 0, texto: `${Math.abs(delta)} vs. ayer` };
   }
 
+  /** Variacion de hoy contra ayer ("12% vs. ayer"). */
   private porcentaje(hoy: number, ayer: number): Variacion {
     if (ayer === 0) {
       return hoy === 0 ? { sube: null, texto: 'igual que ayer' } : { sube: true, texto: 'sin ingresos ayer' };

@@ -70,6 +70,7 @@ export class EditarEstacionamiento {
     });
   }
 
+  /** Sube o reemplaza la portada del estacionamiento. */
   private guardarFoto(): void {
     if (this.foto === undefined) {
       this.volverAlListado();

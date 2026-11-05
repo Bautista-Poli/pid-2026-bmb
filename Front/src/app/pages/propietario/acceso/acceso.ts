@@ -45,6 +45,7 @@ export class Acceso {
   protected readonly error = signal<string | null>(null);
   protected readonly resultado = signal<AccesoReserva | null>(null);
 
+  /** Registra el ingreso o el egreso de la reserva del codigo. */
   protected registrar(): void {
     const codigo = this.codigoNormalizado();
     if (!codigo) return;

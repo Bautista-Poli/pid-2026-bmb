@@ -68,6 +68,7 @@ export class FiltrosEstacionamiento {
     this.panelAbierto.set(false);
   }
 
+  /** Saca el filtro de precio (minimo y maximo). */
   protected limpiarPrecio(): void {
     this.borradorMinimo.set(null);
     this.borradorMaximo.set(null);

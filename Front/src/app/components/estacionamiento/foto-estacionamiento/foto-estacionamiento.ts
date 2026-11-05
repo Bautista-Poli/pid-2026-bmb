@@ -57,6 +57,7 @@ export class FotoEstacionamiento {
     return this.vistaPrevia() ?? (this.quitada() ? null : this.fotoActual());
   }
 
+  /** Valida tipo y tamaño de la foto elegida y la deja lista para subir. */
   protected elegir(evento: Event): void {
     const input = evento.target as HTMLInputElement;
     const archivo = input.files?.[0];
@@ -79,6 +80,7 @@ export class FotoEstacionamiento {
     input.value = '';
   }
 
+  /** Descarta la foto elegida. */
   protected quitar(): void {
     this.revocar();
     this.error.set(null);

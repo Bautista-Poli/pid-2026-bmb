@@ -1,3 +1,5 @@
+// Constantes de dominio compartidas: roles, estados de reserva, cochera y aprobacion,
+// y quien cancelo. Tienen que coincidir con los enums de schema.sql.
 export const ROLES = Object.freeze({
   CONDUCTOR: 'CONDUCTOR',
   PROPIETARIO: 'PROPIETARIO',

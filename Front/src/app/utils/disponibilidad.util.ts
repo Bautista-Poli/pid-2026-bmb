@@ -34,7 +34,7 @@ export function formatearDistancia(km: number | undefined): string | null {
   return `${km.toLocaleString('es-AR', { maximumFractionDigits: 1 })} km`;
 }
 
-/** Estado para el mapa y su leyenda: menos de 5 libres es poca disponibilidad. */
+/** Estado para el mapa y su leyenda: 0 libres, de 1 a 4 libres, 5 o mas. */
 export type EstadoDisponibilidad = 'DISPONIBLE' | 'POCA' | 'NO_DISPONIBLE';
 
 export const ETIQUETA_ESTADO: Record<EstadoDisponibilidad, string> = {

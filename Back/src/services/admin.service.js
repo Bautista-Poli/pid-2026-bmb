@@ -1,3 +1,5 @@
+// Revision de estacionamientos por el administrador: la cola de pendientes, el
+// detalle y aprobar/rechazar. Lo llama admin.controller.
 import { query } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
 import { ESTADOS_APROBACION } from '../utils/roles.js';
@@ -73,10 +75,12 @@ async function decidir(idEstacionamiento, idAdmin, estado, motivo, enviadoEn) {
   return obtenerEstacionamiento(idEstacionamiento);
 }
 
+/** Aprueba un estacionamiento en revision (atajo de decidir). */
 export function aprobar(idEstacionamiento, idAdmin, { enviado_en }) {
   return decidir(idEstacionamiento, idAdmin, ESTADOS_APROBACION.APROBADO, null, enviado_en);
 }
 
+/** Rechaza un estacionamiento en revision con un motivo (atajo de decidir). */
 export function rechazar(idEstacionamiento, idAdmin, { motivo, enviado_en }) {
   return decidir(idEstacionamiento, idAdmin, ESTADOS_APROBACION.RECHAZADO, motivo, enviado_en);
 }

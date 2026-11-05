@@ -1,0 +1,115 @@
+<!-- Pantalla `/admin/resenas` · rol ADMINISTRADOR. Datos y acciones en resenas.ts. -->
+<div class="aparece pagina-resenas">
+  <div class="flex flex-col gap-6">
+    <header>
+      <p class="eyebrow">Administración</p>
+      <h1 class="titulo-vista mt-1.5">Reseñas</h1>
+      <p class="mt-1 text-[13.5px] text-plomo">
+        Reseñas que denunció la parte calificada. Si la denuncia corresponde, ocultá la reseña: deja de contar
+        en la reputación. Si no, desestimala.
+      </p>
+    </header>
+
+    <div class="flex flex-wrap gap-2">
+      @for (filtro of filtros; track filtro.estado) {
+        <ui-chip [activo]="filtro.estado === estado()" (alternar)="elegir(filtro.estado)">
+          {{ filtro.etiqueta }}
+        </ui-chip>
+      }
+    </div>
+
+    @if (aviso(); as mensaje) {
+      <p class="rounded-control bg-exito-suave px-4 py-3 text-[13px] text-exito" role="status">{{ mensaje }}</p>
+    }
+    @if (error(); as mensaje) {
+      <p class="text-[13px] text-ocupada" role="alert">{{ mensaje }}</p>
+    }
+
+    @if (recurso.isLoading()) {
+      <ui-cargando [cantidad]="3" />
+    } @else if (recurso.error(); as e) {
+      <ui-estado-vacio titulo="No pudimos cargar las reseñas" [descripcion]="e.message">
+        <ui-boton (presionado)="recurso.reload()">Reintentar</ui-boton>
+      </ui-estado-vacio>
+    } @else if (recurso.value().length === 0) {
+      <ui-estado-vacio [titulo]="filtroActual().vacio" />
+    } @else {
+      <ul class="aparece-en-cadena flex flex-col gap-3">
+        @for (resena of recurso.value(); track resena.id) {
+          <li>
+            <ui-tarjeta>
+              <div class="flex flex-col gap-2.5">
+                <div class="flex items-start justify-between gap-3">
+                  <div>
+                    <p class="text-[13.5px] font-semibold text-tinta">{{ sobreQuien(resena) }}</p>
+                    <p class="text-[12px] text-plomo">
+                      {{ autor(resena) }} · {{ resena.creadaEn | date: 'd MMM' }}
+                    </p>
+                  </div>
+                  <span class="num-tabular text-[13px] font-semibold text-grafito">
+                    <span class="text-oro">★</span> {{ formatearNota(resena.nota) }}
+                  </span>
+                </div>
+
+                <p class="text-[13px] text-grafito" [class.text-plomo]="!resena.comentario">
+                  {{ resena.comentario ? '“' + resena.comentario + '”' : 'Sin comentario' }}
+                </p>
+                @if (resena.etiquetas.length > 0) {
+                  <div class="flex flex-wrap gap-1">
+                    @for (etiqueta of resena.etiquetas; track etiqueta) {
+                      <span class="rounded-full bg-lienzo px-2 py-0.5 text-[11.5px] text-plomo">{{ textoEtiqueta(etiqueta) }}</span>
+                    }
+                  </div>
+                }
+
+                <div class="rounded-control bg-lienzo px-3 py-2 text-[12.5px] text-grafito">
+                  <span class="font-semibold">Denuncia: {{ textoMotivo[resena.motivo] }}</span>
+                  <span class="num-tabular text-plomo"> · {{ resena.denunciadaEn | date: 'd MMM, HH:mm' }}</span>
+                  @if (resena.detalle) {
+                    <p class="mt-0.5">{{ resena.detalle }}</p>
+                  }
+                  @if (resena.moderadaEn) {
+                    <p class="num-tabular mt-0.5 text-plomo">Moderada {{ resena.moderadaEn | date: 'd MMM, HH:mm' }}</p>
+                  }
+                </div>
+
+                @if (resena.estado === 'PENDIENTE') {
+                  <div class="flex flex-wrap justify-end gap-2">
+                    <ui-boton
+                      variante="secundario"
+                      [cargando]="procesandoId() === resena.id"
+                      (presionado)="desestimar(resena)"
+                    >
+                      Desestimar
+                    </ui-boton>
+                    <ui-boton variante="peligro" [deshabilitado]="procesandoId() === resena.id" (presionado)="aOcultar.set(resena)">
+                      Ocultar reseña
+                    </ui-boton>
+                  </div>
+                }
+              </div>
+            </ui-tarjeta>
+          </li>
+        }
+      </ul>
+    }
+  </div>
+</div>
+
+<ui-modal titulo="Ocultar reseña" [abierto]="aOcultar() !== null" (cerrado)="aOcultar.set(null)">
+  @if (aOcultar(); as resena) {
+    <div class="flex flex-col gap-4">
+      <p class="text-[13.5px] text-grafito">
+        La reseña deja de contar en la reputación y de mostrarse. No se puede deshacer.
+      </p>
+      <ui-boton
+        variante="peligro"
+        [bloque]="true"
+        [cargando]="procesandoId() === resena.id"
+        (presionado)="ocultar(resena)"
+      >
+        Ocultar reseña
+      </ui-boton>
+    </div>
+  }
+</ui-modal>

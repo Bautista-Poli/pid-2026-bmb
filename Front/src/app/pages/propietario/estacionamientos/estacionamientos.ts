@@ -9,14 +9,11 @@ import {
   Etiqueta,
   Icono,
   Miniatura,
-  Modal,
   Tarjeta,
 } from '@app/components/ui';
-import { ListaCalificaciones, Reputacion } from '@app/components/calificacion';
 import { direccionCorta, Estacionamiento, Id } from '@app/models';
 import { resumenTarifas } from '@app/utils/tarifa.util';
 import { AuthService } from '@app/services/auth.service';
-import { CalificacionService } from '@app/services/calificacion.service';
 import { EstacionamientoService } from '@app/services/estacionamiento.service';
 
 /**
@@ -37,10 +34,7 @@ import { EstacionamientoService } from '@app/services/estacionamiento.service';
     Etiqueta,
     Icono,
     Miniatura,
-    Modal,
     Tarjeta,
-    Reputacion,
-    ListaCalificaciones,
   ],
   templateUrl: './estacionamientos.html',
 })
@@ -55,18 +49,6 @@ export class Estacionamientos {
     stream: () => this.estacionamientos.listarDelPropietario(),
     defaultValue: [] as Estacionamiento[],
   });
-
-  /* ------------------ calificaciones (solo las ve el dueno) ------------------ */
-  private readonly calificacionService = inject(CalificacionService);
-  protected readonly conCalificaciones = signal<Estacionamiento | null>(null);
-  protected readonly calificaciones = rxResource({
-    params: () => this.conCalificaciones()?.id,
-    stream: ({ params: id }) => this.calificacionService.recibidasPorEstacionamiento(id),
-  });
-
-  protected verCalificaciones(estacionamiento: Estacionamiento): void {
-    this.conCalificaciones.set(estacionamiento);
-  }
 
   protected readonly reenviandoId = signal<Id | null>(null);
   protected readonly errorReenvio = signal<{ id: Id; mensaje: string } | null>(null);

@@ -115,15 +115,17 @@ export class EstacionamientoService {
 const distancia = (estacionamiento: Estacionamiento) =>
   estacionamiento.distanciaKm ?? Number.MAX_VALUE;
 
+const sinCalificar = (estacionamiento: Estacionamiento) => (estacionamiento.reputacion.cantidad === 0 ? 1 : 0);
+
 const COMPARADORES: Record<OrdenEstacionamiento, (a: Estacionamiento, b: Estacionamiento) => number> =
   {
     DISTANCIA: (a, b) => distancia(a) - distancia(b),
     PRECIO: (a, b) =>
       (a.tarifas.hora ?? Number.MAX_VALUE) - (b.tarifas.hora ?? Number.MAX_VALUE),
-    // Ponderado (lo calcula la API); a igual puntaje, el de mas calificaciones y despues el mas cercano.
-    CALIFICACION: (a, b) =>
-      b.puntajeOrden - a.puntajeOrden ||
-      b.reputacion.cantidad - a.reputacion.cantidad ||
+    // Sin calificaciones el puntaje supone un 4: van despues de los calificados.
+    REPUTACION: (a, b) =>
+      sinCalificar(a) - sinCalificar(b) ||
+      b.reputacion.puntaje - a.reputacion.puntaje ||
       distancia(a) - distancia(b),
   };
 
@@ -149,11 +151,13 @@ export function ordenarEstacionamientos(
   orden: OrdenEstacionamiento | null | undefined,
 ): Estacionamiento[] {
   const comparar = COMPARADORES[orden ?? 'DISTANCIA'];
-  // Los que no se pueden usar van siempre al final, sea cual sea el orden.
+  // Manda el orden elegido; lo unico por encima es que los que no se pueden usar
+  // van al final. Sin ubicacion no hay distancias: queda el orden del back.
   const alFinal = (e: Estacionamiento) => (estadoDisponibilidad(e) === 'NO_DISPONIBLE' ? 1 : 0);
   return [...items].sort((a, b) => alFinal(a) - alFinal(b) || comparar(a, b));
 }
 
+/** Filtros de busqueda -> query params de GET /api/estacionamientos. */
 function aParams(filtros: FiltrosEstacionamiento): HttpParams {
   let params = new HttpParams().set('limit', LIMITE_BUSQUEDA);
   const busqueda = filtros.busqueda?.trim();
@@ -166,7 +170,7 @@ function aParams(filtros: FiltrosEstacionamiento): HttpParams {
   if (filtros.precioMinimo != null) params = params.set('tarifa_min', filtros.precioMinimo);
   if (filtros.precioMaximo != null) params = params.set('tarifa_max', filtros.precioMaximo);
   if (filtros.soloCubiertos) params = params.set('cubierto', true);
-  if (filtros.calificacionMinima != null) params = params.set('calificacion_min', filtros.calificacionMinima);
+  if (filtros.nivelMinimo) params = params.set('nivel_minimo', filtros.nivelMinimo);
   if (filtros.area) {
     params = params
       .set('lat_min', filtros.area.latitudMinima)

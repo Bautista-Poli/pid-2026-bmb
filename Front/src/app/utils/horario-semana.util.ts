@@ -25,10 +25,13 @@ const ABREVIATURA: Record<DiaSemana, string> = {
 const esTodoElDia = (franja: FranjaAtencion) =>
   franja.desde === '00:00' && (franja.hasta === '23:59' || franja.hasta === '24:00');
 
-const textoFranja = (franja: FranjaAtencion | undefined) =>
-  !franja ? 'Cerrado' : esTodoElDia(franja) ? '24 h' : `${franja.desde} – ${franja.hasta}`;
+function textoFranja(franja: FranjaAtencion | undefined): string {
+  if (!franja) return 'Cerrado';
+  if (esTodoElDia(franja)) return '24 h';
+  return `${franja.desde} – ${franja.hasta}`;
+}
 
-export interface EstadoApertura {
+interface EstadoApertura {
   abierto: boolean;
   /** "Abierto · Cierra 23:00", "Cerrado · Abre 08:00", "Abierto las 24 h", "Cerrado hoy". */
   texto: string;
@@ -70,7 +73,7 @@ export function resumenSemana(horarios: FranjaAtencion[]): string[] {
 }
 
 /** Horas de los selectores de apertura y cierre: cada 30 minutos de 00:00 a 23:30, mas 23:59 (fin del dia). */
-export const HORAS_DEL_DIA: readonly string[] = [
+const HORAS_DEL_DIA: readonly string[] = [
   ...Array.from({ length: 48 }, (_, i) => {
     const horas = String(Math.floor(i / 2)).padStart(2, '0');
     return `${horas}:${i % 2 === 0 ? '00' : '30'}`;

@@ -57,6 +57,7 @@ function detallesDe(error: HttpErrorResponse): unknown {
   return cuerpo && typeof cuerpo === 'object' && 'error' in cuerpo ? (cuerpo.error.details ?? null) : null;
 }
 
+/** El mensaje para mostrar: el del back ({ error: { message } }) o uno generico. */
 function mensajeDe(error: HttpErrorResponse): string {
   const cuerpo = error.error as RespuestaError | string | null;
 

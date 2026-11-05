@@ -146,6 +146,7 @@ export class PlanesAbono {
     return this.porTurno().get(turno);
   }
 
+  /** Crea o edita el plan de abono del turno elegido. */
   protected guardar(turno: TurnoAbono, cupos: number, precio: number): void {
     if (!Number.isInteger(cupos) || cupos < 1 || !Number.isFinite(precio) || precio < 0) {
       this.error.set('Completá usos (1 o más) y precio (0 o más).');
@@ -170,6 +171,7 @@ export class PlanesAbono {
     });
   }
 
+  /** Da de baja el plan de abono (no afecta a los abonos ya vendidos). */
   protected quitar(plan: PlanAbono): void {
     this.error.set(null);
     this.dandoDeBaja.set(plan.id);

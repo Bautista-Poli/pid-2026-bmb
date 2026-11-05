@@ -1,5 +1,7 @@
+// Modelos de estacionamientos: direccion, tarifas, horarios, filtros de busqueda y
+// helpers de pantalla. La traduccion desde la API esta en services/api/api.mapeo.ts.
 import { FechaHoraISO, FechaISO, HoraHHmm, Id } from './api.model';
-import { Reputacion } from './calificacion.model';
+import { CodigoNivel, ResumenReputacion } from './calificacion.model';
 import { Tarifas } from './tarifa.model';
 import { TipoVehiculo } from './vehiculo.model';
 
@@ -74,14 +76,12 @@ export interface Estacionamiento {
   motivoRechazo: string | null;
   /** Cuando entro a la cola de revision por ultima vez. */
   enviadoEn: FechaHoraISO;
-  /** Lo que le pusieron los conductores. Sin calificaciones se muestra "Nuevo". */
-  reputacion: Reputacion;
-  /** Promedio ponderado para "Mejor calificados": con pocas calificaciones queda cerca del promedio general. */
-  puntajeOrden: number;
+  /** Calificaciones e insignias de los ultimos 90 dias. */
+  reputacion: ResumenReputacion;
 }
 
 /** Datos de contacto del propietario, para que el administrador revise. */
-export interface PropietarioEnRevision {
+interface PropietarioEnRevision {
   nombre: string;
   apellido: string;
   email: string;
@@ -121,11 +121,11 @@ export interface FiltrosEstacionamiento {
   precioMinimo?: number | null;
   precioMaximo?: number | null;
   soloCubiertos?: boolean;
+  /** Solo los de ese nivel de reputacion o mas ("Oro o mas"); null: todos. */
+  nivelMinimo?: CodigoNivel | null;
   momento?: Momento | null;
   /** Con un momento: trae tambien los que no tienen cochera libre o estan cerrados, marcados con `disponible`. */
   incluirNoDisponibles?: boolean;
-  /** Promedio minimo (3, 4 o 4.5); deja afuera a los que no tienen calificaciones. */
-  calificacionMinima?: number | null;
   /** Solo los que caen en este rectangulo: la parte del mapa que se esta viendo. */
   area?: AreaMapa | null;
   /** Coordenadas del conductor, para calcular `distanciaKm` en el front. No se manda a la API. */
@@ -141,7 +141,7 @@ export interface AreaMapa {
   longitudMaxima: number;
 }
 
-export type OrdenEstacionamiento = 'DISTANCIA' | 'PRECIO' | 'CALIFICACION';
+export type OrdenEstacionamiento = 'DISTANCIA' | 'PRECIO' | 'REPUTACION';
 
 /** Payload de `POST /api/estacionamientos`. */
 export interface NuevoEstacionamiento {

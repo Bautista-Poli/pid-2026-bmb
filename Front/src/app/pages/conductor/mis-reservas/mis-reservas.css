@@ -159,3 +159,59 @@
   font-size: 13px;
   color: var(--color-plomo);
 }
+
+/* Invitacion a calificar la ultima estadia (solo despues de entrar y salir). */
+.invitacion-calificar {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid color-mix(in oklab, var(--color-oro) 45%, var(--color-borde));
+  border-radius: var(--radius-tarjeta);
+  background: var(--color-papel);
+  box-shadow: var(--shadow-tarjeta);
+  color: var(--color-tinta);
+  text-decoration: none;
+  transition: border-color 160ms var(--ease-suave);
+}
+
+.invitacion-calificar:hover {
+  border-color: var(--color-oro);
+}
+
+.invitacion-calificar__icono {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: var(--color-oro-suave);
+  color: var(--color-oro-tinta);
+}
+
+.invitacion-calificar__texto {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 0%;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12.5px;
+  color: var(--color-plomo);
+}
+
+.invitacion-calificar__texto strong {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-tinta);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.invitacion-calificar__accion {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-acento);
+}

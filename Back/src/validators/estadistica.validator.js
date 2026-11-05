@@ -1,3 +1,4 @@
+// Validador del periodo (desde/hasta) de las estadisticas.
 import { campos } from './helpers.js';
 
 const FECHA = /^\d{4}-\d{2}-\d{2}$/;

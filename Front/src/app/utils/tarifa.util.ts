@@ -7,8 +7,6 @@ const CLAVE: Record<ModalidadReserva, keyof Tarifas> = {
 };
 
 const pesos = (monto: number) => `$${monto.toLocaleString('es-AR')}`;
-
-
 /**
  * La modalidad que corresponde a `horas`: 12 h es estadia y 24 h es jornada si
  * el estacionamiento las ofrece; si no, por hora. `null` si no se puede

@@ -25,3 +25,11 @@ export function sinSolapamiento(estados, inicio, fin, cochera = 'c.id_cochera') 
        AND ${finEfectivo('r')} > ${inicio}
   )`;
 }
+
+/**
+ * Condicion SQL "la cochera se puede reservar": activa, sin bloqueo por
+ * mantenimiento y que no este dada de baja (INACTIVA).
+ */
+export function cocheraReservable(alias = 'c') {
+  return `${alias}.activo AND NOT ${alias}.bloqueada AND ${alias}.estado_actual <> 'INACTIVA'`;
+}

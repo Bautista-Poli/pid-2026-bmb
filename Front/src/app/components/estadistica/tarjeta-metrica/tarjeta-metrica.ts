@@ -1,3 +1,5 @@
+// Tarjeta de un KPI del dashboard: etiqueta, valor grande, icono y la variacion contra
+// el periodo anterior (verde si sube, rojo si baja).
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { Icono, NombreIcono, Tarjeta } from '@app/components/ui';
 import { Variacion } from '@app/utils/periodo.util';
@@ -41,7 +43,7 @@ const CLASE_TONO: Record<TonoMetrica, string> = {
           @if (variacion(); as v) {
             <p
               class="mt-2.5 flex items-center gap-1 text-[12px] font-medium"
-              [class]="v.sube === null ? 'text-plomo' : v.sube ? 'text-exito' : 'text-ocupada'"
+              [class]="claseTendencia(v.sube)"
             >
               @if (v.sube !== null) {
                 <ui-icono [nombre]="v.texto.startsWith('+') ? 'subir' : 'bajar'" [tamano]="14" />
@@ -63,6 +65,12 @@ export class TarjetaMetrica {
   readonly variacion = input<Variacion | null>(null);
 
   protected readonly claseTono = computed(() => CLASE_TONO[this.tono()]);
+
+  /** Gris sin comparacion, verde si sube y rojo si baja. */
+  protected claseTendencia(sube: boolean | null): string {
+    if (sube === null) return 'text-plomo';
+    return sube ? 'text-exito' : 'text-ocupada';
+  }
 
   /** "29 %" o "59" van grandes; montos largos, un poco mas chicos para que entren. */
   protected readonly claseTamano = computed(() => {

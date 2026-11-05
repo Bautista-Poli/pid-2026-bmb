@@ -26,6 +26,7 @@ const NAVEGACION: Record<RolUsuario, ItemNavegacion[]> = {
     { ruta: '/propietario/tablero', etiqueta: 'Inicio', icono: 'inicio' },
     { ruta: '/propietario/reservas', etiqueta: 'Reservas', icono: 'reservas' },
     { ruta: '/propietario/estadisticas', etiqueta: 'Estadísticas', icono: 'tablero', enTabs: false },
+    { ruta: '/propietario/reputacion', etiqueta: 'Reputación', icono: 'estrella', enTabs: false },
     { ruta: '/propietario/estacionamientos', etiqueta: 'Estacionamientos', icono: 'estacionamiento' },
     { ruta: '/propietario/incidencias', etiqueta: 'Incidencias', icono: 'alerta' },
     { ruta: '/propietario/perfil', etiqueta: 'Configuración', icono: 'configuracion' },
@@ -35,6 +36,7 @@ const NAVEGACION: Record<RolUsuario, ItemNavegacion[]> = {
     { ruta: '/admin/tablero', etiqueta: 'Inicio', icono: 'inicio' },
     { ruta: '/admin/pendientes', etiqueta: 'Revisión', icono: 'estacionamiento' },
     { ruta: '/admin/disputas', etiqueta: 'Disputas', icono: 'alerta' },
+    { ruta: '/admin/resenas', etiqueta: 'Reseñas', icono: 'estrella' },
     { ruta: '/admin/perfil', etiqueta: 'Configuración', icono: 'configuracion' },
   ],
 };
@@ -84,6 +86,7 @@ export class LayoutApp {
 
   protected readonly cambiandoRol = signal(false);
 
+  /** Cambia el perfil activo (conductor/propietario) y navega a su inicio. */
   protected cambiarRol(): void {
     const rol = this.rolAlternativo();
     if (!rol || this.cambiandoRol()) return;

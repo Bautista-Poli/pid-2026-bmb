@@ -3,6 +3,7 @@
 // devuelve mas de lo que se pago, sumando todas las anteriores.
 import { ApiError } from '../utils/ApiError.js';
 
+/** Redondea a centavos. */
 const redondear = (valor) => Math.round(valor * 100) / 100;
 
 /**
@@ -39,6 +40,7 @@ export async function asegurarDentroDelTope(ejecutor, objeto, monto, que = 'El m
   if (monto > tope) throw ApiError.badRequest(`${que} supera lo que queda por devolver ($${tope})`);
 }
 
+/** Registra una devolucion, sin pasar el tope de lo pagado. */
 export async function crearDevolucion(client, { idIncidencia, idReserva = null, idAbono = null, monto, aplicadaPor }) {
   await asegurarDentroDelTope(client, { idReserva, idAbono }, monto);
   await client.query(

@@ -1,4 +1,4 @@
-import { finDeFranja, hoyISO } from './fecha.util';
+import { diaCorto, finDeFranja, hoyISO } from './fecha.util';
 
 describe('finDeFranja', () => {
   it('dentro del mismo dia termina ese dia', () => {
@@ -18,5 +18,11 @@ describe('hoyISO', () => {
   it('usa la fecha argentina aunque en UTC ya sea el dia siguiente', () => {
     // 01:30 UTC del 13 = 22:30 del 12 en Argentina.
     expect(hoyISO(new Date('2026-10-13T01:30:00Z'))).toBe('2026-10-12');
+  });
+});
+
+describe('diaCorto', () => {
+  it('dia de la semana con mayuscula, numero y mes, sin comas', () => {
+    expect(diaCorto('2026-10-03')).toBe('Sáb 3 oct');
   });
 });

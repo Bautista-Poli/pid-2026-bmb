@@ -1,16 +1,31 @@
+// Estacionamientos: alta (verificando la direccion), busqueda publica con filtros,
+// detalle, edicion (vuelve a revision si cambia nombre o direccion) y baja.
 import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
-import { promedioEstacionamientoSql, reputacionEstacionamiento } from '../utils/reputacion.js';
+import { armarSet } from '../utils/sql.js';
+import { ZONA_HORARIA } from '../utils/horario.js';
 import { sinSolapamiento } from '../utils/solapamiento.js';
 import { CAMPOS_TARIFA, HORAS_POR_MODALIDAD } from '../utils/tarifas.js';
 import { ESTADOS_APROBACION, ESTADOS_COCHERA, ESTADOS_VIGENTES } from '../utils/roles.js';
 import { cancelarPorBajaDeEstacionamientos as cancelarAbonos } from './abono.service.js';
 import { listarPorEstacionamiento as listarCocheras } from './cochera.service.js';
 import { geocodificar } from './geocodificacion.service.js';
+import {
+  COLUMNAS_REPUTACION,
+  DIAS_BUSQUEDA,
+  ES_DESTACADO,
+  condicionNivelMinimo,
+  darFormaReputacion,
+  lateralReputacion,
+} from './reputacion.service.js';
+
+/** Reputacion publica (calificaciones e insignias) de los ultimos DIAS_BUSQUEDA dias. */
+const reputacionPublica = () => lateralReputacion(`now() - interval '${DIAS_BUSQUEDA} days'`, 'now()');
 
 const CAMPOS_DIRECCION = ['calle', 'numero', 'ciudad', 'provincia'];
 // Si cambia alguno de estos en uno aprobado, vuelve a la cola de revision.
 const CAMPOS_REVISION = ['nombre', ...CAMPOS_DIRECCION];
+/** Si los datos ya traen latitud y longitud. */
 const tieneCoordenadas = (datos) => datos.latitud != null && datos.longitud != null;
 
 const DIRECCION_INEXISTENTE =
@@ -87,12 +102,8 @@ export const AGREGADOS = `
      FROM estacionamiento_imagen f
     WHERE f.id_estacionamiento = e.id_estacionamiento
     ORDER BY f.orden, f.actualizada
-    LIMIT 1) AS foto_actualizada,
-  ${reputacionEstacionamiento('e')}
+    LIMIT 1) AS foto_actualizada
 `;
-
-/** Zona horaria del negocio (ver utils/horario.js: UTC-3 todo el anio). */
-const ZONA_LOCAL = `'America/Argentina/Buenos_Aires'`;
 
 /**
  * Condicion SQL "el estacionamiento `e` atiende durante [inicio, fin)", en hora
@@ -100,8 +111,8 @@ const ZONA_LOCAL = `'America/Argentina/Buenos_Aires'`;
  * reservar, ver `motivoFueraDeHorario`).
  */
 function abiertoEntre(inicio, fin) {
-  const desde = `(${inicio} AT TIME ZONE ${ZONA_LOCAL})`;
-  const hasta = `(${fin} AT TIME ZONE ${ZONA_LOCAL})`;
+  const desde = `(${inicio} AT TIME ZONE '${ZONA_HORARIA}')`;
+  const hasta = `(${fin} AT TIME ZONE '${ZONA_HORARIA}')`;
   return `(
     NOT EXISTS (SELECT 1 FROM horario h WHERE h.id_estacionamiento = e.id_estacionamiento)
     OR EXISTS (
@@ -224,16 +235,13 @@ export async function buscar(filtros) {
     condiciones.push(`${precioHora} <= $${parametros.length}`);
   }
 
+  if (filtros.destacados) condiciones.push(ES_DESTACADO);
+  // "Oro o mas", "solo Diamante"...: nivel minimo de reputacion.
+  if (filtros.nivel_minimo) condiciones.push(condicionNivelMinimo(filtros.nivel_minimo));
+
   if (filtros.cubierto !== undefined) {
     parametros.push(filtros.cubierto);
     condiciones.push(`e.cubierto = $${parametros.length}`);
-  }
-
-  // Sobre el promedio que ve el conductor (un decimal); los que no tienen
-  // calificaciones (NULL) quedan afuera.
-  if (filtros.calificacion_min !== undefined) {
-    parametros.push(filtros.calificacion_min);
-    condiciones.push(`${promedioEstacionamientoSql('e')} >= $${parametros.length}`);
   }
 
   // La parte del mapa que se esta viendo: sin coordenadas no se puede ubicar.
@@ -298,15 +306,17 @@ export async function buscar(filtros) {
   parametros.push(filtros.limit, filtros.offset);
 
   const { rows } = await query(
-    `SELECT ${CAMPOS_E}, ${AGREGADOS}${columnaDisponible}
+    `SELECT ${CAMPOS_E}, ${AGREGADOS}, ${COLUMNAS_REPUTACION}${columnaDisponible}
        FROM estacionamiento e
+       ${reputacionPublica()}
       WHERE ${condiciones.join(' AND ')}
-      ORDER BY e.nombre
+      -- Sin calificaciones el puntaje supone un 4: van despues de los calificados.
+      ORDER BY ${ES_DESTACADO} DESC, (rep.cal_cantidad > 0) DESC, rep.puntaje DESC, e.nombre
       LIMIT $${parametros.length - 1} OFFSET $${parametros.length}`,
     parametros,
   );
 
-  return rows;
+  return rows.map(darFormaReputacion);
 }
 
 /**
@@ -315,11 +325,13 @@ export async function buscar(filtros) {
  */
 export async function obtenerPorId(idEstacionamiento, { idSolicitante = null, esAdmin = false } = {}) {
   const { rows } = await query(
-    `SELECT ${CAMPOS_E}, ${AGREGADOS}
+    `SELECT ${CAMPOS_E}, ${AGREGADOS}, ${COLUMNAS_REPUTACION}
        FROM estacionamiento e
+       ${reputacionPublica()}
       WHERE e.id_estacionamiento = $1`,
     [idEstacionamiento],
   );
+  if (rows[0]) darFormaReputacion(rows[0]);
 
   const visible =
     rows[0] &&
@@ -364,15 +376,17 @@ export async function asegurarPropiedad(idEstacionamiento, idPropietario) {
   return rows[0];
 }
 
+/** Los estacionamientos del propietario, con sus agregados y reputacion. */
 export async function listarPorPropietario(idPropietario) {
   const { rows } = await query(
-    `SELECT ${CAMPOS_E}, ${AGREGADOS}
+    `SELECT ${CAMPOS_E}, ${AGREGADOS}, ${COLUMNAS_REPUTACION}
        FROM estacionamiento e
+       ${reputacionPublica()}
       WHERE e.id_propietario = $1
       ORDER BY e.nombre`,
     [idPropietario],
   );
-  return rows;
+  return rows.map(darFormaReputacion);
 }
 
 /**
@@ -495,14 +509,8 @@ export async function actualizar(idEstacionamiento, idPropietario, entrada) {
 
   await withTransaction(async (client) => {
     await asegurarAlgunaTarifa(client, idEstacionamiento, datos);
-    const asignaciones = [];
     const parametros = [];
-
-    for (const campo of CAMPOS_EDITABLES) {
-      if (datos[campo] === undefined) continue;
-      parametros.push(datos[campo]);
-      asignaciones.push(`${campo} = $${parametros.length}`);
-    }
+    const asignaciones = armarSet(CAMPOS_EDITABLES, datos, parametros);
 
     const { cambio, estado } = await cambiosDeRevision(client, idEstacionamiento, datos);
     if (cambio && estado === ESTADOS_APROBACION.APROBADO) {

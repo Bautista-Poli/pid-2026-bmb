@@ -1,8 +1,11 @@
+// Reservas: crear sin sobreventa, listar, cancelar, el ciclo del propietario
+// (confirmar, ausente, ingreso/egreso por codigo), disponibilidad y vencimientos.
 import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
 import { normalizarCodigo } from '../utils/codigoAcceso.js';
 import {
   FRANJAS_ESTANDAR,
+  HORA_LOCAL,
   instanteLocal,
   motivoFueraDeHorario,
   motivoIngresoFueraDeHorario,
@@ -10,11 +13,12 @@ import {
   sumarDias,
 } from '../utils/horario.js';
 import { ESTADOS_COCHERA, ESTADOS_RESERVA, ESTADOS_VIGENTES, ORIGENES_CANCELACION } from '../utils/roles.js';
-import { finEfectivo, sinSolapamiento } from '../utils/solapamiento.js';
-import { limiteCalificacionSql, reputacionConductor } from '../utils/reputacion.js';
+import { cocheraReservable, finEfectivo, sinSolapamiento } from '../utils/solapamiento.js';
 import { CAMPOS_TARIFA, HORAS_POR_MODALIDAD, MODALIDADES, precioDeReserva } from '../utils/tarifas.js';
-import { ORDEN_NATURAL } from './cochera.service.js';
+import { buscarCocheraLibre } from './cochera.service.js';
 import { validarAbonoParaReservar } from './abono.service.js';
+import { PLAZO_CALIFICACION_DIAS } from './calificacion.service.js';
+import { lateralReputacionConductor } from './reputacion.service.js';
 import { registrarEgresoEnIncidencia } from './incidencia.service.js';
 import { aceptaReservas, asegurarPropiedad } from './estacionamiento.service.js';
 
@@ -40,6 +44,10 @@ const MARGEN_INGRESO_MS = 30 * 60 * 1000;
 // por estacionamiento.
 export const TOLERANCIA_NO_SHOW_MS = 15 * 60 * 1000;
 
+/** Efecto de una transicion: deja la cochera de la reserva en `estado` (estado fisico). */
+const ponerCocheraEn = (estado) => (client, reserva) =>
+  client.query('UPDATE cochera SET estado_actual = $1 WHERE id_cochera = $2', [estado, reserva.id_cochera]);
+
 /**
  * Transiciones de estado permitidas: TRANSICIONES[desde][hacia]. Si la
  * combinacion no esta, cambiarEstado() la rechaza. `efecto` corre, dentro de
@@ -53,11 +61,7 @@ const TRANSICIONES = {
   },
   [ESTADOS_RESERVA.CONFIRMADA]: {
     [ESTADOS_RESERVA.ACTIVA]: {
-      efecto: (client, reserva) =>
-        client.query('UPDATE cochera SET estado_actual = $1 WHERE id_cochera = $2', [
-          ESTADOS_COCHERA.OCUPADA,
-          reserva.id_cochera,
-        ]),
+      efecto: ponerCocheraEn(ESTADOS_COCHERA.OCUPADA),
     },
     [ESTADOS_RESERVA.CANCELADA]: {},
     // Automatica (vencerAusentes): la cochera nunca paso a OCUPADA, asi
@@ -66,11 +70,7 @@ const TRANSICIONES = {
   },
   [ESTADOS_RESERVA.ACTIVA]: {
     [ESTADOS_RESERVA.FINALIZADA]: {
-      efecto: (client, reserva) =>
-        client.query('UPDATE cochera SET estado_actual = $1 WHERE id_cochera = $2', [
-          ESTADOS_COCHERA.LIBRE,
-          reserva.id_cochera,
-        ]),
+      efecto: ponerCocheraEn(ESTADOS_COCHERA.LIBRE),
     },
     // No hay ACTIVA -> CANCELADA: una vez que el auto entro, ya no se cancela.
   },
@@ -93,12 +93,32 @@ async function cambiarEstado(client, reserva, estadoNuevo, { canceladaPor = null
 }
 
 /**
+ * Lo que ve el propietario del lado de la calificacion del conductor: su
+ * reputacion, lo que le puso en esta reserva y si todavia lo puede calificar.
+ */
+const COLUMNAS_DEL_PROPIETARIO = `,
+         rc.promedio AS conductor_promedio, rc.cantidad AS conductor_calificaciones,
+         qp.puntaje AS calificacion_al_conductor,
+         (qp.puntaje IS NULL AND (
+           (r.estado = 'FINALIZADA' AND r.ingreso_real IS NOT NULL AND r.egreso_real IS NOT NULL
+             AND r.egreso_real > now() - make_interval(days => ${PLAZO_CALIFICACION_DIAS}))
+           OR (r.estado = 'NO_SHOW' AND r.fin > now() - make_interval(days => ${PLAZO_CALIFICACION_DIAS}))
+         )) AS conductor_calificable`;
+
+const JOINS_DEL_PROPIETARIO = `${lateralReputacionConductor('r.id_conductor')}
+    LEFT JOIN calificacion qp ON qp.id_reserva = r.id_reserva AND qp.autor = 'PROPIETARIO'`;
+
+/**
  * Reserva con todo lo que muestran los listados, con la modalidad y el precio
  * guardados al reservar. El codigo de acceso va solo con `conCodigo`: es del
  * conductor, y el propietario no lo tiene hasta que se lo dan o escanea el QR
  * (la pantalla de acceso, donde ya lo trae, es la unica excepcion).
+ *
+ * `vista` es quien la pide. Al CONDUCTOR no le va lo que el propietario le
+ * puso (ni su reputacion): podria verlo antes de calificar al estacionamiento
+ * y responder en consecuencia.
  */
-const selectDetalle = ({ conCodigo = false } = {}) => `
+const selectDetalle = ({ conCodigo = false, vista = 'PROPIETARIO' } = {}) => `
   SELECT r.id_reserva, r.id_conductor, r.inicio, r.fin, r.created_at,
          r.ingreso_real, r.egreso_real, r.estado::text AS estado,
          r.cancelada_por::text AS cancelada_por,
@@ -115,18 +135,26 @@ const selectDetalle = ({ conCodigo = false } = {}) => `
            WHERE i.id_reserva = r.id_reserva AND i.abierta_por IS NOT NULL
              AND i.estado IN ('ABIERTA', 'DENUNCIADA')
            LIMIT 1) AS reclamo_abierto,
-         EXISTS (SELECT 1 FROM calificacion cal
-                  WHERE cal.id_reserva = r.id_reserva AND cal.autor = 'CONDUCTOR') AS califico_conductor,
-         EXISTS (SELECT 1 FROM calificacion cal
-                  WHERE cal.id_reserva = r.id_reserva AND cal.autor = 'PROPIETARIO') AS califico_propietario,
-         CASE WHEN r.estado IN ('FINALIZADA', 'NO_SHOW') THEN ${limiteCalificacionSql('r')} END AS calificable_hasta,
-         ${reputacionConductor('r.id_conductor')}
+         -- Calificacion: el promedio que dio (null si no califico) y si todavia puede.
+         q.promedio AS calificacion_promedio,
+         (q.promedio IS NULL AND r.estado = 'FINALIZADA'
+           AND r.ingreso_real IS NOT NULL AND r.egreso_real IS NOT NULL
+           AND r.egreso_real > now() - make_interval(days => ${PLAZO_CALIFICACION_DIAS})) AS calificable${
+           vista === 'PROPIETARIO' ? COLUMNAS_DEL_PROPIETARIO : ''
+         }
     FROM reserva r
     JOIN vehiculo v        ON v.id_vehiculo = r.id_vehiculo
     JOIN cochera c         ON c.id_cochera = r.id_cochera
     JOIN estacionamiento e ON e.id_estacionamiento = c.id_estacionamiento
     JOIN usuario u         ON u.id_usuario = r.id_conductor
     LEFT JOIN abono a      ON a.id_abono = r.id_abono
+    LEFT JOIN LATERAL (
+      SELECT ROUND(COALESCE(
+               (cq.limpieza + cq.infraestructura + cq.atencion + cq.seguridad + cq.acceso) / 5.0, cq.puntaje
+             )::numeric, 1)::float AS promedio
+        FROM calificacion cq WHERE cq.id_reserva = r.id_reserva AND cq.autor = 'CONDUCTOR'
+    ) q ON TRUE
+    ${vista === 'PROPIETARIO' ? JOINS_DEL_PROPIETARIO : ''}
 `;
 
 /**
@@ -209,7 +237,7 @@ export async function crear(
       throw error;
     }
 
-    return obtenerDetalle(client, idReserva, { conCodigo: true });
+    return obtenerDetalle(client, idReserva, { conCodigo: true, vista: 'CONDUCTOR' });
   });
 }
 
@@ -337,38 +365,20 @@ async function asignarCochera(client, idEstacionamiento, vehiculo, inicio, fin, 
     throw ApiError.conflict('El estacionamiento no esta disponible para reservar');
   }
 
-  const { rows: candidatas } = await client.query(
-    `SELECT c.id_cochera
-       FROM cochera c
-      WHERE c.id_estacionamiento = $1
-        AND c.activo
-        AND NOT c.bloqueada
-        AND c.estado_actual <> $2
-        AND c.id_tipo_vehiculo = $3
-      ORDER BY c.id_cochera
-      FOR UPDATE`,
-    [idEstacionamiento, ESTADOS_COCHERA.INACTIVA, vehiculo.id_tipo_vehiculo],
-  );
-
-  if (candidatas.length === 0) {
+  const { candidatas, libre } = await buscarCocheraLibre(client, {
+    idEstacionamiento,
+    idTipoVehiculo: vehiculo.id_tipo_vehiculo,
+    inicio,
+    fin,
+  });
+  if (candidatas === 0) {
     throw ApiError.conflict('El estacionamiento no tiene cocheras para ese tipo de vehiculo');
   }
-
-  const { rows: libres } = await client.query(
-    `SELECT c.id_cochera, c.id_estacionamiento, c.identificador
-       FROM cochera c
-      WHERE c.id_cochera = ANY($1::uuid[])
-        AND ${sinSolapamiento('$2', '$3', '$4')}
-      ORDER BY ${ORDEN_NATURAL}
-      LIMIT 1`,
-    [candidatas.map((c) => c.id_cochera), ESTADOS_VIGENTES, inicio, fin],
-  );
-
-  if (!libres[0]) {
+  if (!libre) {
     throw ApiError.conflict('No quedan cocheras libres para ese vehiculo en esa franja horaria');
   }
 
-  return { ...libres[0], id_propietario: estacionamiento.id_propietario };
+  return { ...libre, id_propietario: estacionamiento.id_propietario };
 }
 
 /** Precio de la reserva segun la tarifa vigente; 409 si el estacionamiento no ofrece la modalidad. */
@@ -403,16 +413,17 @@ async function validarHorario(client, idEstacionamiento, inicio, fin, modalidad)
 }
 
 /** `ejecutor` es el client de una transaccion o cualquier objeto con `query`. */
-async function obtenerDetalle(ejecutor, idReserva, { conCodigo = false } = {}) {
-  const { rows } = await ejecutor.query(`${selectDetalle({ conCodigo })} WHERE r.id_reserva = $1`, [
+async function obtenerDetalle(ejecutor, idReserva, { conCodigo = false, vista } = {}) {
+  const { rows } = await ejecutor.query(`${selectDetalle({ conCodigo, vista })} WHERE r.id_reserva = $1`, [
     idReserva,
   ]);
   return rows[0];
 }
 
+/** Las reservas del conductor, de la que empieza mas tarde a la mas temprana (con su codigo de acceso). */
 export async function listarPorConductor(idConductor) {
   const { rows } = await query(
-    `${selectDetalle({ conCodigo: true })} WHERE r.id_conductor = $1 ORDER BY r.inicio DESC`,
+    `${selectDetalle({ conCodigo: true, vista: 'CONDUCTOR' })} WHERE r.id_conductor = $1 ORDER BY r.inicio DESC`,
     [idConductor],
   );
   return rows;
@@ -489,7 +500,7 @@ export async function cancelar(idReserva, idConductor) {
       canceladaPor: ORIGENES_CANCELACION.CONDUCTOR,
     });
 
-    return obtenerDetalle(client, idReserva, { conCodigo: true });
+    return obtenerDetalle(client, idReserva, { conCodigo: true, vista: 'CONDUCTOR' });
   });
 }
 
@@ -634,16 +645,10 @@ async function aplicarEgreso(client, reserva) {
 
 const ACCIONES_ACCESO = Object.freeze({ INGRESO: 'INGRESO', EGRESO: 'EGRESO' });
 
-const HORA_LOCAL = new Intl.DateTimeFormat('es-AR', {
-  timeZone: 'America/Argentina/Buenos_Aires',
-  hour: '2-digit',
-  minute: '2-digit',
-  hour12: false,
-});
-
 /** Mismo mensaje para un codigo inexistente, mal formado o de un estacionamiento ajeno. */
 const CODIGO_INVALIDO = 'El codigo no corresponde a ninguna reserva de tus estacionamientos';
 
+/** La reserva de ese codigo en un estacionamiento del propietario; 404 si no. */
 async function buscarReservaPorCodigo(ejecutor, idPropietario, bruto, { bloquear = false } = {}) {
   const codigo = normalizarCodigo(bruto);
   if (!codigo) throw ApiError.notFound(CODIGO_INVALIDO);
@@ -777,19 +782,10 @@ export async function disponibilidad(idEstacionamiento, { fecha, id_tipo_vehicul
         `SELECT COUNT(*)::int AS libres
            FROM cochera c
           WHERE c.id_estacionamiento = $1
-            AND c.activo
-            AND NOT c.bloqueada
-            AND c.estado_actual <> $2
-            AND ($3::smallint IS NULL OR c.id_tipo_vehiculo = $3)
-            AND ${sinSolapamiento('$4', '$5', '$6')}`,
-        [
-          idEstacionamiento,
-          ESTADOS_COCHERA.INACTIVA,
-          id_tipo_vehiculo ?? null,
-          ESTADOS_VIGENTES,
-          inicio,
-          fin,
-        ],
+            AND ${cocheraReservable()}
+            AND ($2::smallint IS NULL OR c.id_tipo_vehiculo = $2)
+            AND ${sinSolapamiento('$3', '$4', '$5')}`,
+        [idEstacionamiento, id_tipo_vehiculo ?? null, ESTADOS_VIGENTES, inicio, fin],
       );
       libres = conteo[0].libres;
       if (libres === 0) {
@@ -817,16 +813,14 @@ async function ingresosDelDia(idEstacionamiento, horarios, { fecha, id_tipo_vehi
             (SELECT COUNT(*)::int
                FROM cochera c
               WHERE c.id_estacionamiento = $1
-                AND c.activo
-                AND NOT c.bloqueada
-                AND c.estado_actual <> $2
-                AND ($3::smallint IS NULL OR c.id_tipo_vehiculo = $3)
-                AND ${sinSolapamiento('$4', 'i.inicio', 'i.inicio + make_interval(hours => $6::int)')}
+                AND ${cocheraReservable()}
+                AND ($2::smallint IS NULL OR c.id_tipo_vehiculo = $2)
+                AND ${sinSolapamiento('$3', 'i.inicio', 'i.inicio + make_interval(hours => $5::int)')}
             ) AS libres
-       FROM generate_series($5::timestamptz, $5::timestamptz + interval '23 hours', interval '1 hour')
+       FROM generate_series($4::timestamptz, $4::timestamptz + interval '23 hours', interval '1 hour')
             AS i(inicio)
       ORDER BY i.inicio`,
-    [idEstacionamiento, ESTADOS_COCHERA.INACTIVA, id_tipo_vehiculo ?? null, ESTADOS_VIGENTES, primero, horas],
+    [idEstacionamiento, id_tipo_vehiculo ?? null, ESTADOS_VIGENTES, primero, horas],
   );
 
   return rows.map(({ inicio, libres }) => {
@@ -865,6 +859,19 @@ async function ingresosDelDia(idEstacionamiento, horarios, { fecha, id_tipo_vehi
  * confirmacion/ingreso/egreso que este pasando al mismo tiempo.
  */
 
+/**
+ * Procesa cada reserva vencida en su propia transaccion: `procesar(client, id)`
+ * la vuelve a buscar con FOR UPDATE (pudo cambiar desde la consulta) y devuelve
+ * true si la movio. Devuelve cuantas se movieron.
+ */
+async function procesarVencidas(ids, procesar) {
+  let movidas = 0;
+  for (const id of ids) {
+    if (await withTransaction((client) => procesar(client, id))) movidas += 1;
+  }
+  return movidas;
+}
+
 /** PENDIENTE que nunca se confirmo y ya empezo su franja: se cancela. */
 export async function vencerPendientesSinConfirmar() {
   const { rows } = await query(
@@ -872,22 +879,17 @@ export async function vencerPendientesSinConfirmar() {
     [ESTADOS_RESERVA.PENDIENTE],
   );
 
-  let canceladas = 0;
-  for (const { id_reserva } of rows) {
-    const proceso = await withTransaction(async (client) => {
-      const { rows: filas } = await client.query(
-        `SELECT id_reserva, estado FROM reserva WHERE id_reserva = $1 AND estado = $2 FOR UPDATE`,
-        [id_reserva, ESTADOS_RESERVA.PENDIENTE],
-      );
-      if (!filas[0]) return false;
-      await cambiarEstado(client, filas[0], ESTADOS_RESERVA.CANCELADA, {
-        canceladaPor: ORIGENES_CANCELACION.SISTEMA,
-      });
-      return true;
+  return procesarVencidas(rows.map((r) => r.id_reserva), async (client, id) => {
+    const { rows: filas } = await client.query(
+      `SELECT id_reserva, estado FROM reserva WHERE id_reserva = $1 AND estado = $2 FOR UPDATE`,
+      [id, ESTADOS_RESERVA.PENDIENTE],
+    );
+    if (!filas[0]) return false;
+    await cambiarEstado(client, filas[0], ESTADOS_RESERVA.CANCELADA, {
+      canceladaPor: ORIGENES_CANCELACION.SISTEMA,
     });
-    if (proceso) canceladas += 1;
-  }
-  return canceladas;
+    return true;
+  });
 }
 
 /**
@@ -904,20 +906,15 @@ export async function vencerAusentes() {
     [ESTADOS_RESERVA.CONFIRMADA, TOLERANCIA_NO_SHOW_MS],
   );
 
-  let ausentes = 0;
-  for (const { id_reserva } of rows) {
-    const proceso = await withTransaction(async (client) => {
-      const { rows: filas } = await client.query(
-        `SELECT id_reserva, estado FROM reserva
-          WHERE id_reserva = $1 AND estado = $2 AND ingreso_real IS NULL
-          FOR UPDATE`,
-        [id_reserva, ESTADOS_RESERVA.CONFIRMADA],
-      );
-      if (!filas[0]) return false;
-      await cambiarEstado(client, filas[0], ESTADOS_RESERVA.NO_SHOW);
-      return true;
-    });
-    if (proceso) ausentes += 1;
-  }
-  return ausentes;
+  return procesarVencidas(rows.map((r) => r.id_reserva), async (client, id) => {
+    const { rows: filas } = await client.query(
+      `SELECT id_reserva, estado FROM reserva
+        WHERE id_reserva = $1 AND estado = $2 AND ingreso_real IS NULL
+        FOR UPDATE`,
+      [id, ESTADOS_RESERVA.CONFIRMADA],
+    );
+    if (!filas[0]) return false;
+    await cambiarEstado(client, filas[0], ESTADOS_RESERVA.NO_SHOW);
+    return true;
+  });
 }

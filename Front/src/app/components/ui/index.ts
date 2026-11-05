@@ -1,3 +1,4 @@
+// Exporta los componentes basicos de la interfaz: boton, modal, tarjeta, chip, icono…
 /* Piezas de interfaz sin dominio: no saben nada de Parkit. */
 export * from './boton/boton';
 export * from './boton-tema/boton-tema';

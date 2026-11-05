@@ -1,3 +1,4 @@
+// Modelos de cocheras (como las usa el front, en camelCase) y sus etiquetas de pantalla.
 import { Id } from './api.model';
 import { TipoVehiculo } from './vehiculo.model';
 

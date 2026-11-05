@@ -1,35 +1,63 @@
+// Controllers de /api/reservas: crear, listar, cancelar, el ciclo del propietario
+// (confirmar, ausente, acceso por codigo) y las calificaciones de los dos lados.
+import * as calificacionService from '../services/calificacion.service.js';
+import * as reputacionService from '../services/reputacion.service.js';
 import * as reservaService from '../services/reserva.service.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
+/** POST /api/reservas (conductor) */
 export const crear = asyncHandler(async (req, res) => {
   const reserva = await reservaService.crear(req.usuario.id, req.body);
   res.status(201).json({ reserva });
 });
 
+/** GET /api/reservas (conductor) */
 export const listarMias = asyncHandler(async (req, res) => {
   const reservas = await reservaService.listarPorConductor(req.usuario.id);
   res.json({ reservas });
 });
 
+/** PATCH /api/reservas/:id/cancelar (conductor) */
 export const cancelar = asyncHandler(async (req, res) => {
   const reserva = await reservaService.cancelar(req.params.id, req.usuario.id);
   res.json({ reserva });
 });
 
+/** PATCH /api/reservas/:id/confirmar (propietario) */
 export const confirmar = asyncHandler(async (req, res) => {
   const reserva = await reservaService.confirmar(req.params.id, req.usuario.id);
   res.json({ reserva });
 });
 
+/** PATCH /api/reservas/:id/ausente (propietario) */
 export const marcarAusente = asyncHandler(async (req, res) => {
   const reserva = await reservaService.marcarAusente(req.params.id, req.usuario.id);
   res.json({ reserva });
 });
 
+/** GET /api/reservas/acceso/:codigo (propietario) */
 export const previaAcceso = asyncHandler(async (req, res) => {
   res.json(await reservaService.previaAcceso(req.usuario.id, req.params.codigo));
 });
 
+/** POST /api/reservas/acceso (propietario) */
 export const registrarAcceso = asyncHandler(async (req, res) => {
   res.json(await reservaService.registrarAcceso(req.usuario.id, req.body));
+});
+
+/** POST /api/reservas/:id/calificacion (conductor) */
+export const calificar = asyncHandler(async (req, res) => {
+  const calificacion = await calificacionService.crear(req.params.id, req.usuario.id, req.body);
+  res.status(201).json({ calificacion });
+});
+
+/** GET /api/reservas/mi-reputacion (conductor) */
+export const miReputacion = asyncHandler(async (req, res) => {
+  res.json({ reputacion: await reputacionService.reputacionDelConductor(req.usuario.id) });
+});
+
+/** POST /api/reservas/:id/calificacion-conductor (propietario) */
+export const calificarConductor = asyncHandler(async (req, res) => {
+  const calificacion = await calificacionService.crearDelPropietario(req.params.id, req.usuario.id, req.body);
+  res.status(201).json({ calificacion });
 });

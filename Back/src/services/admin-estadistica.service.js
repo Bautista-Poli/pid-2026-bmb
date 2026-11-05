@@ -10,9 +10,9 @@ import { COBRADAS, ESTACIONAMIENTO_DE_DEVOLUCION, ZONA, anteriorA, desdeDia, has
 const LIMITE_LISTA = 5;
 const LIMITE_PROBLEMATICOS = 20;
 
-export const MIN_RESERVAS_PROBLEMATICO = 5;
-export const TASA_CANCELACION_PROBLEMATICO = 0.3;
-export const MIN_RECLAMOS_PROBLEMATICO = 2;
+const MIN_RESERVAS_PROBLEMATICO = 5;
+const TASA_CANCELACION_PROBLEMATICO = 0.3;
+const MIN_RECLAMOS_PROBLEMATICO = 2;
 
 /** Instante en el periodo [$1, $2] (dias locales). */
 const EN_PERIODO = (columna) => `${columna} >= ${desdeDia('$1')} AND ${columna} < ${hastaDia('$2')}`;
@@ -279,6 +279,7 @@ async function rankings(desde, hasta) {
   return { topPorReservas: porReservas.map(aFila), topPorIngresos: porIngresos.map(aFila) };
 }
 
+/** Actividad de la plataforma en el periodo, comparada con el anterior. */
 async function actividad(desde, hasta) {
   const previo = anteriorA(desde, hasta);
   const [ahora, antes, porDia, tops] = await Promise.all([
@@ -295,6 +296,7 @@ async function actividad(desde, hasta) {
 
 /* ------------------------------------------------------------------------ */
 
+/** Todo el tablero del admin: pendientes, disputas, bloqueos, problemas y actividad. */
 export async function estadisticas({ desde, hasta }) {
   const [revisar, enDisputa, enBloqueos, conProblemas, deLaPlataforma] = await Promise.all([
     pendientes(),

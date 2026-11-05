@@ -1,3 +1,5 @@
+// Monta cada grupo de rutas bajo su prefijo (/auth, /estacionamientos, …). app.js
+// lo cuelga de /api, asi que todo queda en /api/<prefijo>/…
 import { Router } from 'express';
 
 import abonoRoutes from './abono.routes.js';

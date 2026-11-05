@@ -26,7 +26,6 @@ import {
 import { reservaEnJuego } from '@app/services/ciclo-reserva';
 import { aInstante, desdeFechaISO } from '@app/utils/fecha.util';
 import { linksComoLlegar } from '@app/utils/mapas.util';
-import { puedeCalificar } from '@app/utils/calificacion.util';
 import { reservaReclamable } from '@app/utils/reclamo.util';
 
 const TONO_ESTADO: Record<EstadoReserva, TonoEtiqueta> = {
@@ -82,14 +81,9 @@ export class TarjetaReserva implements OnInit {
   readonly verQr = output<ReservaDetallada>();
   /** "Tengo un problema": abre un reclamo sobre esta reserva. */
   readonly reclamar = output<ReservaDetallada>();
-  /** "Calificar": el conductor califica el estacionamiento de una reserva terminada. */
-  readonly calificar = output<ReservaDetallada>();
 
   /** Pagada aparte, dentro de los 15 dias y sin otro reclamo abierto. */
   protected readonly reclamable = computed(() => reservaReclamable(this.reserva()));
-
-  /** Finalizada, sin calificar todavia y dentro de los 14 dias. */
-  protected readonly calificable = computed(() => puedeCalificar(this.reserva(), 'CONDUCTOR'));
 
   /** El QR sirve mientras la reserva puede entrar o salir: confirmada o en curso. */
   protected readonly conQr = computed(() => {

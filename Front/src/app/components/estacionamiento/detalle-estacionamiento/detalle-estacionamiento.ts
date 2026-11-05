@@ -1,9 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Icono } from '@app/components/ui';
-import { Estacionamiento } from '@app/models';
+import { CATEGORIAS_CALIFICACION, Estacionamiento, formatearNota } from '@app/models';
+import { InsigniasEstacionamiento } from '../insignias-estacionamiento/insignias-estacionamiento';
 import { GaleriaFotos } from '../galeria-fotos/galeria-fotos';
-import { Reputacion } from '@app/components/calificacion/reputacion/reputacion';
 import {
   ETIQUETA_ESTADO,
   EstadoDisponibilidad,
@@ -32,7 +32,7 @@ const pesos = (monto: number) => `$${monto.toLocaleString('es-AR')}`;
 @Component({
   selector: 'app-detalle-estacionamiento',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Icono, GaleriaFotos, RouterLink, Reputacion],
+  imports: [Icono, GaleriaFotos, RouterLink, InsigniasEstacionamiento],
   template: `
     <article
       class="pointer-events-auto flex max-h-full min-h-0 flex-col overflow-hidden rounded-t-[20px] border border-borde bg-papel
@@ -68,7 +68,6 @@ const pesos = (monto: number) => `$${monto.toLocaleString('es-AR')}`;
         <!-- Nombre y si esta abierto -->
         <div>
           <h2 class="text-[18px] leading-tight font-semibold text-tinta">{{ estacionamiento().nombre }}</h2>
-          <app-reputacion class="mt-1" [reputacion]="estacionamiento().reputacion" />
           <p class="mt-1.5 flex items-center gap-1.5 text-[12.5px]">
             <span
               class="size-2 rounded-full"
@@ -79,6 +78,12 @@ const pesos = (monto: number) => `$${monto.toLocaleString('es-AR')}`;
               {{ apertura().texto }}
             </span>
           </p>
+          <div class="mt-2.5 empty:hidden">
+            <app-insignias-estacionamiento [reputacion]="estacionamiento().reputacion" />
+          </div>
+          @if (mejoresCategorias(); as texto) {
+            <p class="num-tabular mt-1.5 text-[12px] text-plomo">{{ texto }}</p>
+          }
         </div>
 
         <!-- Caracteristicas -->
@@ -177,6 +182,17 @@ const pesos = (monto: number) => `$${monto.toLocaleString('es-AR')}`;
   },
 })
 export class DetalleEstacionamiento {
+  /** Las dos categorias mejor calificadas: "Limpieza 4,8 · Atención 4,9". */
+  protected readonly mejoresCategorias = computed(() => {
+    const promedios = this.estacionamiento().reputacion.categorias;
+    if (!promedios) return null;
+    return CATEGORIAS_CALIFICACION.filter((c) => promedios[c.codigo] != null)
+      .sort((a, b) => (promedios[b.codigo] ?? 0) - (promedios[a.codigo] ?? 0))
+      .slice(0, 2)
+      .map((c) => `${c.nombre} ${formatearNota(promedios[c.codigo])}`)
+      .join(' · ');
+  });
+
   readonly estacionamiento = input.required<Estacionamiento>();
   /** Para cuando se busco: "Ahora" o "Sáb 27 sep · 10:00 – 14:00". */
   readonly cuando = input('Ahora');

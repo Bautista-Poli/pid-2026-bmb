@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
 /** Un tramo de una barra apilada: su valor y la clase de color. */
-export interface Tramo {
+interface Tramo {
   valor: number;
   clase: string;
   etiqueta: string;

@@ -672,7 +672,7 @@ CREATE INDEX IF NOT EXISTS idx_estacionamiento_aprobacion
 
 -- Fotos en Cloudinary (Sprint 3). Las fotos nuevas guardan el `public_id` de
 -- Cloudinary en vez de los bytes; las viejas siguen con sus bytes hasta que
--- las mueva el script db:migrar-fotos-cloudinary. Cada fila tiene una de las dos.
+-- las movio un script de migracion (ya corrido, se borro). Cada fila tiene una de las dos.
 ALTER TABLE estacionamiento_imagen
   ADD COLUMN IF NOT EXISTS public_id VARCHAR(200),
   ALTER COLUMN mime  DROP NOT NULL,
@@ -863,10 +863,10 @@ ALTER TABLE incidencia ADD COLUMN IF NOT EXISTS retirada_at TIMESTAMPTZ;
 UPDATE incidencia SET retirada_at = resuelta_at, resuelta_at = NULL
  WHERE estado::text = 'RETIRADA' AND retirada_at IS NULL AND resuelta_at IS NOT NULL;
 
--- Calificaciones -------------------------------------------------------------
--- Al terminar una reserva el conductor califica el estacionamiento y el
--- propietario al conductor (una por reserva y por lado). `id_estacionamiento` e
--- `id_conductor` se copian de la reserva para agregar la reputacion sin joins.
+-- Calificaciones (Sprint 3). Una por lado de cada reserva: el CONDUCTOR
+-- califica al estacionamiento y el PROPIETARIO al conductor (`autor`), con un
+-- `puntaje` general de 1 a 5. Si la tabla ya existe (la crea la funcionalidad
+-- de calificaciones), este CREATE no hace nada: tiene la misma definicion.
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'autor_calificacion') THEN
@@ -896,3 +896,96 @@ CREATE TABLE IF NOT EXISTS calificacion (
 
 CREATE INDEX IF NOT EXISTS idx_calificacion_estacionamiento ON calificacion (id_estacionamiento, autor);
 CREATE INDEX IF NOT EXISTS idx_calificacion_conductor       ON calificacion (id_conductor, autor);
+
+-- Detalle de la gamificacion "Anfitrion destacado": las cinco categorias (1 a
+-- 5) y etiquetas, solo en las del CONDUCTOR. Son opcionales: una calificacion
+-- con solo `puntaje` vale igual para la reputacion (ver reputacion.service.js).
+-- Cuando vienen, `puntaje` es su promedio redondeado (lo carga el servicio).
+ALTER TABLE calificacion
+  ADD COLUMN IF NOT EXISTS limpieza        SMALLINT,
+  ADD COLUMN IF NOT EXISTS infraestructura SMALLINT,
+  ADD COLUMN IF NOT EXISTS atencion        SMALLINT,
+  ADD COLUMN IF NOT EXISTS seguridad       SMALLINT,
+  ADD COLUMN IF NOT EXISTS acceso          SMALLINT,
+  ADD COLUMN IF NOT EXISTS etiquetas       TEXT[] NOT NULL DEFAULT '{}';
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'calificacion_categorias_validas') THEN
+    -- Las cinco juntas o ninguna, y de 1 a 5.
+    ALTER TABLE calificacion ADD CONSTRAINT calificacion_categorias_validas CHECK (
+      (limpieza IS NULL AND infraestructura IS NULL AND atencion IS NULL AND seguridad IS NULL AND acceso IS NULL)
+      OR (limpieza BETWEEN 1 AND 5 AND infraestructura BETWEEN 1 AND 5 AND atencion BETWEEN 1 AND 5
+          AND seguridad BETWEEN 1 AND 5 AND acceso BETWEEN 1 AND 5)
+    );
+  END IF;
+  -- El comentario de la pantalla de calificar admite hasta 500 caracteres.
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+     WHERE table_name = 'calificacion' AND column_name = 'comentario'
+       AND character_maximum_length < 500
+  ) THEN
+    ALTER TABLE calificacion ALTER COLUMN comentario TYPE VARCHAR(500);
+  END IF;
+END
+$$;
+
+-- La primera version de la gamificacion guardaba el detalle en una tabla
+-- aparte (calificacion_estacionamiento). Se pasa a `calificacion` y se borra.
+DO $$
+BEGIN
+  IF to_regclass('calificacion_estacionamiento') IS NOT NULL THEN
+    INSERT INTO calificacion
+      (id_reserva, autor, id_estacionamiento, id_conductor, puntaje, comentario, created_at,
+       limpieza, infraestructura, atencion, seguridad, acceso, etiquetas)
+    SELECT id_reserva, 'CONDUCTOR', id_estacionamiento, id_conductor,
+           ROUND((limpieza + infraestructura + atencion + seguridad + acceso) / 5.0),
+           comentario, created_at, limpieza, infraestructura, atencion, seguridad, acceso, etiquetas
+      FROM calificacion_estacionamiento
+    ON CONFLICT (id_reserva, autor) DO NOTHING;
+    DROP TABLE calificacion_estacionamiento;
+  END IF;
+END
+$$;
+
+-- Denuncia de reseñas (Sprint 3). La parte calificada denuncia una reseña (una
+-- vez); el administrador la desestima o la oculta. Una oculta deja de contar en
+-- la reputacion y de mostrarse, pero sigue ocupando su lugar (no se vuelve a
+-- calificar esa reserva). `denuncia_estado` es NULL mientras nadie denuncio.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'estado_denuncia_resena') THEN
+    CREATE TYPE estado_denuncia_resena AS ENUM ('PENDIENTE', 'DESESTIMADA', 'OCULTA');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'motivo_denuncia_resena') THEN
+    CREATE TYPE motivo_denuncia_resena AS ENUM ('OFENSIVA', 'FALSA', 'DATOS_PERSONALES', 'OTRO');
+  END IF;
+END
+$$;
+
+ALTER TABLE calificacion
+  ADD COLUMN IF NOT EXISTS oculta           BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS denuncia_estado  estado_denuncia_resena,
+  ADD COLUMN IF NOT EXISTS denuncia_motivo  motivo_denuncia_resena,
+  ADD COLUMN IF NOT EXISTS denuncia_detalle VARCHAR(500),
+  ADD COLUMN IF NOT EXISTS denunciada_at    TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS moderada_por     UUID,
+  ADD COLUMN IF NOT EXISTS moderada_at      TIMESTAMPTZ;
+
+CREATE INDEX IF NOT EXISTS idx_calificacion_denuncia
+  ON calificacion (denunciada_at) WHERE denuncia_estado = 'PENDIENTE';
+
+-- Quien modero: si se borra ese administrador, la reseña queda moderada sin
+-- autor (como `revisado_por` y `resuelta_por`). La primera version creaba la
+-- FK sin ON DELETE (calificacion_moderada_por_fkey): se reemplaza.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'calificacion_moderada_por_fkey') THEN
+    ALTER TABLE calificacion DROP CONSTRAINT calificacion_moderada_por_fkey;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'calificacion_moderada_por_fk') THEN
+    ALTER TABLE calificacion ADD CONSTRAINT calificacion_moderada_por_fk
+      FOREIGN KEY (moderada_por) REFERENCES usuario (id_usuario) ON DELETE SET NULL;
+  END IF;
+END
+$$;

@@ -8,7 +8,7 @@ import { Coordenadas } from '@app/utils/distancia.util';
  * - `denegada`: el usuario no dio permiso.
  * - `no-disponible`: el navegador no la soporta, fallo o tardo demasiado.
  */
-export type EstadoUbicacion = 'inactiva' | 'buscando' | 'lista' | 'denegada' | 'no-disponible';
+type EstadoUbicacion = 'inactiva' | 'buscando' | 'lista' | 'denegada' | 'no-disponible';
 
 /** Una posicion de hace menos de 1 minuto sirve: no hace falta volver a medir. */
 const OPCIONES: PositionOptions = {

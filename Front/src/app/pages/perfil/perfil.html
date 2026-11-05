@@ -1,3 +1,4 @@
+<!-- Pantalla `/conductor/perfil` y `/propietario/perfil`. Datos y acciones en perfil.ts. -->
 <div class="aparece mx-auto w-full max-w-[640px] px-6 pt-5 pb-8 lg:px-10 lg:pt-[34px] lg:pb-11">
   <div class="flex flex-col gap-6">
     <header>
@@ -94,24 +95,91 @@
       </form>
     </ui-tarjeta>
 
-    <!-- Reputacion del conductor: lo que le pusieron los propietarios -->
-    @if (esConductor() && recibidas.hasValue()) {
+    <!-- Reputacion del conductor: lo que le pusieron los estacionamientos -->
+    @if (esConductor()) {
       <ui-tarjeta relleno="lg">
         <div class="flex flex-col gap-3">
-          <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-            <div>
-              <h2 class="text-[15px] font-semibold text-tinta">Tu reputación</h2>
-              <p class="mt-1 text-[12.5px] text-plomo">
-                La ven los estacionamientos cuando les pedís una reserva. Los comentarios son solo para vos.
+          <h2 class="text-[15px] font-semibold text-tinta">Tu reputación</h2>
+          @if (reputacion.error()) {
+            <p class="text-[13px] text-plomo">No pudimos cargar tu reputación. Probá de nuevo en un rato.</p>
+          } @else if (reputacion.value(); as rep) {
+            @if (rep.cantidad > 0 && rep.promedio !== null) {
+              <p class="num-tabular flex items-baseline gap-2 text-tinta">
+                <span class="text-[22px] font-semibold"><span class="text-oro">★</span> {{ nota(rep.promedio) }}</span>
+                <span class="text-[13px] text-plomo">
+                  {{ rep.cantidad }} {{ rep.cantidad === 1 ? 'calificación' : 'calificaciones' }}
+                </span>
               </p>
-            </div>
-            <app-reputacion [reputacion]="recibidas.value().resumen" sinDatos="Sin calificaciones" />
-          </div>
-          @if (recibidas.value().calificaciones.length > 0) {
-            <app-lista-calificaciones [calificaciones]="recibidas.value().calificaciones" />
+              @if (rep.etiquetas.length > 0) {
+                <div class="flex flex-wrap gap-2">
+                  @for (etiqueta of rep.etiquetas; track etiqueta.codigo) {
+                    <span class="rounded-full border border-borde px-3 py-1 text-[12.5px] text-grafito">
+                      {{ textoEtiqueta[etiqueta.codigo] }}
+                      <span class="num-tabular text-plomo">· {{ etiqueta.cantidad }}</span>
+                    </span>
+                  }
+                </div>
+              }
+            } @else {
+              <p class="text-[13px] text-plomo">
+                Todavía no te calificaron. Los estacionamientos te califican después de cada reserva.
+              </p>
+            }
+
+            @if (rep.resenas.length > 0) {
+              <div class="mt-2 flex flex-col">
+                <h3 class="text-[13.5px] font-semibold text-tinta">Reseñas que recibiste</h3>
+                <ul class="flex flex-col">
+                  @for (resena of rep.resenas; track resena.id; let primera = $first) {
+                    <li class="flex flex-col gap-1.5 py-3" [class.border-t]="!primera" [class.border-borde-sutil]="!primera">
+                      <div class="flex items-center justify-between gap-3">
+                        <span class="text-[13px] font-semibold text-tinta">
+                          {{ resena.estacionamiento }}
+                          <span class="font-normal text-plomo">· {{ resena.creadaEn | date: 'd MMM' }}</span>
+                        </span>
+                        <span class="num-tabular text-[12.5px] font-semibold text-grafito">
+                          <span class="text-oro">★</span> {{ resena.puntaje }}
+                        </span>
+                      </div>
+                      @if (resena.comentario) {
+                        <p class="text-[13px] text-grafito">“{{ resena.comentario }}”</p>
+                      }
+                      @if (resena.etiquetas.length > 0) {
+                        <div class="flex flex-wrap gap-1">
+                          @for (etiqueta of resena.etiquetas; track etiqueta) {
+                            <span class="rounded-full bg-lienzo px-2 py-0.5 text-[11.5px] text-plomo">
+                              {{ textoEtiqueta[etiqueta] }}
+                            </span>
+                          }
+                        </div>
+                      }
+                      <div>
+                        @if (resena.denunciaEstado; as estado) {
+                          <span class="text-[12px] text-plomo">{{ textoEstadoDenuncia[estado] }}</span>
+                        } @else {
+                          <button
+                            type="button"
+                            class="text-[12px] font-semibold text-plomo underline-offset-2 hover:text-ocupada hover:underline"
+                            (click)="aDenunciar.set(resena.id)"
+                          >
+                            Denunciar
+                          </button>
+                        }
+                      </div>
+                    </li>
+                  }
+                </ul>
+              </div>
+            }
           }
         </div>
       </ui-tarjeta>
+      <app-denunciar-resena
+        [calificacionId]="aDenunciar()"
+        (cerrado)="aDenunciar.set(null)"
+        (denunciada)="resenaDenunciada()"
+        (fallo)="reputacion.reload()"
+      />
     }
 
     <!-- Apariencia -->

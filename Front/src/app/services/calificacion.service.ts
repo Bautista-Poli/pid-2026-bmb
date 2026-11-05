@@ -1,33 +1,67 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
-import { CalificacionesRecibidas, Id, NuevaCalificacion } from '@app/models';
-import { CalificacionesRecibidasDto } from './api/api.dto';
-import { aCalificacionesRecibidas } from './api/api.mapeo';
+import {
+  Calificacion,
+  Id,
+  MotivoDenunciaResena,
+  NuevaCalificacion,
+  NuevaCalificacionConductor,
+  PeriodoReputacion,
+  ReputacionConductor,
+  ReputacionEstacionamiento,
+} from '@app/models';
+import { CalificacionDto, ReputacionConductorDto, ReputacionDto } from './api/api.dto';
+import { aCalificacion, aReputacion, aReputacionConductor } from './api/api.mapeo';
 
-/** Calificaciones: calificar una reserva y ver lo recibido. */
+/** Calificaciones del conductor y reputacion del estacionamiento. */
 @Injectable({ providedIn: 'root' })
 export class CalificacionService {
   private readonly http = inject(HttpClient);
 
-  /** `POST /api/reservas/:id/calificacion`: el lado lo decide el perfil activo. */
-  calificar(idReserva: Id, datos: NuevaCalificacion): Observable<void> {
-    return this.http.post(`/reservas/${idReserva}/calificacion`, datos).pipe(map(() => undefined));
-  }
-
-  /** `GET /api/calificaciones/recibidas`: lo que los propietarios le pusieron al conductor. */
-  recibidasComoConductor(limite = 50): Observable<CalificacionesRecibidas> {
+  /** `POST /api/reservas/:id/calificacion`: solo despues de entrar y salir, una vez. */
+  calificar(reservaId: Id, datos: NuevaCalificacion): Observable<Calificacion> {
+    const comentario = datos.comentario.trim();
     return this.http
-      .get<CalificacionesRecibidasDto>('/calificaciones/recibidas', { params: new HttpParams().set('limit', limite) })
-      .pipe(map(aCalificacionesRecibidas));
-  }
-
-  /** `GET /api/estacionamientos/:id/calificaciones`: solo para el dueno. */
-  recibidasPorEstacionamiento(id: Id, limite = 50): Observable<CalificacionesRecibidas> {
-    return this.http
-      .get<CalificacionesRecibidasDto>(`/estacionamientos/${id}/calificaciones`, {
-        params: new HttpParams().set('limit', limite),
+      .post<{ calificacion: CalificacionDto }>(`/reservas/${reservaId}/calificacion`, {
+        ...datos.notas,
+        etiquetas: datos.etiquetas,
+        ...(comentario ? { comentario } : {}),
       })
-      .pipe(map(aCalificacionesRecibidas));
+      .pipe(map(({ calificacion }) => aCalificacion(calificacion)));
+  }
+
+  /** `POST /api/reservas/:id/calificacion-conductor` (propietario): finalizada o ausente, una vez. */
+  calificarConductor(reservaId: Id, datos: NuevaCalificacionConductor): Observable<void> {
+    const comentario = datos.comentario.trim();
+    return this.http
+      .post<unknown>(`/reservas/${reservaId}/calificacion-conductor`, {
+        puntaje: datos.puntaje,
+        etiquetas: datos.etiquetas,
+        ...(comentario ? { comentario } : {}),
+      })
+      .pipe(map(() => undefined));
+  }
+
+  /** `GET /api/reservas/mi-reputacion` (conductor): lo que le pusieron los propietarios. */
+  miReputacion(): Observable<ReputacionConductor> {
+    return this.http
+      .get<{ reputacion: ReputacionConductorDto }>('/reservas/mi-reputacion')
+      .pipe(map(({ reputacion }) => aReputacionConductor(reputacion)));
+  }
+
+  /** `POST /api/calificaciones/:id/denuncia`: la parte calificada denuncia una reseña (una vez). */
+  denunciar(calificacionId: Id, motivo: MotivoDenunciaResena, detalle: string): Observable<void> {
+    const texto = detalle.trim();
+    return this.http
+      .post<unknown>(`/calificaciones/${calificacionId}/denuncia`, { motivo, ...(texto ? { detalle: texto } : {}) })
+      .pipe(map(() => undefined));
+  }
+
+  /** `GET /api/estacionamientos/:id/reputacion?dias=30|90` (propietario). */
+  reputacion(estacionamientoId: Id, dias: PeriodoReputacion): Observable<ReputacionEstacionamiento> {
+    return this.http
+      .get<ReputacionDto>(`/estacionamientos/${estacionamientoId}/reputacion`, { params: { dias } })
+      .pipe(map(aReputacion));
   }
 }

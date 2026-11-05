@@ -1,3 +1,4 @@
+<!-- Pantalla `/conductor/explorar` · rol CONDUCTOR. Datos y acciones en mapa.ts. -->
 <!--
   Ocupa justo la pantalla, sin scroll de pagina.
   Mobile: buscador y vehiculo arriba, el mapa en el medio y la lista abajo (con
@@ -116,14 +117,19 @@
             {{ buscandoPorNombre() ? (resultados().length === 1 ? 'encontrado' : 'encontrados') : 'en esta zona del mapa' }}
           </p>
         </div>
-        <label class="panel-resultados__orden">
-          Ordenar por
-          <select class="panel-resultados__select" [value]="orden()" (change)="ordenar($any($event.target).value)">
-            <option value="DISTANCIA">Más cercano</option>
-            <option value="PRECIO">Más barato</option>
-            <option value="CALIFICACION">Mejor calificados</option>
-          </select>
-        </label>
+        <div class="segmentado segmentado--chico" role="group" aria-label="Ordenar por">
+          @for (opcion of ordenes; track opcion.orden) {
+            <button
+              type="button"
+              class="segmentado__opcion"
+              [class.segmentado__opcion--activa]="orden() === opcion.orden"
+              [attr.aria-pressed]="orden() === opcion.orden"
+              (click)="ordenar(opcion.orden)"
+            >
+              {{ opcion.texto }}
+            </button>
+          }
+        </div>
       </div>
 
       @if (cargandoPrimeraVez()) {
@@ -163,11 +169,18 @@
                 }
 
                 <span class="resultado__cuerpo">
-                  <span class="resultado__nombre">{{ estacionamiento.nombre }}</span>
+                  <span class="resultado__titulo">
+                    <span class="resultado__nombre">{{ estacionamiento.nombre }}</span>
+                    @if (estacionamiento.reputacion.nivel; as nivel) {
+                      <app-nivel-estacionamiento [nivel]="nivel" />
+                    }
+                  </span>
+                  <span class="resultado__reputacion empty:hidden"
+                    ><app-insignias-estacionamiento [reputacion]="estacionamiento.reputacion" modo="compacto"
+                  /></span>
                   <span class="resultado__direccion">
                     {{ estacionamiento.direccion.calle }} {{ estacionamiento.direccion.numero }}
                   </span>
-                  <app-reputacion [reputacion]="estacionamiento.reputacion" />
                   @if (distancia(estacionamiento); as texto) {
                     <span class="resultado__distancia">
                       <ui-icono nombre="explorar" [tamano]="14" class="resultado__distancia-icono" />
@@ -359,16 +372,41 @@
       </div>
     </div>
 
-    <!-- Calificacion minima: deja afuera a los que no tienen calificaciones -->
+    <!-- Orden: una opcion por vez -->
     <div class="filtros__bloque filtros__bloque--chips">
-      <span class="filtros__titulo">Calificación</span>
-      <div class="filtros__chips">
-        @for (opcion of opcionesCalificacion; track opcion.etiqueta) {
-          <ui-chip
-            [activo]="panel().calificacionMinima === opcion.valor"
-            (alternar)="cambiar({ calificacionMinima: opcion.valor })"
+      <span class="filtros__titulo" id="filtros-orden">Ordenar por</span>
+      <div class="segmentado" role="group" aria-labelledby="filtros-orden">
+        @for (opcion of ordenes; track opcion.orden) {
+          <button
+            type="button"
+            class="segmentado__opcion"
+            [class.segmentado__opcion--activa]="panel().orden === opcion.orden"
+            [attr.aria-pressed]="panel().orden === opcion.orden"
+            (click)="cambiar({ orden: opcion.orden })"
           >
-            <span class="filtros__chip-contenido">{{ opcion.etiqueta }}</span>
+            <ui-icono [nombre]="iconoOrden[opcion.orden]" [tamano]="15" />
+            {{ opcion.texto }}
+          </button>
+        }
+      </div>
+    </div>
+
+    <!-- Nivel de reputacion: de ese nivel para arriba -->
+    <div class="filtros__bloque filtros__bloque--chips">
+      <span class="filtros__titulo">
+        Nivel del estacionamiento <span class="filtros__titulo-nota">(según su reputación)</span>
+      </span>
+      <div class="filtros__chips" role="radiogroup" aria-label="Nivel del estacionamiento">
+        @for (opcion of opcionesNivel; track opcion.texto) {
+          <ui-chip [activo]="panel().nivelMinimo === opcion.nivel" (alternar)="cambiar({ nivelMinimo: opcion.nivel })">
+            <span class="filtros__chip-contenido">
+              @if (opcion.nivel; as nivel) {
+                <svg class="filtros__gema" [class]="'nivel--' + nivel.toLowerCase()" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M7 3.5h10l4 5.5-9 11.5L3 9z" fill="currentColor" />
+                </svg>
+              }
+              {{ opcion.texto }}
+            </span>
           </ui-chip>
         }
       </div>
@@ -378,15 +416,6 @@
     <div class="filtros__bloque filtros__bloque--chips">
       <span class="filtros__titulo">Filtros adicionales</span>
       <div class="filtros__chips">
-        <ui-chip [activo]="panel().orden === 'DISTANCIA'" (alternar)="cambiar({ orden: 'DISTANCIA' })">
-          <span class="filtros__chip-contenido"><ui-icono nombre="explorar" [tamano]="15" />Más cercano</span>
-        </ui-chip>
-        <ui-chip [activo]="panel().orden === 'PRECIO'" (alternar)="cambiar({ orden: 'PRECIO' })">
-          <span class="filtros__chip-contenido"><ui-icono nombre="moneda" [tamano]="15" />Más barato</span>
-        </ui-chip>
-        <ui-chip [activo]="panel().orden === 'CALIFICACION'" (alternar)="cambiar({ orden: 'CALIFICACION' })">
-          <span class="filtros__chip-contenido"><span aria-hidden="true">★</span>Mejor calificados</span>
-        </ui-chip>
         <ui-chip [activo]="panel().soloCubiertos" (alternar)="cambiar({ soloCubiertos: !panel().soloCubiertos })">
           <span class="filtros__chip-contenido"><ui-icono nombre="techo" [tamano]="15" />Cubierto</span>
         </ui-chip>

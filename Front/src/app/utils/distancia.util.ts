@@ -21,6 +21,17 @@ export function distanciaKm(origen: Coordenadas, destino: Coordenadas): number {
     Math.cos(aRadianes(origen.latitud)) * Math.cos(aRadianes(destino.latitud)) * Math.sin(dLon / 2) ** 2;
   return 2 * RADIO_TIERRA_KM * Math.asin(Math.sqrt(a));
 }
+/**
+ * Comparador para `sort`: el mas cercano primero. Los que no tienen distancia
+ * (sin coordenadas o sin ubicacion del usuario) van al final, en el orden que
+ * traian (`sort` es estable).
+ */
+export function porCercania(
+  a: { distanciaKm?: number },
+  b: { distanciaKm?: number },
+): number {
+  return (a.distanciaKm ?? Number.POSITIVE_INFINITY) - (b.distanciaKm ?? Number.POSITIVE_INFINITY) || 0;
+}
 
 /** Paso de una persona caminando: ~4,8 km/h. */
 const METROS_POR_MINUTO_A_PIE = 80;

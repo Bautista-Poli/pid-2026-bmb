@@ -9,7 +9,7 @@ export const PERIODOS: { tipo: TipoPeriodo; etiqueta: string }[] = [
 ];
 
 /** Igual que el back (estadistica.validator.js): rango maximo de un pedido. */
-export const MAXIMO_DIAS = 92;
+const MAXIMO_DIAS = 92;
 
 const DIA = 86_400_000;
 const FECHA = /^\d{4}-\d{2}-\d{2}$/;

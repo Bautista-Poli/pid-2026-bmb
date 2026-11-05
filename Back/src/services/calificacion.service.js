@@ -1,100 +1,147 @@
-import { query, withTransaction } from '../config/database.js';
+// Calificacion de una reserva por su conductor (Sprint 3, gamificacion).
+// Solo se califica lo que se uso: la reserva tiene que estar FINALIZADA con
+// ingreso y egreso registrados por QR, y el egreso no puede tener mas de
+// PLAZO_CALIFICACION_DIAS. Una sola calificacion del conductor por reserva
+// (tabla `calificacion`, autor CONDUCTOR): `puntaje` queda como el promedio
+// redondeado de las cinco categorias, asi la ve tambien quien lee solo puntaje.
+import { withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
-import { AUTORES_CALIFICACION, limiteCalificacionSql } from '../utils/reputacion.js';
-import { ESTADOS_RESERVA, ROLES } from '../utils/roles.js';
-import { asegurarPropiedad } from './estacionamiento.service.js';
+import { ESTADOS_RESERVA } from '../utils/roles.js';
 
-const VIOLACION_UNIQUE = '23505';
+export const PLAZO_CALIFICACION_DIAS = 7;
+const PLAZO_MS = PLAZO_CALIFICACION_DIAS * 86_400_000;
 
-/** Estados que puede calificar cada lado: un Ausente solo lo califica el propietario. */
-const CALIFICABLES = {
-  [AUTORES_CALIFICACION.CONDUCTOR]: [ESTADOS_RESERVA.FINALIZADA],
-  [AUTORES_CALIFICACION.PROPIETARIO]: [ESTADOS_RESERVA.FINALIZADA, ESTADOS_RESERVA.NO_SHOW],
-};
+const COLUMNAS = `id_calificacion, id_reserva, id_estacionamiento, puntaje, limpieza, infraestructura,
+  atencion, seguridad, acceso, etiquetas, comentario, created_at,
+  ROUND(COALESCE((limpieza + infraestructura + atencion + seguridad + acceso) / 5.0, puntaje)::numeric, 1)::float
+    AS promedio`;
 
-const MENSAJE_YA_CALIFICO = 'Ya calificaste esta reserva';
+/** El promedio de las cinco categorias, redondeado: es el `puntaje` de 1 a 5. */
+const puntajeGeneral = (d) =>
+  Math.round((d.limpieza + d.infraestructura + d.atencion + d.seguridad + d.acceso) / 5);
+
+/** El conductor califica el estacionamiento de una reserva usada (una vez, 7 dias). */
+export async function crear(idReserva, idConductor, datos) {
+  return withTransaction(async (client) => {
+    const { rows } = await client.query(
+      `SELECT r.id_reserva, r.id_conductor, r.estado::text AS estado, r.ingreso_real, r.egreso_real,
+              c.id_estacionamiento, e.id_propietario
+         FROM reserva r
+         JOIN cochera c         ON c.id_cochera = r.id_cochera
+         JOIN estacionamiento e ON e.id_estacionamiento = c.id_estacionamiento
+        WHERE r.id_reserva = $1
+        FOR UPDATE OF r`,
+      [idReserva],
+    );
+    const reserva = rows[0];
+    if (!reserva) throw ApiError.notFound('La reserva no existe');
+    if (reserva.id_conductor !== idConductor) throw ApiError.forbidden('La reserva es de otro conductor');
+    // Con los dos perfiles se puede reservar en el estacionamiento propio: esa
+    // reserva no suma a su reputacion.
+    if (reserva.id_propietario === idConductor) {
+      throw ApiError.forbidden('No podés calificar tu propio estacionamiento');
+    }
+
+    const usada =
+      reserva.estado === ESTADOS_RESERVA.FINALIZADA && reserva.ingreso_real && reserva.egreso_real;
+    if (!usada) {
+      throw ApiError.conflict('Solo podes calificar una reserva despues de entrar y salir del estacionamiento');
+    }
+    if (Date.now() - reserva.egreso_real.getTime() > PLAZO_MS) {
+      throw ApiError.conflict(`El plazo para calificar es de ${PLAZO_CALIFICACION_DIAS} dias desde el egreso`);
+    }
+
+    const existente = await client.query(
+      `SELECT 1 FROM calificacion WHERE id_reserva = $1 AND autor = 'CONDUCTOR'`,
+      [idReserva],
+    );
+    if (existente.rows[0]) throw ApiError.conflict('Ya calificaste esta reserva');
+
+    const { rows: creadas } = await client.query(
+      `INSERT INTO calificacion
+         (id_reserva, autor, id_conductor, id_estacionamiento, puntaje, limpieza, infraestructura,
+          atencion, seguridad, acceso, etiquetas, comentario)
+       VALUES ($1, 'CONDUCTOR', $2, $3, $11, $4, $5, $6, $7, $8, $9, $10)
+       RETURNING ${COLUMNAS}`,
+      [
+        idReserva,
+        idConductor,
+        reserva.id_estacionamiento,
+        datos.limpieza,
+        datos.infraestructura,
+        datos.atencion,
+        datos.seguridad,
+        datos.acceso,
+        datos.etiquetas ?? [],
+        datos.comentario ?? null,
+        puntajeGeneral(datos),
+      ],
+    );
+    return creadas[0];
+  });
+}
+
+const PLAZO_VENCIDO = `El plazo para calificar es de ${PLAZO_CALIFICACION_DIAS} dias`;
 
 /**
- * Califica la otra parte de una reserva terminada. El autor sale del perfil
- * activo: con CONDUCTOR, la reserva tiene que ser suya y se califica el
- * estacionamiento; con PROPIETARIO, el estacionamiento tiene que ser suyo y se
- * califica al conductor. Una reserva ajena no existe (404).
+ * El propietario califica al conductor de una reserva de su estacionamiento:
+ * FINALIZADA (con ingreso y egreso) o NO_SHOW, una vez y dentro del plazo
+ * (desde el egreso, o desde el `fin` si no vino). Sin categorias: solo
+ * `puntaje`, etiquetas y comentario (autor PROPIETARIO).
  */
-export async function calificar(idReserva, usuario, { puntaje, comentario }) {
-  const autor =
-    usuario.rol === ROLES.PROPIETARIO ? AUTORES_CALIFICACION.PROPIETARIO : AUTORES_CALIFICACION.CONDUCTOR;
+export async function crearDelPropietario(idReserva, idPropietario, datos) {
+  return withTransaction(async (client) => {
+    const { rows } = await client.query(
+      `SELECT r.id_reserva, r.id_conductor, r.estado::text AS estado, r.ingreso_real, r.egreso_real, r.fin,
+              c.id_estacionamiento, e.id_propietario
+         FROM reserva r
+         JOIN cochera c         ON c.id_cochera = r.id_cochera
+         JOIN estacionamiento e ON e.id_estacionamiento = c.id_estacionamiento
+        WHERE r.id_reserva = $1
+        FOR UPDATE OF r`,
+      [idReserva],
+    );
+    const reserva = rows[0];
+    if (!reserva) throw ApiError.notFound('La reserva no existe');
+    if (reserva.id_propietario !== idPropietario) {
+      throw ApiError.forbidden('La reserva es de otro estacionamiento');
+    }
+    // Con los dos perfiles se puede reservar en el estacionamiento propio: esa
+    // reserva no suma a la reputacion de nadie.
+    if (reserva.id_conductor === idPropietario) {
+      throw ApiError.forbidden('No podés calificarte a vos mismo');
+    }
 
-  try {
-    return await withTransaction(async (client) => {
-      const { rows } = await client.query(
-        `SELECT r.id_reserva, r.id_conductor, r.estado::text AS estado, e.id_estacionamiento, e.id_propietario,
-                now() > ${limiteCalificacionSql('r')} AS vencida
-           FROM reserva r
-           JOIN cochera c         ON c.id_cochera = r.id_cochera
-           JOIN estacionamiento e ON e.id_estacionamiento = c.id_estacionamiento
-          WHERE r.id_reserva = $1
-            FOR UPDATE OF r`,
-        [idReserva],
+    const finalizada =
+      reserva.estado === ESTADOS_RESERVA.FINALIZADA && reserva.ingreso_real && reserva.egreso_real;
+    const ausente = reserva.estado === ESTADOS_RESERVA.NO_SHOW;
+    if (!finalizada && !ausente) {
+      throw ApiError.conflict('Solo se califica al conductor de una reserva finalizada o ausente');
+    }
+    const desde = finalizada ? reserva.egreso_real : reserva.fin;
+    if (Date.now() - desde.getTime() > PLAZO_MS) throw ApiError.conflict(PLAZO_VENCIDO);
+
+    try {
+      const { rows: creadas } = await client.query(
+        `INSERT INTO calificacion
+           (id_reserva, autor, id_conductor, id_estacionamiento, puntaje, etiquetas, comentario)
+         VALUES ($1, 'PROPIETARIO', $2, $3, $4, $5, $6)
+         RETURNING id_calificacion, id_reserva, puntaje, etiquetas, comentario, created_at`,
+        [
+          idReserva,
+          reserva.id_conductor,
+          reserva.id_estacionamiento,
+          datos.puntaje,
+          datos.etiquetas ?? [],
+          datos.comentario ?? null,
+        ],
       );
-      const reserva = rows[0];
-      const esSuya =
-        reserva &&
-        (autor === AUTORES_CALIFICACION.CONDUCTOR
-          ? reserva.id_conductor === usuario.id
-          : reserva.id_propietario === usuario.id);
-      if (!esSuya) throw ApiError.notFound('Reserva no encontrada');
-
-      if (!CALIFICABLES[autor].includes(reserva.estado)) {
-        throw ApiError.conflict('Esta reserva no se puede calificar');
+      return creadas[0];
+    } catch (error) {
+      if (error.code === '23505') {
+        throw ApiError.conflict('Ya calificaste a este conductor en esta reserva');
       }
-      if (reserva.vencida) throw ApiError.conflict('Paso el plazo para calificar');
-
-      const insertada = await client.query(
-        `INSERT INTO calificacion (id_reserva, autor, id_estacionamiento, id_conductor, puntaje, comentario)
-         VALUES ($1, $2, $3, $4, $5, $6)
-         ON CONFLICT (id_reserva, autor) DO NOTHING
-         RETURNING id_calificacion, autor::text AS autor, puntaje, comentario, created_at`,
-        [reserva.id_reserva, autor, reserva.id_estacionamiento, reserva.id_conductor, puntaje, comentario],
-      );
-      if (insertada.rowCount === 0) throw ApiError.conflict(MENSAJE_YA_CALIFICO);
-      return insertada.rows[0];
-    });
-  } catch (error) {
-    if (error.code === VIOLACION_UNIQUE) throw ApiError.conflict(MENSAJE_YA_CALIFICO);
-    throw error;
-  }
-}
-
-/**
- * Lo que recibio alguien: resumen (promedio de un decimal y cantidad) y la
- * pagina de calificaciones, sin autor ni reserva. Los comentarios solo los ve
- * quien los recibe.
- */
-async function recibidas(columna, id, autor, { limit, offset }) {
-  const [resumen, pagina] = await Promise.all([
-    query(
-      `SELECT ROUND(AVG(puntaje), 1)::float AS promedio, COUNT(*)::int AS cantidad
-         FROM calificacion WHERE ${columna} = $1 AND autor = $2`,
-      [id, autor],
-    ),
-    query(
-      `SELECT puntaje, comentario, created_at
-         FROM calificacion WHERE ${columna} = $1 AND autor = $2
-        ORDER BY created_at DESC
-        LIMIT $3 OFFSET $4`,
-      [id, autor, limit, offset],
-    ),
-  ]);
-  return { resumen: resumen.rows[0], calificaciones: pagina.rows };
-}
-
-/** Lo que los propietarios le pusieron al conductor. */
-export function recibidasPorConductor(idConductor, paginado) {
-  return recibidas('id_conductor', idConductor, AUTORES_CALIFICACION.PROPIETARIO, paginado);
-}
-
-/** Lo que los conductores le pusieron al estacionamiento; solo lo ve su dueno. */
-export async function recibidasPorEstacionamiento(idEstacionamiento, idPropietario, paginado) {
-  await asegurarPropiedad(idEstacionamiento, idPropietario);
-  return recibidas('id_estacionamiento', idEstacionamiento, AUTORES_CALIFICACION.CONDUCTOR, paginado);
+      throw error;
+    }
+  });
 }

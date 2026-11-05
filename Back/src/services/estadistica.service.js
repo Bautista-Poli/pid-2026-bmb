@@ -1,5 +1,8 @@
+// Dashboard del propietario: KPIs del periodo contra el anterior, ocupacion por
+// dia, ingresos y demanda por franja. Lo llama estadistica.controller.
 import { query } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
+import { ZONA_HORARIA } from '../utils/horario.js';
 
 /**
  * Estadisticas del propietario para un periodo de dias locales (hora
@@ -16,8 +19,8 @@ import { ApiError } from '../utils/ApiError.js';
  *   - Ingresos: FINALIZADA y ACTIVA (las de abono valen 0) + abonos vendidos.
  */
 
-export const ZONA = `'America/Argentina/Buenos_Aires'`;
-export const DIA = 86_400_000;
+export const ZONA = `'${ZONA_HORARIA}'`;
+const DIA = 86_400_000;
 
 const OCUPAN = `('PENDIENTE', 'CONFIRMADA', 'ACTIVA', 'FINALIZADA')`;
 export const COBRADAS = `('FINALIZADA', 'ACTIVA')`;
@@ -33,6 +36,7 @@ export const ESTACIONAMIENTO_DE_DEVOLUCION = `COALESCE(
 
 /** Inicio de un dia local (`$n::date`) como instante. */
 export const desdeDia = (parametro) => `(${parametro}::date)::timestamp AT TIME ZONE ${ZONA}`;
+/** Fin de un dia local (el inicio del siguiente) como instante. */
 export const hastaDia = (parametro) => `(${parametro}::date + 1)::timestamp AT TIME ZONE ${ZONA}`;
 
 /**
@@ -55,7 +59,9 @@ const RESERVAS = `
 // Fechas puras (date + entero): no dependen de la zona horaria de la sesion.
 const DIAS = `SELECT $2::date + i AS fecha FROM generate_series(0, $3::date - $2::date) i`;
 
+/** Convierte a numero; null/undefined cuentan como 0. */
 export const numero = (valor) => Number(valor ?? 0);
+/** Redondea a `decimales`. */
 export const redondear = (valor, decimales = 2) => Math.round(valor * 10 ** decimales) / 10 ** decimales;
 
 /**
@@ -76,6 +82,7 @@ const VENTANAS = `
     JOIN horario h ON h.id_estacionamiento = c.id_estacionamiento
                   AND h.dia_semana = EXTRACT(DOW FROM d.fecha)`;
 
+/** Horas ocupadas y horas disponibles por dia (para la ocupacion). */
 async function horasPorDia(parametros) {
   const { rows } = await query(
     `WITH dias AS (${DIAS}),
@@ -108,6 +115,7 @@ async function horasPorDia(parametros) {
   }));
 }
 
+/** Lo cobrado por dia: reservas mas abonos. */
 async function ingresosPorDia(parametros) {
   const { rows } = await query(
     `WITH dias AS (${DIAS}),
@@ -218,6 +226,7 @@ async function asegurarPropio(idEstacionamiento, idPropietario) {
   if (!rows[0]) throw ApiError.notFound('Estacionamiento no encontrado');
 }
 
+/** parte / total con 4 decimales; 0 si no hay total. */
 const tasa = (parte, total) => (total > 0 ? redondear(parte / total, 4) : 0);
 
 /** Los KPIs de un periodo (se usan tambien para el periodo anterior). */
@@ -235,6 +244,7 @@ function kpisDe({ horas, ingresos, totales }) {
   };
 }
 
+/** Todos los numeros de un periodo para el dashboard (y, si se pide, la demanda). */
 async function periodo(idPropietario, desde, hasta, idEstacionamiento, { conDemanda = false } = {}) {
   const parametros = [idPropietario, desde, hasta, idEstacionamiento ?? null];
   const [horas, ingresos, totales, celdas] = await Promise.all([
@@ -253,6 +263,7 @@ export function anteriorA(desde, hasta) {
   return { desde: iso(Date.parse(desde) - largo * DIA), hasta: iso(Date.parse(desde) - DIA) };
 }
 
+/** El dashboard completo del propietario: periodo actual contra el anterior. */
 export async function delPropietario(idPropietario, { desde, hasta, id_estacionamiento: idEstacionamiento }) {
   if (idEstacionamiento) await asegurarPropio(idEstacionamiento, idPropietario);
 

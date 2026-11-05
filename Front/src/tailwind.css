@@ -68,11 +68,14 @@
   /* Avisos (cocheras bloqueadas, incidencias pendientes): mismo tono que baja,
      y sigue a baja en los temas oscuros. */
   --color-aviso: var(--color-baja);
-  /* Estrellas de las calificaciones: dorado, legible sobre blanco. */
-  --color-estrella: #e0a800;
   --color-reservada: #7c8aa0;
   --color-exito: #12b76a;
   --color-exito-suave: #e7f9f0;
+
+  /* Reputacion: el dorado de "Anfitrion destacado" y de las estrellas. */
+  --color-oro: #fbbf24;
+  --color-oro-suave: #fef3c7;
+  --color-oro-tinta: #92400e;
 
   --font-sans: 'Inter', system-ui, sans-serif;
 
@@ -140,10 +143,11 @@
 
     --color-ocupada: #f87171;
     --color-baja: #fbbf24;
-    --color-estrella: #facc15;
     --color-reservada: #8c99ad;
     --color-exito: #34d399;
     --color-exito-suave: #0d2c22;
+    --color-oro-suave: #3a2c0c;
+    --color-oro-tinta: #fcd34d;
 
     /* Las sombras tintadas con `tinta` desaparecen sobre fondo oscuro. */
     --shadow-tarjeta: 0 1px 2px rgb(0 0 0 / 0.4);
@@ -173,10 +177,11 @@
 
   --color-ocupada: #f87171;
   --color-baja: #fbbf24;
-  --color-estrella: #facc15;
   --color-reservada: #8c99ad;
   --color-exito: #34d399;
   --color-exito-suave: #0d2c22;
+  --color-oro-suave: #3a2c0c;
+  --color-oro-tinta: #fcd34d;
 
   --shadow-tarjeta: 0 1px 2px rgb(0 0 0 / 0.4);
   --shadow-elevada: 0 4px 12px rgb(0 0 0 / 0.45), 0 2px 4px rgb(0 0 0 / 0.3);

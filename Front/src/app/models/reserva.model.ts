@@ -1,5 +1,6 @@
+// Modelos de reservas: estados, modalidades, el borrador del flujo de reserva y las
+// etiquetas que se muestran segun quien mira.
 import { TurnoAbono } from './abono.model';
-import { Reputacion } from './calificacion.model';
 import { FechaHoraISO, FechaISO, HoraHHmm, Id } from './api.model';
 import { Cochera } from './cochera.model';
 import { Estacionamiento } from './estacionamiento.model';
@@ -15,7 +16,7 @@ export type EstadoReserva =
   /** El vehiculo no llego dentro de la tolerancia: la cochera se libero. */
   | 'NO_SHOW';
 
-export const ETIQUETA_ESTADO_RESERVA: Record<EstadoReserva, string> = {
+const ETIQUETA_ESTADO_RESERVA: Record<EstadoReserva, string> = {
   PENDIENTE: 'Pendiente',
   CONFIRMADA: 'Confirmada',
   ACTIVA: 'En curso',
@@ -98,14 +99,16 @@ export interface Reserva {
   devuelto: number;
   /** El reclamo abierto o denunciado sobre esta reserva, si hay. */
   reclamoAbierto: Id | null;
-  /** Quien ya califico y hasta cuando se puede (null si la reserva no termino). */
-  calificacion: {
-    conductorCalifico: boolean;
-    propietarioCalifico: boolean;
-    calificableHasta: FechaHoraISO | null;
-  };
-  /** Lo que le pusieron al conductor los propietarios: lo ve el propietario para decidir. */
-  reputacionConductor: Reputacion;
+  /** Si el conductor todavia puede calificarla (entro, salio y no pasaron 7 dias). */
+  calificable: boolean;
+  /** El promedio que le dio, o null si no la califico. */
+  calificacionPromedio: number | null;
+  /** Lo que le pusieron los propietarios al conductor (lo ve el propietario). */
+  reputacionConductor: { promedio: number | null; cantidad: number };
+  /** El puntaje que el propietario le dio al conductor en esta reserva, o null. */
+  calificacionAlConductor: number | null;
+  /** Si el propietario todavia puede calificar al conductor (finalizada o ausente, 7 dias). */
+  conductorCalificable: boolean;
 }
 
 /**
@@ -140,7 +143,7 @@ export interface ConsultaDisponibilidad {
 }
 
 /** Por que no se puede reservar una franja. */
-export type CausaNoDisponible = 'HORARIO' | 'PASADO' | 'SIN_COCHERA';
+type CausaNoDisponible = 'HORARIO' | 'PASADO' | 'SIN_COCHERA';
 
 /** Franja ofrecida por el backend para una fecha dada. */
 export interface FranjaDisponible {
@@ -176,14 +179,14 @@ export const BORRADOR_VACIO: BorradorReserva = {
 };
 
 /** Estados sobre los que el conductor todavia puede accionar. */
-export const ESTADOS_ACTIVOS: EstadoReserva[] = ['PENDIENTE', 'CONFIRMADA', 'ACTIVA'];
+const ESTADOS_ACTIVOS: EstadoReserva[] = ['PENDIENTE', 'CONFIRMADA', 'ACTIVA'];
 
 export function esReservaActiva(reserva: Reserva): boolean {
   return ESTADOS_ACTIVOS.includes(reserva.estado);
 }
 
 /** Lo que registra el QR de la reserva segun su estado. */
-export type AccionAcceso = 'INGRESO' | 'EGRESO';
+type AccionAcceso = 'INGRESO' | 'EGRESO';
 
 /** Vista previa (`GET /reservas/acceso/:codigo`) y resultado (`POST /reservas/acceso`). */
 export interface AccesoReserva {

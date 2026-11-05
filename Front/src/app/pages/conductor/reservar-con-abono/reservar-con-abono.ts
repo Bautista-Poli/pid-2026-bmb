@@ -76,6 +76,7 @@ export class ReservarConAbono {
     return { inicios: rango(primera, ultima - 1), fines: rango(primera + 1, ultima) };
   }
 
+  /** Crea la reserva con el abono (sin pago) y muestra la confirmacion. */
   protected confirmar(abono: Abono, vehiculoId: string, fecha: string, horaDesde: string, horaHasta: string): void {
     if (horaHasta <= horaDesde) {
       this.error.set('La hora de salida tiene que ser posterior a la de entrada.');

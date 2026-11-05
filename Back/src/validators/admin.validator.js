@@ -1,3 +1,5 @@
+// Validadores de las rutas del administrador (filtros, aprobar, rechazar, moderar).
+import { ESTADOS_DENUNCIA } from '../utils/denuncias.js';
 import { ESTADOS_APROBACION } from '../utils/roles.js';
 import { campos } from './helpers.js';
 
@@ -22,10 +24,12 @@ function conVersionVista(validador, body) {
   return resultado;
 }
 
+/** Aprobar: la version que vio el admin (enviado_en). */
 export function validarAprobacion(body) {
   return conVersionVista(campos(body), body);
 }
 
+/** Rechazar: motivo obligatorio y la version que vio el admin. */
 export function validarRechazo(body) {
   return conVersionVista(campos(body).texto('motivo', body.motivo, { min: 10, max: 300 }), body);
 }
@@ -64,5 +68,14 @@ export function validarResolucionModeracion(body) {
   if (resolucion === 'A_FAVOR_PROPIETARIO' && monto > 0) {
     resultado.errores.push({ campo: 'monto', mensaje: 'a favor del propietario no hay devolucion' });
   }
+  return resultado;
+}
+
+/** `GET /admin/resenas?estado=`: por defecto, las denuncias pendientes. */
+export function validarFiltroResenas(query) {
+  const resultado = campos(query)
+    .enumerado('estado', query.estado, Object.values(ESTADOS_DENUNCIA), { requerido: false })
+    .resultado();
+  resultado.valores.estado ??= ESTADOS_DENUNCIA.PENDIENTE;
   return resultado;
 }

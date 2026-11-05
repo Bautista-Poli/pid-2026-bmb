@@ -7,11 +7,12 @@ import {
   ValidationErrors,
   Validators,
 } from '@angular/forms';
+import { DatePipe } from '@angular/common';
 import { Router } from '@angular/router';
-import { ListaCalificaciones, Reputacion } from '@app/components/calificacion';
+import { DenunciarResena } from '@app/components/reclamo';
 import { Boton, Icono, Modal, NombreIcono, Tarjeta, VerPassword } from '@app/components/ui';
 import { inicioSegunRol } from '@app/guards/rol.guard';
-import { CambiosPerfil, ETIQUETA_ROL, RolUsuario } from '@app/models';
+import { CambiosPerfil, ETIQUETA_ROL, Id, RolUsuario, TEXTO_ESTADO_DENUNCIA, TEXTO_ETIQUETA_CONDUCTOR } from '@app/models';
 import { AuthService } from '@app/services/auth.service';
 import { CalificacionService } from '@app/services/calificacion.service';
 import { PreferenciaTema, TemaService } from '@app/services/tema.service';
@@ -40,6 +41,7 @@ function esInvalido(control: AbstractControl | null): boolean {
   return Boolean(control?.invalid && control.touched);
 }
 
+/** Validador: la nueva contraseña y su repeticion coinciden. */
 function passwordsIguales(grupo: AbstractControl): ValidationErrors | null {
   const { password, repetirPassword } = grupo.value;
   return password && repetirPassword && password !== repetirPassword
@@ -55,7 +57,7 @@ function passwordsIguales(grupo: AbstractControl): ValidationErrors | null {
 @Component({
   selector: 'app-perfil',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, Boton, Icono, Modal, Tarjeta, VerPassword, Reputacion, ListaCalificaciones],
+  imports: [DatePipe, ReactiveFormsModule, Boton, DenunciarResena, Icono, Modal, Tarjeta, VerPassword],
   templateUrl: './perfil.html',
 })
 export class Perfil {
@@ -63,8 +65,32 @@ export class Perfil {
   private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
   private readonly tema = inject(TemaService);
+  private readonly calificaciones = inject(CalificacionService);
 
   protected readonly usuario = this.auth.usuario;
+
+  /* ------------------------ reputacion del conductor ------------------------ */
+
+  protected readonly esConductor = computed(() => this.usuario()?.rol === 'CONDUCTOR');
+  protected readonly textoEtiqueta = TEXTO_ETIQUETA_CONDUCTOR;
+  /** Solo con el perfil de conductor activo: el propietario no tiene esta reputacion. */
+  protected readonly reputacion = rxResource({
+    params: () => (this.esConductor() ? true : undefined),
+    stream: () => this.calificaciones.miReputacion(),
+  });
+
+  protected readonly textoEstadoDenuncia = TEXTO_ESTADO_DENUNCIA;
+  /** Reseña que se esta denunciando: abre el modal. */
+  protected readonly aDenunciar = signal<Id | null>(null);
+
+  protected resenaDenunciada(): void {
+    this.aDenunciar.set(null);
+    this.reputacion.reload();
+  }
+
+  protected nota(promedio: number): string {
+    return promedio.toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  }
   protected readonly perfiles = PERFILES;
   protected readonly temas = TEMAS;
   protected readonly temaElegido = this.tema.elegida;
@@ -108,15 +134,6 @@ export class Perfil {
 
   /** El administrador es un usuario aparte: no elige perfiles. */
   protected readonly esAdmin = computed(() => this.usuario()?.rol === 'ADMINISTRADOR');
-  protected readonly esConductor = computed(() => this.usuario()?.rol === 'CONDUCTOR');
-
-  private readonly calificaciones = inject(CalificacionService);
-  /** Lo que los propietarios le pusieron al conductor; con otro perfil no se pide. */
-  protected readonly recibidas = rxResource({
-    params: () => (this.esConductor() ? true : undefined),
-    stream: () => this.calificaciones.recibidasComoConductor(),
-    defaultValue: { resumen: { promedio: null, cantidad: 0 }, calificaciones: [] },
-  });
 
   protected readonly rolActivo = computed(() => {
     const usuario = this.usuario();
@@ -149,6 +166,7 @@ export class Perfil {
     this.tema.elegir(preferencia);
   }
 
+  /** Abre el modal de cambio de contraseña con el formulario limpio. */
   protected abrirModalClave(): void {
     this.clave.reset();
     this.errorClave.set(null);
@@ -174,6 +192,7 @@ export class Perfil {
     return this.clave.controls.repetirPassword.touched && this.clave.hasError('passwordsDistintas');
   }
 
+  /** Guarda nombre, telefono y perfiles habilitados; si cambio el activo, navega a su inicio. */
   protected guardarDatos(): void {
     if (this.datos.invalid) {
       this.datos.markAllAsTouched();
@@ -214,6 +233,7 @@ export class Perfil {
     });
   }
 
+  /** Cambia la contraseña (pide la actual). */
   protected cambiarPassword(): void {
     if (this.clave.invalid) {
       this.clave.markAllAsTouched();
@@ -240,6 +260,7 @@ export class Perfil {
     });
   }
 
+  /** Da de baja la cuenta y vuelve al ingreso. */
   protected eliminarCuenta(): void {
     const seguro = confirm(
       '¿Eliminar tu cuenta? Se cancelan tus reservas futuras y no vas a poder volver a entrar.',

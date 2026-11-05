@@ -88,6 +88,7 @@ const CLASE_ESTADO: Record<EstadoDisponibilidad, string> = {
       <li class="flex items-center gap-1.5"><span class="size-2.5 rounded-full bg-exito"></span>Disponible</li>
       <li class="flex items-center gap-1.5"><span class="size-2.5 rounded-full bg-baja"></span>Poca disponibilidad</li>
       <li class="flex items-center gap-1.5"><span class="size-2.5 rounded-full bg-[color-mix(in_srgb,var(--color-ocupada)_45%,var(--color-humo))]"></span>No disponible</li>
+      <li class="flex items-center gap-1.5"><span class="grid size-3.5 place-items-center rounded-full bg-oro text-[8px] text-[#0f172a]">★</span>Destacado</li>
     </ul>
 
     <!-- Zoom y volver al origen -->
@@ -222,6 +223,7 @@ export class MapaEstacionamientos {
     this.mapa?.flyTo([punto.latitud, punto.longitud], Math.max(this.mapa.getZoom(), ZOOM_DESTINO));
   }
 
+  /** Crea el mapa de Leaflet con su capa de pines y avisa cuando se mueve. */
   private crearMapa(): void {
     const elemento = this.contenedor().nativeElement;
     this.mapa = L.map(elemento, { zoomControl: false, attributionControl: true }).setView(
@@ -266,7 +268,7 @@ export class MapaEstacionamientos {
         title: estacionamiento.nombre,
         riseOnHover: true,
         // Los no disponibles quedan debajo: si se pisan, se ve el que sirve.
-        zIndexOffset: activo ? 1000 : estadoDisponibilidad(estacionamiento) === 'NO_DISPONIBLE' ? -500 : 0,
+        zIndexOffset: capaDelPin(activo, estadoDisponibilidad(estacionamiento) === 'NO_DISPONIBLE'),
       });
       pin.on('click', () => this.seleccionar.emit(estacionamiento.id));
       this.capaPines.addLayer(pin);
@@ -341,18 +343,23 @@ function etiquetaPin(estacionamiento: Estacionamiento): string {
   return precio == null ? 'P' : `$${precio.toLocaleString('es-AR')}`;
 }
 
+/** El pin de un estacionamiento: color por disponibilidad, precio y sello si es destacado. */
 function iconoPin(estacionamiento: Estacionamiento, activo: boolean): L.DivIcon {
   const estado = estadoDisponibilidad(estacionamiento);
-  const clases = ['pin', CLASE_ESTADO[estado], activo ? 'pin--activo' : ''].join(' ');
+  const destacado = estacionamiento.reputacion.destacado;
+  const clases = ['pin', CLASE_ESTADO[estado], activo ? 'pin--activo' : '', destacado ? 'pin--destacado' : ''].join(' ');
+  // Destacado: la gota lleva un aro dorado y una estrellita (ver styles.css).
+  const sello = destacado ? '<span class="pin__sello" aria-hidden="true">★</span>' : '';
   return L.divIcon({
     className: '',
-    html: `<div class="${clases}"><span class="pin__cabeza"><b>P</b></span><span class="pin__precio">${etiquetaPin(estacionamiento)}</span></div>`,
+    html: `<div class="${clases}"><span class="pin__cabeza"><b>P</b>${sello}</span><span class="pin__precio">${etiquetaPin(estacionamiento)}</span></div>`,
     // La punta del pin (abajo de la "P") es la que cae sobre la direccion.
     iconSize: [96, 64],
     iconAnchor: [48, 36],
   });
 }
 
+/** La zona visible del mapa (para pedir los estacionamientos de esa area). */
 function areaDe(mapa: L.Map): AreaMapa {
   const limites = mapa.getBounds();
   return {
@@ -366,4 +373,11 @@ function areaDe(mapa: L.Map): AreaMapa {
 function mismoPunto(a: Coordenadas | null | undefined, b: Coordenadas | null | undefined): boolean {
   if (!a || !b) return a === b;
   return a.latitud === b.latitud && a.longitud === b.longitud;
+}
+
+/** El pin elegido va arriba de todo; los no disponibles, debajo de los que sirven. */
+function capaDelPin(activo: boolean, noDisponible: boolean): number {
+  if (activo) return 1000;
+  if (noDisponible) return -500;
+  return 0;
 }

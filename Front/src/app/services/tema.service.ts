@@ -56,6 +56,7 @@ export class TemaService {
     this.elegir(this.esOscuro() ? 'claro' : 'oscuro');
   }
 
+  /** Sigue el modo claro/oscuro del sistema operativo. */
   private escucharAlSistema(): void {
     const consulta = this.documento.defaultView?.matchMedia?.(CONSULTA_OSCURO);
     if (!consulta) return;
@@ -78,6 +79,7 @@ export class TemaService {
     }
   }
 
+  /** Guarda la preferencia de tema en este dispositivo. */
   private guardar(preferencia: PreferenciaTema): void {
     try {
       if (preferencia === 'sistema') {

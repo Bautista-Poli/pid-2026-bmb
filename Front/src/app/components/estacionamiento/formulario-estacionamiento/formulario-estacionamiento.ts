@@ -183,6 +183,7 @@ export class FormularioEstacionamiento {
       .pipe(map((calles) => filtrarLugares(calles, texto).map((c) => ({ nombre: c.nombre }))));
   };
 
+  /** Al elegir ciudad se limpia la calle (depende de la ciudad). */
   protected elegirCiudad(sugerencia: Sugerencia): void {
     const ciudadId = sugerencia.dato as string;
     this.ciudadId.set(ciudadId);
@@ -292,6 +293,7 @@ export class FormularioEstacionamiento {
       });
   }
 
+  /** Al editar: avisa si la provincia o ciudad guardadas ya no estan en Georef. */
   private verificarDireccionGuardada(direccion: Direccion, provincias: LugarGeoref[]): void {
     const { provincia, ciudad } = this.formulario.controls;
     const desactualizada = () => {
@@ -337,6 +339,7 @@ export class FormularioEstacionamiento {
     return Boolean(control?.invalid && control.touched);
   }
 
+  /** Valida el formulario, arma los datos del estacionamiento y los emite al padre. */
   protected enviar(): void {
     if (this.formulario.invalid) {
       this.formulario.markAllAsTouched();

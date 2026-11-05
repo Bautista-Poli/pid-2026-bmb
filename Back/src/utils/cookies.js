@@ -22,6 +22,7 @@ const OPCIONES_COOKIE = {
   path: config.apiPrefix,
 };
 
+/** Pone la cookie de sesion con el token (dura lo mismo que el JWT). */
 export function setearCookieSesion(res, token) {
   res.cookie(COOKIE_SESION, token, {
     ...OPCIONES_COOKIE,
@@ -29,6 +30,7 @@ export function setearCookieSesion(res, token) {
   });
 }
 
+/** Borra la cookie de sesion (logout). */
 export function borrarCookieSesion(res) {
   res.clearCookie(COOKIE_SESION, OPCIONES_COOKIE);
 }

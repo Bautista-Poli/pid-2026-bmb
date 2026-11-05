@@ -1,4 +1,17 @@
-import { MotivoReclamo, ResolucionIncidencia } from '@app/models';
+// DTOs: la forma exacta de las respuestas de la API (snake_case). Solo los usa
+// api.mapeo.ts, que los convierte a los modelos del front.
+import {
+  CategoriaCalificacion,
+  CodigoInsignia,
+  CodigoNivel,
+  EstadoDenunciaResena,
+  EtiquetaCalificacion,
+  EtiquetaConductor,
+  MotivoDenunciaResena,
+  MotivoReclamo,
+  PeriodoReputacion,
+  ResolucionIncidencia,
+} from '@app/models';
 import {
   EstadoAbono,
   EstadoAprobacion,
@@ -100,11 +113,64 @@ export interface EstacionamientoDto {
   foto_actualizada?: string | null;
   /** La galeria en orden; la primera es la portada. */
   fotos?: { id_foto: string; actualizada: string }[];
-  /** Promedio de un decimal de lo que pusieron los conductores; `null` sin calificaciones. */
+  /** Reputacion de los ultimos 90 dias (ver reputacion.service.js del backend). */
+  calificaciones?: number;
   calificacion_promedio?: number | null;
-  cantidad_calificaciones?: number;
-  /** Promedio ponderado para ordenar. */
-  puntaje_orden?: number;
+  calificacion_categorias?: Record<CategoriaCalificacion, number | null> | null;
+  destacado?: boolean;
+  nivel?: CodigoNivel | null;
+  insignias?: { codigo: CodigoInsignia; texto: string }[];
+  puntaje_reputacion?: number;
+}
+
+export interface CalificacionDto {
+  id_calificacion: string;
+  id_reserva: string;
+  promedio: number;
+}
+
+export interface ReputacionDto {
+  dias: PeriodoReputacion;
+  puntaje: number;
+  puntaje_anterior: number | null;
+  destacado: boolean;
+  nivel: CodigoNivel | null;
+  siguiente_nivel: { codigo: CodigoNivel; desde: number; faltan: number } | null;
+  niveles: { codigo: CodigoNivel; nombre: string; desde: number }[];
+  umbral_destacado: number;
+  minimo_calificaciones: number;
+  calificaciones: {
+    cantidad: number;
+    promedio: number | null;
+    puntos: number;
+    categorias: { codigo: CategoriaCalificacion; nombre: string; promedio: number | null; anterior: number | null }[];
+  };
+  operacion: {
+    puntos: number;
+    confirmacion: { puntos: number; porcentaje: number; vencidas: number; reservas: number };
+    incidencias: { puntos: number; sin_denuncia: number; total: number };
+    respuesta: { puntos: number; minutos: number | null };
+    cancelaciones: { puntos: number; propias: number };
+  };
+  insignias: { codigo: CodigoInsignia; texto: string }[];
+  etiquetas: { codigo: EtiquetaCalificacion; positiva: boolean; cantidad: number }[];
+  sugerencia: {
+    categoria: CategoriaCalificacion;
+    nombre: string;
+    promedio: number;
+    objetivo: number;
+    puntos: number;
+    etiqueta: { codigo: EtiquetaCalificacion; cantidad: number } | null;
+  } | null;
+  opiniones: {
+    id_calificacion: string;
+    autor: string;
+    created_at: string;
+    promedio: number;
+    comentario: string | null;
+    etiquetas: EtiquetaCalificacion[];
+    denuncia_estado?: EstadoDenunciaResena | null;
+  }[];
 }
 
 export interface VehiculoDto {
@@ -153,17 +219,12 @@ export interface ReservaDto {
   turno_abono: TurnoAbono | null;
   devuelto?: number;
   reclamo_abierto?: string | null;
-  califico_conductor?: boolean;
-  califico_propietario?: boolean;
-  /** Hasta cuando se puede calificar; `null` si la reserva no termino. */
-  calificable_hasta?: string | null;
-  conductor_calificacion_promedio?: number | null;
-  conductor_cantidad_calificaciones?: number;
-}
-
-export interface CalificacionesRecibidasDto {
-  resumen: { promedio: number | null; cantidad: number };
-  calificaciones: { puntaje: number; comentario: string | null; created_at: string }[];
+  calificable?: boolean;
+  calificacion_promedio?: number | null;
+  conductor_promedio?: number | null;
+  conductor_calificaciones?: number;
+  calificacion_al_conductor?: number | null;
+  conductor_calificable?: boolean;
 }
 
 export interface AccesoReservaDto {
@@ -274,4 +335,41 @@ export interface IncidenciaModeradaDto extends IncidenciaDetalladaDto {
     desde?: string;
     hasta?: string;
   };
+}
+
+export type OpinionDto = ReputacionDto['opiniones'][number];
+
+export interface ReputacionConductorDto {
+  promedio: number | null;
+  cantidad: number;
+  etiquetas: { codigo: EtiquetaConductor; cantidad: number }[];
+  resenas: {
+    id_calificacion: string;
+    puntaje: number;
+    etiquetas: EtiquetaConductor[];
+    comentario: string | null;
+    created_at: string;
+    estacionamiento: string;
+    denuncia_estado: EstadoDenunciaResena | null;
+  }[];
+}
+
+export interface ResenaDenunciadaDto {
+  id_calificacion: string;
+  autor: 'CONDUCTOR' | 'PROPIETARIO';
+  puntaje: number;
+  promedio: number | null;
+  etiquetas: string[];
+  comentario: string | null;
+  created_at: string;
+  oculta: boolean;
+  denuncia_estado: EstadoDenunciaResena;
+  denuncia_motivo: MotivoDenunciaResena;
+  denuncia_detalle: string | null;
+  denunciada_at: string;
+  moderada_at: string | null;
+  id_estacionamiento: string;
+  estacionamiento: string;
+  id_conductor: string;
+  conductor_nombre: string;
 }

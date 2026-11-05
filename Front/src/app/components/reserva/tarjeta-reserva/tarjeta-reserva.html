@@ -1,3 +1,4 @@
+<!-- Tarjeta de una reserva del conductor. Datos y acciones en tarjeta-reserva.ts. -->
 @let r = reserva();
 
 <ng-template #estado>
@@ -27,20 +28,6 @@
 
 <!-- Lo devuelto por reclamos y el acceso a abrir uno (o al que esta abierto). -->
 <ng-template #reclamo>
-  @if (calificable()) {
-    <button
-      type="button"
-      class="inline-flex min-h-11 items-center gap-1.5 rounded-boton px-3 text-[13px] font-semibold text-acento
-             transition-colors duration-160 ease-out hover:bg-acento-suave"
-      (click)="calificar.emit(r)"
-    >
-      <span class="text-estrella" aria-hidden="true">★</span>Calificar
-    </button>
-  } @else if (r.calificacion.conductorCalifico) {
-    <span class="inline-flex min-h-11 items-center gap-1.5 px-3 text-[12.5px] text-plomo">
-      <span class="text-estrella" aria-hidden="true">★</span>Calificado
-    </span>
-  }
   @if (r.devuelto > 0) {
     <span class="num-tabular text-[12.5px] font-semibold text-exito">
       Devuelto $ {{ r.devuelto.toLocaleString('es-AR') }}
@@ -64,6 +51,27 @@
     >
       Tengo un problema
     </button>
+  }
+</ng-template>
+
+<!-- Calificar despues de usarla (o lo que ya califico). -->
+<ng-template #calificacion>
+  @if (r.calificacionPromedio != null) {
+    <span class="num-tabular inline-flex items-center gap-1 px-3 text-[12.5px] font-medium text-plomo">
+      <svg width="13" height="13" viewBox="0 0 24 24" class="text-oro" fill="currentColor" aria-hidden="true">
+        <path d="M12 3.8l2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6L7.1 19l.9-5.5-4-3.9 5.5-.8Z" />
+      </svg>
+      Calificaste {{ r.calificacionPromedio.toLocaleString('es-AR', { minimumFractionDigits: 1 }) }}
+    </span>
+  } @else if (r.calificable) {
+    <a
+      class="inline-flex min-h-11 items-center gap-1.5 rounded-boton px-3 text-[13px] font-semibold text-acento
+             transition-colors duration-160 ease-out hover:bg-acento-suave"
+      [routerLink]="['/conductor/calificar', r.id]"
+    >
+      <ui-icono nombre="estrella" [tamano]="16" />
+      Calificar
+    </a>
   }
 </ng-template>
 
@@ -113,8 +121,9 @@
       </div>
     </div>
     <ng-container [ngTemplateOutlet]="aviso" />
-    @if (r.devuelto > 0 || r.reclamoAbierto || reclamable() || calificable() || r.calificacion.conductorCalifico) {
+    @if (r.devuelto > 0 || r.reclamoAbierto || reclamable() || r.calificable || r.calificacionPromedio != null) {
       <div class="-my-2 flex flex-wrap items-center justify-end gap-1">
+        <ng-container [ngTemplateOutlet]="calificacion" />
         <ng-container [ngTemplateOutlet]="reclamo" />
       </div>
     }
@@ -276,6 +285,7 @@
       </p>
 
       <div class="flex flex-wrap items-center justify-end gap-1">
+        <ng-container [ngTemplateOutlet]="calificacion" />
         <ng-container [ngTemplateOutlet]="reclamo" />
         @if (conQr()) {
           <button

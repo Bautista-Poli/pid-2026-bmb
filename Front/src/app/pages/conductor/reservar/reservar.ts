@@ -234,6 +234,7 @@ export class Reservar {
     this.reservas.actualizarBorrador({ fecha });
   }
 
+  /** Cambia la duracion (y con ella la modalidad) y limpia la franja elegida. */
   protected elegirHoras(horas: number): void {
     const estacionamiento = this.recursoEstacionamiento.value();
     if (!estacionamiento) return;

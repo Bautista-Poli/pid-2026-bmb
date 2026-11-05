@@ -133,7 +133,7 @@ export interface NuevoReclamo {
 }
 
 /** Lo que ve la moderacion para decidir: los horarios reales de la reserva, o el periodo del abono. */
-export interface ResumenModeracion {
+interface ResumenModeracion {
   inicio?: FechaHoraISO;
   fin?: FechaHoraISO;
   ingresoEn?: FechaHoraISO | null;

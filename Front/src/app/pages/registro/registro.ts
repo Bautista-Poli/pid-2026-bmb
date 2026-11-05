@@ -73,6 +73,7 @@ export class Registro {
     return Boolean(control?.invalid && control.touched);
   }
 
+  /** Validador: la contraseña y su repeticion no coinciden. */
   protected passwordsDistintas(): boolean {
     return (
       this.formulario.controls.repetirPassword.touched &&

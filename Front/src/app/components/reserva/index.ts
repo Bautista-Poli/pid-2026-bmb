@@ -1,3 +1,4 @@
+// Exporta los componentes del flujo de reserva y de los listados de reservas.
 /* Piezas del flujo de reserva y de los listados de reservas. */
 export * from './selector-vehiculo/selector-vehiculo';
 export * from './selector-fecha/selector-fecha';
@@ -8,3 +9,4 @@ export * from './tarjeta-reserva/tarjeta-reserva';
 export * from './reserva-hecha/reserva-hecha';
 export * from './qr-reserva/qr-reserva';
 export * from './ingresar-codigo/ingresar-codigo';
+export * from './calificar-conductor/calificar-conductor';

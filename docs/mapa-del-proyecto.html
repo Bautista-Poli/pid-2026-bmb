@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Mapa de Parkit</title>
+<style>
+  :root {
+    --fondo: #f6f7fb; --papel: #ffffff; --tinta: #0f172a; --grafito: #334155; --plomo: #64748b;
+    --borde: #e3e7ef; --acento: #1e3a5f; --acento-suave: #eaf0f7; --exito: #12b76a; --aviso: #b45309;
+    --peligro: #dc2626; --codigo: #eef2f7;
+    --c-front: #2563eb; --c-back: #059669; --c-db: #7c3aed; --c-ext: #d97706;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --fondo: #0d1017; --papel: #141926; --tinta: #e9edf6; --grafito: #c3cbdb; --plomo: #98a3b8;
+      --borde: #283044; --acento: #7aabe0; --acento-suave: #16263a; --codigo: #1b2232;
+      --c-front: #60a5fa; --c-back: #34d399; --c-db: #a78bfa; --c-ext: #fbbf24;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+      --fondo: #0d1017; --papel: #141926; --tinta: #e9edf6; --grafito: #c3cbdb; --plomo: #98a3b8;
+      --borde: #283044; --acento: #7aabe0; --acento-suave: #16263a; --codigo: #1b2232;
+      --c-front: #60a5fa; --c-back: #34d399; --c-db: #a78bfa; --c-ext: #fbbf24;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--fondo); color: var(--grafito); font: 15px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding-block: 24px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  h1 { color: var(--tinta); font-size: 28px; margin: 8px 0 4px; }
+  h2 { color: var(--tinta); font-size: 21px; margin: 40px 0 8px; padding-top: 12px; border-top: 1px solid var(--borde); }
+  h3 { color: var(--tinta); font-size: 16px; margin: 22px 0 6px; }
+  p, li { max-width: 72ch; }
+  code { background: var(--codigo); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+  pre { background: var(--codigo); padding: 12px; border-radius: 8px; overflow-x: auto; font-size: 13px; }
+  a { color: var(--acento); }
+  .bajada { color: var(--plomo); margin-top: 0; }
+  .indice { background: var(--papel); border: 1px solid var(--borde); border-radius: 10px; padding: 12px 18px; }
+  .indice ol { margin: 4px 0; padding-left: 20px; }
+  .caja { background: var(--papel); border: 1px solid var(--borde); border-radius: 10px; padding: 14px 18px; margin: 12px 0; }
+  .nota { border-left: 3px solid var(--aviso); background: var(--papel); padding: 8px 14px; border-radius: 0 8px 8px 0; }
+  table { width: 100%; border-collapse: collapse; background: var(--papel); border: 1px solid var(--borde); border-radius: 10px; overflow: hidden; font-size: 13.5px; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--borde); vertical-align: top; }
+  th { color: var(--tinta); background: var(--acento-suave); }
+  .tabla { overflow-x: auto; }
+  svg { width: 100%; height: auto; display: block; }
+  svg text { fill: var(--tinta); font: 13px system-ui, sans-serif; }
+  svg .chico { font-size: 11px; fill: var(--plomo); }
+  svg .caja-f { fill: var(--papel); stroke: var(--c-front); stroke-width: 2; }
+  svg .caja-b { fill: var(--papel); stroke: var(--c-back); stroke-width: 2; }
+  svg .caja-d { fill: var(--papel); stroke: var(--c-db); stroke-width: 2; }
+  svg .caja-e { fill: var(--papel); stroke: var(--c-ext); stroke-width: 2; stroke-dasharray: 5 4; }
+  svg .flecha { stroke: var(--plomo); stroke-width: 1.6; fill: none; marker-end: url(#punta); }
+  svg .punta { fill: var(--plomo); }
+  .leyenda span { display: inline-block; margin-right: 14px; font-size: 13px; }
+  .leyenda i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+  ol.pasos li { margin: 4px 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Mapa de Parkit</h1>
+  <p class="bajada">Cómo está armado el proyecto, cómo se conecta cada parte y qué archivos tocar para agregar una feature. Se lee sin internet.</p>
+
+  <nav class="indice">
+    <strong>Índice</strong>
+    <ol>
+      <li><a href="#vista">Vista general</a></li>
+      <li><a href="#back">Back por capas</a></li>
+      <li><a href="#front">Front por capas</a></li>
+      <li><a href="#base">Base de datos</a></li>
+      <li><a href="#reserva">Ciclo de la reserva</a></li>
+      <li><a href="#ejemplo">Una feature de punta a punta: denuncia de reseñas</a></li>
+      <li><a href="#recetas">Recetas para agregar cosas</a></li>
+      <li><a href="#comandos">Comandos</a></li>
+    </ol>
+  </nav>
+
+  <!-- ============================================================ 1 -->
+  <h2 id="vista">1. Vista general</h2>
+  <p>Parkit conecta <strong>conductores</strong> que buscan dónde estacionar con <strong>propietarios</strong> de estacionamientos; un <strong>administrador</strong> aprueba estacionamientos y modera disputas y reseñas. Un mismo usuario puede tener los perfiles de conductor y de propietario y alternar entre ellos.</p>
+  <p class="leyenda"><span><i style="background:var(--c-front)"></i>Front (Angular)</span><span><i style="background:var(--c-back)"></i>Back (Express)</span><span><i style="background:var(--c-db)"></i>Base (Postgres)</span><span><i style="background:var(--c-ext)"></i>Servicios externos</span></p>
+  <svg viewBox="0 0 900 260" role="img" aria-label="Diagrama: navegador, Vercel, Railway, Neon, Cloudinary y Georef">
+    <defs><marker id="punta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="punta" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+    <rect class="caja-f" x="10" y="90" width="150" height="70" rx="10"/><text x="85" y="120" text-anchor="middle">Navegador</text><text class="chico" x="85" y="140" text-anchor="middle">conductor / propietario / admin</text>
+    <rect class="caja-f" x="215" y="80" width="180" height="90" rx="10"/><text x="305" y="108" text-anchor="middle">Vercel</text><text class="chico" x="305" y="128" text-anchor="middle">Front/ (Angular)</text><text class="chico" x="305" y="146" text-anchor="middle">vercel.json reenvía /api/*</text>
+    <rect class="caja-b" x="450" y="80" width="180" height="90" rx="10"/><text x="540" y="108" text-anchor="middle">Railway</text><text class="chico" x="540" y="128" text-anchor="middle">Back/ (Express)</text><text class="chico" x="540" y="146" text-anchor="middle">migra al arrancar</text>
+    <rect class="caja-d" x="690" y="80" width="200" height="90" rx="10"/><text x="790" y="108" text-anchor="middle">Neon (Postgres)</text><text class="chico" x="790" y="128" text-anchor="middle">branch production (deploy)</text><text class="chico" x="790" y="146" text-anchor="middle">branch dev (local y tests)</text>
+    <rect class="caja-e" x="450" y="200" width="180" height="50" rx="10"/><text x="540" y="222" text-anchor="middle">Georef / Nominatim</text><text class="chico" x="540" y="240" text-anchor="middle">dirección → coordenadas</text>
+    <rect class="caja-e" x="215" y="200" width="180" height="50" rx="10"/><text x="305" y="222" text-anchor="middle">Cloudinary</text><text class="chico" x="305" y="240" text-anchor="middle">fotos (subida firmada)</text>
+    <path class="flecha" d="M160 125 H213"/><path class="flecha" d="M395 125 H448"/><path class="flecha" d="M630 125 H688"/>
+    <path class="flecha" d="M540 170 V198"/><path class="flecha" d="M85 160 V225 H213"/><path class="flecha" d="M520 170 Q420 190 397 215"/>
+    <text class="chico" x="420" y="115" text-anchor="middle">/api</text>
+    <text class="chico" x="80" y="30">Ramas: development = integración · main = producción (Vercel y Railway deployan main del fork)</text>
+  </svg>
+  <div class="caja">
+    <strong>Carpetas raíz</strong>
+    <ul>
+      <li><code>Back/</code> — API REST: <code>src/</code> (código), <code>pruebas/</code> (tests <code>node --test</code>), <code>src/db/schema.sql</code> (toda la base).</li>
+      <li><code>Front/</code> — app Angular: <code>src/app/</code> (código), <code>vercel.json</code>, <code>proxy.conf.json</code> (en local, <code>/api</code> → <code>localhost:3000</code>).</li>
+      <li><code>docs/</code> — <code>deploy.md</code> y este mapa.</li>
+    </ul>
+  </div>
+
+  <!-- ============================================================ 2 -->
+  <h2 id="back">2. Back por capas</h2>
+  <p>Cada pedido recorre siempre las mismas capas. Para encontrar algo, seguí el endpoint de izquierda a derecha:</p>
+  <svg viewBox="0 0 900 200" role="img" aria-label="Capas del back: app, rutas, middlewares, controller, service, base">
+    <defs><marker id="punta2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="punta" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+    <g>
+      <rect class="caja-b" x="5" y="40" width="130" height="80" rx="8"/><text x="70" y="66" text-anchor="middle">app.js</text><text class="chico" x="70" y="86" text-anchor="middle">cors, json, cookies</text><text class="chico" x="70" y="102" text-anchor="middle">vencimientos</text>
+      <rect class="caja-b" x="155" y="40" width="130" height="80" rx="8"/><text x="220" y="66" text-anchor="middle">routes/</text><text class="chico" x="220" y="86" text-anchor="middle">index.js monta</text><text class="chico" x="220" y="102" text-anchor="middle">*.routes.js</text>
+      <rect class="caja-b" x="305" y="40" width="150" height="80" rx="8"/><text x="380" y="66" text-anchor="middle">middlewares/</text><text class="chico" x="380" y="86" text-anchor="middle">authenticate, requireRole</text><text class="chico" x="380" y="102" text-anchor="middle">validate(validador)</text>
+      <rect class="caja-b" x="475" y="40" width="130" height="80" rx="8"/><text x="540" y="66" text-anchor="middle">controllers/</text><text class="chico" x="540" y="86" text-anchor="middle">lee req, llama al</text><text class="chico" x="540" y="102" text-anchor="middle">service, responde</text>
+      <rect class="caja-b" x="625" y="40" width="130" height="80" rx="8"/><text x="690" y="66" text-anchor="middle">services/</text><text class="chico" x="690" y="86" text-anchor="middle">reglas de negocio</text><text class="chico" x="690" y="102" text-anchor="middle">+ SQL</text>
+      <rect class="caja-d" x="775" y="40" width="120" height="80" rx="8"/><text x="835" y="66" text-anchor="middle">Postgres</text><text class="chico" x="835" y="86" text-anchor="middle">query /</text><text class="chico" x="835" y="102" text-anchor="middle">withTransaction</text>
+    </g>
+    <path class="flecha" style="marker-end:url(#punta2)" d="M135 80 H153"/><path class="flecha" style="marker-end:url(#punta2)" d="M285 80 H303"/><path class="flecha" style="marker-end:url(#punta2)" d="M455 80 H473"/><path class="flecha" style="marker-end:url(#punta2)" d="M605 80 H623"/><path class="flecha" style="marker-end:url(#punta2)" d="M755 80 H773"/>
+    <rect class="caja-b" x="305" y="150" width="450" height="40" rx="8"/><text x="530" y="175" text-anchor="middle">Errores: throw ApiError.conflict(...) → errorHandler.js → { error: { message } }</text>
+    <path class="flecha" style="marker-end:url(#punta2)" d="M690 120 V148"/>
+  </svg>
+  <div class="caja">
+    <strong>Las piezas que se repiten en todo el back</strong>
+    <ul>
+      <li><code>config/database.js</code>: <code>query(sql, params)</code> para una consulta y <code>withTransaction(async (client) =&gt; …)</code> para varias juntas (todo o nada).</li>
+      <li><code>middlewares/auth.js</code>: <code>authenticate</code> lee la cookie de sesión y deja <code>req.usuario = { id, rol }</code>; <code>requireRole(ROLES.PROPIETARIO)</code> corta si el perfil activo no es ese.</li>
+      <li><code>middlewares/validate.js</code> + <code>validators/*.js</code>: cada validador usa <code>campos(body).texto(...).entero(...).resultado()</code> (de <code>validators/helpers.js</code>) y deja en <code>req.body</code> los datos ya limpios. Si hay errores responde 400.</li>
+      <li><code>utils/ApiError.js</code>: <code>ApiError.badRequest / unauthorized / forbidden / notFound / conflict</code> → 400 / 401 / 403 / 404 / 409.</li>
+      <li><code>utils/asyncHandler.js</code>: envuelve cada controller para que los errores lleguen al <code>errorHandler</code>.</li>
+      <li><code>utils/roles.js</code>: estados y roles (<code>ROLES</code>, <code>ESTADOS_RESERVA</code>, <code>ESTADOS_VIGENTES</code>, …).</li>
+      <li><code>utils/solapamiento.js</code>: <code>cocheraReservable()</code> (cochera activa, sin bloqueo, no dada de baja) y <code>sinSolapamiento()</code> (sin reservas que se pisen). Para elegir una cochera libre se usa <code>buscarCocheraLibre</code> de <code>cochera.service.js</code>.</li>
+      <li><code>utils/sql.js</code>: <code>armarSet(campos, datos, parametros)</code> arma el <code>SET campo = $n</code> de un UPDATE con los campos que vinieron.</li>
+      <li><code>utils/horario.js</code>: hora argentina (<code>ZONA_HORARIA</code>, <code>HOY_LOCAL_SQL</code>, <code>HORA_LOCAL</code>, <code>instanteLocal</code>, <code>partesLocales</code>).</li>
+    </ul>
+    <p><strong>Cómo están comentados:</strong> cada archivo arranca con qué es y con qué se conecta; cada función tiene una línea arriba; cada controller dice qué ruta atiende y quién la puede llamar (ej. <code>/** POST /api/abonos (conductor) */</code>).</p>
+  </div>
+  <h3>Módulos y endpoints (todos bajo <code>/api</code>)</h3>
+  <div class="tabla"><table>
+    <tr><th>Módulo</th><th>Archivos</th><th>Endpoints principales</th></tr>
+    <tr><td>Sesión y cuenta</td><td><code>auth.routes / auth.controller / auth.service</code></td><td><code>POST /auth/register, /auth/login, /auth/logout, /auth/rol</code> · <code>GET|PATCH|DELETE /auth/me</code></td></tr>
+    <tr><td>Estacionamientos</td><td><code>estacionamiento.routes / .controller / .service</code>, <code>estacionamiento-foto.service</code>, <code>geocodificacion.service</code></td><td><code>GET /estacionamientos</code> (búsqueda) · <code>GET /:id</code> · <code>GET /mios</code> · <code>POST /</code> · <code>PATCH /:id</code> · fotos · <code>GET /:id/disponibilidad</code> · <code>GET /:id/reputacion</code></td></tr>
+    <tr><td>Cocheras</td><td><code>cochera.service</code> (rutas en estacionamiento.routes)</td><td><code>/estacionamientos/:id/cocheras</code> (alta, lote, editar, baja, reactivar, bloquear, desbloquear)</td></tr>
+    <tr><td>Vehículos</td><td><code>vehiculo.routes / .controller / .service</code></td><td><code>GET /vehiculos/tipos</code> · <code>GET|POST /vehiculos</code> · <code>PATCH|DELETE /vehiculos/:id</code> · foto</td></tr>
+    <tr><td>Reservas y acceso</td><td><code>reserva.routes / .controller / .service</code></td><td><code>POST /reservas</code> · <code>GET /reservas</code> · <code>PATCH /:id/cancelar|confirmar|ausente</code> · <code>GET /acceso/:codigo</code> · <code>POST /acceso</code></td></tr>
+    <tr><td>Abonos</td><td><code>abono.routes / .controller / .service</code></td><td><code>/estacionamientos/:id/planes-abono</code> · <code>POST|GET /abonos</code> · <code>PATCH /abonos/:id/cancelar</code></td></tr>
+    <tr><td>Incidencias y reclamos</td><td><code>incidencia.*</code>, <code>devolucion.service</code>, <code>moderacion.service</code></td><td><code>POST /incidencias/reclamos</code> · <code>GET /incidencias</code> · mensajes · resolver · denunciar · aceptar · retirar</td></tr>
+    <tr><td>Calificaciones y reputación</td><td><code>calificacion.service</code>, <code>reputacion.service</code></td><td><code>POST /reservas/:id/calificacion</code> (conductor) · <code>POST /reservas/:id/calificacion-conductor</code> (propietario) · <code>GET /reservas/mi-reputacion</code></td></tr>
+    <tr><td>Denuncia de reseñas</td><td><code>calificacion.routes / .controller</code>, <code>denuncia-resena.service</code></td><td><code>POST /calificaciones/:id/denuncia</code></td></tr>
+    <tr><td>Admin</td><td><code>admin.routes / .controller</code>, <code>admin.service</code>, <code>admin-estadistica.service</code></td><td><code>/admin/estacionamientos</code> (aprobar/rechazar) · <code>/admin/incidencias</code> · <code>/admin/resenas</code> · <code>/admin/estadisticas</code></td></tr>
+    <tr><td>Estadísticas del propietario</td><td><code>estadistica.*</code></td><td><code>GET /estadisticas/propietario</code></td></tr>
+  </table></div>
+
+  <!-- ============================================================ 3 -->
+  <h2 id="front">3. Front por capas</h2>
+  <svg viewBox="0 0 900 210" role="img" aria-label="Capas del front: rutas, página, service, mapeo, HttpClient, interceptores, API">
+    <defs><marker id="punta3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="punta" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+    <rect class="caja-f" x="5" y="30" width="140" height="80" rx="8"/><text x="75" y="56" text-anchor="middle">app.routes.ts</text><text class="chico" x="75" y="76" text-anchor="middle">rutas por rol</text><text class="chico" x="75" y="92" text-anchor="middle">+ guards</text>
+    <rect class="caja-f" x="165" y="30" width="140" height="80" rx="8"/><text x="235" y="56" text-anchor="middle">pages/</text><text class="chico" x="235" y="76" text-anchor="middle">.ts + .html + .css</text><text class="chico" x="235" y="92" text-anchor="middle">signals, rxResource</text>
+    <rect class="caja-f" x="325" y="30" width="140" height="80" rx="8"/><text x="395" y="56" text-anchor="middle">services/</text><text class="chico" x="395" y="76" text-anchor="middle">un método por</text><text class="chico" x="395" y="92" text-anchor="middle">endpoint</text>
+    <rect class="caja-f" x="485" y="30" width="140" height="80" rx="8"/><text x="555" y="56" text-anchor="middle">api.mapeo.ts</text><text class="chico" x="555" y="76" text-anchor="middle">DTO (snake_case) ⇄</text><text class="chico" x="555" y="92" text-anchor="middle">modelo (camelCase)</text>
+    <rect class="caja-f" x="645" y="30" width="120" height="80" rx="8"/><text x="705" y="56" text-anchor="middle">interceptors/</text><text class="chico" x="705" y="76" text-anchor="middle">api: prefijo /api</text><text class="chico" x="705" y="92" text-anchor="middle">error: mensaje</text>
+    <rect class="caja-b" x="785" y="30" width="110" height="80" rx="8"/><text x="840" y="66" text-anchor="middle">Back /api</text>
+    <path class="flecha" style="marker-end:url(#punta3)" d="M145 70 H163"/><path class="flecha" style="marker-end:url(#punta3)" d="M305 70 H323"/><path class="flecha" style="marker-end:url(#punta3)" d="M465 70 H483"/><path class="flecha" style="marker-end:url(#punta3)" d="M625 70 H643"/><path class="flecha" style="marker-end:url(#punta3)" d="M765 70 H783"/>
+    <rect class="caja-f" x="165" y="140" width="300" height="56" rx="8"/><text x="315" y="164" text-anchor="middle">components/ (ui/, reserva/, estacionamiento/…)</text><text class="chico" x="315" y="182" text-anchor="middle">piezas reutilizables: botón, modal, tarjeta, chip…</text>
+    <rect class="caja-f" x="485" y="140" width="280" height="56" rx="8"/><text x="625" y="164" text-anchor="middle">models/ y utils/</text><text class="chico" x="625" y="182" text-anchor="middle">tipos, etiquetas de pantalla, funciones puras</text>
+    <path class="flecha" style="marker-end:url(#punta3)" d="M235 110 V138"/><path class="flecha" style="marker-end:url(#punta3)" d="M555 110 V138"/>
+  </svg>
+  <div class="caja">
+    <strong>Cómo leer una pantalla</strong>
+    <ol class="pasos">
+      <li>Buscá la URL en <code>app.routes.ts</code>: te dice el componente de <code>pages/</code> (y qué rol la ve).</li>
+      <li>En el <code>.ts</code> de la página: los datos llegan con <code>rxResource({ params, stream })</code> desde un service; el estado local son <code>signal()</code> y <code>computed()</code>.</li>
+      <li>El service (<code>services/x.service.ts</code>) hace <code>this.http.get/post(...)</code> y pasa la respuesta por <code>aX(dto)</code> de <code>api.mapeo.ts</code>.</li>
+      <li>El <code>.html</code> usa <code>@if</code>, <code>@for</code> y los componentes de <code>components/ui</code> (<code>&lt;ui-boton&gt;</code>, <code>&lt;ui-modal&gt;</code>, <code>&lt;ui-tarjeta&gt;</code>…).</li>
+      <li>Los errores ya llegan como <code>Error</code> con un mensaje mostrable (lo arma <code>error.interceptor.ts</code>): se muestran con <code>error.set(e.message)</code>.</li>
+    </ol>
+    <p>Cada <code>.html</code> arranca con un comentario que dice qué pantalla es y en qué <code>.ts</code> están sus datos. Constantes que se repiten en muchas pantallas: <code>TIPOS_VEHICULO</code>, <code>ICONO_TIPO_VEHICULO</code> y <code>ETIQUETA_TIPO_VEHICULO</code> (en <code>models/vehiculo.model.ts</code>); fechas con <code>diaCorto</code>, <code>desdeFechaISO</code> y <code>aFechaISO</code> (en <code>utils/fecha.util.ts</code>).</p>
+  </div>
+  <h3>Pantallas por rol (<code>app.routes.ts</code>)</h3>
+  <div class="tabla"><table>
+    <tr><th>Rol</th><th>Rutas → <code>pages/</code></th></tr>
+    <tr><td>Público</td><td><code>/ingresar</code> → ingresar · <code>/registrarse</code> → registro</td></tr>
+    <tr><td>Conductor</td><td><code>explorar</code> → <code>conductor/mapa</code> (búsqueda y resultados sobre el mapa; <code>mapa</code> redirige acá), <code>reservar/:id</code>, <code>mis-reservas</code>, <code>calificar/:reservaId</code>, <code>abonos…</code>, <code>vehiculos…</code>, <code>perfil</code>, <code>incidencias</code> (todo bajo <code>/conductor</code>)</td></tr>
+    <tr><td>Propietario</td><td><code>tablero</code>, <code>estadisticas</code>, <code>reputacion</code>, <code>reservas</code>, <code>acceso/:codigo</code>, <code>estacionamientos…</code>, <code>cocheras…</code>, <code>perfil</code>, <code>incidencias</code> (bajo <code>/propietario</code>)</td></tr>
+    <tr><td>Administrador</td><td><code>tablero</code>, <code>pendientes</code>, <code>estacionamientos/:id</code>, <code>disputas</code>, <code>disputas/:id</code>, <code>resenas</code>, <code>perfil</code> (bajo <code>/admin</code>)</td></tr>
+  </table></div>
+  <p>La barra lateral de cada rol se arma en <code>layouts/layout-app/layout-app.ts</code> (<code>{ ruta, etiqueta, icono }</code>).</p>
+
+  <!-- ============================================================ 4 -->
+  <h2 id="base">4. Base de datos</h2>
+  <p>Toda la estructura está en <code>Back/src/db/schema.sql</code>. Es <strong>idempotente</strong> (<code>CREATE TABLE IF NOT EXISTS</code>, <code>ADD COLUMN IF NOT EXISTS</code>, bloques <code>DO $$ … IF NOT EXISTS</code>): se puede correr muchas veces. Para cambiar la base se <strong>agrega al final</strong> y se corre <code>npm run db:migrate</code>.</p>
+  <svg viewBox="0 0 900 395" role="img" aria-label="Tablas y relaciones">
+    <defs><marker id="punta4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="punta" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+    <g>
+      <rect class="caja-d" x="380" y="10" width="140" height="44" rx="8"/><text x="450" y="37" text-anchor="middle">usuario</text>
+      <rect class="caja-d" x="120" y="100" width="170" height="44" rx="8"/><text x="205" y="127" text-anchor="middle">estacionamiento</text>
+      <rect class="caja-d" x="620" y="100" width="140" height="44" rx="8"/><text x="690" y="127" text-anchor="middle">vehiculo</text>
+      <rect class="caja-d" x="10" y="190" width="100" height="40" rx="8"/><text x="60" y="215" text-anchor="middle">horario</text>
+      <rect class="caja-d" x="120" y="190" width="110" height="40" rx="8"/><text x="175" y="215" text-anchor="middle">cochera</text>
+      <rect class="caja-d" x="240" y="190" width="120" height="40" rx="8"/><text x="300" y="215" text-anchor="middle">plan_abono</text>
+      <rect class="caja-d" x="10" y="250" width="200" height="40" rx="8"/><text x="110" y="275" text-anchor="middle">estacionamiento_imagen</text>
+      <rect class="caja-d" x="380" y="190" width="140" height="44" rx="8"/><text x="450" y="217" text-anchor="middle">reserva</text>
+      <rect class="caja-d" x="300" y="300" width="100" height="40" rx="8"/><text x="350" y="325" text-anchor="middle">abono</text>
+      <rect class="caja-d" x="440" y="300" width="120" height="40" rx="8"/><text x="500" y="325" text-anchor="middle">incidencia</text>
+      <rect class="caja-d" x="600" y="300" width="150" height="40" rx="8"/><text x="675" y="325" text-anchor="middle">incidencia_mensaje</text>
+      <rect class="caja-d" x="620" y="190" width="140" height="44" rx="8"/><text x="690" y="217" text-anchor="middle">calificacion</text>
+      <rect class="caja-d" x="780" y="300" width="110" height="40" rx="8"/><text x="835" y="325" text-anchor="middle">devolucion</text>
+    </g>
+    <g style="marker-end:url(#punta4)">
+      <path class="flecha" style="marker-end:url(#punta4)" d="M205 100 L430 54"/>
+      <path class="flecha" style="marker-end:url(#punta4)" d="M690 100 L480 54"/>
+      <path class="flecha" style="marker-end:url(#punta4)" d="M60 190 L170 144"/>
+      <path class="flecha" style="marker-end:url(#punta4)" d="M175 190 L195 144"/>
+      <path class="flecha" style="marker-end:url(#punta4)" d="M300 190 L230 144"/>
+      <path class="flecha" style="marker-end:url(#punta4)" d="M110 250 L150 144"/>
+      <path class="flecha" style="marker-end:url(#punta4)" d="M390 234 Q300 270 180 232"/>
+      <path class="flecha" style="marker-end:url(#punta4)" d="M520 205 Q600 150 650 144"/>
+      <path class="flecha" style="marker-end:url(#punta4)" d="M450 190 L450 56"/>
+      <path class="flecha" style="marker-end:url(#punta4)" d="M350 300 L310 230"/>
+      <path class="flecha" style="marker-end:url(#punta4)" d="M500 300 L460 234"/>
+      <path class="flecha" style="marker-end:url(#punta4)" d="M600 320 L560 320"/>
+      <path class="flecha" style="marker-end:url(#punta4)" d="M620 220 L520 215"/>
+      <path class="flecha" style="marker-end:url(#punta4)" d="M835 300 L560 228"/>
+    </g>
+    <text class="chico" x="10" y="368">Flecha = "tiene una FK hacia". Ej.: reserva → cochera, reserva → vehiculo, reserva → usuario (conductor).</text>
+    <text class="chico" x="10" y="386">Cocheras y vehículos apuntan también a tipo_vehiculo (catálogo: 1 Auto, 2 Moto, 3 Camioneta).</text>
+  </svg>
+  <div class="tabla"><table>
+    <tr><th>Tabla</th><th>Qué guarda</th><th>Columnas que conviene recordar</th></tr>
+    <tr><td><code>usuario</code></td><td>Cuentas</td><td><code>rol</code> (activo), <code>roles[]</code> (habilitados), <code>activo</code></td></tr>
+    <tr><td><code>estacionamiento</code></td><td>Del propietario</td><td><code>tarifa_hora/estadia/jornada</code>, <code>publicado</code>, <code>estado_aprobacion</code>, <code>latitud/longitud</code></td></tr>
+    <tr><td><code>horario</code></td><td>Atención por día</td><td><code>dia_semana</code> (0 = domingo), <code>hora_apertura</code>, <code>hora_cierre</code></td></tr>
+    <tr><td><code>cochera</code></td><td>Cada lugar físico</td><td><code>identificador</code>, <code>estado_actual</code>, <code>bloqueada</code>, <code>id_tipo_vehiculo</code></td></tr>
+    <tr><td><code>reserva</code></td><td>Una franja de una cochera</td><td><code>estado</code>, <code>inicio/fin</code>, <code>ingreso_real/egreso_real</code>, <code>codigo_acceso</code>, <code>precio_total</code>, <code>modalidad</code></td></tr>
+    <tr><td><code>plan_abono</code> / <code>abono</code></td><td>Abonos mensuales por turno</td><td><code>turno</code>, <code>cupos</code>, <code>desde/hasta</code></td></tr>
+    <tr><td><code>incidencia</code> / <code>incidencia_mensaje</code> / <code>devolucion</code></td><td>Problemas, chats y devoluciones</td><td><code>tipo</code>, <code>estado</code>, <code>canal</code>, <code>monto</code></td></tr>
+    <tr><td><code>calificacion</code></td><td>Reseñas de los dos lados</td><td><code>autor</code> (CONDUCTOR/PROPIETARIO), <code>puntaje</code>, 5 categorías, <code>etiquetas[]</code>, <code>oculta</code>, <code>denuncia_*</code></td></tr>
+  </table></div>
+  <p class="nota">Las restricciones importantes viven en la base: el <code>EXCLUDE</code> que impide dos reservas superpuestas en la misma cochera, los <code>CHECK</code> de puntajes y los <code>UNIQUE</code> (ej. una calificación por lado y reserva). Un error de la base se traduce a 4xx en <code>errorHandler.js</code>.</p>
+
+  <!-- ============================================================ 5 -->
+  <h2 id="reserva">5. Ciclo de la reserva</h2>
+  <svg viewBox="0 0 900 230" role="img" aria-label="Estados de la reserva y transiciones">
+    <defs><marker id="punta5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="punta" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+    <rect class="caja-b" x="10" y="80" width="130" height="50" rx="25"/><text x="75" y="110" text-anchor="middle">PENDIENTE</text>
+    <rect class="caja-b" x="230" y="80" width="140" height="50" rx="25"/><text x="300" y="110" text-anchor="middle">CONFIRMADA</text>
+    <rect class="caja-b" x="460" y="80" width="120" height="50" rx="25"/><text x="520" y="110" text-anchor="middle">ACTIVA</text>
+    <rect class="caja-b" x="670" y="80" width="140" height="50" rx="25"/><text x="740" y="110" text-anchor="middle">FINALIZADA</text>
+    <rect class="caja-b" x="120" y="175" width="140" height="44" rx="22"/><text x="190" y="202" text-anchor="middle">CANCELADA</text>
+    <rect class="caja-b" x="330" y="175" width="120" height="44" rx="22"/><text x="390" y="202" text-anchor="middle">NO_SHOW</text>
+    <path class="flecha" style="marker-end:url(#punta5)" d="M140 105 H228"/><text class="chico" x="184" y="96" text-anchor="middle">confirma propietario</text>
+    <path class="flecha" style="marker-end:url(#punta5)" d="M370 105 H458"/><text class="chico" x="414" y="96" text-anchor="middle">ingreso (QR)</text>
+    <path class="flecha" style="marker-end:url(#punta5)" d="M580 105 H668"/><text class="chico" x="624" y="96" text-anchor="middle">egreso (QR)</text>
+    <path class="flecha" style="marker-end:url(#punta5)" d="M75 130 L170 173"/><text class="chico" x="40" y="160">cancela conductor / vence</text>
+    <path class="flecha" style="marker-end:url(#punta5)" d="M280 130 L220 173"/>
+    <path class="flecha" style="marker-end:url(#punta5)" d="M320 130 L380 173"/><text class="chico" x="470" y="160">15 min sin ingreso / marca ausente</text>
+    <text class="chico" x="10" y="30">Transiciones permitidas: TRANSICIONES en Back/src/services/reserva.service.js. Todas pasan por cambiarEstado(client, reserva, estadoNuevo).</text>
+    <text class="chico" x="10" y="50">Automáticas (jobs/vencimientos.job.js, a demanda, máx. 1 vez por minuto): PENDIENTE vencida → CANCELADA, CONFIRMADA sin ingreso → NO_SHOW.</text>
+  </svg>
+  <ul>
+    <li><strong>Vencimientos a demanda:</strong> no hay reloj. Cada pedido a la API dispara <code>revisar()</code> si pasó un minuto (así la base puede dormir). Ver el comentario de cabecera de <code>vencimientos.job.js</code>.</li>
+    <li><strong>Sin sobreventa:</strong> <code>crear</code> bloquea las cocheras candidatas con <code>SELECT … FOR UPDATE</code> antes de buscar solapamientos, y la base repite la garantía con un <code>EXCLUDE</code>.</li>
+    <li><strong>Precio:</strong> <code>utils/tarifas.js</code> (<code>precioDeReserva</code>). Horario de atención: <code>utils/horario.js</code>.</li>
+  </ul>
+
+  <!-- ============================================================ 6 -->
+  <h2 id="ejemplo">6. Una feature de punta a punta: denuncia de reseñas</h2>
+  <p>Es el mejor ejemplo para copiar porque toca <strong>todas</strong> las capas. En orden:</p>
+  <ol class="pasos">
+    <li><strong>Base:</strong> al final de <code>schema.sql</code>, los enums <code>estado_denuncia_resena</code>/<code>motivo_denuncia_resena</code> y las columnas <code>denuncia_*</code> y <code>oculta</code> en <code>calificacion</code> → <code>npm run db:migrate</code>.</li>
+    <li><strong>Constantes:</strong> <code>utils/denuncias.js</code> (<code>MOTIVOS_DENUNCIA</code>, <code>ESTADOS_DENUNCIA</code>).</li>
+    <li><strong>Validador:</strong> <code>validators/denuncia-resena.validator.js</code> → <code>validarDenunciaResena</code> (motivo obligatorio, detalle ≤500).</li>
+    <li><strong>Service:</strong> <code>services/denuncia-resena.service.js</code> → <code>denunciar</code> (transacción, <code>FOR UPDATE</code>, reglas de quién puede, <code>UPDATE … RETURNING</code>), <code>listarDenuncias</code>, <code>moderar</code>.</li>
+    <li><strong>Controller:</strong> <code>controllers/calificacion.controller.js</code> → <code>denunciar</code> (responde 201).</li>
+    <li><strong>Ruta:</strong> <code>routes/calificacion.routes.js</code> (<code>POST /:id/denuncia</code> con <code>authenticate</code>, <code>requireRole</code>, <code>validate</code>) y montaje en <code>routes/index.js</code>. Las de admin, en <code>routes/admin.routes.js</code>.</li>
+    <li><strong>Efecto en otras partes:</strong> <code>reputacion.service.js</code> excluye <code>oculta</code> en todos los cálculos.</li>
+    <li><strong>Tests del back:</strong> <code>pruebas/denuncia-resena.test.mjs</code> (helpers de <code>pruebas/ayuda.mjs</code>: <code>crearUsuario</code>, <code>crearEstacionamiento</code>, <code>api(...)</code>).</li>
+    <li><strong>Front, datos:</strong> tipos en <code>models/calificacion.model.ts</code>, DTO en <code>services/api/api.dto.ts</code>, mapeo <code>aResenaDenunciada</code> en <code>api.mapeo.ts</code>, métodos en <code>calificacion.service.ts</code> (<code>denunciar</code>) y <code>admin.service.ts</code> (<code>resenas</code>, <code>desestimarResena</code>, <code>ocultarResena</code>).</li>
+    <li><strong>Front, pantallas:</strong> modal <code>components/reclamo/denunciar-resena</code>, botón en <code>pages/propietario/reputacion</code> y <code>pages/perfil</code>, página <code>pages/admin/resenas</code> + ruta en <code>app.routes.ts</code> + ítem en <code>layout-app.ts</code>.</li>
+    <li><strong>Tests del front:</strong> <code>api.mapeo.spec.ts</code>, <code>perfil.spec.ts</code>, <code>resenas.spec.ts</code>.</li>
+  </ol>
+
+  <!-- ============================================================ 7 -->
+  <h2 id="recetas">7. Recetas para agregar cosas</h2>
+
+  <h3>A. Agregar un campo a una tabla y mostrarlo</h3>
+  <ol class="pasos">
+    <li><code>schema.sql</code> (al final): <code>ALTER TABLE x ADD COLUMN IF NOT EXISTS campo TIPO;</code> → <code>npm run db:migrate</code>.</li>
+    <li>Service del back: sumarlo al <code>SELECT</code> (o a la lista de columnas, ej. <code>COLUMNAS</code> en <code>estacionamiento.service.js</code>) y, si se edita, al <code>INSERT</code>/<code>UPDATE</code> (lista <code>CAMPOS_EDITABLES</code>).</li>
+    <li>Validador: <code>.texto('campo', body.campo, { requerido: false })</code> o el tipo que corresponda.</li>
+    <li>Front: el DTO en <code>api.dto.ts</code>, el modelo en <code>models/</code>, el mapeo en <code>api.mapeo.ts</code> (<code>campo: dto.campo</code>) y el payload si se envía.</li>
+    <li>Pantalla: mostrarlo en el <code>.html</code> (<code>{{ x.campo }}</code>) o sumarlo al formulario.</li>
+    <li>Test: un caso en el <code>.test.mjs</code> del módulo y otro en <code>api.mapeo.spec.ts</code>.</li>
+  </ol>
+
+  <h3>B. Agregar un endpoint</h3>
+  <ol class="pasos">
+    <li>Service: <code>export async function hacerAlgo(id, idUsuario, datos)</code> con las reglas; errores con <code>ApiError</code>. Si toca varias tablas, <code>withTransaction</code>.</li>
+    <li>Validador (si recibe body): <code>export function validarAlgo(body) { return campos(body)….resultado(); }</code>.</li>
+    <li>Controller: <code>export const hacerAlgo = asyncHandler(async (req, res) =&gt; { res.json({ x: await service.hacerAlgo(req.params.id, req.usuario.id, req.body) }); });</code></li>
+    <li>Ruta: <code>router.post('/:id/algo', authenticate, requireRole(ROLES.X), validate(validarAlgo), controller.hacerAlgo);</code> (rutas fijas como <code>/mios</code> van <strong>antes</strong> de las que tienen <code>/:id</code>).</li>
+    <li>Test en <code>pruebas/</code>: <code>const { estado, datos } = await api('POST', '/x/1/algo', { token, body });</code></li>
+  </ol>
+
+  <h3>C. Agregar una pantalla</h3>
+  <ol class="pasos">
+    <li>Copiar una página parecida de <code>pages/</code> (las 3 partes: <code>.ts</code>, <code>.html</code>, <code>.css</code>). Una lista simple: <code>pages/admin/resenas</code>.</li>
+    <li>Ruta en <code>app.routes.ts</code> bajo el rol que corresponda: <code>{ path: 'algo', title: 'Parkit · Algo', loadComponent: () =&gt; import('./pages/…/algo').then((m) =&gt; m.Algo) }</code>.</li>
+    <li>Si va en el menú: un ítem en <code>layouts/layout-app/layout-app.ts</code>.</li>
+    <li>Los datos: método en el service + <code>rxResource</code> en la página; error con <code>@if (recurso.error())</code> antes de <code>recurso.value()</code>.</li>
+  </ol>
+
+  <h3>D. Agregar una validación o regla</h3>
+  <ul>
+    <li>De forma (largo, tipo, rango): en el validador (<code>validators/*.js</code>) → 400 automático.</li>
+    <li>De negocio (estado, permisos, fechas): en el service, antes de escribir, con <code>throw ApiError.conflict('mensaje')</code> → 409. En el front se muestra sola.</li>
+  </ul>
+
+  <h3>E. Agregar un test</h3>
+  <ul>
+    <li>Back: en <code>pruebas/x.test.mjs</code>, <code>test('qué pasa', async () =&gt; { … assert.equal(estado, 201); })</code>. Helpers en <code>pruebas/ayuda.mjs</code>.</li>
+    <li>Front: <code>x.spec.ts</code> al lado del archivo, con <code>describe / it / expect</code>. Funciones puras se prueban directo; componentes con <code>TestBed</code> (ej. <code>perfil.spec.ts</code>).</li>
+  </ul>
+
+  <!-- ============================================================ 8 -->
+  <h2 id="comandos">8. Comandos</h2>
+  <pre>
+# Back (necesita Back/.env apuntando a la branch dev de Neon)
+cd Back
+npm run dev            # API en http://localhost:3000/api
+npm run db:migrate     # aplica schema.sql + seed.sql (idempotente)
+npm test               # todos los tests (node --test pruebas/*.test.mjs)
+node --test --env-file=.env pruebas/reserva.test.mjs   # un solo archivo
+
+# Front
+cd Front
+npm start              # http://localhost:4200 (proxy /api → :3000)
+npx ng test --watch=false
+npx ng build
+</pre>
+  <ul>
+    <li>Usuarios de prueba: los crean los tests con contraseña <code>prueba1234</code> (<code>PASSWORD</code> en <code>ayuda.mjs</code>). Un admin: <code>npm run db:crear-admin</code>.</li>
+    <li>Mover una reserva en el tiempo para probar el ingreso: <code>npm run db:mover-reserva</code>.</li>
+    <li>Calificaciones de demo: <code>npm run db:calificaciones-demo -- "Nombre del estacionamiento"</code>.</li>
+  </ul>
+</main>
+</body>
+</html>

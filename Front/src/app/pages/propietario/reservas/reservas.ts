@@ -1,6 +1,7 @@
-import { DatePipe } from '@angular/common';
+import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
+import { CalificarConductor } from '@app/components/reserva';
 import {
   Boton,
   Cargando,
@@ -28,11 +29,9 @@ import {
   puedeAvanzar,
   puedeMarcarAusente,
 } from '@app/services/ciclo-reserva';
-import { Calificar, ObjetoCalificacion, Reputacion } from '@app/components/calificacion';
 import { AuthService } from '@app/services/auth.service';
 import { EstacionamientoService } from '@app/services/estacionamiento.service';
 import { ReservaService } from '@app/services/reserva.service';
-import { puedeCalificar } from '@app/utils/calificacion.util';
 import { desdeFechaISO } from '@app/utils/fecha.util';
 
 /**
@@ -79,7 +78,7 @@ const sinAcentos = (texto: string) =>
 @Component({
   selector: 'app-reservas',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, Tarjeta, Cargando, EstadoVacio, Etiqueta, Icono, Boton, Modal, Calificar, Reputacion],
+  imports: [DatePipe, NgTemplateOutlet, Tarjeta, Cargando, EstadoVacio, Etiqueta, Icono, Boton, Modal, CalificarConductor],
   templateUrl: './reservas.html',
 })
 export class Reservas {
@@ -207,6 +206,7 @@ export class Reservas {
   protected readonly aMarcarAusente = signal<ReservaDetallada | null>(null);
   protected readonly puedeMarcarAusente = (reserva: ReservaDetallada) => puedeMarcarAusente(reserva);
 
+  /** Marca la reserva como ausente (no-show) a mano y libera la cochera. */
   protected marcarAusente(reserva: ReservaDetallada): void {
     this.procesandoId.set(reserva.id);
     this.aviso.set(null);
@@ -227,23 +227,28 @@ export class Reservas {
     });
   }
 
-  /* ------------------------- calificar al conductor ------------------------- */
+  /* ----------------------- calificacion del conductor ----------------------- */
 
-  /** Reserva cuyo conductor se esta calificando: mientras no sea null, el modal esta abierto. */
-  protected readonly aCalificar = signal<ObjetoCalificacion | null>(null);
-  /** Finalizada o ausente, sin calificar todavia y dentro de los 14 dias. */
-  protected readonly puedeCalificarConductor = (reserva: ReservaDetallada) => puedeCalificar(reserva, 'PROPIETARIO');
+  /** Reserva cuyo conductor se esta calificando: abre el modal. */
+  protected readonly aCalificar = signal<ReservaDetallada | null>(null);
 
-  protected pedirCalificacion(reserva: ReservaDetallada): void {
-    this.aCalificar.set({
-      idReserva: reserva.id,
-      descripcion: `${this.vehiculo(reserva)} (${reserva.vehiculo.patente}) · ${reserva.fecha.split('-').reverse().join('/')} ${reserva.horaDesde}`,
-    });
+  /** "★ 4,6 (12)", o null si todavia nadie lo califico. */
+  protected reputacionConductor(reserva: ReservaDetallada): string | null {
+    const { promedio, cantidad } = reserva.reputacionConductor;
+    if (promedio === null || cantidad === 0) return null;
+    return `★ ${promedio.toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} (${cantidad})`;
   }
 
-  protected calificado(): void {
+  /** Si la fila ya muestra el boton de calificar o la nota dada (asi no va el "—"). */
+  protected conAccionDeCalificar(reserva: ReservaDetallada): boolean {
+    return reserva.conductorCalificable || reserva.calificacionAlConductor !== null;
+  }
+
+  /** Cierra el modal, avisa y recarga la lista. */
+  protected conductorCalificado(): void {
+    const reserva = this.aCalificar();
     this.aCalificar.set(null);
-    this.aviso.set('Calificación registrada.');
+    this.aviso.set(reserva ? `Calificaste al conductor de ${reserva.vehiculo.patente}.` : 'Calificaste al conductor.');
     this.recurso.reload();
   }
 }

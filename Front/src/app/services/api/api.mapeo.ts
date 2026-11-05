@@ -1,4 +1,7 @@
 import {
+  Calificacion,
+  ReputacionEstacionamiento,
+  ResumenReputacion,
   Incidencia,
   IncidenciaDetallada,
   IncidenciaModerada,
@@ -6,7 +9,6 @@ import {
   MensajeIncidencia,
   Abono,
   AccesoReserva,
-  CalificacionesRecibidas,
   Cochera,
   Estacionamiento,
   EstadoCochera,
@@ -27,9 +29,14 @@ import {
   TipoVehiculo,
   Usuario,
   Vehiculo,
+  Opinion,
+  ReputacionConductor,
+  ResenaDenunciada,
 } from '@app/models';
 import { aInstante, DIAS_POR_NUMERO, finDeFranja, partesLocales } from '@app/utils/fecha.util';
-import { AbonoDto, AccesoReservaDto, CalificacionesRecibidasDto, IncidenciaDetalladaDto, IncidenciaDto, IncidenciaModeradaDto, MensajeIncidenciaDto, CocheraDto, EstacionamientoDto, FranjaDto, HorarioDto, PlanAbonoDto, ReservaDto, UsuarioDto, VehiculoDto } from './api.dto';
+import { CalificacionDto, ReputacionDto } from './api.dto';
+import { OpinionDto, ReputacionConductorDto, ResenaDenunciadaDto } from './api.dto';
+import { AbonoDto, AccesoReservaDto, IncidenciaDetalladaDto, IncidenciaDto, IncidenciaModeradaDto, MensajeIncidenciaDto, CocheraDto, EstacionamientoDto, FranjaDto, HorarioDto, PlanAbonoDto, ReservaDto, UsuarioDto, VehiculoDto } from './api.dto';
 
 /*
  * Traduccion entre la API (snake_case, ids de catalogo, instantes ISO) y los
@@ -43,14 +50,14 @@ export const ID_TIPO_VEHICULO: Record<TipoVehiculo, number> = {
   CAMIONETA: 3,
 };
 
-const TIPO_POR_ID: Record<number, TipoVehiculo> = {
-  1: 'AUTO',
-  2: 'MOTO',
-  3: 'CAMIONETA',
-};
+/** El inverso de ID_TIPO_VEHICULO: id del catalogo -> tipo. */
+const TIPO_POR_ID = Object.fromEntries(
+  Object.entries(ID_TIPO_VEHICULO).map(([tipo, id]) => [id, tipo]),
+) as Record<number, TipoVehiculo>;
 
 /* --------------------------------- usuario -------------------------------- */
 
+/** UsuarioDto -> Usuario. */
 export function aUsuario(dto: UsuarioDto): Usuario {
   return {
     id: dto.id_usuario,
@@ -71,6 +78,7 @@ export function aPayloadRegistro(datos: RegistroUsuario) {
 
 /* ----------------------------- estacionamiento ---------------------------- */
 
+/** Un horario de la API -> franja de atencion (dia y horas HH:MM). */
 function aFranjaAtencion(dto: HorarioDto): FranjaAtencion {
   return {
     dia: DIAS_POR_NUMERO[dto.dia_semana],
@@ -79,6 +87,7 @@ function aFranjaAtencion(dto: HorarioDto): FranjaAtencion {
   };
 }
 
+/** EstacionamientoDto -> Estacionamiento (direccion, tarifas, fotos, reputacion…). */
 export function aEstacionamiento(dto: EstacionamientoDto): Estacionamiento {
   return {
     id: dto.id_estacionamiento,
@@ -113,8 +122,108 @@ export function aEstacionamiento(dto: EstacionamientoDto): Estacionamiento {
     estadoAprobacion: dto.estado_aprobacion,
     motivoRechazo: dto.motivo_rechazo ?? null,
     enviadoEn: dto.enviado_en,
-    reputacion: { promedio: dto.calificacion_promedio ?? null, cantidad: dto.cantidad_calificaciones ?? 0 },
-    puntajeOrden: dto.puntaje_orden ?? 0,
+    reputacion: aResumenReputacion(dto),
+  };
+}
+
+/* ------------------------------- reputacion ------------------------------- */
+
+/** La reputacion publica que viene con cada estacionamiento. */
+function aResumenReputacion(dto: EstacionamientoDto): ResumenReputacion {
+  return {
+    cantidad: dto.calificaciones ?? 0,
+    promedio: dto.calificacion_promedio ?? null,
+    categorias: dto.calificacion_categorias ?? null,
+    destacado: dto.destacado ?? false,
+    nivel: dto.nivel ?? null,
+    insignias: (dto.insignias ?? []).map((i) => i.codigo),
+    puntaje: dto.puntaje_reputacion ?? 0,
+  };
+}
+
+export function aCalificacion(dto: CalificacionDto): Calificacion {
+  return { id: dto.id_calificacion, reservaId: dto.id_reserva, promedio: dto.promedio };
+}
+
+/** ReputacionDto -> la pantalla de Reputacion del propietario. */
+export function aReputacion(dto: ReputacionDto): ReputacionEstacionamiento {
+  const { operacion } = dto;
+  return {
+    dias: dto.dias,
+    puntaje: dto.puntaje,
+    puntajeAnterior: dto.puntaje_anterior,
+    destacado: dto.destacado,
+    nivel: dto.nivel,
+    siguienteNivel: dto.siguiente_nivel,
+    niveles: dto.niveles,
+    umbralDestacado: dto.umbral_destacado,
+    minimoCalificaciones: dto.minimo_calificaciones,
+    calificaciones: dto.calificaciones,
+    operacion: {
+      puntos: operacion.puntos,
+      confirmacion: operacion.confirmacion,
+      incidencias: {
+        puntos: operacion.incidencias.puntos,
+        sinDenuncia: operacion.incidencias.sin_denuncia,
+        total: operacion.incidencias.total,
+      },
+      respuesta: operacion.respuesta,
+      cancelaciones: operacion.cancelaciones,
+    },
+    insignias: dto.insignias.map((i) => i.codigo),
+    etiquetas: dto.etiquetas,
+    sugerencia: dto.sugerencia,
+    opiniones: dto.opiniones.map(aOpinion),
+  };
+}
+
+/** Una opinion de la pantalla de Reputacion (con el estado de su denuncia). */
+export function aOpinion(o: OpinionDto): Opinion {
+  return {
+    id: o.id_calificacion,
+    autor: o.autor,
+    creadaEn: o.created_at,
+    promedio: o.promedio,
+    comentario: o.comentario,
+    etiquetas: o.etiquetas,
+    denunciaEstado: o.denuncia_estado ?? null,
+  };
+}
+
+/** La reputacion del conductor y las reseñas que recibio. */
+export function aReputacionConductor(dto: ReputacionConductorDto): ReputacionConductor {
+  return {
+    promedio: dto.promedio,
+    cantidad: dto.cantidad,
+    etiquetas: dto.etiquetas,
+    resenas: (dto.resenas ?? []).map((r) => ({
+      id: r.id_calificacion,
+      puntaje: r.puntaje,
+      etiquetas: r.etiquetas,
+      comentario: r.comentario,
+      creadaEn: r.created_at,
+      estacionamiento: r.estacionamiento,
+      denunciaEstado: r.denuncia_estado,
+    })),
+  };
+}
+
+/** Una reseña denunciada, para la cola del administrador. */
+export function aResenaDenunciada(dto: ResenaDenunciadaDto): ResenaDenunciada {
+  return {
+    id: dto.id_calificacion,
+    autor: dto.autor,
+    nota: dto.autor === 'CONDUCTOR' ? (dto.promedio ?? dto.puntaje) : dto.puntaje,
+    etiquetas: dto.etiquetas,
+    comentario: dto.comentario,
+    creadaEn: dto.created_at,
+    estacionamiento: { id: dto.id_estacionamiento, nombre: dto.estacionamiento },
+    conductor: { id: dto.id_conductor, nombre: dto.conductor_nombre },
+    motivo: dto.denuncia_motivo,
+    detalle: dto.denuncia_detalle,
+    denunciadaEn: dto.denunciada_at,
+    estado: dto.denuncia_estado,
+    moderadaEn: dto.moderada_at,
   };
 }
 
@@ -129,6 +238,7 @@ function urlDeFoto(dto: EstacionamientoDto): string | null {
   return `/api/estacionamientos/${dto.id_estacionamiento}/foto?v=${version}`;
 }
 
+/** Las URLs de las fotos de la galeria (con ?v= para saltear la cache). */
 function urlsDeGaleria(dto: EstacionamientoDto): string[] {
   return (dto.fotos ?? []).map(
     ({ id_foto, actualizada }) =>
@@ -136,6 +246,7 @@ function urlsDeGaleria(dto: EstacionamientoDto): string[] {
   );
 }
 
+/** NuevoEstacionamiento -> body de la API (snake_case). */
 export function aPayloadEstacionamiento(datos: NuevoEstacionamiento) {
   const { direccion } = datos;
   return {
@@ -177,6 +288,7 @@ function estadoDeCochera(dto: CocheraDto): EstadoCochera {
   return dto.estado_actual;
 }
 
+/** CocheraDto -> Cochera. */
 export function aCochera(dto: CocheraDto): Cochera {
   return {
     id: dto.id_cochera,
@@ -192,6 +304,17 @@ export function aCochera(dto: CocheraDto): Cochera {
   };
 }
 
+/** Payload de alta (todos los campos) o de cambios (solo los que vinieron) de una cochera. */
+export function aPayloadCochera(datos: Partial<NuevaCochera>) {
+  return {
+    identificador: datos.identificador,
+    id_tipo_vehiculo: datos.tipoVehiculo && ID_TIPO_VEHICULO[datos.tipoVehiculo],
+    sector: datos.sector || undefined,
+    cubierta: datos.cubierta,
+  };
+}
+
+/** Lotes de cocheras -> body de la API. */
 export function aPayloadLotes(lotes: LoteCocheras[]) {
   return {
     lotes: lotes.map((lote) => ({
@@ -204,17 +327,9 @@ export function aPayloadLotes(lotes: LoteCocheras[]) {
   };
 }
 
-export function aPayloadCambiosCochera(cambios: Partial<NuevaCochera>) {
-  return {
-    identificador: cambios.identificador,
-    id_tipo_vehiculo: cambios.tipoVehiculo && ID_TIPO_VEHICULO[cambios.tipoVehiculo],
-    sector: cambios.sector || undefined,
-    cubierta: cambios.cubierta,
-  };
-}
-
 /* -------------------------------- vehiculo -------------------------------- */
 
+/** VehiculoDto -> Vehiculo. */
 export function aVehiculo(dto: VehiculoDto): Vehiculo {
   return {
     id: dto.id_vehiculo,
@@ -231,6 +346,7 @@ export function aVehiculo(dto: VehiculoDto): Vehiculo {
   };
 }
 
+/** Vehiculo nuevo o cambios -> body de la API. */
 export function aPayloadVehiculo(datos: NuevoVehiculo) {
   return {
     patente: datos.patente,
@@ -256,6 +372,7 @@ export function aPayloadCambiosVehiculo(cambios: CambiosVehiculo) {
 
 /* --------------------------------- reserva -------------------------------- */
 
+/** ReservaDto -> ReservaDetallada (fecha y horas locales, estacionamiento, vehiculo…). */
 export function aReserva(dto: ReservaDto): ReservaDetallada {
   const desde = partesLocales(dto.inicio);
   const hasta = partesLocales(dto.fin);
@@ -284,15 +401,14 @@ export function aReserva(dto: ReservaDto): ReservaDetallada {
     codigoAcceso: dto.codigo_acceso ?? null,
     devuelto: dto.devuelto ?? 0,
     reclamoAbierto: dto.reclamo_abierto ?? null,
-    calificacion: {
-      conductorCalifico: dto.califico_conductor ?? false,
-      propietarioCalifico: dto.califico_propietario ?? false,
-      calificableHasta: dto.calificable_hasta ?? null,
-    },
+    calificable: dto.calificable ?? false,
+    calificacionPromedio: dto.calificacion_promedio ?? null,
     reputacionConductor: {
-      promedio: dto.conductor_calificacion_promedio ?? null,
-      cantidad: dto.conductor_cantidad_calificaciones ?? 0,
+      promedio: dto.conductor_promedio ?? null,
+      cantidad: dto.conductor_calificaciones ?? 0,
     },
+    calificacionAlConductor: dto.calificacion_al_conductor ?? null,
+    conductorCalificable: dto.conductor_calificable ?? false,
     estacionamiento: {
       id: dto.id_estacionamiento,
       nombre: dto.estacionamiento,
@@ -342,6 +458,7 @@ function finDeReserva(datos: NuevaReserva, inicio: FechaHoraISO): FechaHoraISO {
   return new Date(Date.parse(inicio) + horas * 3_600_000).toISOString();
 }
 
+/** Una franja de disponibilidad de la API -> FranjaDisponible. */
 export function aFranja(dto: FranjaDto): FranjaDisponible {
   return {
     horaDesde: dto.hora_desde,
@@ -355,6 +472,7 @@ export function aFranja(dto: FranjaDto): FranjaDisponible {
 
 /* --------------------------------- abonos --------------------------------- */
 
+/** PlanAbonoDto -> PlanAbono. */
 export function aPlanAbono(dto: PlanAbonoDto): PlanAbono {
   return {
     id: dto.id_plan,
@@ -365,6 +483,7 @@ export function aPlanAbono(dto: PlanAbonoDto): PlanAbono {
   };
 }
 
+/** AbonoDto -> Abono. */
 export function aAbono(dto: AbonoDto): Abono {
   return {
     id: dto.id_abono,
@@ -384,6 +503,7 @@ export function aAbono(dto: AbonoDto): Abono {
   };
 }
 
+/** Reserva con abono -> body de la API. */
 export function aPayloadReservaConAbono(datos: NuevaReservaConAbono) {
   return {
     id_abono: datos.abonoId,
@@ -393,6 +513,7 @@ export function aPayloadReservaConAbono(datos: NuevaReservaConAbono) {
   };
 }
 
+/** IncidenciaDto -> Incidencia. */
 export function aIncidencia(dto: IncidenciaDto): Incidencia {
   return {
     id: dto.id_incidencia,
@@ -433,7 +554,8 @@ export function aIncidencia(dto: IncidenciaDto): Incidencia {
   };
 }
 
-export function aMensajeIncidencia(dto: MensajeIncidenciaDto): MensajeIncidencia {
+/** Un mensaje del chat de una incidencia. */
+function aMensajeIncidencia(dto: MensajeIncidenciaDto): MensajeIncidencia {
   const autor = [dto.autor_nombre, dto.autor_apellido].filter(Boolean).join(' ');
   return {
     id: dto.id_mensaje,
@@ -446,6 +568,7 @@ export function aMensajeIncidencia(dto: MensajeIncidenciaDto): MensajeIncidencia
   };
 }
 
+/** Incidencia con sus mensajes. */
 export function aIncidenciaDetallada(dto: IncidenciaDetalladaDto): IncidenciaDetallada {
   return {
     ...aIncidencia(dto),
@@ -454,6 +577,7 @@ export function aIncidenciaDetallada(dto: IncidenciaDetalladaDto): IncidenciaDet
   };
 }
 
+/** Incidencia como la ve el administrador (los tres chats). */
 export function aIncidenciaModerada(dto: IncidenciaModeradaDto): IncidenciaModerada {
   const r = dto.resumen ?? {};
   return {
@@ -471,22 +595,12 @@ export function aIncidenciaModerada(dto: IncidenciaModeradaDto): IncidenciaModer
   };
 }
 
+/** Reclamo nuevo -> body de la API. */
 export function aPayloadReclamo(datos: NuevoReclamo) {
   return {
     ...(datos.reservaId ? { id_reserva: datos.reservaId } : { id_abono: datos.abonoId }),
     motivo: datos.motivo,
     ...(datos.montoPedido !== undefined ? { monto_pedido: datos.montoPedido } : {}),
     texto: datos.texto,
-  };
-}
-
-export function aCalificacionesRecibidas(dto: CalificacionesRecibidasDto): CalificacionesRecibidas {
-  return {
-    resumen: dto.resumen,
-    calificaciones: dto.calificaciones.map((c) => ({
-      puntaje: c.puntaje,
-      comentario: c.comentario,
-      creadaEn: c.created_at,
-    })),
   };
 }

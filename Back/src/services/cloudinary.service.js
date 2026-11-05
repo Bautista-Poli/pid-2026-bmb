@@ -1,3 +1,5 @@
+// Fotos en Cloudinary: firma para que el navegador suba directo, verificacion de lo
+// subido, URL de cada foto y borrado. Lo usan los services de fotos.
 import { randomUUID } from 'node:crypto';
 
 import { v2 as cloudinary } from 'cloudinary';
@@ -113,15 +115,4 @@ export async function borrar(publicId) {
   } catch (error) {
     console.error(`[cloudinary] no se pudo borrar ${publicId}:`, error.message);
   }
-}
-
-/** Sube bytes que ya estan en el servidor (lo usa el script de migracion). */
-export function subirBytes(bytes, carpeta) {
-  configurar();
-  return new Promise((resolver, rechazar) => {
-    const subida = cloudinary.uploader.upload_stream({ public_id: `${carpeta}/${randomUUID()}` }, (error, resultado) =>
-      error ? rechazar(error) : resolver(resultado.public_id),
-    );
-    subida.end(bytes);
-  });
 }

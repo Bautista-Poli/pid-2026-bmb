@@ -1,4 +1,3 @@
-import { Calificar, ObjetoCalificacion } from '@app/components/calificacion';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { DatePipe } from '@angular/common';
@@ -41,7 +40,7 @@ const inicioDe = (reserva: ReservaDetallada) =>
 @Component({
   selector: 'app-mis-reservas',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TarjetaReserva, QrReserva, AbrirReclamo, Calificar, Tarjeta, Chip, Cargando, EstadoVacio, Boton, Modal, RouterLink, DatePipe],
+  imports: [TarjetaReserva, QrReserva, AbrirReclamo, Tarjeta, Chip, Cargando, EstadoVacio, Boton, Modal, RouterLink, DatePipe],
   templateUrl: './mis-reservas.html',
   styleUrl: './mis-reservas.css',
 })
@@ -66,6 +65,7 @@ export class MisReservas {
   /** Reserva sobre la que el conductor abre un reclamo: mientras no sea null, el modal esta abierto. */
   protected readonly aReclamar = signal<ObjetoReclamo | null>(null);
 
+  /** Abre el modal de reclamo sobre una reserva (tope: lo pagado menos lo devuelto). */
   protected pedirReclamo(reserva: ReservaDetallada): void {
     this.aReclamar.set({
       tipo: 'reserva',
@@ -74,22 +74,6 @@ export class MisReservas {
       // Una cancelada o ausente no se cobro: se puede reclamar, pero no hay nada para devolver.
       tope: ['CANCELADA', 'NO_SHOW'].includes(reserva.estado) ? 0 : Math.max(0, reserva.precioTotal - reserva.devuelto),
     });
-  }
-
-  /** Reserva cuyo estacionamiento se esta calificando: mientras no sea null, el modal esta abierto. */
-  protected readonly aCalificar = signal<ObjetoCalificacion | null>(null);
-
-  protected pedirCalificacion(reserva: ReservaDetallada): void {
-    this.aCalificar.set({
-      idReserva: reserva.id,
-      descripcion: `${reserva.estacionamiento.nombre} · ${reserva.fecha.split('-').reverse().join('/')} ${reserva.horaDesde}`,
-    });
-  }
-
-  protected calificado(): void {
-    this.aCalificar.set(null);
-    this.aviso.set('¡Gracias! Tu calificación quedó registrada.');
-    this.recurso.reload();
   }
 
   /** Abierto el reclamo, se sigue en su hilo. */
@@ -116,6 +100,9 @@ export class MisReservas {
       .filter((reserva) => !reservaEnJuego(reserva))
       .sort((a, b) => inicioDe(b) - inicioDe(a)),
   );
+
+  /** La mas reciente que todavia puede calificar (entro y salio hace menos de 7 dias). */
+  protected readonly porCalificar = computed(() => this.pasadas().find((reserva) => reserva.calificable) ?? null);
 
   /** Si el historial muestra tambien las canceladas, expiradas y ausentes. */
   protected readonly mostrarSinUsar = signal(false);
@@ -187,9 +174,7 @@ export class MisReservas {
         this.cancelandoId.set(null);
         this.aCancelar.set(null);
         // La reserva pasa a CANCELADA: sale de Vigentes y aparece en Historial.
-        this.aviso.set(
-          `Cancelamos tu reserva en ${reserva.estacionamiento.nombre}. La vas a encontrar en Historial, con las canceladas.`,
-        );
+        this.aviso.set(`Cancelamos tu reserva en ${reserva.estacionamiento.nombre}.`);
         this.recurso.reload();
       },
       error: (e: Error) => {

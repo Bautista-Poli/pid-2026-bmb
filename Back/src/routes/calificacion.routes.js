@@ -1,20 +1,21 @@
+// Rutas de /api/calificaciones: la denuncia de una reseña por la parte calificada.
 import { Router } from 'express';
 
 import * as calificacionController from '../controllers/calificacion.controller.js';
 import { authenticate, requireRole } from '../middlewares/auth.js';
 import { validate } from '../middlewares/validate.js';
 import { ROLES } from '../utils/roles.js';
-import { validarPaginado } from '../validators/calificacion.validator.js';
+import { validarDenunciaResena } from '../validators/denuncia-resena.validator.js';
 
 const router = Router();
 
-// Lo que los propietarios le pusieron al conductor (calificar es POST /reservas/:id/calificacion).
-router.get(
-  '/recibidas',
+// La parte calificada denuncia una reseña (una vez); la modera el administrador.
+router.post(
+  '/:id/denuncia',
   authenticate,
-  requireRole(ROLES.CONDUCTOR),
-  validate(validarPaginado, 'query'),
-  calificacionController.recibidasComoConductor,
+  requireRole(ROLES.CONDUCTOR, ROLES.PROPIETARIO),
+  validate(validarDenunciaResena),
+  calificacionController.denunciar,
 );
 
 export default router;

@@ -265,3 +265,36 @@
     background: #0b1322;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Tarjeta del puntaje de reputacion (velocimetro).
+
+   En claro es la tarjeta azul con el arco dorado. En oscuro deja de ser azul:
+   toma el fondo de las demas tarjetas y el arco y las barras pasan a blanco,
+   como el dial de un velocimetro.
+--------------------------------------------------------------------------- */
+.tarjeta-puntaje {
+  --puntaje-arco: var(--color-oro);
+
+  background: var(--color-acento);
+  border-color: transparent;
+  color: var(--color-sobre-acento);
+}
+
+:root[data-theme='oscuro'] .tarjeta-puntaje {
+  --puntaje-arco: #ffffff;
+
+  background: var(--color-papel);
+  border-color: var(--color-borde);
+  color: var(--color-tinta);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='claro']) .tarjeta-puntaje {
+    --puntaje-arco: #ffffff;
+
+    background: var(--color-papel);
+    border-color: var(--color-borde);
+    color: var(--color-tinta);
+  }
+}

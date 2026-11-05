@@ -39,8 +39,13 @@ describe('ordenarEstacionamientos', () => {
     expect(ids(ordenarEstacionamientos(lista, 'REPUTACION'))).toEqual(['calificado', 'nuevo']);
   });
 
-  it('Cercania sigue poniendo primero al destacado', () => {
-    const lista = [est('cerca', { distanciaKm: 1 }), est('destacado', { distanciaKm: 9, destacado: true })];
-    expect(ids(ordenarEstacionamientos(lista, 'DISTANCIA'))).toEqual(['destacado', 'cerca']);
+  it('Mas cercano: el mas cerca primero, aunque otro mas lejos sea destacado', () => {
+    const lista = [est('destacado', { distanciaKm: 9, destacado: true }), est('cerca', { distanciaKm: 1 })];
+    expect(ids(ordenarEstacionamientos(lista, 'DISTANCIA'))).toEqual(['cerca', 'destacado']);
+  });
+
+  it('Mas cercano: uno no disponible va al final aunque este mas cerca', () => {
+    const lista = [est('lleno', { distanciaKm: 1, disponible: false }), est('libre', { distanciaKm: 9 })];
+    expect(ids(ordenarEstacionamientos(lista, 'DISTANCIA'))).toEqual(['libre', 'lleno']);
   });
 });

@@ -151,15 +151,10 @@ export function ordenarEstacionamientos(
   orden: OrdenEstacionamiento | null | undefined,
 ): Estacionamiento[] {
   const comparar = COMPARADORES[orden ?? 'DISTANCIA'];
-  // Los que no se pueden usar van siempre al final, sea cual sea el orden. Por
-  // cercania (el orden por defecto) los "Anfitrion destacado" van primero; si
-  // pidio el mas barato o el mejor calificado, manda ese criterio.
+  // Manda el orden elegido; lo unico por encima es que los que no se pueden usar
+  // van al final. Sin ubicacion no hay distancias: queda el orden del back.
   const alFinal = (e: Estacionamiento) => (estadoDisponibilidad(e) === 'NO_DISPONIBLE' ? 1 : 0);
-  const porCercania = (orden ?? 'DISTANCIA') === 'DISTANCIA';
-  const destacadoPrimero = (e: Estacionamiento) => (porCercania && e.reputacion.destacado ? 0 : 1);
-  return [...items].sort(
-    (a, b) => alFinal(a) - alFinal(b) || destacadoPrimero(a) - destacadoPrimero(b) || comparar(a, b),
-  );
+  return [...items].sort((a, b) => alFinal(a) - alFinal(b) || comparar(a, b));
 }
 
 /** Filtros de busqueda -> query params de GET /api/estacionamientos. */

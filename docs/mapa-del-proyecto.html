@@ -122,7 +122,11 @@
       <li><code>utils/ApiError.js</code>: <code>ApiError.badRequest / unauthorized / forbidden / notFound / conflict</code> → 400 / 401 / 403 / 404 / 409.</li>
       <li><code>utils/asyncHandler.js</code>: envuelve cada controller para que los errores lleguen al <code>errorHandler</code>.</li>
       <li><code>utils/roles.js</code>: estados y roles (<code>ROLES</code>, <code>ESTADOS_RESERVA</code>, <code>ESTADOS_VIGENTES</code>, …).</li>
+      <li><code>utils/solapamiento.js</code>: <code>cocheraReservable()</code> (cochera activa, sin bloqueo, no dada de baja) y <code>sinSolapamiento()</code> (sin reservas que se pisen). Para elegir una cochera libre se usa <code>buscarCocheraLibre</code> de <code>cochera.service.js</code>.</li>
+      <li><code>utils/sql.js</code>: <code>armarSet(campos, datos, parametros)</code> arma el <code>SET campo = $n</code> de un UPDATE con los campos que vinieron.</li>
+      <li><code>utils/horario.js</code>: hora argentina (<code>ZONA_HORARIA</code>, <code>HOY_LOCAL_SQL</code>, <code>HORA_LOCAL</code>, <code>instanteLocal</code>, <code>partesLocales</code>).</li>
     </ul>
+    <p><strong>Cómo están comentados:</strong> cada archivo arranca con qué es y con qué se conecta; cada función tiene una línea arriba; cada controller dice qué ruta atiende y quién la puede llamar (ej. <code>/** POST /api/abonos (conductor) */</code>).</p>
   </div>
   <h3>Módulos y endpoints (todos bajo <code>/api</code>)</h3>
   <div class="tabla"><table>
@@ -164,6 +168,7 @@
       <li>El <code>.html</code> usa <code>@if</code>, <code>@for</code> y los componentes de <code>components/ui</code> (<code>&lt;ui-boton&gt;</code>, <code>&lt;ui-modal&gt;</code>, <code>&lt;ui-tarjeta&gt;</code>…).</li>
       <li>Los errores ya llegan como <code>Error</code> con un mensaje mostrable (lo arma <code>error.interceptor.ts</code>): se muestran con <code>error.set(e.message)</code>.</li>
     </ol>
+    <p>Cada <code>.html</code> arranca con un comentario que dice qué pantalla es y en qué <code>.ts</code> están sus datos. Constantes que se repiten en muchas pantallas: <code>TIPOS_VEHICULO</code>, <code>ICONO_TIPO_VEHICULO</code> y <code>ETIQUETA_TIPO_VEHICULO</code> (en <code>models/vehiculo.model.ts</code>); fechas con <code>diaCorto</code>, <code>desdeFechaISO</code> y <code>aFechaISO</code> (en <code>utils/fecha.util.ts</code>).</p>
   </div>
   <h3>Pantallas por rol (<code>app.routes.ts</code>)</h3>
   <div class="tabla"><table>

@@ -63,25 +63,24 @@ const TONO_ESTADO: Record<EstadoCochera, TonoEtiqueta> = {
   INACTIVA: 'neutro',
 };
 
-/** Fondo, borde y punto de cada cochera del plano segun su estado. */
+/** Fondo y borde de cada cochera del plano segun su estado (estilos en cocheras.css). */
 const CLASE_COCHERA: Record<EstadoCochera, string> = {
-  LIBRE: 'border-exito/30 bg-exito-suave',
-  OCUPADA: 'border-ocupada/25 bg-ocupada/8',
-  RESERVADA: 'border-baja/30 bg-baja/10',
-  INACTIVA:
-    'border-dashed border-borde text-plomo ' +
-    'bg-[repeating-linear-gradient(135deg,var(--color-borde-sutil)_0_6px,var(--color-lienzo)_6px_12px)]',
+  LIBRE: 'cochera-libre',
+  OCUPADA: 'cochera-ocupada',
+  RESERVADA: 'cochera-reservada',
+  INACTIVA: 'cochera-inactiva',
 };
 
+/** Color del punto de estado de cada cochera (estilos en cocheras.css). */
 const CLASE_PUNTO: Record<EstadoCochera, string> = {
-  LIBRE: 'bg-exito',
-  OCUPADA: 'bg-ocupada',
-  RESERVADA: 'bg-baja',
-  INACTIVA: 'bg-humo',
+  LIBRE: 'punto-libre',
+  OCUPADA: 'punto-ocupada',
+  RESERVADA: 'punto-reservada',
+  INACTIVA: 'punto-inactiva',
 };
 
 /** Bloqueada por mantenimiento: se superpone al color del estado, no lo reemplaza. */
-const CLASE_BLOQUEADA = '!border-aviso/50 bg-aviso/10';
+const CLASE_BLOQUEADA = 'cochera-bloqueada';
 
 interface Planta {
   nombre: string;
@@ -128,6 +127,7 @@ interface CeldaPrevia {
     Modal,
   ],
   templateUrl: './cocheras.html',
+  styleUrl: './cocheras.css',
 })
 export class Cocheras {
   private readonly estacionamientos = inject(EstacionamientoService);

@@ -18,6 +18,7 @@ import { vuelveARevision } from '@app/utils/aprobacion.util';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink, FormularioEstacionamiento, PlanesAbono, Boton, Cargando, EstadoVacio],
   templateUrl: './editar-estacionamiento.html',
+  styleUrl: './editar-estacionamiento.css',
 })
 export class EditarEstacionamiento {
   private readonly estacionamientos = inject(EstacionamientoService);

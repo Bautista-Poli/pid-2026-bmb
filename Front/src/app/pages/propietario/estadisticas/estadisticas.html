@@ -1,20 +1,19 @@
 <!-- Pantalla `/propietario/estadisticas` · rol PROPIETARIO. Datos y acciones en estadisticas.ts. -->
-<div class="aparece mx-auto w-full max-w-[1240px] px-5 pt-5 pb-8 lg:px-9 lg:pt-8 lg:pb-11">
-  <header class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+<div class="aparece vista">
+  <header class="encabezado">
     <div>
       <p class="eyebrow">Propietario</p>
-      <h1 class="titulo-vista mt-1.5">Estadísticas</h1>
-      <p class="mt-1 text-[13.5px] text-plomo">
+      <h1 class="titulo-vista encabezado-titulo">Estadísticas</h1>
+      <p class="subtitulo">
         Cómo les fue a tus estacionamientos, comparado con el período anterior.
       </p>
     </div>
 
-    <div class="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+    <div class="filtros">
       <app-selector-periodo [periodo]="periodo()" (cambio)="elegirPeriodo($event)" />
       @if (recursoEstacionamientos.value().length > 1) {
         <select
-          class="rounded-control border border-borde bg-papel px-3.5 py-2.5 text-[13px] text-grafito
-                 shadow-tarjeta focus:border-acento focus:outline-none"
+          class="selector"
           aria-label="Estacionamiento"
           (change)="elegirEstacionamiento($event)"
         >
@@ -29,22 +28,22 @@
   </header>
 
   @if (recurso.isLoading() && !recurso.value()) {
-    <div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div class="esqueletos">
       @for (i of [1, 2, 3, 4, 5, 6]; track i) {
-        <div class="esqueleto h-[118px] rounded-tarjeta"></div>
+        <div class="esqueleto esqueleto-kpi"></div>
       }
     </div>
-    <div class="mt-5"><ui-cargando [cantidad]="2" /></div>
+    <div class="error"><ui-cargando [cantidad]="2" /></div>
   } @else if (recurso.error(); as e) {
-    <div class="mt-6">
+    <div class="vacio">
       <ui-estado-vacio titulo="No pudimos cargar las estadísticas" [descripcion]="e.message">
         <ui-boton (presionado)="recurso.reload()">Reintentar</ui-boton>
       </ui-estado-vacio>
     </div>
   } @else if (recurso.value(); as datos) {
-    <div class="mt-6 flex flex-col gap-5 lg:gap-6" [class.opacity-60]="recurso.isLoading()">
+    <div class="resultados" [class.recargando]="recurso.isLoading()">
       <!-- KPIs -->
-      <div class="aparece-en-cadena grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div class="aparece-en-cadena kpis">
         @for (metrica of metricas(); track metrica.etiqueta) {
           <app-tarjeta-metrica
             [etiqueta]="metrica.etiqueta"
@@ -56,26 +55,26 @@
         }
       </div>
 
-      <div class="grid gap-5 lg:gap-6 xl:grid-cols-2">
+      <div class="fila-graficos">
         <!-- Ocupacion -->
         <ui-tarjeta relleno="lg">
-          <div class="flex flex-col gap-4">
-            <div class="flex flex-wrap items-start justify-between gap-3">
+          <div class="grafico">
+            <div class="grafico-cabecera">
               <div>
-                <h2 class="text-[15px] font-semibold text-tinta">Ocupación por día</h2>
-                <p class="mt-0.5 text-[12px] text-plomo">Horas reservadas sobre las horas que abren tus cocheras</p>
+                <h2 class="grafico-titulo">Ocupación por día</h2>
+                <p class="grafico-detalle">Horas reservadas sobre las horas que abren tus cocheras</p>
               </div>
-              <div class="flex items-center gap-4 text-[12px] text-plomo">
-                <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-[3px] bg-acento"></span> Usadas</span>
-                <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-[3px] bg-acento/20"></span> Libres</span>
+              <div class="leyenda">
+                <span class="leyenda-item"><span class="muestra-usadas"></span> Usadas</span>
+                <span class="leyenda-item"><span class="muestra-libres"></span> Libres</span>
               </div>
             </div>
             @if (hayOcupacion() && datos.kpis.ocupacion.valor > 0) {
               <app-barras-dia [barras]="barrasOcupacion()" descripcion="Ocupación por día del período" />
             } @else if (hayOcupacion()) {
-              <p class="py-8 text-center text-[13px] text-plomo">Tus cocheras no tuvieron reservas en este período.</p>
+              <p class="sin-datos">Tus cocheras no tuvieron reservas en este período.</p>
             } @else {
-              <p class="py-8 text-center text-[13px] text-plomo">
+              <p class="sin-datos">
                 Sin horarios de atención cargados: no hay horas para medir.
               </p>
             }
@@ -84,11 +83,11 @@
 
         <!-- Ingresos -->
         <ui-tarjeta relleno="lg">
-          <div class="flex flex-col gap-4">
-            <div class="flex flex-wrap items-start justify-between gap-3">
+          <div class="grafico">
+            <div class="grafico-cabecera">
               <div>
-                <h2 class="text-[15px] font-semibold text-tinta">Ingresos (simulados)</h2>
-                <p class="mt-0.5 text-[12px] text-plomo">
+                <h2 class="grafico-titulo">Ingresos (simulados)</h2>
+                <p class="grafico-detalle">
                   Total {{ pesos(datos.kpis.ingresos.valor) }}
                   @if (datos.kpis.devoluciones.valor > 0) {
                     (neto de {{ pesos(datos.kpis.devoluciones.valor) }} devueltos por reclamos)
@@ -98,29 +97,29 @@
                   }
                 </p>
               </div>
-              <div class="flex items-center gap-4 text-[12px] text-plomo">
-                <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-[3px] bg-exito"></span> Reservas</span>
-                <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-[3px] bg-violet-500"></span> Abonos</span>
+              <div class="leyenda">
+                <span class="leyenda-item"><span class="muestra-reservas"></span> Reservas</span>
+                <span class="leyenda-item"><span class="muestra-abonos"></span> Abonos</span>
               </div>
             </div>
             @if (hayIngresos()) {
               <app-barras-dia [barras]="barrasIngresos()" descripcion="Ingresos por día del período" />
             } @else {
-              <p class="py-8 text-center text-[13px] text-plomo">Todavía no hubo ingresos en este período.</p>
+              <p class="sin-datos">Todavía no hubo ingresos en este período.</p>
             }
           </div>
         </ui-tarjeta>
       </div>
 
-      <div class="grid gap-5 lg:gap-6 xl:grid-cols-[1.6fr_1fr]">
+      <div class="fila-graficos-2">
         <!-- Demanda -->
         <ui-tarjeta relleno="lg">
-          <div class="flex flex-col gap-4">
+          <div class="grafico">
             <div>
-              <h2 class="text-[15px] font-semibold text-tinta">Demanda por horario</h2>
-              <p class="mt-0.5 text-[12px] text-plomo">
+              <h2 class="grafico-titulo">Demanda por horario</h2>
+              <p class="grafico-detalle">
                 @if (horaPico(); as pico) {
-                  Hora pico: <span class="font-semibold text-tinta">{{ pico }}</span>
+                  Hora pico: <span class="destacado">{{ pico }}</span>
                 } @else {
                   Cuántas reservas ocupan cada hora de la semana
                 }
@@ -129,42 +128,42 @@
             @if (datos.demanda.length > 0) {
               <app-mapa-calor [celdas]="datos.demanda" />
             } @else {
-              <p class="py-8 text-center text-[13px] text-plomo">Sin reservas en este período.</p>
+              <p class="sin-datos">Sin reservas en este período.</p>
             }
           </div>
         </ui-tarjeta>
 
         <!-- Cancelaciones y ausentes -->
         <ui-tarjeta relleno="lg">
-          <div class="flex flex-col gap-4">
+          <div class="grafico">
             <div>
-              <h2 class="text-[15px] font-semibold text-tinta">Cancelaciones y ausentes</h2>
-              <p class="mt-0.5 text-[12px] text-plomo">
+              <h2 class="grafico-titulo">Cancelaciones y ausentes</h2>
+              <p class="grafico-detalle">
                 {{ datos.cancelaciones.total }} canceladas ({{ porciento(datos.kpis.tasaCancelacion.valor) }}) ·
                 {{ datos.ausentes.total }} ausentes ({{ porciento(datos.ausentes.tasa) }})
               </p>
             </div>
 
             @if (datos.cancelaciones.total === 0) {
-              <p class="py-4 text-center text-[13px] text-plomo">No hubo cancelaciones en este período.</p>
+              <p class="sin-cancelaciones">No hubo cancelaciones en este período.</p>
             } @else {
-              <ul class="flex flex-col gap-3">
+              <ul class="origenes">
                 @for (origen of origenes; track origen) {
-                  <li class="flex flex-col gap-1">
-                    <div class="flex justify-between text-[12.5px]">
-                      <span class="text-grafito">{{ etiquetaOrigen[origen] }}</span>
-                      <span class="num-tabular font-semibold text-tinta">{{ datos.cancelaciones.porOrigen[origen] }}</span>
+                  <li class="origen">
+                    <div class="origen-fila">
+                      <span class="origen-nombre">{{ etiquetaOrigen[origen] }}</span>
+                      <span class="num-tabular destacado">{{ datos.cancelaciones.porOrigen[origen] }}</span>
                     </div>
-                    <div class="h-2 overflow-hidden rounded-full bg-borde-sutil">
-                      <div class="h-full rounded-full bg-baja" [style.width.%]="anchoOrigen(datos, origen)"></div>
+                    <div class="barra">
+                      <div class="barra-relleno" [style.width.%]="anchoOrigen(datos, origen)"></div>
                     </div>
                   </li>
                 }
               </ul>
               @if (datos.cancelaciones.anticipacionPromedioHoras !== null) {
-                <p class="text-[12px] text-plomo">
+                <p class="anticipacion">
                   Los conductores cancelan en promedio
-                  <span class="num-tabular font-semibold text-tinta">{{ datos.cancelaciones.anticipacionPromedioHoras }} h</span>
+                  <span class="num-tabular destacado">{{ datos.cancelaciones.anticipacionPromedioHoras }} h</span>
                   antes del inicio.
                 </p>
               }

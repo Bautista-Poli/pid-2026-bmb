@@ -36,10 +36,11 @@ import { aFechaISO, hoyISO } from '@app/utils/fecha.util';
 /** Tono de cada tarjeta de metrica: fondo del icono y color del trazo. */
 type TonoMetrica = 'azul' | 'verde' | 'violeta';
 
+/** Clase de cada tono (estilos en tablero.css). */
 const CLASE_TONO: Record<TonoMetrica, string> = {
-  azul: 'bg-acento-suave text-acento',
-  verde: 'bg-exito-suave text-exito',
-  violeta: 'bg-violet-500/12 text-violet-500',
+  azul: 'tono-azul',
+  verde: 'tono-verde',
+  violeta: 'tono-violeta',
 };
 
 /** Comparacion contra ayer: flecha y color segun el signo. */
@@ -114,6 +115,7 @@ const pesos = (monto: number) => `$ ${monto.toLocaleString('es-AR')}`;
     IngresarCodigo,
   ],
   templateUrl: './tablero.html',
+  styleUrl: './tablero.css',
 })
 export class Tablero {
   private readonly estacionamientos = inject(EstacionamientoService);

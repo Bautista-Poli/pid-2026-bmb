@@ -1,23 +1,23 @@
 <!-- Pantalla `/propietario/cocheras` (y `/propietario/cocheras/:estacionamientoId`) · rol PROPIETARIO. Datos y acciones en cocheras.ts. -->
-<div class="aparece mx-auto w-full max-w-[1240px] px-5 pt-5 pb-8 lg:px-9 lg:pt-8 lg:pb-11">
-  <div class="flex flex-col gap-5">
+<div class="aparece vista">
+  <div class="contenido">
     <!-- Encabezado -->
-    <header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-      <div class="flex min-w-0 items-center gap-4">
-        <span class="hidden shrink-0 sm:block">
+    <header class="encabezado">
+      <div class="encabezado-info">
+        <span class="encabezado-foto">
           <ui-miniatura
             [src]="recursoEstacionamiento.value()?.fotoUrl ?? null"
             [optimizada]="false"
             icono="estacionamiento"
           />
         </span>
-        <div class="min-w-0">
-          <p class="text-[12.5px] font-medium text-plomo">Cocheras</p>
-          <h1 class="mt-1.5 truncate text-[24px] leading-tight font-semibold tracking-[-0.02em] text-tinta lg:text-[28px]">
+        <div class="encabezado-texto">
+          <p class="encabezado-eyebrow">Cocheras</p>
+          <h1 class="titulo">
             {{ recursoEstacionamiento.value()?.nombre ?? 'Cocheras' }}
           </h1>
           @if (recursoEstacionamiento.value(); as estacionamiento) {
-            <p class="mt-1 truncate text-[13.5px] text-plomo">
+            <p class="subtitulo">
               {{ direccionCorta(estacionamiento.direccion) }}
             </p>
           }
@@ -33,7 +33,7 @@
 
     <!-- Cambio entre estacionamientos -->
     @if (recursoEstacionamientos.value().length > 1) {
-      <div class="flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Elegir estacionamiento">
+      <div class="lotes" role="group" aria-label="Elegir estacionamiento">
         @for (lote of recursoEstacionamientos.value(); track lote.id) {
           <ui-chip [activo]="lote.id === idActivo()" (alternar)="irA(lote.id)">
             {{ lote.nombre }}
@@ -44,34 +44,34 @@
 
     <!-- Resumen -->
     @if (!recursoCocheras.isLoading() && recursoCocheras.value().length > 0) {
-      <ul class="flex flex-wrap gap-2 text-[12.5px] text-grafito">
-        <li class="rounded-boton border border-borde bg-papel px-3 py-2">
-          <b class="num-tabular text-tinta">{{ resumen().total }}</b> cocheras
+      <ul class="resumen">
+        <li class="resumen-item">
+          <b class="num-tabular resumen-numero">{{ resumen().total }}</b> cocheras
         </li>
-        <li class="flex items-center gap-2 rounded-boton border border-borde bg-papel px-3 py-2">
-          <span class="size-[7px] rounded-full bg-exito"></span>
-          <b class="num-tabular text-tinta">{{ resumen().libres }}</b> libres
+        <li class="resumen-item-con-icono">
+          <span class="punto-libre-fijo"></span>
+          <b class="num-tabular resumen-numero">{{ resumen().libres }}</b> libres
         </li>
-        <li class="flex items-center gap-2 rounded-boton border border-borde bg-papel px-3 py-2">
-          <span class="size-[7px] rounded-full bg-ocupada"></span>
-          <b class="num-tabular text-tinta">{{ resumen().ocupadas }}</b> ocupadas
+        <li class="resumen-item-con-icono">
+          <span class="punto-ocupada-fijo"></span>
+          <b class="num-tabular resumen-numero">{{ resumen().ocupadas }}</b> ocupadas
         </li>
-        <li class="flex items-center gap-2 rounded-boton border border-borde bg-papel px-3 py-2">
-          <span class="size-[7px] rounded-full bg-baja"></span>
-          <b class="num-tabular text-tinta">{{ resumen().reservadas }}</b> reservadas
+        <li class="resumen-item-con-icono">
+          <span class="punto-reservada-fijo"></span>
+          <b class="num-tabular resumen-numero">{{ resumen().reservadas }}</b> reservadas
         </li>
-        <li class="flex items-center gap-2 rounded-boton border border-borde bg-papel px-3 py-2">
-          <ui-icono nombre="techo" [tamano]="14" class="text-acento" />
-          <b class="num-tabular text-tinta">{{ resumen().cubiertas }}</b> cubiertas
+        <li class="resumen-item-con-icono">
+          <ui-icono nombre="techo" [tamano]="14" class="icono-acento" />
+          <b class="num-tabular resumen-numero">{{ resumen().cubiertas }}</b> cubiertas
         </li>
-        <li class="flex items-center gap-2 rounded-boton border border-borde bg-papel px-3 py-2">
-          <ui-icono nombre="sol" [tamano]="14" class="text-baja" />
-          <b class="num-tabular text-tinta">{{ resumen().descubiertas }}</b> descubiertas
+        <li class="resumen-item-con-icono">
+          <ui-icono nombre="sol" [tamano]="14" class="icono-baja" />
+          <b class="num-tabular resumen-numero">{{ resumen().descubiertas }}</b> descubiertas
         </li>
         @if (resumen().inactivas > 0) {
-          <li class="flex items-center gap-2 rounded-boton border border-borde bg-papel px-3 py-2">
-            <span class="size-[7px] rounded-full bg-humo"></span>
-            <b class="num-tabular text-tinta">{{ resumen().inactivas }}</b> de baja
+          <li class="resumen-item-con-icono">
+            <span class="punto-baja-fijo"></span>
+            <b class="num-tabular resumen-numero">{{ resumen().inactivas }}</b> de baja
           </li>
         }
       </ul>
@@ -79,7 +79,7 @@
 
     @if (aviso(); as mensaje) {
       <p
-        class="rounded-control border border-exito/25 bg-exito-suave px-4 py-3 text-[13px] text-exito"
+        class="aviso-ok"
         role="status"
       >
         {{ mensaje }}
@@ -88,7 +88,7 @@
 
     @if (error(); as mensaje) {
       <p
-        class="rounded-control border border-ocupada/25 bg-ocupada/5 px-4 py-3 text-[13px] text-ocupada"
+        class="aviso-error"
         role="alert"
       >
         {{ mensaje }}
@@ -119,36 +119,34 @@
       </ui-estado-vacio>
     } @else {
       <div
-        class="grid items-start gap-5"
-        [class]="elegidas().length > 0 ? 'lg:grid-cols-[minmax(0,1fr)_360px]' : ''"
+        class="espacio-trabajo"
+        [class]="elegidas().length > 0 ? 'con-panel' : ''"
       >
         <!-- Plano -->
         <section
-          class="flex flex-col rounded-tarjeta border border-borde bg-papel shadow-tarjeta"
+          class="plano"
           aria-label="Plano de cocheras"
         >
-          <div class="flex items-center gap-1 overflow-x-auto border-b border-borde px-3 lg:px-5">
+          <div class="plantas">
             @for (planta of plantas(); track planta.nombre) {
               <button
                 type="button"
-                class="relative flex shrink-0 items-center gap-2 px-3 pt-4 pb-3.5 text-[13px] font-medium
-                       whitespace-nowrap transition-colors duration-160
-                       after:absolute after:inset-x-2 after:-bottom-px after:h-[2px] after:rounded-full"
+                class="planta-tab"
                 [class]="
                   plantaActiva()?.nombre === planta.nombre
-                    ? 'font-semibold text-acento after:bg-acento'
-                    : 'text-plomo hover:text-tinta after:bg-transparent'
+                    ? 'planta-tab-activa'
+                    : 'planta-tab-inactiva'
                 "
                 [attr.aria-pressed]="plantaActiva()?.nombre === planta.nombre"
                 (click)="verPlanta(planta.nombre)"
               >
                 {{ planta.nombre }}
                 <span
-                  class="num-tabular rounded-full px-1.5 py-px text-[11px]"
+                  class="num-tabular planta-cantidad"
                   [class]="
                     plantaActiva()?.nombre === planta.nombre
-                      ? 'bg-acento-suave text-acento'
-                      : 'bg-borde-sutil text-plomo'
+                      ? 'planta-cantidad-activa'
+                      : 'planta-cantidad-inactiva'
                   "
                 >
                   {{ planta.cocheras.length }}
@@ -157,31 +155,28 @@
             }
             <button
               type="button"
-              class="shrink-0 px-3 pt-4 pb-3.5 text-[13px] font-medium whitespace-nowrap text-humo
-                     transition-colors duration-160 hover:text-acento"
+              class="nueva-planta"
               (click)="abrirAlta('')"
             >
               + Nueva planta
             </button>
-            <p class="ml-auto hidden shrink-0 pl-4 text-[12px] text-humo xl:block">
+            <p class="plano-ayuda">
               Tocá una cochera para editarla · Shift + clic elige varias
             </p>
           </div>
 
           @if (plantaActiva(); as planta) {
             <div
-              class="aparece-en-cadena grid grid-cols-[repeat(auto-fill,minmax(76px,1fr))] gap-2 p-4 lg:p-5"
+              class="aparece-en-cadena grilla"
             >
               @for (cochera of planta.cocheras; track cochera.id) {
                 <button
                   type="button"
-                  class="relative flex h-[92px] flex-col items-center justify-center gap-2 rounded-control border
-                         text-tinta transition-[box-shadow,transform,border-color] duration-160 ease-out
-                         hover:-translate-y-0.5 hover:shadow-elevada"
+                  class="cochera"
                   [class]="
                     claseCochera[cochera.estado] +
                     (cochera.bloqueada ? ' ' + claseBloqueada : '') +
-                    (estaElegida(cochera) ? ' !border-acento ring-2 ring-acento shadow-elevada' : '')
+                    (estaElegida(cochera) ? ' cochera-elegida' : '')
                   "
                   [attr.aria-pressed]="estaElegida(cochera)"
                   [attr.aria-label]="
@@ -197,7 +192,7 @@
                 >
                   @if (cochera.bloqueada) {
                     <span
-                      class="absolute top-1.5 left-1.5 grid size-5 place-items-center rounded-full bg-aviso/15 text-aviso"
+                      class="cochera-candado"
                       title="Bloqueada"
                     >
                       <ui-icono nombre="candado" [tamano]="12" />
@@ -205,47 +200,46 @@
                   }
                   <!-- Techo: el techito si es cubierta, el sol si esta al aire libre -->
                   <span
-                    class="absolute top-1.5 right-1.5 grid size-5 place-items-center rounded-full"
-                    [class]="cochera.cubierta ? 'bg-acento-suave text-acento' : 'text-baja'"
+                    class="cochera-techo"
+                    [class]="cochera.cubierta ? 'techo-cubierta' : 'techo-descubierta'"
                     [attr.title]="cochera.cubierta ? 'Cubierta' : 'Descubierta'"
                   >
                     <ui-icono [nombre]="cochera.cubierta ? 'techo' : 'sol'" [tamano]="13" />
                   </span>
-                  <span class="num-tabular text-[13.5px] font-semibold">{{ cochera.identificador }}</span>
-                  <span class="flex items-center gap-1.5 text-plomo">
+                  <span class="num-tabular cochera-numero">{{ cochera.identificador }}</span>
+                  <span class="cochera-tipo">
                     <ui-icono [nombre]="iconoTipo[cochera.tipoVehiculo]" [tamano]="15" />
-                    <span class="size-[7px] rounded-full" [class]="clasePunto[cochera.estado]"></span>
+                    <span class="cochera-punto" [class]="clasePunto[cochera.estado]"></span>
                   </span>
                 </button>
               }
             </div>
 
             <div
-              class="mt-auto flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-borde-sutil px-4 py-3.5
-                     text-[12px] text-plomo lg:px-5"
+              class="leyenda"
             >
-              <span class="flex items-center gap-2"><span class="size-[7px] rounded-full bg-exito"></span>Libre</span>
-              <span class="flex items-center gap-2"><span class="size-[7px] rounded-full bg-ocupada"></span>Ocupada</span>
-              <span class="flex items-center gap-2"><span class="size-[7px] rounded-full bg-baja"></span>Reservada</span>
-              <span class="flex items-center gap-2"><span class="size-[7px] rounded-full bg-humo"></span>De baja</span>
-              <span class="flex items-center gap-1.5">
-                <ui-icono nombre="candado" [tamano]="12" class="text-aviso" />
+              <span class="leyenda-item"><span class="punto-libre-fijo"></span>Libre</span>
+              <span class="leyenda-item"><span class="punto-ocupada-fijo"></span>Ocupada</span>
+              <span class="leyenda-item"><span class="punto-reservada-fijo"></span>Reservada</span>
+              <span class="leyenda-item"><span class="punto-baja-fijo"></span>De baja</span>
+              <span class="leyenda-item-icono">
+                <ui-icono nombre="candado" [tamano]="12" class="icono-aviso" />
                 Bloqueada
               </span>
-              <span class="hidden h-3.5 w-px bg-borde sm:block" aria-hidden="true"></span>
-              <span class="flex items-center gap-1.5">
-                <span class="grid size-5 place-items-center rounded-full bg-acento-suave text-acento">
+              <span class="leyenda-separador" aria-hidden="true"></span>
+              <span class="leyenda-item-icono">
+                <span class="leyenda-techo-cubierta">
                   <ui-icono nombre="techo" [tamano]="13" />
                 </span>
                 Cubierta
               </span>
-              <span class="flex items-center gap-1.5">
-                <span class="grid size-5 place-items-center text-baja"><ui-icono nombre="sol" [tamano]="13" /></span>
+              <span class="leyenda-item-icono">
+                <span class="leyenda-techo-descubierta"><ui-icono nombre="sol" [tamano]="13" /></span>
                 Descubierta
               </span>
               <button
                 type="button"
-                class="ml-auto font-medium text-acento hover:text-acento-fuerte"
+                class="elegir-planta"
                 (click)="elegirTodaLaPlanta()"
               >
                 Elegir toda la planta
@@ -257,25 +251,22 @@
         <!-- Panel de la seleccion -->
         @if (elegidas().length > 0) {
           <div
-            class="fixed inset-0 z-[1090] bg-[rgb(15_23_42/0.45)] lg:hidden"
+            class="panel-fondo"
             aria-hidden="true"
             (click)="cerrarPanel()"
           ></div>
 
           <aside
-            class="aparece fixed inset-x-0 bottom-0 z-[1100] flex max-h-[85dvh] flex-col overflow-y-auto
-                   rounded-t-[20px] border-t border-borde bg-papel shadow-flotante
-                   lg:sticky lg:top-6 lg:z-auto lg:max-h-[calc(100dvh-48px)] lg:rounded-tarjeta lg:border
-                   lg:shadow-tarjeta"
+            class="aparece panel"
             aria-label="Edición de cocheras"
           >
             @if (unica(); as cochera) {
               <!-- Una cochera -->
-              <div class="flex items-start justify-between gap-3 border-b border-borde-sutil px-5 pt-5 pb-4">
-                <div class="min-w-0">
-                  <p class="text-[12px] font-medium text-plomo">{{ cochera.sector || 'Sin planta' }}</p>
-                  <div class="mt-1 flex flex-wrap items-center gap-2.5">
-                    <h2 class="num-tabular text-[20px] font-semibold tracking-[-0.02em] text-tinta">
+              <div class="panel-cabecera">
+                <div class="panel-cabecera-info">
+                  <p class="panel-planta">{{ cochera.sector || 'Sin planta' }}</p>
+                  <div class="panel-titulo-fila">
+                    <h2 class="num-tabular panel-titulo">
                       Cochera {{ cochera.identificador }}
                     </h2>
                     <ui-etiqueta [tono]="tonoEstado[cochera.estado]">
@@ -285,8 +276,7 @@
                 </div>
                 <button
                   type="button"
-                  class="grid size-8 shrink-0 place-items-center rounded-boton bg-lienzo text-plomo
-                         hover:text-tinta"
+                  class="cerrar"
                   aria-label="Cerrar"
                   (click)="cerrarPanel()"
                 >
@@ -295,12 +285,12 @@
               </div>
 
               @if (cochera.estado === 'INACTIVA') {
-                <div class="flex flex-col gap-4 px-5 py-5">
-                  <p class="text-[13px] leading-relaxed text-grafito">
+                <div class="panel-cuerpo">
+                  <p class="panel-texto">
                     Esta cochera está dada de baja: no aparece para reservar. Podés reactivarla o,
                     si nunca tuvo reservas, eliminarla del todo.
                   </p>
-                  <div class="flex gap-2">
+                  <div class="panel-botones">
                     <ui-boton variante="primario" [cargando]="enviando()" (presionado)="reactivar(cochera)">
                       Reactivar
                     </ui-boton>
@@ -308,24 +298,24 @@
                   </div>
                 </div>
               } @else {
-                <form class="flex flex-1 flex-col" [formGroup]="formulario" (ngSubmit)="guardar()" novalidate>
-                  <div class="flex flex-col gap-[18px] px-5 py-5">
+                <form class="panel-form" [formGroup]="formulario" (ngSubmit)="guardar()" novalidate>
+                  <div class="panel-campos">
                     @if (cochera.bloqueada) {
-                      <div class="flex items-start gap-2.5 rounded-control border border-aviso/25 bg-aviso/5 px-3.5 py-3">
-                        <ui-icono nombre="candado" [tamano]="15" class="mt-0.5 shrink-0 text-aviso" />
-                        <div class="min-w-0 text-[12.5px] text-grafito">
-                          <p class="font-semibold text-tinta">Bloqueada</p>
+                      <div class="aviso-bloqueo">
+                        <ui-icono nombre="candado" [tamano]="15" class="aviso-bloqueo-icono" />
+                        <div class="aviso-bloqueo-texto">
+                          <p class="aviso-bloqueo-titulo">Bloqueada</p>
                           <p>{{ cochera.motivoBloqueo || 'Sin motivo cargado.' }}</p>
-                          <p class="mt-0.5 text-plomo">
+                          <p class="aviso-bloqueo-detalle">
                             {{ cochera.bloqueadaHasta ? ('Hasta ' + (cochera.bloqueadaHasta | date: "d 'de' MMMM")) : 'Sin fecha de fin' }}
                           </p>
                         </div>
                       </div>
                     }
-                    <div class="grid grid-cols-2 gap-3">
+                    <div class="dos-columnas">
                       <label class="campo">
                         <span class="label-campo">Número</span>
-                        <input class="uppercase" type="text" formControlName="identificador" />
+                        <input class="mayusculas" type="text" formControlName="identificador" />
                         @if (invalido('identificador')) {
                           <span class="campo-error">Hasta 20 caracteres.</span>
                         }
@@ -336,18 +326,17 @@
                       </label>
                     </div>
 
-                    <div class="flex flex-col gap-2" role="group" aria-labelledby="etiqueta-tipo">
+                    <div class="grupo-campo" role="group" aria-labelledby="etiqueta-tipo">
                       <span id="etiqueta-tipo" class="label-campo">Tipo de vehículo</span>
-                      <div class="grid grid-cols-3 gap-1 rounded-control bg-borde-sutil p-1">
+                      <div class="segmentos-3">
                         @for (tipo of tipos; track tipo) {
                           <button
                             type="button"
-                            class="flex items-center justify-center gap-1.5 rounded-boton px-2 py-2 text-[12.5px]
-                                   transition-colors duration-160"
+                            class="segmento"
                             [class]="
                               formulario.controls.tipo.value === tipo
-                                ? 'bg-papel font-semibold text-acento shadow-tarjeta'
-                                : 'font-medium text-plomo hover:text-tinta'
+                                ? 'segmento-activo'
+                                : 'segmento-inactivo'
                             "
                             [attr.aria-pressed]="formulario.controls.tipo.value === tipo"
                             (click)="elegirTipo(tipo)"
@@ -362,43 +351,42 @@
                     <button
                       type="button"
                       role="switch"
-                      class="flex items-center justify-between rounded-control border border-borde px-3.5 py-3 text-left"
+                      class="interruptor-fila"
                       [attr.aria-checked]="formulario.controls.cubierta.value"
                       (click)="alternarCubierta()"
                     >
                       <span>
-                        <span class="block text-[13px] font-semibold text-tinta">Cubierta</span>
-                        <span class="block text-[12px] text-plomo">Tiene techo</span>
+                        <span class="interruptor-titulo">Cubierta</span>
+                        <span class="interruptor-ayuda">Tiene techo</span>
                       </span>
                       <span
-                        class="relative h-6 w-10 shrink-0 rounded-full transition-colors duration-160"
-                        [class]="formulario.controls.cubierta.value ? 'bg-acento' : 'bg-borde'"
+                        class="interruptor"
+                        [class]="formulario.controls.cubierta.value ? 'interruptor-on' : 'interruptor-off'"
                       >
                         <span
-                          class="absolute top-[3px] size-[18px] rounded-full bg-white shadow-tarjeta transition-[left] duration-160"
-                          [class]="formulario.controls.cubierta.value ? 'left-[19px]' : 'left-[3px]'"
+                          class="perilla"
+                          [class]="formulario.controls.cubierta.value ? 'perilla-on' : 'perilla-off'"
                         ></span>
                       </span>
                     </button>
 
-                    <div class="flex flex-col gap-2">
+                    <div class="grupo-campo">
                       <span class="label-campo">Próximas reservas</span>
                       @if (proximas().length === 0) {
-                        <p class="rounded-control border border-dashed border-borde px-3.5 py-3 text-[12.5px] text-plomo">
+                        <p class="sin-reservas">
                           No tiene reservas por delante.
                         </p>
                       } @else {
-                        <ul class="rounded-control border border-borde">
+                        <ul class="proximas">
                           @for (reserva of proximas(); track reserva.id) {
                             <li
-                              class="num-tabular flex items-center justify-between gap-3 border-t border-borde-sutil
-                                     px-3.5 py-2.5 text-[12.5px] first:border-t-0"
+                              class="num-tabular proxima"
                             >
-                              <span class="text-tinta">
-                                <b class="inline-block font-semibold first-letter:uppercase">{{ desdeFechaISO(reserva.fecha) | date: 'EEE d' }}</b>
+                              <span class="texto-tinta">
+                                <b class="proxima-fecha">{{ desdeFechaISO(reserva.fecha) | date: 'EEE d' }}</b>
                                 · {{ reserva.horaDesde }} – {{ reserva.horaHasta }}
                               </span>
-                              <span class="text-plomo">{{ reserva.vehiculo.patente }}</span>
+                              <span class="texto-plomo">{{ reserva.vehiculo.patente }}</span>
                             </li>
                           }
                         </ul>
@@ -406,10 +394,10 @@
                     </div>
                   </div>
 
-                  <div class="mt-auto flex items-center gap-2 border-t border-borde-sutil px-5 py-4">
+                  <div class="panel-pie">
                     <button
                       type="button"
-                      class="rounded-boton px-1 py-2 text-[13px] font-semibold text-ocupada hover:underline"
+                      class="accion-baja"
                       (click)="pedirBaja()"
                     >
                       Dar de baja
@@ -417,7 +405,7 @@
                     @if (cochera.bloqueada) {
                       <button
                         type="button"
-                        class="rounded-boton px-1 py-2 text-[13px] font-semibold text-aviso hover:underline"
+                        class="accion-aviso"
                         (click)="desbloquear(cochera)"
                       >
                         Desbloquear
@@ -425,13 +413,13 @@
                     } @else {
                       <button
                         type="button"
-                        class="rounded-boton px-1 py-2 text-[13px] font-semibold text-aviso hover:underline"
+                        class="accion-aviso"
                         (click)="abrirBloqueo(cochera)"
                       >
                         Bloquear
                       </button>
                     }
-                    <span class="ml-auto"></span>
+                    <span class="empujar-derecha"></span>
                     @if (formulario.dirty) {
                       <ui-boton variante="fantasma" tamano="sm" (presionado)="descartar()">Descartar</ui-boton>
                     }
@@ -449,12 +437,12 @@
               }
             } @else {
               <!-- Varias cocheras -->
-              <div class="flex items-start justify-between gap-3 border-b border-borde-sutil px-5 pt-5 pb-4">
-                <div class="min-w-0">
-                  <h2 class="text-[20px] font-semibold tracking-[-0.02em] text-tinta">
+              <div class="panel-cabecera">
+                <div class="panel-cabecera-info">
+                  <h2 class="panel-titulo-masivo">
                     {{ elegidas().length }} cocheras elegidas
                   </h2>
-                  <p class="num-tabular mt-1 line-clamp-2 text-[12px] text-plomo">
+                  <p class="num-tabular elegidas">
                     @for (cochera of elegidas().slice(0, 10); track cochera.id; let ultima = $last) {
                       {{ cochera.identificador }}{{ ultima ? '' : ',' }}
                     }
@@ -465,7 +453,7 @@
                 </div>
                 <button
                   type="button"
-                  class="grid size-8 shrink-0 place-items-center rounded-boton bg-lienzo text-plomo hover:text-tinta"
+                  class="cerrar"
                   aria-label="Quitar selección"
                   (click)="cerrarPanel()"
                 >
@@ -473,23 +461,22 @@
                 </button>
               </div>
 
-              <div class="flex flex-col gap-[18px] px-5 py-5">
-                <p class="text-[12.5px] text-plomo">
+              <div class="panel-campos">
+                <p class="panel-ayuda">
                   Elegí solo lo que quieras cambiar; lo demás queda como está.
                 </p>
 
-                <div class="flex flex-col gap-2" role="group" aria-labelledby="etiqueta-tipo-masivo">
+                <div class="grupo-campo" role="group" aria-labelledby="etiqueta-tipo-masivo">
                   <span id="etiqueta-tipo-masivo" class="label-campo">Tipo de vehículo</span>
-                  <div class="grid grid-cols-3 gap-1 rounded-control bg-borde-sutil p-1">
+                  <div class="segmentos-3">
                     @for (tipo of tipos; track tipo) {
                       <button
                         type="button"
-                        class="flex items-center justify-center gap-1.5 rounded-boton px-2 py-2 text-[12.5px]
-                               transition-colors duration-160"
+                        class="segmento"
                         [class]="
                           masivoTipo() === tipo
-                            ? 'bg-papel font-semibold text-acento shadow-tarjeta'
-                            : 'font-medium text-plomo hover:text-tinta'
+                            ? 'segmento-activo'
+                            : 'segmento-inactivo'
                         "
                         [attr.aria-pressed]="masivoTipo() === tipo"
                         (click)="masivoTipo.set(masivoTipo() === tipo ? null : tipo)"
@@ -501,17 +488,17 @@
                   </div>
                 </div>
 
-                <div class="flex flex-col gap-2" role="group" aria-labelledby="etiqueta-techo-masivo">
+                <div class="grupo-campo" role="group" aria-labelledby="etiqueta-techo-masivo">
                   <span id="etiqueta-techo-masivo" class="label-campo">Techo</span>
-                  <div class="grid grid-cols-2 gap-1 rounded-control bg-borde-sutil p-1">
+                  <div class="segmentos-2">
                     @for (opcion of [true, false]; track opcion) {
                       <button
                         type="button"
-                        class="rounded-boton px-2 py-2 text-[12.5px] transition-colors duration-160"
+                        class="segmento-techo"
                         [class]="
                           masivoCubierta() === opcion
-                            ? 'bg-papel font-semibold text-acento shadow-tarjeta'
-                            : 'font-medium text-plomo hover:text-tinta'
+                            ? 'segmento-activo'
+                            : 'segmento-inactivo'
                         "
                         [attr.aria-pressed]="masivoCubierta() === opcion"
                         (click)="masivoCubierta.set(masivoCubierta() === opcion ? null : opcion)"
@@ -534,15 +521,15 @@
                 </label>
               </div>
 
-              <div class="mt-auto flex items-center gap-2 border-t border-borde-sutil px-5 py-4">
+              <div class="panel-pie">
                 <button
                   type="button"
-                  class="rounded-boton px-1 py-2 text-[13px] font-semibold text-ocupada hover:underline"
+                  class="accion-baja"
                   (click)="pedirBaja()"
                 >
                   Dar de baja
                 </button>
-                <span class="ml-auto"></span>
+                <span class="empujar-derecha"></span>
                 <ui-boton
                   variante="primario"
                   tamano="sm"
@@ -573,8 +560,8 @@
   [abierto]="confirmacion() !== null"
   (cerrado)="confirmacion.set(null)"
 >
-  <p class="text-[13.5px] leading-relaxed text-grafito">{{ confirmacion()?.texto }}</p>
-  <div class="flex justify-end gap-2">
+  <p class="confirmar-texto">{{ confirmacion()?.texto }}</p>
+  <div class="confirmar-botones">
     <ui-boton (presionado)="confirmacion.set(null)">Cancelar</ui-boton>
     <ui-boton variante="peligro" (presionado)="confirmar()">{{ confirmacion()?.boton }}</ui-boton>
   </div>
@@ -582,26 +569,26 @@
 
 <!-- Alta por cantidad -->
 <ui-modal titulo="Agregar cocheras" ancho="amplio" [abierto]="agregando()" (cerrado)="cerrarAlta()">
-  <form class="flex flex-col gap-5" [formGroup]="formularioLotes" (ngSubmit)="crearLotes()" novalidate>
-    <p class="-mt-2 text-[13px] text-plomo">
+  <form class="form-nuevas" [formGroup]="formularioLotes" (ngSubmit)="crearLotes()" novalidate>
+    <p class="form-ayuda">
       Se numeran solas, a continuación de las que ya tenés.
     </p>
 
-    <div class="grid gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">
+    <div class="form-nuevas-grilla">
       <!-- Formulario -->
-      <div class="flex flex-col gap-5" formArrayName="lotes">
+      <div class="lotes-form" formArrayName="lotes">
         @for (lote of lotes.controls; track lote; let i = $index) {
           <fieldset
-            class="flex flex-col gap-4"
-            [class]="lotes.length > 1 ? 'rounded-control border border-borde p-4' : ''"
+            class="lote"
+            [class]="lotes.length > 1 ? 'lote-recuadro' : ''"
             [formGroupName]="i"
           >
             @if (lotes.length > 1) {
-              <div class="flex items-center justify-between">
+              <div class="lote-cabecera">
                 <legend class="label-campo">Grupo {{ i + 1 }}</legend>
                 <button
                   type="button"
-                  class="text-[12px] font-medium text-plomo hover:text-ocupada"
+                  class="quitar-lote"
                   (click)="quitarLote(i)"
                 >
                   Quitar
@@ -609,17 +596,17 @@
               </div>
             }
 
-            <div class="flex flex-col gap-2">
+            <div class="grupo-campo">
               <span class="label-campo">¿En qué planta están?</span>
-              <div class="flex flex-wrap gap-1.5">
+              <div class="opciones-planta">
                 @for (opcion of opcionesPlanta(); track opcion.detalle) {
                   <button
                     type="button"
-                    class="rounded-boton border px-3 py-[7px] text-[12.5px] transition-colors duration-160"
+                    class="opcion-planta"
                     [class]="
                       lote.controls.sector.value === opcion.detalle
-                        ? 'border-acento bg-acento font-semibold text-sobre-acento'
-                        : 'border-borde bg-papel font-medium text-plomo hover:border-acento-borde hover:text-acento'
+                        ? 'opcion-planta-activa'
+                        : 'opcion-planta-inactiva'
                     "
                     (click)="usarPlanta(i, opcion)"
                   >
@@ -635,21 +622,20 @@
               </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-3">
-              <div class="flex flex-col gap-1.5">
+            <div class="dos-columnas">
+              <div class="cantidad">
                 <span class="label-campo">Cantidad</span>
-                <div class="flex items-stretch overflow-hidden rounded-control border border-borde bg-papel">
+                <div class="contador">
                   <button
                     type="button"
-                    class="w-10 shrink-0 bg-lienzo text-[18px] text-grafito hover:text-acento"
+                    class="contador-boton"
                     aria-label="Una menos"
                     (click)="cambiarCantidad(i, -1)"
                   >
                     −
                   </button>
                   <input
-                    class="num-tabular w-full min-w-0 bg-transparent py-2.5 text-center text-[15px] font-semibold
-                           text-tinta outline-none"
+                    class="num-tabular contador-input"
                     type="number"
                     inputmode="numeric"
                     min="1"
@@ -659,7 +645,7 @@
                   />
                   <button
                     type="button"
-                    class="w-10 shrink-0 bg-lienzo text-[18px] text-grafito hover:text-acento"
+                    class="contador-boton"
                     aria-label="Una más"
                     (click)="cambiarCantidad(i, 1)"
                   >
@@ -672,25 +658,24 @@
               </div>
               <label class="campo">
                 <span class="label-campo">Prefijo</span>
-                <input class="uppercase" type="text" formControlName="prefijo" placeholder="PB" />
+                <input class="mayusculas" type="text" formControlName="prefijo" placeholder="PB" />
                 @if (invalidoLote(i, 'prefijo')) {
                   <span class="campo-error">Letras y números, hasta 10.</span>
                 }
               </label>
             </div>
 
-            <div class="flex flex-col gap-2">
+            <div class="grupo-campo">
               <span class="label-campo">Tipo de vehículo</span>
-              <div class="grid grid-cols-3 gap-1 rounded-control bg-borde-sutil p-1">
+              <div class="segmentos-3">
                 @for (tipo of tipos; track tipo) {
                   <button
                     type="button"
-                    class="flex items-center justify-center gap-1.5 rounded-boton px-2 py-2 text-[12.5px]
-                           transition-colors duration-160"
+                    class="segmento"
                     [class]="
                       lote.controls.tipo.value === tipo
-                        ? 'bg-papel font-semibold text-acento shadow-tarjeta'
-                        : 'font-medium text-plomo hover:text-tinta'
+                        ? 'segmento-activo'
+                        : 'segmento-inactivo'
                     "
                     [attr.aria-pressed]="lote.controls.tipo.value === tipo"
                     (click)="elegirTipoLote(i, tipo)"
@@ -705,21 +690,21 @@
             <button
               type="button"
               role="switch"
-              class="flex items-center justify-between rounded-control border border-borde px-3.5 py-3 text-left"
+              class="interruptor-fila"
               [attr.aria-checked]="lote.controls.cubierta.value"
               (click)="alternarCubiertaLote(i)"
             >
               <span>
-                <span class="block text-[13px] font-semibold text-tinta">Cubiertas</span>
-                <span class="block text-[12px] text-plomo">Tienen techo</span>
+                <span class="interruptor-titulo">Cubiertas</span>
+                <span class="interruptor-ayuda">Tienen techo</span>
               </span>
               <span
-                class="relative h-6 w-10 shrink-0 rounded-full transition-colors duration-160"
-                [class]="lote.controls.cubierta.value ? 'bg-acento' : 'bg-borde'"
+                class="interruptor"
+                [class]="lote.controls.cubierta.value ? 'interruptor-on' : 'interruptor-off'"
               >
                 <span
-                  class="absolute top-[3px] size-[18px] rounded-full bg-white shadow-tarjeta transition-[left] duration-160"
-                  [class]="lote.controls.cubierta.value ? 'left-[19px]' : 'left-[3px]'"
+                  class="perilla"
+                  [class]="lote.controls.cubierta.value ? 'perilla-on' : 'perilla-off'"
                 ></span>
               </span>
             </button>
@@ -728,7 +713,7 @@
 
         <button
           type="button"
-          class="self-start text-[12.5px] font-semibold text-acento hover:text-acento-fuerte"
+          class="sumar-lote"
           (click)="agregarLote()"
         >
           + Sumar otro grupo (por ejemplo, 4 de moto)
@@ -736,37 +721,37 @@
       </div>
 
       <!-- Vista previa -->
-      <div class="flex min-w-0 flex-col gap-4 rounded-control bg-lienzo p-4 lg:p-5">
+      <div class="previa">
         @for (grupo of previa(); track grupo.planta) {
-          <div class="flex flex-col gap-3">
-            <div class="flex flex-wrap items-center justify-between gap-2">
-              <p class="text-[12.5px] font-semibold text-grafito">Vista previa · {{ grupo.planta }}</p>
-              <div class="flex gap-3 text-[11.5px] text-plomo">
-                <span class="flex items-center gap-1.5">
-                  <span class="size-2.5 rounded-[3px] bg-borde"></span>
+          <div class="previa-planta">
+            <div class="previa-cabecera">
+              <p class="previa-titulo">Vista previa · {{ grupo.planta }}</p>
+              <div class="previa-leyenda">
+                <span class="leyenda-item-chico">
+                  <span class="muestra-existente"></span>
                   Existentes ({{ grupo.celdas.length - grupo.nuevas }})
                 </span>
-                <span class="flex items-center gap-1.5">
-                  <span class="size-2.5 rounded-[3px] bg-acento"></span>
+                <span class="leyenda-item-chico">
+                  <span class="muestra-nueva"></span>
                   Nuevas ({{ grupo.nuevas }})
                 </span>
               </div>
             </div>
-            <div class="grid grid-cols-[repeat(auto-fill,minmax(58px,1fr))] gap-1.5">
+            <div class="previa-grilla">
               @for (celda of grupo.celdas; track $index) {
                 <span
-                  class="num-tabular flex h-10 items-center justify-center rounded-boton text-[11px] font-semibold"
+                  class="num-tabular celda"
                   [class]="
                     celda.nueva
-                      ? 'border-[1.5px] border-dashed border-acento bg-acento-suave text-acento-fuerte'
-                      : 'bg-borde-sutil text-humo'
+                      ? 'celda-nueva'
+                      : 'celda-existente'
                   "
                 >
                   {{ celda.id }}
                   @if (celda.cubierta !== null) {
                     <ui-icono
-                      class="ml-1"
-                      [class]="celda.cubierta ? 'text-acento' : 'text-baja'"
+                      class="celda-icono"
+                      [class]="celda.cubierta ? 'icono-cubierta' : 'icono-descubierta'"
                       [nombre]="celda.cubierta ? 'techo' : 'sol'"
                       [tamano]="11"
                     />
@@ -777,7 +762,7 @@
           </div>
         }
 
-        <div class="mt-auto flex flex-col gap-1 rounded-control bg-acento-suave px-3.5 py-3 text-[12.5px] text-acento-fuerte">
+        <div class="resumen-creacion">
           @for (lote of lotes.controls; track lote; let i = $index) {
             @if (vistaPrevia(i); as rango) {
               <p class="num-tabular">
@@ -795,14 +780,14 @@
 
     @if (errorAlta(); as mensaje) {
       <p
-        class="rounded-control border border-ocupada/25 bg-ocupada/5 px-4 py-3 text-[13px] text-ocupada"
+        class="aviso-error"
         role="alert"
       >
         {{ mensaje }}
       </p>
     }
 
-    <div class="flex justify-end gap-2 border-t border-borde-sutil pt-4">
+    <div class="form-pie">
       <ui-boton (presionado)="cerrarAlta()">Cancelar</ui-boton>
       <ui-boton variante="primario" tipo="submit" [cargando]="enviando()" [deshabilitado]="totalNuevas() === 0">
         {{ totalNuevas() === 1 ? 'Crear 1 cochera' : 'Crear ' + totalNuevas() + ' cocheras' }}
@@ -817,33 +802,33 @@
   [abierto]="bloqueando() !== null"
   (cerrado)="cerrarBloqueo()"
 >
-  <form class="flex flex-col gap-4" [formGroup]="formularioBloqueo" (ngSubmit)="confirmarBloqueo(false)" novalidate>
-    <p class="-mt-2 text-[13px] text-plomo">
+  <form class="form-bloqueo" [formGroup]="formularioBloqueo" (ngSubmit)="confirmarBloqueo(false)" novalidate>
+    <p class="form-ayuda">
       Sale de circulación: no se va a poder reservar. Si tiene reservas por delante las reasignamos
       solas a otra cochera compatible; si alguna no tiene dónde ir, te avisamos antes de bloquear nada.
     </p>
 
     <label class="campo">
-      <span class="label-campo">Motivo <span class="font-normal text-plomo">(opcional)</span></span>
+      <span class="label-campo">Motivo <span class="aclaracion">(opcional)</span></span>
       <input type="text" formControlName="motivo" placeholder="Pintura, arreglo del portón…" />
     </label>
 
     <label class="campo">
-      <span class="label-campo">Bloqueada hasta <span class="font-normal text-plomo">(opcional)</span></span>
+      <span class="label-campo">Bloqueada hasta <span class="aclaracion">(opcional)</span></span>
       <input type="date" formControlName="hasta" />
     </label>
-    <p class="-mt-2 text-[12px] text-plomo">Vacío = bloqueada hasta que la desbloquees vos.</p>
+    <p class="form-ayuda-chica">Vacío = bloqueada hasta que la desbloquees vos.</p>
 
     @if (errorBloqueo(); as mensaje) {
       <p
-        class="rounded-control border border-ocupada/25 bg-ocupada/5 px-4 py-3 text-[13px] text-ocupada"
+        class="aviso-error"
         role="alert"
       >
         {{ mensaje }}
       </p>
     }
 
-    <div class="flex justify-end gap-2 border-t border-borde-sutil pt-4">
+    <div class="form-pie">
       <ui-boton (presionado)="cerrarBloqueo()">Cancelar</ui-boton>
       @if (necesitaForzar()) {
         <ui-boton variante="peligro" [cargando]="enviando()" (presionado)="confirmarBloqueo(true)">

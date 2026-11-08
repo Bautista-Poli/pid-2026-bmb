@@ -34,7 +34,6 @@ import {
   CodigoNivel,
   descripcionVehiculo,
   Estacionamiento,
-  FechaISO,
   FiltrosEstacionamiento,
   HoraHHmm,
   ICONO_TIPO_VEHICULO,
@@ -50,6 +49,7 @@ import {
 } from '@app/services/estacionamiento.service';
 import { Destino, TipoLugar } from '@app/utils/direcciones.util';
 import { buscarDestinosLocales } from '@app/utils/destinos-locales.util';
+import { Panel } from './panel';
 import { UbicacionService } from '@app/services/ubicacion.service';
 import { VehiculoService } from '@app/services/vehiculo.service';
 import {
@@ -120,21 +120,6 @@ const CLASE_ESTADO: Record<EstadoDisponibilidad, string> = {
   POCA: 'bg-baja/15 text-baja',
   NO_DISPONIBLE: 'bg-humo/15 text-[color-mix(in_srgb,var(--color-ocupada)_55%,var(--color-plomo))]',
 };
-
-/** Lo que se edita en el panel de filtros. Se aplica recien con "Aplicar". */
-interface Panel {
-  fecha: FechaISO;
-  /** Vacios: "ahora". */
-  desde: HoraHHmm;
-  /** Cuantas horas se quiere reservar desde `desde`. */
-  horas: number;
-  precioMinimo: number;
-  precioMaximo: number;
-  orden: OrdenEstacionamiento;
-  soloCubiertos: boolean;
-  /** "Oro o mas", "solo Diamante"...; null: todos. */
-  nivelMinimo: CodigoNivel | null;
-}
 
 /**
  * Pantalla `/conductor/explorar` · rol CONDUCTOR. Es el inicio del conductor.

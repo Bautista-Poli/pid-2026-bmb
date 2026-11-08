@@ -1,5 +1,7 @@
 # ParkIt local (examen): todo en una máquina, sin internet
 
+Comandos del día a día: ver [`COMANDOS.md`](../COMANDOS.md).
+
 En esta versión la app **no se conecta a nada de afuera**:
 
 | Pieza | Dónde vive |

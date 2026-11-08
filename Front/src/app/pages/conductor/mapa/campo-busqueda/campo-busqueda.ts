@@ -10,8 +10,19 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Observable, Subject, catchError, debounceTime, of, switchMap } from 'rxjs';
-import { Sugerencia } from '../campo-autocompletar/campo-autocompletar';
-import { Icono } from '../icono/icono';
+import { Icono, NombreIcono } from '@app/components/ui';
+
+/** Una opcion de la lista de sugerencias del buscador. */
+export interface Sugerencia<T = unknown> {
+  /** Lo que se muestra en la lista. */
+  nombre: string;
+  /** Texto chico a la derecha, para distinguir opciones con el mismo nombre. */
+  detalle?: string;
+  /** Lo que quiera guardar quien usa el campo (por ejemplo, el destino elegido). */
+  dato?: T;
+  /** Icono que dice que tipo de lugar es (calle, plaza, barrio...). */
+  icono?: NombreIcono;
+}
 
 let siguienteId = 0;
 
@@ -24,7 +35,7 @@ let siguienteId = 0;
  * decide que mostrar en el campo).
  */
 @Component({
-  selector: 'ui-campo-busqueda',
+  selector: 'app-campo-busqueda',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [Icono],
   template: `

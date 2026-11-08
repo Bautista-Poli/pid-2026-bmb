@@ -11,17 +11,15 @@ import {
   viewChild,
 } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { Observable, of } from 'rxjs';
 import { InsigniasEstacionamiento } from './insignias-estacionamiento/insignias-estacionamiento';
 import { MapaEstacionamientos, NivelEstacionamiento } from '@app/components/estacionamiento';
 import { Cargando, EstadoVacio, Icono } from '@app/components/ui';
 import {
   AreaMapa,
-  descripcionVehiculo,
   Estacionamiento,
   FiltrosEstacionamiento,
-  ICONO_TIPO_VEHICULO,
   Id,
   Momento,
   OrdenEstacionamiento,
@@ -34,9 +32,10 @@ import {
 } from '@app/services/estacionamiento.service';
 import { Destino } from '@app/utils/direcciones.util';
 import { buscarDestinosLocales } from '@app/utils/destinos-locales.util';
-import { CampoBusqueda, Sugerencia } from './campo-busqueda/campo-busqueda';
+import { Sugerencia } from './campo-busqueda/campo-busqueda';
 import { DetalleEstacionamiento } from './detalle-estacionamiento/detalle-estacionamiento';
 import { ModalFiltros } from './modal-filtros/modal-filtros';
+import { PanelBuscador } from './panel-buscador/panel-buscador';
 import { Panel, horaFin, pesos } from './panel.interface';
 import {
   CLASE_ESTADO,
@@ -82,16 +81,15 @@ import { diaCorto } from '@app/utils/fecha.util';
   selector: 'app-mapa',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    RouterLink,
     MapaEstacionamientos,
     DetalleEstacionamiento,
     InsigniasEstacionamiento,
     NivelEstacionamiento,
-    CampoBusqueda,
     Cargando,
     EstadoVacio,
     Icono,
     ModalFiltros,
+    PanelBuscador,
   ],
   templateUrl: './mapa.html',
   styleUrl: './mapa.css',
@@ -104,8 +102,6 @@ export class Mapa {
   private readonly router = inject(Router);
   private readonly injector = inject(Injector);
 
-  protected readonly descripcion = descripcionVehiculo;
-  protected readonly iconoTipo = ICONO_TIPO_VEHICULO;
   protected readonly etiquetaEstado = ETIQUETA_ESTADO;
   protected readonly claseEstado = CLASE_ESTADO;
 

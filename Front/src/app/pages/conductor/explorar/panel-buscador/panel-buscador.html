@@ -1,0 +1,94 @@
+<!-- Panel de arriba de Explorar: buscador, "mi ubicacion", vehiculo y "Filtrar". Logica en panel-buscador.ts. -->
+<!-- z-index 900: las sugerencias del buscador tienen que quedar sobre el mapa
+     (Leaflet usa z-index de 400 a 800). -->
+<section class="panel-buscador">
+  <div class="panel-buscador__fila">
+    <!-- Enter sin elegir sugerencia filtra por nombre o zona (un solo campo: el form se envia solo). -->
+    <form class="panel-buscador__formulario" role="search" (submit)="$event.preventDefault(); textoBuscado.emit()">
+      <app-campo-busqueda
+        etiqueta="Buscar por dirección, lugar o zona"
+        marcador="Buscar por dirección, lugar o zona..."
+        [valor]="texto()"
+        [minimo]="3"
+        [buscar]="buscarSugerencias()"
+        (valorChange)="textoCambiado.emit($event)"
+        (elegida)="destinoElegido.emit($event)"
+      />
+    </form>
+    <button
+      type="button"
+      class="boton-ubicacion"
+      aria-label="Usar mi ubicación"
+      title="Usar mi ubicación"
+      (click)="ubicacionPedida.emit()"
+    >
+      <ui-icono nombre="navegar" [tamano]="19" />
+    </button>
+  </div>
+
+  <div class="panel-buscador__fila">
+    <!-- Vehiculo: se muestran los estacionamientos aptos para su tipo. -->
+    @if (vehiculo(); as vehiculo) {
+      <div class="selector-vehiculo" role="group" aria-label="Vehículo">
+        <button
+          type="button"
+          class="selector-vehiculo__boton"
+          [disabled]="!variosVehiculos()"
+          aria-label="Vehículo anterior"
+          (click)="vehiculoAnterior.emit()"
+        >
+          <ui-icono nombre="cheuron" [tamano]="18" class="selector-vehiculo__flecha-anterior" />
+        </button>
+
+        <span class="selector-vehiculo__info" aria-live="polite">
+          <ui-icono [nombre]="iconoTipo[vehiculo.tipo]" [tamano]="18" class="selector-vehiculo__icono" />
+          <span class="selector-vehiculo__texto">
+            <span class="num-tabular selector-vehiculo__patente">{{ vehiculo.patente }}</span>
+            <span class="selector-vehiculo__descripcion">{{ descripcion(vehiculo) }}</span>
+          </span>
+        </span>
+
+        <button
+          type="button"
+          class="selector-vehiculo__boton"
+          [disabled]="!variosVehiculos()"
+          aria-label="Vehículo siguiente"
+          (click)="vehiculoSiguiente.emit()"
+        >
+          <ui-icono nombre="cheuron" [tamano]="18" class="selector-vehiculo__flecha-siguiente" />
+        </button>
+      </div>
+    } @else {
+      <a routerLink="/conductor/vehiculos/nuevo" class="enlace-agregar-vehiculo">
+        <ui-icono nombre="auto" [tamano]="18" />
+        <span class="enlace-agregar-vehiculo__texto">Agregá tu vehículo</span>
+      </a>
+    }
+
+    <button
+      type="button"
+      class="boton-filtros"
+      [class.boton-filtros--activo]="filtrosActivos() > 0"
+      aria-haspopup="dialog"
+      (click)="filtrosPedidos.emit()"
+    >
+      <ui-icono nombre="filtros" [tamano]="18" />
+      Filtrar
+      @if (filtrosActivos() > 0) {
+        <span class="num-tabular boton-filtros__contador">
+          {{ filtrosActivos() }}
+        </span>
+      }
+    </button>
+  </div>
+
+  @if (sinOrigen()) {
+    <p class="panel-buscador__aviso">
+      <span class="panel-buscador__aviso-corto">Activá tu ubicación o buscá una dirección para ver distancias.</span>
+      <span class="panel-buscador__aviso-largo">
+        Activá la ubicación del navegador, o buscá la dirección a la que vas, para ver a qué distancia
+        está cada estacionamiento.
+      </span>
+    </p>
+  }
+</section>

@@ -72,7 +72,12 @@ SQL a los archivos de abajo.
 | Estructura (tablas, columnas) | `Back/src/db/schema.sql` | `ALTER TABLE vehiculo ADD COLUMN IF NOT EXISTS color VARCHAR(30);` |
 | Datos fijos (tipos, catálogos) | `Back/src/db/seed.sql` | Agregar `(4, 'Bicicleta')` al `INSERT INTO tipo_vehiculo` |
 
-Después, desde `Back/`:
+Con `npm run dev` levantado **no hace falta nada más**: al guardar `schema.sql`
+o `seed.sql` el Back se reinicia solo y los aplica a la base (en la terminal
+aparece `[esquema] schema.sql aplicado`). Si el SQL tiene un error, el Back
+muestra el mensaje de Postgres y vuelve a arrancar cuando lo corregís.
+
+Si el Back no está levantado, se aplica a mano desde `Back/`:
 
 ```bash
 npm run db:migrate     # aplica schema.sql + seed.sql. No borra datos: se puede correr siempre
@@ -95,4 +100,4 @@ npm run db:crear-admin -- --email admin@parkit.com --nombre Ana --apellido Perez
 | `Postgres no esta corriendo` / `ECONNREFUSED` | `brew services start postgresql@18` |
 | `Falta la variable de entorno ...` | Falta `Back/.env.local`: copiar `Back/.env.example` y completar |
 | `EADDRINUSE :3000` / `:4200` | Ya hay uno levantado en otra terminal: cerralo (Ctrl+C) |
-| Una columna nueva "no existe" | Te olvidaste `npm run db:migrate` (o el `ALTER TABLE` en `psql`) |
+| Una columna nueva "no existe" | Fijate en la terminal del Back si `schema.sql` dio error (o corré `npm run db:migrate`) |

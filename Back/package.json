@@ -9,7 +9,7 @@
   },
   "scripts": {
     "start": "node --env-file=.env.local src/index.js",
-    "dev": "node --watch --env-file=.env.local src/index.js",
+    "dev": "node --watch-path=src --env-file=.env.local src/index.js",
     "db:crear": "node --env-file=.env.local src/db/local/crear-base.js && npm run db:migrate",
     "db:migrate": "node --env-file=.env.local src/db/migrate.js",
     "db:restaurar": "node --env-file=.env.local src/db/local/restaurar.js && npm run db:migrate",

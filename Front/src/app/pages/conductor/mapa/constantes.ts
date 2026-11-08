@@ -63,10 +63,11 @@ export const ORDENES: { orden: OrdenEstacionamiento; texto: string }[] = [
 
 /**
  * Clases del cartel de disponibilidad de cada resultado de la lista
- * ("Disponible", "Poca disponibilidad", "No disponible"), en mapa.html.
+ * ("Disponible", "Poca disponibilidad", "No disponible"), en mapa.html. Los
+ * colores estan en mapa.css.
  */
 export const CLASE_ESTADO: Record<EstadoDisponibilidad, string> = {
-  DISPONIBLE: 'bg-exito-suave text-exito',
-  POCA: 'bg-baja/15 text-baja',
-  NO_DISPONIBLE: 'bg-humo/15 text-[color-mix(in_srgb,var(--color-ocupada)_55%,var(--color-plomo))]',
+  DISPONIBLE: 'resultado__estado--disponible',
+  POCA: 'resultado__estado--poca',
+  NO_DISPONIBLE: 'resultado__estado--no-disponible',
 };

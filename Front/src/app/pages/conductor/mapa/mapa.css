@@ -428,6 +428,22 @@
   font-weight: 600;
 }
 
+/* Color del cartel segun la disponibilidad (la clase la elige CLASE_ESTADO en constantes.ts). */
+.resultado__estado--disponible {
+  background-color: var(--color-exito-suave);
+  color: var(--color-exito);
+}
+
+.resultado__estado--poca {
+  background-color: color-mix(in oklab, var(--color-baja) 15%, transparent);
+  color: var(--color-baja);
+}
+
+.resultado__estado--no-disponible {
+  background-color: color-mix(in oklab, var(--color-humo) 15%, transparent);
+  color: color-mix(in srgb, var(--color-ocupada) 55%, var(--color-plomo));
+}
+
 .resultado__horario {
   font-size: 11.5px;
   color: var(--color-plomo);

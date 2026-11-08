@@ -1,12 +1,12 @@
 <!-- Pantalla `/propietario/estacionamientos` · rol PROPIETARIO. Datos y acciones en estacionamientos.ts. -->
-<div class="aparece mx-auto w-full max-w-[1240px] px-5 pt-5 pb-8 lg:px-9 lg:pt-8 lg:pb-11">
-  <div class="flex flex-col gap-6">
-    <header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+<div class="aparece vista">
+  <div class="contenido">
+    <header class="encabezado">
       <div>
-        <h1 class="text-[24px] leading-tight font-semibold tracking-[-0.02em] text-tinta lg:text-[28px]">
+        <h1 class="titulo">
           Estacionamientos
         </h1>
-        <p class="mt-1 text-[13.5px] text-plomo">Administrá tus edificios y sus espacios.</p>
+        <p class="subtitulo">Administrá tus edificios y sus espacios.</p>
       </div>
       <ui-boton variante="primario" routerLink="/propietario/estacionamientos/nuevo">
         <ui-icono nombre="mas" [tamano]="16" />
@@ -30,13 +30,13 @@
         </ui-boton>
       </ui-estado-vacio>
     } @else {
-      <div class="aparece-en-cadena flex flex-col gap-4">
+      <div class="aparece-en-cadena lista">
         @for (estacionamiento of recurso.value(); track estacionamiento.id) {
           <ui-tarjeta relleno="ninguno" [interactiva]="true">
-            <div class="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:gap-5 lg:p-5">
+            <div class="fila">
               <!-- Foto -->
               <a
-                class="shrink-0 self-start sm:self-center"
+                class="foto"
                 [routerLink]="['/propietario/estacionamientos', estacionamiento.id, 'editar']"
                 tabindex="-1"
                 aria-hidden="true"
@@ -49,48 +49,47 @@
               </a>
 
               <!-- Datos -->
-              <div class="min-w-0 flex-1">
-                <div class="flex items-start justify-between gap-3">
-                  <div class="min-w-0">
-                    <h2 class="truncate text-[15.5px] leading-tight font-semibold text-tinta">
+              <div class="info">
+                <div class="info-cabecera">
+                  <div class="info-nombre">
+                    <h2 class="nombre">
                       <a
-                        class="hover:text-acento"
+                        class="nombre-link"
                         [routerLink]="['/propietario/estacionamientos', estacionamiento.id, 'editar']"
                       >
                         {{ estacionamiento.nombre }}
                       </a>
                     </h2>
-                    <p class="mt-1 truncate text-[12.5px] text-plomo">
+                    <p class="direccion">
                       {{ direccionCorta(estacionamiento.direccion) }}
                     </p>
                   </div>
-                  <span class="sm:hidden">
+                  <span class="estado-mobile">
                     <ng-container *ngTemplateOutlet="estado; context: { $implicit: estacionamiento }" />
                   </span>
                 </div>
 
-                <ul class="mt-3.5 flex flex-wrap items-center gap-x-6 gap-y-2 text-[12.5px] text-grafito">
-                  <li class="flex items-center gap-1.5">
-                    <ui-icono nombre="auto" [tamano]="16" class="text-plomo" />
+                <ul class="datos">
+                  <li class="dato">
+                    <ui-icono nombre="auto" [tamano]="16" class="dato-icono" />
                     <span class="num-tabular">{{ estacionamiento.cocherasTotales }} espacios</span>
                   </li>
-                  <li class="flex items-center gap-1.5">
-                    <ui-icono nombre="estacionamiento" [tamano]="16" class="text-plomo" />
+                  <li class="dato">
+                    <ui-icono nombre="estacionamiento" [tamano]="16" class="dato-icono" />
                     <span class="num-tabular">{{ estacionamiento.cocherasDisponibles }} disponibles</span>
                   </li>
-                  <li class="flex items-center gap-1.5">
-                    <ui-icono nombre="moneda" [tamano]="16" class="text-plomo" />
+                  <li class="dato">
+                    <ui-icono nombre="moneda" [tamano]="16" class="dato-icono" />
                     <span class="num-tabular">{{ precio(estacionamiento) }}</span>
                   </li>
                 </ul>
 
                 @if (estacionamiento.activo && estacionamiento.estadoAprobacion === 'RECHAZADO') {
                   <div
-                    class="mt-3.5 flex flex-col items-start gap-2.5 rounded-control border border-ocupada/25
-                           bg-ocupada/5 px-4 py-3"
+                    class="rechazo"
                   >
-                    <p class="text-[12.5px] text-ocupada">
-                      <span class="font-semibold">Motivo del rechazo:</span> {{ estacionamiento.motivoRechazo }}
+                    <p class="rechazo-motivo">
+                      <span class="negrita">Motivo del rechazo:</span> {{ estacionamiento.motivoRechazo }}
                     </p>
                     <ui-boton
                       tamano="sm"
@@ -102,21 +101,21 @@
                     </ui-boton>
                   </div>
                 } @else if (estacionamiento.activo && estacionamiento.estadoAprobacion === 'PENDIENTE') {
-                  <p class="mt-3 text-[12px] text-plomo">
+                  <p class="revision">
                     Lo está revisando Parkit. Va a aparecer en la búsqueda cuando lo aprueben.
                   </p>
                 }
                 @if (errorReenvio()?.id === estacionamiento.id) {
-                  <p class="mt-2 text-[12.5px] text-ocupada" role="alert">{{ errorReenvio()?.mensaje }}</p>
+                  <p class="error-reenvio" role="alert">{{ errorReenvio()?.mensaje }}</p>
                 }
               </div>
 
               <!-- Estado + acciones -->
-              <div class="flex shrink-0 items-center gap-2 sm:flex-col sm:items-end sm:gap-3">
-                <span class="hidden sm:block">
+              <div class="acciones">
+                <span class="estado-desktop">
                   <ng-container *ngTemplateOutlet="estado; context: { $implicit: estacionamiento }" />
                 </span>
-                <div class="flex items-center gap-2">
+                <div class="botones">
                   <ui-boton
                     tamano="sm"
                     variante="fantasma"

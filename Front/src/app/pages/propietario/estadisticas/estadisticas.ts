@@ -55,6 +55,7 @@ const ORIGENES: OrigenCancelacionEstadistica[] = ['CONDUCTOR', 'PROPIETARIO', 'S
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [BarrasDia, Boton, Cargando, EstadoVacio, MapaCalor, RouterLink, SelectorPeriodo, Tarjeta, TarjetaMetrica],
   templateUrl: './estadisticas.html',
+  styleUrl: './estadisticas.css',
 })
 export class Estadisticas {
   private readonly estadisticas = inject(EstadisticaService);

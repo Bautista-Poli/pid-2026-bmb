@@ -84,6 +84,7 @@ interface FilaOperacion {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [Boton, Cargando, DenunciarResena, EstadoVacio, NivelEstacionamiento, RouterLink, Tarjeta],
   templateUrl: './reputacion.html',
+  styleUrl: './reputacion.css',
 })
 export class Reputacion {
   private readonly calificaciones = inject(CalificacionService);
@@ -174,10 +175,10 @@ export class Reputacion {
   protected tendencia(categoria: CategoriaReputacion): { texto: string; clase: string } {
     if (categoria.promedio == null || categoria.anterior == null) return { texto: '', clase: '' };
     const diferencia = Math.round((categoria.promedio - categoria.anterior) * 10) / 10;
-    if (diferencia === 0) return { texto: 'igual', clase: 'text-plomo' };
+    if (diferencia === 0) return { texto: 'igual', clase: 'tendencia-igual' };
     return diferencia > 0
-      ? { texto: `+${formatearNota(diferencia)}`, clase: 'text-exito' }
-      : { texto: `−${formatearNota(-diferencia)}`, clase: 'text-ocupada' };
+      ? { texto: `+${formatearNota(diferencia)}`, clase: 'tendencia-sube' }
+      : { texto: `−${formatearNota(-diferencia)}`, clase: 'tendencia-baja' };
   }
 
   protected readonly filasOperacion = computed<FilaOperacion[]>(() => {

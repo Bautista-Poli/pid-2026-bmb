@@ -1,16 +1,15 @@
 <!-- Pantalla `/propietario/estacionamientos/:estacionamientoId/editar` · rol PROPIETARIO. Datos y acciones en editar-estacionamiento.ts. -->
-<div class="aparece mx-auto w-full max-w-[720px] px-6 pt-5 pb-8 lg:px-10 lg:pt-[34px] lg:pb-11">
-  <div class="flex flex-col gap-6">
+<div class="aparece vista">
+  <div class="contenido">
     <header>
       <a
-        class="inline-flex items-center gap-1.5 rounded-boton text-[12px] font-medium text-plomo
-               transition-colors duration-160 ease-out hover:text-acento"
+        class="volver"
         routerLink="/propietario/estacionamientos"
       >
         ← Mis estacionamientos
       </a>
-      <p class="eyebrow mt-3">Propietario</p>
-      <h1 class="titulo-vista mt-1.5">Editar estacionamiento</h1>
+      <p class="eyebrow encabezado-eyebrow">Propietario</p>
+      <h1 class="titulo-vista encabezado-titulo">Editar estacionamiento</h1>
     </header>
 
     @if (recurso.isLoading()) {
@@ -31,15 +30,14 @@
         </ui-estado-vacio>
       } @else {
         <section
-          class="flex flex-col gap-3 rounded-tarjeta border border-borde bg-papel px-5 py-4
-                 shadow-tarjeta lg:flex-row lg:items-center lg:justify-between lg:gap-6"
+          class="publicacion"
           aria-labelledby="titulo-publicacion"
         >
           <div>
-            <h2 id="titulo-publicacion" class="text-[14px] font-semibold text-tinta">
+            <h2 id="titulo-publicacion" class="seccion-titulo">
               {{ estacionamiento.publicado ? 'Publicado' : 'Sin publicar' }}
             </h2>
-            <p class="mt-0.5 text-[13px] text-plomo">
+            <p class="seccion-texto">
               @if (estacionamiento.publicado) {
                 Los conductores lo ven en la búsqueda y pueden reservar.
               } @else {
@@ -54,8 +52,7 @@
 
         @if (aviso(); as mensaje) {
           <p
-            class="rounded-control border border-exito/25 bg-exito-suave px-4 py-3 text-[13px]
-                   text-exito"
+            class="aviso-ok"
             role="status"
           >
             {{ mensaje }}
@@ -73,20 +70,19 @@
           (fotoElegida)="elegirFoto($event)"
         />
         @if (progresoFoto() !== null) {
-          <p class="mt-3 text-[12.5px] text-plomo num-tabular" role="status">Subiendo la foto… {{ progresoFoto() }}%</p>
+          <p class="num-tabular progreso-foto" role="status">Subiendo la foto… {{ progresoFoto() }}%</p>
         }
 
 
         <section
-          class="flex flex-col gap-3 rounded-tarjeta border border-ocupada/20 bg-ocupada/[0.03]
-                 px-5 py-4 lg:flex-row lg:items-center lg:justify-between lg:gap-6"
+          class="baja"
           aria-labelledby="titulo-baja"
         >
           <div>
-            <h2 id="titulo-baja" class="text-[14px] font-semibold text-tinta">
+            <h2 id="titulo-baja" class="seccion-titulo">
               Dar de baja el estacionamiento
             </h2>
-            <p class="mt-0.5 text-[13px] text-plomo">
+            <p class="seccion-texto">
               Se cancelan las reservas que todavía no empezaron y sus cocheras quedan inactivas.
             </p>
           </div>

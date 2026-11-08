@@ -80,6 +80,7 @@ const sinAcentos = (texto: string) =>
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [DatePipe, NgTemplateOutlet, Tarjeta, Cargando, EstadoVacio, Etiqueta, Icono, Boton, Modal, CalificarConductor],
   templateUrl: './reservas.html',
+  styleUrl: './reservas.css',
 })
 export class Reservas {
   private readonly estacionamientos = inject(EstacionamientoService);

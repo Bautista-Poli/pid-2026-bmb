@@ -17,6 +17,7 @@ import { EstacionamientoService } from '@app/services/estacionamiento.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink, Boton, FormularioEstacionamiento],
   templateUrl: './alta-estacionamiento.html',
+  styleUrl: './alta-estacionamiento.css',
 })
 export class AltaEstacionamiento {
   private readonly estacionamientos = inject(EstacionamientoService);

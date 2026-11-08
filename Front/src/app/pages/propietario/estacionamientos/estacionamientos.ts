@@ -37,6 +37,7 @@ import { EstacionamientoService } from '@app/services/estacionamiento.service';
     Tarjeta,
   ],
   templateUrl: './estacionamientos.html',
+  styleUrl: './estacionamientos.css',
 })
 export class Estacionamientos {
   private readonly estacionamientos = inject(EstacionamientoService);

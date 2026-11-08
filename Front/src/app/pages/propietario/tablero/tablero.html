@@ -1,32 +1,31 @@
 <!-- Pantalla `/propietario/tablero` · rol PROPIETARIO. Datos y acciones en tablero.ts. -->
-<div class="aparece mx-auto w-full max-w-[1240px] px-5 pt-5 pb-8 lg:px-9 lg:pt-8 lg:pb-11">
+<div class="aparece vista">
   <!-- Saludo + fecha -->
-  <header class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+  <header class="encabezado">
     <div>
-      <h1 class="text-[24px] leading-tight font-semibold tracking-[-0.02em] text-tinta lg:text-[28px]">
+      <h1 class="titulo">
         ¡Hola, {{ nombre() }}!
       </h1>
-      <p class="mt-1 text-[13.5px] text-plomo">
+      <p class="subtitulo">
         Acá tenés un resumen de la actividad de tus estacionamientos.
-        <a class="font-medium text-acento hover:text-acento-fuerte" routerLink="/propietario/estadisticas">
+        <a class="link" routerLink="/propietario/estadisticas">
           Ver estadísticas
         </a>
       </p>
     </div>
     <span
-      class="inline-flex items-center gap-2 self-start rounded-control border border-borde bg-papel
-             px-3.5 py-2 text-[12.5px] font-medium text-grafito shadow-tarjeta"
+      class="fecha-hoy"
     >
-      <ui-icono nombre="calendario" [tamano]="16" class="text-plomo" />
-      <span class="inline-block first-letter:uppercase">{{ hoy | date: 'EEE, d MMM y' }}</span>
+      <ui-icono nombre="calendario" [tamano]="16" class="fecha-icono" />
+      <span class="fecha-texto">{{ hoy | date: 'EEE, d MMM y' }}</span>
     </span>
     <app-ingresar-codigo />
   </header>
 
   @if (recursoEstacionamientos.isLoading()) {
-    <div class="mt-6"><ui-cargando [cantidad]="2" /></div>
+    <div class="error-estacionamientos"><ui-cargando [cantidad]="2" /></div>
   } @else if (recursoEstacionamientos.value().length === 0) {
-    <div class="mt-6">
+    <div class="vacio">
       <ui-estado-vacio
         titulo="Todavía no cargaste estacionamientos"
         descripcion="Cuando cargues uno vas a ver acá la actividad de tus cocheras."
@@ -37,35 +36,35 @@
       </ui-estado-vacio>
     </div>
   } @else {
-    <div class="mt-6 flex flex-col gap-5 lg:gap-6">
+    <div class="contenido">
       <!-- Metricas -->
-      <div class="aparece-en-cadena grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div class="aparece-en-cadena metricas">
         @for (metrica of metricas(); track metrica.etiqueta) {
           <ui-tarjeta relleno="ninguno">
-            <div class="flex items-start gap-4 p-5">
+            <div class="metrica">
               <span
-                class="grid size-11 shrink-0 place-items-center rounded-full"
+                class="metrica-icono"
                 [class]="claseTono[metrica.tono]"
               >
                 <ui-icono [nombre]="metrica.icono" [tamano]="21" />
               </span>
-              <div class="min-w-0">
-                <p class="text-[13px] font-medium text-plomo">{{ metrica.etiqueta }}</p>
-                <p class="num-tabular mt-2 text-[26px] leading-none font-semibold tracking-[-0.02em] text-tinta">
+              <div class="metrica-info">
+                <p class="metrica-etiqueta">{{ metrica.etiqueta }}</p>
+                <p class="num-tabular metrica-valor">
                   {{ metrica.valor }}
                   @if (metrica.complemento) {
-                    <span class="text-[17px] font-medium text-humo">{{ metrica.complemento }}</span>
+                    <span class="metrica-complemento">{{ metrica.complemento }}</span>
                   }
                 </p>
                 @if (metrica.variacion; as variacion) {
                   <p
-                    class="mt-2.5 flex items-center gap-1 text-[12px] font-medium"
+                    class="metrica-variacion"
                     [class]="
                       variacion.sube === null
-                        ? 'text-plomo'
+                        ? 'variacion-neutra'
                         : variacion.sube
-                          ? 'text-exito'
-                          : 'text-ocupada'
+                          ? 'variacion-sube'
+                          : 'variacion-baja'
                     "
                   >
                     @if (variacion.sube !== null) {
@@ -74,7 +73,7 @@
                     {{ variacion.texto }}
                   </p>
                 } @else if (metrica.detalle) {
-                  <p class="mt-2.5 text-[12px] text-plomo">{{ metrica.detalle }}</p>
+                  <p class="metrica-detalle">{{ metrica.detalle }}</p>
                 }
               </div>
             </div>
@@ -84,70 +83,70 @@
 
       @if (error(); as mensaje) {
         <p
-          class="rounded-control border border-ocupada/25 bg-ocupada/5 px-4 py-3 text-[13px] text-ocupada"
+          class="aviso-error"
           role="alert"
         >
           {{ mensaje }}
         </p>
       }
 
-      <div class="grid gap-5 lg:gap-6 xl:grid-cols-[1.15fr_1fr]">
+      <div class="fila-paneles">
         <!-- Ocupacion de la semana -->
         <ui-tarjeta relleno="lg">
-          <div class="flex h-full flex-col gap-5">
-            <div class="flex flex-wrap items-start justify-between gap-3">
+          <div class="ocupacion">
+            <div class="panel-cabecera">
               <div>
-                <h2 class="text-[15px] font-semibold text-tinta">Ocupación de cocheras</h2>
-                <p class="mt-0.5 text-[12px] text-plomo">Cocheras con reservas cada día de esta semana</p>
+                <h2 class="panel-titulo">Ocupación de cocheras</h2>
+                <p class="panel-detalle">Cocheras con reservas cada día de esta semana</p>
               </div>
-              <div class="flex items-center gap-4 text-[12px] text-plomo">
-                <span class="flex items-center gap-1.5">
-                  <span class="size-2.5 rounded-[3px] bg-acento"></span> Ocupadas
+              <div class="leyenda">
+                <span class="leyenda-item">
+                  <span class="muestra-ocupadas"></span> Ocupadas
                 </span>
-                <span class="flex items-center gap-1.5">
-                  <span class="size-2.5 rounded-[3px] bg-acento/25"></span> Disponibles
+                <span class="leyenda-item">
+                  <span class="muestra-disponibles"></span> Disponibles
                 </span>
               </div>
             </div>
 
             @if (recursoReservas.isLoading()) {
-              <div class="esqueleto h-[220px] rounded-control"></div>
+              <div class="esqueleto esqueleto-grafico"></div>
             } @else {
-              <div class="flex gap-3" role="img" aria-label="Ocupación de cocheras por día de esta semana">
+              <div class="grafico" role="img" aria-label="Ocupación de cocheras por día de esta semana">
                 <!-- Eje Y -->
-                <div class="flex h-[200px] flex-col justify-between pb-0 text-right">
+                <div class="escala">
                   @for (marca of escala().marcas; track marca) {
-                    <span class="num-tabular -translate-y-1/2 text-[11px] leading-none text-humo first:translate-y-0 last:translate-y-0">
+                    <span class="num-tabular escala-marca">
                       {{ marca }}
                     </span>
                   }
                 </div>
 
-                <div class="min-w-0 flex-1">
-                  <div class="relative h-[200px]">
+                <div class="grafico-area">
+                  <div class="grafico-lienzo">
                     <!-- Grilla -->
-                    <div class="pointer-events-none absolute inset-0 flex flex-col justify-between">
+                    <div class="lineas-guia">
                       @for (marca of escala().marcas; track marca) {
-                        <div class="border-t border-borde-sutil last:border-borde"></div>
+                        <div class="linea-guia"></div>
                       }
                     </div>
 
                     <!-- Barras -->
-                    <div class="relative flex h-full items-end justify-around gap-2">
+                    <div class="barras">
                       @for (dia of semana(); track dia.fecha) {
-                        <div class="group relative flex h-full w-full max-w-[44px] flex-col justify-end">
-                          <div class="flex flex-col gap-[2px]" [style.height]="alto(dia.ocupadas + dia.libres)">
+                        <div class="columna grupo">
+                          <div class="columna-pila" [style.height]="alto(dia.ocupadas + dia.libres)">
                             @if (dia.libres > 0) {
                               <div
-                                class="rounded-t-[4px] bg-acento/25 transition-colors duration-160 group-hover:bg-acento/35"
-                                [class.rounded-b-[4px]]="dia.ocupadas === 0"
+                                class="barra-disponibles"
+                                [class.redondeada-abajo]="dia.ocupadas === 0"
                                 [style.flex-grow]="dia.libres"
                               ></div>
                             }
                             @if (dia.ocupadas > 0) {
                               <div
-                                class="bg-acento transition-colors duration-160 group-hover:bg-acento-fuerte"
-                                [class.rounded-t-[4px]]="dia.libres === 0"
+                                class="barra-ocupadas"
+                                [class.redondeada-arriba]="dia.libres === 0"
                                 [style.flex-grow]="dia.ocupadas"
                               ></div>
                             }
@@ -155,12 +154,10 @@
 
                           <!-- Tooltip -->
                           <div
-                            class="pointer-events-none absolute bottom-[calc(100%+6px)] left-1/2 z-10 hidden
-                                   -translate-x-1/2 rounded-boton border border-borde bg-papel px-3 py-2
-                                   text-[12px] whitespace-nowrap shadow-flotante group-hover:block"
+                            class="tooltip"
                           >
-                            <p class="font-semibold text-tinta">{{ dia.etiqueta }}</p>
-                            <p class="num-tabular text-plomo">{{ dia.ocupadas }} ocupadas · {{ dia.libres }} disponibles</p>
+                            <p class="tooltip-titulo">{{ dia.etiqueta }}</p>
+                            <p class="num-tabular tooltip-detalle">{{ dia.ocupadas }} ocupadas · {{ dia.libres }} disponibles</p>
                           </div>
                         </div>
                       }
@@ -168,11 +165,11 @@
                   </div>
 
                   <!-- Eje X -->
-                  <div class="mt-2.5 flex justify-around gap-2">
+                  <div class="dias">
                     @for (dia of semana(); track dia.fecha) {
                       <span
-                        class="w-full max-w-[44px] text-center text-[11.5px] whitespace-nowrap"
-                        [class]="dia.esHoy ? 'font-semibold text-acento' : 'text-plomo'"
+                        class="dia"
+                        [class]="dia.esHoy ? 'dia-hoy' : 'dia-otro'"
                       >
                         {{ dia.etiqueta }}
                       </span>
@@ -186,10 +183,10 @@
 
         <!-- Reservas de hoy -->
         <ui-tarjeta relleno="ninguno" [recortar]="true">
-          <div class="flex items-center justify-between px-5 pt-5 pb-3 lg:px-6">
-            <h2 class="text-[15px] font-semibold text-tinta">Reservas de hoy</h2>
+          <div class="reservas-cabecera">
+            <h2 class="panel-titulo">Reservas de hoy</h2>
             <a
-              class="text-[12.5px] font-medium text-acento hover:text-acento-fuerte"
+              class="link-chico"
               routerLink="/propietario/reservas"
             >
               Ver todas
@@ -197,30 +194,29 @@
           </div>
 
           @if (recursoReservas.isLoading()) {
-            <p class="px-5 pb-5 text-[13px] text-plomo lg:px-6">Cargando…</p>
+            <p class="reservas-cargando">Cargando…</p>
           } @else if (reservasHoy().length === 0) {
-            <p class="border-t border-borde-sutil px-5 py-6 text-[13px] text-plomo lg:px-6">
+            <p class="reservas-vacio">
               No hay reservas para hoy.
             </p>
           } @else {
             <ul class="aparece-en-cadena">
               @for (reserva of reservasHoy().slice(0, 6); track reserva.id) {
                 <li
-                  class="flex items-center gap-3.5 border-t border-borde-sutil px-5 py-3.5
-                         transition-colors duration-160 hover:bg-lienzo lg:px-6"
+                  class="reserva"
                 >
-                  <span class="grid size-10 shrink-0 place-items-center rounded-full bg-acento-suave text-acento">
+                  <span class="reserva-icono">
                     <ui-icono [nombre]="iconoVehiculo[reserva.vehiculo.tipo]" [tamano]="19" />
                   </span>
 
-                  <div class="grid min-w-0 flex-1 gap-x-4 gap-y-0.5 sm:grid-cols-[1.2fr_1fr]">
-                    <p class="truncate text-[13px] font-semibold text-tinta">
+                  <div class="reserva-info">
+                    <p class="reserva-nombre">
                       {{ reserva.estacionamiento.nombre }}
                     </p>
-                    <p class="num-tabular text-[12.5px] text-grafito sm:row-start-1 sm:col-start-2">
+                    <p class="num-tabular reserva-horario">
                       {{ reserva.horaDesde }} - {{ reserva.horaHasta }}
                     </p>
-                    <p class="num-tabular truncate text-[12px] text-plomo sm:col-span-2">
+                    <p class="num-tabular reserva-vehiculo">
                       {{ etiquetaTipo[reserva.vehiculo.tipo] }} · {{ reserva.vehiculo.patente }}
                       @if (reserva.cochera) {
                         · Cochera {{ reserva.cochera.identificador }}
@@ -228,15 +224,14 @@
                     </p>
                   </div>
 
-                  <div class="flex shrink-0 flex-col items-end gap-1.5">
+                  <div class="reserva-acciones">
                     <ui-etiqueta [tono]="tonoEstado(reserva)">
                       {{ etiquetaEstado(reserva) }}
                     </ui-etiqueta>
                     @if (pasoDe(reserva); as paso) {
                       <button
                         type="button"
-                        class="text-[11.5px] font-semibold text-acento hover:text-acento-fuerte
-                               disabled:opacity-50"
+                        class="reserva-boton"
                         [disabled]="procesandoId() === reserva.id"
                         (click)="avanzar(reserva)"
                       >
@@ -249,8 +244,7 @@
             </ul>
             @if (reservasHoy().length > 6) {
               <a
-                class="block border-t border-borde-sutil px-5 py-3 text-center text-[12.5px] font-medium
-                       text-acento hover:bg-lienzo lg:px-6"
+                class="ver-mas"
                 routerLink="/propietario/reservas"
               >
                 Ver {{ reservasHoy().length - 6 }} más
@@ -263,26 +257,26 @@
       <!-- Estado de cocheras -->
       @if (activo(); as estacionamiento) {
         <ui-tarjeta relleno="lg">
-          <div class="flex flex-col gap-[18px]">
-            <div class="flex flex-wrap items-center justify-between gap-3">
-              <div class="flex items-baseline gap-3">
-                <h2 class="text-[15px] font-semibold text-tinta">Estado de cocheras</h2>
+          <div class="cocheras">
+            <div class="cocheras-cabecera">
+              <div class="cocheras-titulo">
+                <h2 class="panel-titulo">Estado de cocheras</h2>
                 <a
-                  class="text-[12.5px] font-medium text-acento hover:text-acento-fuerte"
+                  class="link-chico"
                   [routerLink]="['/propietario/cocheras', estacionamiento.id]"
                 >
                   Gestionar
                 </a>
               </div>
               @if (!recursoCocheras.isLoading()) {
-                <p class="num-tabular text-[11.5px] text-humo">
+                <p class="num-tabular actualizado">
                   Actualizado {{ actualizadoEn() | date: 'HH:mm' }}
                 </p>
               }
             </div>
 
             @if (recursoEstacionamientos.value().length > 1) {
-              <div class="flex gap-2 overflow-x-auto pb-1">
+              <div class="lotes">
                 @for (lote of recursoEstacionamientos.value(); track lote.id) {
                   <ui-chip [activo]="lote.id === estacionamiento.id" (alternar)="seleccionar(lote.id)">
                     {{ lote.nombre }}
@@ -300,7 +294,7 @@
                 </ui-boton>
               </ui-estado-vacio>
             } @else {
-              <div class="aparece-en-cadena grid grid-cols-4 gap-2.5 sm:grid-cols-6 lg:grid-cols-10">
+              <div class="aparece-en-cadena grilla-cocheras">
                 @for (cochera of recursoCocheras.value(); track cochera.id) {
                   <app-celda-cochera
                     [cochera]="cochera"
@@ -314,12 +308,12 @@
             <app-leyenda-cocheras />
 
             @if (cocheraAbierta(); as cochera) {
-              <div class="flex flex-col gap-3 rounded-control border border-borde bg-lienzo p-4">
-                <div class="flex items-center justify-between gap-3">
-                  <p class="num-tabular text-[13.5px] font-semibold text-tinta">
+              <div class="detalle-cochera">
+                <div class="detalle-cabecera">
+                  <p class="num-tabular detalle-nombre">
                     Cochera {{ cochera.identificador }}
                   </p>
-                  <p class="text-[12px] text-plomo">
+                  <p class="detalle-sector">
                     @if (cochera.sector) {
                       {{ cochera.sector }} ·
                     }
@@ -329,9 +323,9 @@
                 </div>
 
                 <!-- El estado lo mueven el ingreso y el egreso; baja y bloqueo estan en Cocheras. -->
-                <p class="text-[12.5px] text-plomo">
+                <p class="detalle-ayuda">
                   Se ocupa y se libera sola con el ingreso y el egreso.
-                  <a class="font-medium text-acento hover:text-acento-fuerte" routerLink="/propietario/cocheras">
+                  <a class="link" routerLink="/propietario/cocheras">
                     Bloquearla o darla de baja
                   </a>
                 </p>

@@ -1,21 +1,21 @@
 <!-- Pantalla `/propietario/reputacion` · rol PROPIETARIO. Datos y acciones en reputacion.ts. -->
-<div class="aparece mx-auto w-full max-w-[1240px] px-5 pt-5 pb-8 lg:px-9 lg:pt-8 lg:pb-11">
-  <header class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+<div class="aparece vista">
+  <header class="encabezado">
     <div>
       <p class="eyebrow">Propietario</p>
-      <h1 class="titulo-vista mt-1.5">Reputación{{ nombre() ? ' · ' + nombre() : '' }}</h1>
-      <p class="mt-1 text-[13.5px] text-plomo">
+      <h1 class="titulo-vista encabezado-titulo">Reputación{{ nombre() ? ' · ' + nombre() : '' }}</h1>
+      <p class="subtitulo">
         Tu puntaje combina lo que califican los conductores y cómo operás el estacionamiento.
       </p>
     </div>
 
-    <div class="flex flex-col gap-2.5 sm:flex-row sm:items-center">
-      <div class="inline-flex rounded-control border border-borde bg-papel p-1 shadow-tarjeta" role="group" aria-label="Período">
+    <div class="filtros">
+      <div class="periodos" role="group" aria-label="Período">
         @for (periodo of periodos; track periodo.dias) {
           <button
             type="button"
-            class="min-h-9 rounded-boton px-3 text-[13px] font-semibold transition-colors duration-160 ease-out"
-            [class]="dias() === periodo.dias ? 'bg-acento text-sobre-acento' : 'text-grafito hover:bg-lienzo'"
+            class="periodo"
+            [class]="dias() === periodo.dias ? 'periodo-activo' : 'periodo-inactivo'"
             [attr.aria-pressed]="dias() === periodo.dias"
             (click)="elegirPeriodo(periodo.dias)"
           >
@@ -25,8 +25,7 @@
       </div>
       @if (recursoEstacionamientos.value().length > 1) {
         <select
-          class="rounded-control border border-borde bg-papel px-3.5 py-2.5 text-[13px] text-grafito
-                 shadow-tarjeta focus:border-acento focus:outline-none"
+          class="selector"
           aria-label="Estacionamiento"
           (change)="elegirEstacionamiento($event)"
         >
@@ -39,9 +38,9 @@
   </header>
 
   @if (recursoEstacionamientos.isLoading() || (recurso.isLoading() && !recurso.value())) {
-    <div class="mt-6"><ui-cargando [cantidad]="3" /></div>
+    <div class="cargando"><ui-cargando [cantidad]="3" /></div>
   } @else if (!estacionamientoId()) {
-    <div class="mt-6">
+    <div class="vacio">
       <ui-estado-vacio
         titulo="Todavía no tenés estacionamientos"
         descripcion="Cuando publiques uno y lo usen, vas a ver acá su reputación."
@@ -50,21 +49,21 @@
       </ui-estado-vacio>
     </div>
   } @else if (recurso.error(); as e) {
-    <div class="mt-6">
+    <div class="error">
       <ui-estado-vacio titulo="No pudimos cargar la reputación" [descripcion]="e.message">
         <ui-boton (presionado)="recurso.reload()">Reintentar</ui-boton>
       </ui-estado-vacio>
     </div>
   } @else if (recurso.value(); as datos) {
-    <div class="mt-6 flex flex-col gap-5 lg:gap-6" [class.opacity-60]="recurso.isLoading()">
-      <div class="grid gap-5 lg:grid-cols-[380px_minmax(0,1fr)] lg:gap-6">
+    <div class="contenido" [class.recargando]="recurso.isLoading()">
+      <div class="fila-principal">
         <!-- Puntaje -->
         <section
-          class="tarjeta-puntaje flex flex-col gap-4 rounded-tarjeta border p-5 shadow-elevada lg:p-6"
+          class="tarjeta-puntaje puntaje"
           aria-label="Puntaje"
         >
-          <div class="flex items-center gap-[18px]">
-            <div class="shrink-0">
+          <div class="puntaje-resumen">
+            <div class="velocimetro">
               <svg width="120" height="112" viewBox="0 0 120 112" role="img" [attr.aria-label]="datos.puntaje + ' de 100'">
                 <!-- Pista y arco del puntaje: 240 grados, de abajo a la izquierda a abajo a la derecha -->
                 <path
@@ -98,7 +97,7 @@
                   />
                 }
                 <!-- Aguja -->
-                <g style="transform-box: view-box; transform-origin: 60px 60px; transition: transform 600ms ease-out" [style.transform]="'rotate(' + anguloAguja(datos) + 'deg)'">
+                <g class="aguja" [style.transform]="'rotate(' + anguloAguja(datos) + 'deg)'">
                   <path d="M60 22 L63 60 L57 60 Z" fill="currentColor" />
                 </g>
                 <circle cx="60" cy="60" r="5.5" fill="currentColor" />
@@ -109,14 +108,14 @@
                 <text x="60" y="107" text-anchor="middle" fill="currentColor" fill-opacity="0.8" font-size="11">de 100</text>
               </svg>
             </div>
-            <div class="flex min-w-0 flex-col gap-1.5">
-              <div class="flex flex-wrap items-center gap-1.5">
+            <div class="puntaje-info">
+              <div class="puntaje-nivel">
                 @if (datos.nivel; as nivel) {
                   <app-nivel-estacionamiento [nivel]="nivel" tamano="grande" [conPalabra]="true" />
                 }
                 @if (datos.destacado) {
                   <span
-                    class="inline-flex items-center gap-1.5 rounded-etiqueta bg-oro px-2 py-1 text-[11px] font-bold tracking-[0.04em] text-[#0f172a]"
+                    class="destacado-badge"
                   >
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                       <path d="M12 3.8l2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6L7.1 19l.9-5.5-4-3.9 5.5-.8Z" />
@@ -125,8 +124,8 @@
                   </span>
                 }
               </div>
-              <p class="text-[13px] leading-snug opacity-90">{{ estadoNivel() }}</p>
-              <p class="num-tabular text-[12px] opacity-75">
+              <p class="puntaje-estado">{{ estadoNivel() }}</p>
+              <p class="num-tabular puntaje-cambio">
                 @if (cambio(); as texto) {
                   {{ texto }} ·
                 }
@@ -136,32 +135,32 @@
             </div>
           </div>
 
-          <div class="flex flex-col gap-2.5 rounded-control bg-white/10 px-3.5 py-3">
+          <div class="desglose">
             <div>
-              <div class="flex items-center justify-between text-[12.5px]">
+              <div class="desglose-fila">
                 <span>Calificaciones (60%)</span>
-                <span class="num-tabular font-semibold">{{ datos.calificaciones.puntos }} / 60</span>
+                <span class="num-tabular negrita">{{ datos.calificaciones.puntos }} / 60</span>
               </div>
-              <div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/15">
-                <div class="h-full rounded-full bg-[var(--puntaje-arco)]" [style.width.%]="(datos.calificaciones.puntos / 60) * 100"></div>
+              <div class="desglose-barra">
+                <div class="desglose-relleno" [style.width.%]="(datos.calificaciones.puntos / 60) * 100"></div>
               </div>
             </div>
             <div>
-              <div class="flex items-center justify-between text-[12.5px]">
+              <div class="desglose-fila">
                 <span>Operación (40%)</span>
-                <span class="num-tabular font-semibold">{{ datos.operacion.puntos }} / 40</span>
+                <span class="num-tabular negrita">{{ datos.operacion.puntos }} / 40</span>
               </div>
-              <div class="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/15">
-                <div class="h-full rounded-full bg-[var(--puntaje-arco)]" [style.width.%]="(datos.operacion.puntos / 40) * 100"></div>
+              <div class="desglose-barra">
+                <div class="desglose-relleno" [style.width.%]="(datos.operacion.puntos / 40) * 100"></div>
               </div>
             </div>
           </div>
 
           @if (datos.insignias.length > 0) {
-            <div class="flex flex-wrap gap-1.5">
+            <div class="insignias">
               @for (insignia of datos.insignias; track insignia) {
                 @if (insignia !== 'DESTACADO') {
-                  <span class="rounded-etiqueta bg-white/15 px-2 py-0.5 text-[11.5px] font-semibold">
+                  <span class="insignia">
                     {{ textoInsignia[insignia] }}
                   </span>
                 }
@@ -172,40 +171,40 @@
 
         <!-- Categorias -->
         <ui-tarjeta relleno="lg">
-          <div class="flex h-full flex-col gap-4">
-            <div class="flex items-baseline justify-between gap-3">
-              <h2 class="text-[16px] font-semibold text-tinta">Lo que califican los conductores</h2>
-              <span class="text-[12px] text-plomo">Promedio de 1 a 5</span>
+          <div class="categorias-panel">
+            <div class="panel-cabecera">
+              <h2 class="panel-titulo">Lo que califican los conductores</h2>
+              <span class="panel-nota">Promedio de 1 a 5</span>
             </div>
             @if (datos.calificaciones.cantidad === 0) {
-              <p class="text-[13px] text-plomo">
+              <p class="sin-calificaciones">
                 Todavía nadie calificó en este período. Los conductores califican después de entrar y salir;
                 mientras tanto, el puntaje toma un 4 de promedio.
               </p>
             } @else {
-              <ul class="flex flex-col gap-3">
+              <ul class="categorias">
                 @for (categoria of datos.calificaciones.categorias; track categoria.codigo) {
                   @let tend = tendencia(categoria);
-                  <li class="grid grid-cols-[minmax(0,140px)_minmax(0,1fr)_auto_44px] items-center gap-3">
-                    <span class="truncate text-[13px] font-medium text-grafito">{{ categoria.nombre }}</span>
-                    <span class="h-2 overflow-hidden rounded-full bg-borde-sutil">
+                  <li class="categoria">
+                    <span class="categoria-nombre">{{ categoria.nombre }}</span>
+                    <span class="categoria-barra">
                       <span
-                        class="block h-full rounded-full bg-acento"
+                        class="categoria-relleno"
                         [style.width.%]="((categoria.promedio ?? 0) / 5) * 100"
                       ></span>
                     </span>
-                    <span class="num-tabular text-[13.5px] font-semibold text-tinta">{{ nota(categoria.promedio) }}</span>
-                    <span class="num-tabular text-right text-[12px] font-semibold" [class]="tend.clase">{{ tend.texto }}</span>
+                    <span class="num-tabular categoria-nota">{{ nota(categoria.promedio) }}</span>
+                    <span class="num-tabular categoria-tendencia" [class]="tend.clase">{{ tend.texto }}</span>
                   </li>
                 }
               </ul>
             }
             @if (etiquetasMarcadas().length > 0) {
-              <div class="mt-auto flex flex-wrap gap-1.5 border-t border-borde-sutil pt-3.5">
+              <div class="etiquetas">
                 @for (etiqueta of etiquetasMarcadas(); track etiqueta.codigo) {
                   <span
-                    class="num-tabular rounded-full border px-2.5 py-1 text-[12px] font-medium"
-                    [class]="etiqueta.positiva ? 'border-exito/25 bg-exito-suave text-exito' : 'border-baja/25 bg-baja/8 text-baja'"
+                    class="num-tabular etiqueta"
+                    [class]="etiqueta.positiva ? 'etiqueta-positiva' : 'etiqueta-negativa'"
                   >
                     {{ textoDeEtiqueta(etiqueta.codigo) }} · {{ etiqueta.cantidad }}
                   </span>
@@ -218,31 +217,31 @@
 
       <!-- Escalera de niveles -->
       <ui-tarjeta relleno="lg">
-        <div class="flex flex-col gap-3.5">
-          <div class="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 class="text-[16px] font-semibold text-tinta">Niveles</h2>
-            <span class="text-[12px] text-plomo">
+        <div class="niveles">
+          <div class="niveles-cabecera">
+            <h2 class="panel-titulo">Niveles</h2>
+            <span class="panel-nota">
               Hacen falta {{ datos.minimoCalificaciones }} calificaciones para tener nivel
             </span>
           </div>
-          <ol class="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+          <ol class="niveles-lista">
             @for (nivel of datos.niveles; track nivel.codigo; let i = $index) {
               <li
-                class="flex flex-col items-start gap-1.5 rounded-control border px-3 py-2.5"
+                class="nivel-item"
                 [class]="
                   nivel.codigo === datos.nivel
-                    ? 'border-acento bg-acento-suave'
+                    ? 'nivel-actual'
                     : alcanzado(datos, i)
-                      ? 'border-borde bg-papel'
-                      : 'border-dashed border-borde bg-papel opacity-60'
+                      ? 'nivel-alcanzado'
+                      : 'nivel-pendiente'
                 "
               >
                 <app-nivel-estacionamiento [nivel]="nivel.codigo" />
-                <span class="num-tabular text-[12px] text-plomo">{{ rango(datos, i) }}</span>
+                <span class="num-tabular nivel-rango">{{ rango(datos, i) }}</span>
                 @if (nivel.codigo === datos.nivel) {
-                  <span class="text-[11.5px] font-semibold text-acento">Estás acá</span>
+                  <span class="nivel-actual-texto">Estás acá</span>
                 } @else if (datos.siguienteNivel?.codigo === nivel.codigo) {
-                  <span class="num-tabular text-[11.5px] font-medium text-grafito">
+                  <span class="num-tabular nivel-falta">
                     Te faltan {{ datos.siguienteNivel!.faltan }}
                   </span>
                 }
@@ -252,23 +251,23 @@
         </div>
       </ui-tarjeta>
 
-      <div class="grid gap-5 lg:grid-cols-2 lg:gap-6">
+      <div class="fila-secundaria">
         <!-- Operacion -->
         <ui-tarjeta relleno="lg">
-          <div class="flex flex-col gap-3.5">
-            <h2 class="text-[16px] font-semibold text-tinta">Operación <span class="font-normal text-plomo">(lo mide Parkit)</span></h2>
-            <ul class="flex flex-col">
+          <div class="operacion">
+            <h2 class="panel-titulo">Operación <span class="panel-titulo-aclaracion">(lo mide Parkit)</span></h2>
+            <ul class="lista">
               @for (fila of filasOperacion(); track fila.titulo; let primera = $first) {
-                <li class="flex items-center justify-between gap-3 py-3" [class.border-t]="!primera" [class.border-borde-sutil]="!primera">
-                  <div class="min-w-0">
-                    <p class="text-[13.5px] font-medium text-tinta">{{ fila.titulo }}</p>
-                    <p class="mt-0.5 text-[12px] text-plomo">{{ fila.detalle }}</p>
+                <li class="operacion-fila" [class.separada]="!primera">
+                  <div class="operacion-info">
+                    <p class="operacion-titulo">{{ fila.titulo }}</p>
+                    <p class="operacion-detalle">{{ fila.detalle }}</p>
                   </div>
-                  <div class="flex shrink-0 items-center gap-3">
-                    <span class="num-tabular text-[15px] font-semibold text-tinta">{{ fila.valor }}</span>
+                  <div class="operacion-valores">
+                    <span class="num-tabular operacion-valor">{{ fila.valor }}</span>
                     <span
-                      class="num-tabular rounded-etiqueta px-2 py-0.5 text-[11.5px] font-semibold"
-                      [class]="fila.puntos === 10 ? 'bg-exito-suave text-exito' : 'bg-baja/10 text-baja'"
+                      class="num-tabular operacion-puntos"
+                      [class]="fila.puntos === 10 ? 'puntos-completo' : 'puntos-parcial'"
                     >
                       {{ fila.puntos }}/10
                     </span>
@@ -279,12 +278,12 @@
           </div>
         </ui-tarjeta>
 
-        <div class="flex flex-col gap-5 lg:gap-6">
+        <div class="columna-derecha">
           <!-- Sugerencia -->
           @if (datos.sugerencia; as sugerencia) {
-            <section class="rounded-tarjeta border border-oro/50 bg-oro-suave px-5 py-4" aria-label="Dónde ganás más puntos">
-              <p class="text-[13.5px] font-semibold text-oro-tinta">Dónde ganás más puntos</p>
-              <p class="mt-1 text-[13px] leading-relaxed text-grafito">
+            <section class="sugerencia" aria-label="Dónde ganás más puntos">
+              <p class="sugerencia-titulo">Dónde ganás más puntos</p>
+              <p class="sugerencia-texto">
                 {{ sugerencia.nombre }} está en {{ nota(sugerencia.promedio) }}.
                 @if (sugerencia.etiqueta; as etiqueta) {
                   {{ etiqueta.cantidad }} {{ etiqueta.cantidad === 1 ? 'conductor marcó' : 'conductores marcaron' }}
@@ -298,33 +297,33 @@
 
           <!-- Opiniones -->
           <ui-tarjeta relleno="lg">
-            <div class="flex flex-col gap-3">
-              <h2 class="text-[16px] font-semibold text-tinta">Opiniones recientes</h2>
+            <div class="opiniones">
+              <h2 class="panel-titulo">Opiniones recientes</h2>
               @if (datos.opiniones.length === 0) {
-                <p class="text-[13px] text-plomo">Todavía no hay opiniones.</p>
+                <p class="sin-opiniones">Todavía no hay opiniones.</p>
               } @else {
-                <ul class="flex flex-col">
+                <ul class="lista">
                   @for (opinion of datos.opiniones; track opinion.id; let primera = $first) {
-                    <li class="flex flex-col gap-1.5 py-3" [class.border-t]="!primera" [class.border-borde-sutil]="!primera">
-                      <div class="flex items-center justify-between gap-3">
-                        <span class="text-[13px] font-semibold text-tinta">
+                    <li class="opinion" [class.separada]="!primera">
+                      <div class="opinion-cabecera">
+                        <span class="opinion-autor">
                           {{ opinion.autor }}
-                          <span class="font-normal text-plomo">· {{ haceCuanto(opinion.creadaEn) }}</span>
+                          <span class="panel-titulo-aclaracion">· {{ haceCuanto(opinion.creadaEn) }}</span>
                         </span>
-                        <span class="num-tabular inline-flex items-center gap-1 text-[12.5px] font-semibold text-grafito">
-                          <svg width="12" height="12" viewBox="0 0 24 24" class="text-oro" fill="currentColor" aria-hidden="true">
+                        <span class="num-tabular opinion-estrellas">
+                          <svg width="12" height="12" viewBox="0 0 24 24" class="estrella" fill="currentColor" aria-hidden="true">
                             <path d="M12 3.8l2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6L7.1 19l.9-5.5-4-3.9 5.5-.8Z" />
                           </svg>
                           {{ nota(opinion.promedio) }}
                         </span>
                       </div>
-                      <p class="text-[13px] text-grafito" [class.text-plomo]="!opinion.comentario">
+                      <p class="opinion-comentario" [class.sin-comentario]="!opinion.comentario">
                         {{ opinion.comentario ? '“' + opinion.comentario + '”' : 'Sin comentario' }}
                       </p>
                       @if (opinion.etiquetas.length > 0) {
-                        <div class="flex flex-wrap gap-1">
+                        <div class="opinion-etiquetas">
                           @for (etiqueta of opinion.etiquetas; track etiqueta) {
-                            <span class="rounded-full bg-lienzo px-2 py-0.5 text-[11.5px] text-plomo">
+                            <span class="opinion-etiqueta">
                               {{ textoDeEtiqueta(etiqueta) }}
                             </span>
                           }
@@ -332,11 +331,11 @@
                       }
                       <div>
                         @if (opinion.denunciaEstado; as estado) {
-                          <span class="text-[12px] text-plomo">{{ textoEstadoDenuncia[estado] }}</span>
+                          <span class="denuncia-estado">{{ textoEstadoDenuncia[estado] }}</span>
                         } @else {
                           <button
                             type="button"
-                            class="text-[12px] font-semibold text-plomo underline-offset-2 hover:text-ocupada hover:underline"
+                            class="denunciar"
                             (click)="aDenunciar.set(opinion.id)"
                           >
                             Denunciar
@@ -352,7 +351,7 @@
         </div>
       </div>
 
-      <p class="text-[12px] text-plomo">
+      <p class="explicacion">
         Cómo se calcula: el promedio de las cinco categorías vale hasta 60 puntos; confirmar a tiempo, resolver
         incidencias sin denuncia, responder rápido en el chat y no cancelar reservas suman 10 cada uno. Con
         {{ datos.umbralDestacado }} puntos o más y al menos {{ datos.minimoCalificaciones }} calificaciones sos

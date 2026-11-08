@@ -21,6 +21,7 @@ const TEXTO_ACCION = { INGRESO: 'Registrar ingreso', EGRESO: 'Registrar egreso' 
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [Boton, Cargando, EstadoVacio, Tarjeta, RouterLink, DatePipe],
   templateUrl: './acceso.html',
+  styleUrl: './acceso.css',
 })
 export class Acceso {
   private readonly reservas = inject(ReservaService);

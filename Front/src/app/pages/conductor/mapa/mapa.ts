@@ -22,11 +22,8 @@ import {
 import {
   CampoBusqueda,
   Cargando,
-  Chip,
   EstadoVacio,
   Icono,
-  Modal,
-  NombreIcono,
   Sugerencia,
 } from '@app/components/ui';
 import {
@@ -48,17 +45,15 @@ import {
 } from '@app/services/estacionamiento.service';
 import { Destino } from '@app/utils/direcciones.util';
 import { buscarDestinosLocales } from '@app/utils/destinos-locales.util';
-import { Panel } from './panel';
+import { ModalFiltros } from './modal-filtros/modal-filtros';
+import { Panel, horaFin, pesos } from './panel';
 import {
   CLASE_ESTADO,
-  HORAS_MAXIMAS,
   ICONO_LUGAR,
   MAX_SUGERENCIAS,
-  OPCIONES_NIVEL,
   ORDENES,
   PANEL_INICIAL,
   POR_PAGINA,
-  PRECIO_PASO,
   PRECIO_TOPE,
 } from './constantes';
 import { UbicacionService } from '@app/services/ubicacion.service';
@@ -71,7 +66,7 @@ import {
   resumenHorario,
 } from '@app/utils/disponibilidad.util';
 import { minutosAPie } from '@app/utils/distancia.util';
-import { diaCorto, hoyISO } from '@app/utils/fecha.util';
+import { diaCorto } from '@app/utils/fecha.util';
 
 /**
  * Pantalla `/conductor/explorar` · rol CONDUCTOR. Es el inicio del conductor.
@@ -103,10 +98,9 @@ import { diaCorto, hoyISO } from '@app/utils/fecha.util';
     NivelEstacionamiento,
     CampoBusqueda,
     Cargando,
-    Chip,
     EstadoVacio,
     Icono,
-    Modal,
+    ModalFiltros,
   ],
   templateUrl: './mapa.html',
   styleUrl: './mapa.css',
@@ -123,10 +117,6 @@ export class Mapa {
   protected readonly iconoTipo = ICONO_TIPO_VEHICULO;
   protected readonly etiquetaEstado = ETIQUETA_ESTADO;
   protected readonly claseEstado = CLASE_ESTADO;
-  protected readonly precioTope = PRECIO_TOPE;
-  protected readonly precioPaso = PRECIO_PASO;
-  protected readonly horasMaximas = HORAS_MAXIMAS;
-  protected readonly hoy = hoyISO();
 
   /* -------------------------------- Vehiculo ------------------------------- */
 
@@ -160,20 +150,13 @@ export class Mapa {
 
   /* --------------------------------- Filtros -------------------------------- */
 
-  /** Borrador del modal de filtros. */
-  protected readonly panel = signal<Panel>(PANEL_INICIAL);
-  protected readonly opcionesNivel = OPCIONES_NIVEL;
   protected readonly ordenes = ORDENES;
-  protected readonly iconoOrden: Record<OrdenEstacionamiento, NombreIcono> = {
-    DISTANCIA: 'explorar',
-    PRECIO: 'moneda',
-    REPUTACION: 'estrella',
-  };
   /** Los filtros en uso. */
   private readonly aplicado = signal<Panel>(PANEL_INICIAL);
 
+  /** Con que filtros se abre el modal (ver modal-filtros/). */
+  protected readonly panelInicial = signal<Panel>(PANEL_INICIAL);
   protected readonly filtrosAbiertos = signal(false);
-  protected readonly intentoBuscar = signal(false);
 
   /** Cuantos filtros del modal estan en uso (el orden no cuenta: tiene su propio selector). */
   protected readonly filtrosActivos = computed(() => {
@@ -183,68 +166,24 @@ export class Mapa {
     ).length;
   });
 
-  protected readonly errorHorario = computed(() => {
-    const { fecha, desde, horas } = this.panel();
-    if (!desde) return null;
-    if (!fecha || fecha < this.hoy) return 'Elegí una fecha desde hoy.';
-    if (!horaFin(desde, horas)) return 'La reserva tiene que terminar antes de la medianoche. Probá con menos horas.';
-    return null;
-  });
-
-  protected readonly textoPrecio = computed(() => {
-    const { precioMinimo, precioMaximo } = this.panel();
-    const maximo = precioMaximo >= PRECIO_TOPE ? `${pesos(PRECIO_TOPE)}+` : pesos(precioMaximo);
-    return `${pesos(precioMinimo)} - ${maximo}`;
-  });
-
-  protected cambiar(cambios: Partial<Panel>): void {
-    this.panel.update((actual) => ({ ...actual, ...cambios }));
-  }
-
-  /** Horas a reservar: entre 1 y `HORAS_MAXIMAS`. */
-  protected cambiarHoras(delta: number): void {
-    const horas = Math.min(Math.max(this.panel().horas + delta, 1), HORAS_MAXIMAS);
-    this.cambiar({ horas });
-  }
-
-  /** "Hasta las 14:30", para que se vea cuando termina la reserva. */
-  protected readonly textoFin = computed(() => {
-    const { desde, horas } = this.panel();
-    const fin = desde ? horaFin(desde, horas) : null;
-    return fin ? `Hasta las ${fin}` : null;
-  });
-
-  /** Los dos extremos del rango no se cruzan: el que se mueve empuja hasta el otro. */
-  protected moverMinimo(valor: string): void {
-    this.cambiar({ precioMinimo: Math.min(Number(valor), this.panel().precioMaximo - PRECIO_PASO) });
-  }
-
-  protected moverMaximo(valor: string): void {
-    this.cambiar({ precioMaximo: Math.max(Number(valor), this.panel().precioMinimo + PRECIO_PASO) });
-  }
-
   /** El modal arranca con lo que esta en uso: si se cierra sin aplicar, no cambia nada. */
   protected abrirFiltros(): void {
-    this.panel.set({ ...this.aplicado(), orden: this.orden() });
-    this.intentoBuscar.set(false);
+    this.panelInicial.set({ ...this.aplicado(), orden: this.orden() });
     this.filtrosAbiertos.set(true);
   }
 
-  /** Aplica los filtros del modal y lo cierra. */
-  protected aplicarFiltros(): void {
-    this.intentoBuscar.set(true);
-    if (this.errorHorario()) return;
-    this.aplicado.set(this.panel());
-    this.orden.set(this.panel().orden);
+  /** El modal ya valido el horario: se aplican los filtros y se cierra. */
+  protected aplicarFiltros(panel: Panel): void {
+    this.aplicado.set(panel);
+    this.orden.set(panel.orden);
     this.filtrosAbiertos.set(false);
   }
 
   /** Vuelve los filtros a los iniciales (sin tocar el orden). */
   protected limpiarFiltros(): void {
     const limpio = { ...PANEL_INICIAL, orden: this.orden() };
-    this.panel.set(limpio);
+    this.panelInicial.set(limpio);
     this.aplicado.set(limpio);
-    this.intentoBuscar.set(false);
     this.filtrosAbiertos.set(false);
   }
 
@@ -253,9 +192,7 @@ export class Mapa {
    * que no vuelve a pedir al backend: solo reordena lo que ya llego.
    */
   protected ordenar(orden: string): void {
-    const valor = orden as OrdenEstacionamiento;
-    this.cambiar({ orden: valor });
-    this.orden.set(valor);
+    this.orden.set(orden as OrdenEstacionamiento);
   }
 
   /* -------------------------- Buscador y ubicacion ------------------------- */
@@ -506,19 +443,4 @@ function momentoDe(panel: Panel): Momento {
   const hasta = panel.desde ? horaFin(panel.desde, panel.horas) : null;
   if (!panel.desde || !hasta) return { tipo: 'AHORA' };
   return { tipo: 'FRANJA', fecha: panel.fecha, horaDesde: panel.desde, horaHasta: hasta };
-}
-
-/**
- * "HH:mm" de fin sumando `horas` al inicio. `null` si pasa de la medianoche:
- * la reserva tiene que empezar y terminar el mismo dia.
- */
-function horaFin(desde: HoraHHmm, horas: number): HoraHHmm | null {
-  const [h, m] = desde.split(':').map(Number);
-  const minutos = h * 60 + m + horas * 60;
-  if (minutos > 24 * 60 - 1) return null;
-  return `${String(Math.floor(minutos / 60)).padStart(2, '0')}:${String(minutos % 60).padStart(2, '0')}`;
-}
-
-function pesos(monto: number): string {
-  return `$${monto.toLocaleString('es-AR')}`;
 }

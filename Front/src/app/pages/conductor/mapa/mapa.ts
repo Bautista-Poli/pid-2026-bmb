@@ -31,7 +31,6 @@ import {
 } from '@app/components/ui';
 import {
   AreaMapa,
-  CodigoNivel,
   descripcionVehiculo,
   Estacionamiento,
   FiltrosEstacionamiento,
@@ -47,9 +46,21 @@ import {
   LIMITE_BUSQUEDA,
   ordenarEstacionamientos,
 } from '@app/services/estacionamiento.service';
-import { Destino, TipoLugar } from '@app/utils/direcciones.util';
+import { Destino } from '@app/utils/direcciones.util';
 import { buscarDestinosLocales } from '@app/utils/destinos-locales.util';
 import { Panel } from './panel';
+import {
+  CLASE_ESTADO,
+  HORAS_MAXIMAS,
+  ICONO_LUGAR,
+  MAX_SUGERENCIAS,
+  OPCIONES_NIVEL,
+  ORDENES,
+  PANEL_INICIAL,
+  POR_PAGINA,
+  PRECIO_PASO,
+  PRECIO_TOPE,
+} from './constantes';
 import { UbicacionService } from '@app/services/ubicacion.service';
 import { VehiculoService } from '@app/services/vehiculo.service';
 import {
@@ -61,65 +72,6 @@ import {
 } from '@app/utils/disponibilidad.util';
 import { minutosAPie } from '@app/utils/distancia.util';
 import { diaCorto, hoyISO } from '@app/utils/fecha.util';
-
-/** Tope del rango de precios (por hora). En el tope, el maximo no filtra. */
-const PRECIO_TOPE = 5000;
-const PRECIO_PASO = 100;
-
-/** Icono de cada sugerencia del buscador, segun que clase de lugar es. */
-const ICONO_LUGAR: Record<TipoLugar, NombreIcono> = {
-  direccion: 'explorar',
-  esquina: 'esquina',
-  calle: 'calle',
-  zona: 'explorar',
-  ciudad: 'ciudad',
-  plaza: 'arbol',
-  lugar: 'estacionamiento',
-};
-
-/** Sugerencias que muestra el buscador como maximo. */
-const MAX_SUGERENCIAS = 8;
-
-/** Tope de horas a reservar en el filtro. */
-const HORAS_MAXIMAS = 12;
-
-/** Estacionamientos por pagina en la lista (en el mapa van todos los de la zona). */
-const POR_PAGINA = 10;
-
-/** Sin filtros: ahora, cualquier precio, ordenado por cercania. */
-const PANEL_INICIAL: Panel = {
-  fecha: hoyISO(),
-  desde: '',
-  horas: 1,
-  precioMinimo: 0,
-  precioMaximo: PRECIO_TOPE,
-  orden: 'DISTANCIA',
-  soloCubiertos: false,
-  nivelMinimo: null,
-};
-
-/** Opciones de "Nivel del estacionamiento": todos, o de ese nivel para arriba. */
-const OPCIONES_NIVEL: { nivel: CodigoNivel | null; texto: string }[] = [
-  { nivel: null, texto: 'Todos' },
-  { nivel: 'COBRE', texto: 'Cobre o más' },
-  { nivel: 'PLATA', texto: 'Plata o más' },
-  { nivel: 'ORO', texto: 'Oro o más' },
-  { nivel: 'PLATINO', texto: 'Platino o más' },
-  { nivel: 'ESMERALDA', texto: 'Esmeralda o más' },
-  { nivel: 'DIAMANTE', texto: 'Solo Diamante' },
-];
-
-const ORDENES: { orden: OrdenEstacionamiento; texto: string }[] = [
-  { orden: 'DISTANCIA', texto: 'Más cercano' },
-  { orden: 'PRECIO', texto: 'Más barato' },
-  { orden: 'REPUTACION', texto: 'Mejor calificados' },
-];
-
-const CLASE_ESTADO: Record<EstadoDisponibilidad, string> = {
-  DISPONIBLE: 'bg-exito-suave text-exito',
-  POCA: 'bg-baja/15 text-baja',
-  NO_DISPONIBLE: 'bg-humo/15 text-[color-mix(in_srgb,var(--color-ocupada)_55%,var(--color-plomo))]',
-};
 
 /**
  * Pantalla `/conductor/explorar` · rol CONDUCTOR. Es el inicio del conductor.

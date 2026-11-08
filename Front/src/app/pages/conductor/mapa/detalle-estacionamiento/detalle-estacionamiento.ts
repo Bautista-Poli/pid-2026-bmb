@@ -2,8 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
 import { RouterLink } from '@angular/router';
 import { Icono } from '@app/components/ui';
 import { CATEGORIAS_CALIFICACION, Estacionamiento, formatearNota } from '@app/models';
-import { InsigniasEstacionamiento } from '../insignias-estacionamiento/insignias-estacionamiento';
-import { GaleriaFotos } from '../galeria-fotos/galeria-fotos';
+import { GaleriaFotos, InsigniasEstacionamiento } from '@app/components/estacionamiento';
 import {
   ETIQUETA_ESTADO,
   EstadoDisponibilidad,

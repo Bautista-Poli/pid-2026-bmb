@@ -14,24 +14,16 @@ import { rxResource } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
 import { Observable, of } from 'rxjs';
 import {
-  DetalleEstacionamiento,
   InsigniasEstacionamiento,
   MapaEstacionamientos,
   NivelEstacionamiento,
 } from '@app/components/estacionamiento';
-import {
-  CampoBusqueda,
-  Cargando,
-  EstadoVacio,
-  Icono,
-  Sugerencia,
-} from '@app/components/ui';
+import { Cargando, EstadoVacio, Icono } from '@app/components/ui';
 import {
   AreaMapa,
   descripcionVehiculo,
   Estacionamiento,
   FiltrosEstacionamiento,
-  HoraHHmm,
   ICONO_TIPO_VEHICULO,
   Id,
   Momento,
@@ -45,6 +37,8 @@ import {
 } from '@app/services/estacionamiento.service';
 import { Destino } from '@app/utils/direcciones.util';
 import { buscarDestinosLocales } from '@app/utils/destinos-locales.util';
+import { CampoBusqueda, Sugerencia } from './campo-busqueda/campo-busqueda';
+import { DetalleEstacionamiento } from './detalle-estacionamiento/detalle-estacionamiento';
 import { ModalFiltros } from './modal-filtros/modal-filtros';
 import { Panel, horaFin, pesos } from './panel';
 import {

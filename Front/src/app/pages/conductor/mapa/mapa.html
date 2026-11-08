@@ -15,7 +15,7 @@
       <div class="panel-buscador__fila">
         <!-- Enter sin elegir sugerencia filtra por nombre o zona (un solo campo: el form se envia solo). -->
         <form class="panel-buscador__formulario" role="search" (submit)="$event.preventDefault(); buscarTexto()">
-          <ui-campo-busqueda
+          <app-campo-busqueda
             etiqueta="Buscar por dirección, lugar o zona"
             marcador="Buscar por dirección, lugar o zona..."
             [valor]="texto()"

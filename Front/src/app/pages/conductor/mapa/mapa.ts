@@ -12,7 +12,7 @@ import {
 } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
-import { Observable, catchError, forkJoin, map, of } from 'rxjs';
+import { Observable, of } from 'rxjs';
 import {
   DetalleEstacionamiento,
   InsigniasEstacionamiento,
@@ -48,15 +48,7 @@ import {
   LIMITE_BUSQUEDA,
   ordenarEstacionamientos,
 } from '@app/services/estacionamiento.service';
-import {
-  DireccionGeoref,
-  GeorefService,
-  TipoLugar,
-  ZonaBusqueda,
-  normalizar,
-} from '@app/services/georef.service';
-import { LugaresService } from '@app/services/lugares.service';
-import { EntornoService } from '@app/services/entorno.service';
+import { Destino, TipoLugar } from '@app/utils/direcciones.util';
 import { buscarDestinosLocales } from '@app/utils/destinos-locales.util';
 import { UbicacionService } from '@app/services/ubicacion.service';
 import { VehiculoService } from '@app/services/vehiculo.service';
@@ -87,9 +79,6 @@ const ICONO_LUGAR: Record<TipoLugar, NombreIcono> = {
 
 /** Sugerencias que muestra el buscador como maximo. */
 const MAX_SUGERENCIAS = 8;
-
-/** "corrientes y callao", "santa fe esquina pueyrredon": el conductor busca una esquina. */
-const PARECE_ESQUINA = /\s(y|e|esq\.?|esquina)\s+\S/i;
 
 /** Tope de horas a reservar en el filtro. */
 const HORAS_MAXIMAS = 12;
@@ -189,10 +178,6 @@ interface Panel {
 export class Mapa {
   private readonly estacionamientos = inject(EstacionamientoService);
   private readonly vehiculos = inject(VehiculoService);
-  private readonly georef = inject(GeorefService);
-  private readonly lugares = inject(LugaresService);
-  /** Offline el buscador no consulta Georef ni Photon: busca en lo que ya hay en la base. */
-  private readonly offline = inject(EntornoService).offline();
   private readonly ubicacion = inject(UbicacionService);
   private readonly router = inject(Router);
   private readonly injector = inject(Injector);
@@ -342,7 +327,7 @@ export class Mapa {
   protected readonly texto = signal('');
   private readonly textoAplicado = signal('');
   /** Zona o direccion elegida de las sugerencias: las distancias se miden desde ahi. */
-  protected readonly destino = signal<DireccionGeoref | null>(null);
+  protected readonly destino = signal<Destino | null>(null);
 
   protected escribir(texto: string): void {
     this.texto.set(texto);
@@ -357,7 +342,7 @@ export class Mapa {
 
   /** Centra la busqueda en el lugar elegido. */
   protected elegirDestino(sugerencia: Sugerencia): void {
-    const destino = sugerencia.dato as DireccionGeoref;
+    const destino = sugerencia.dato as Destino;
     this.destino.set(destino);
     this.texto.set(destino.nombre);
     this.textoAplicado.set('');
@@ -389,80 +374,27 @@ export class Mapa {
     return !this.destino() && (estado === 'denegada' || estado === 'no-disponible');
   });
 
-  /**
-   * Todos los estacionamientos publicados: de ahi salen las ciudades donde
-   * buscar direcciones (sin acotar, Georef devuelve la misma altura en decenas
-   * de ciudades del pais).
-   */
+  /** Todos los estacionamientos publicados: el buscador sugiere sus barrios y nombres. */
   private readonly todos = rxResource({
     stream: () => this.estacionamientos.listar({}),
     defaultValue: [] as Estacionamiento[],
   });
 
-  private readonly zonas = computed<ZonaBusqueda[]>(() => {
-    const vistas = new Map<string, ZonaBusqueda>();
-    for (const { direccion } of this.todos.value()) {
-      if (!direccion.ciudad || !direccion.provincia) continue;
-      vistas.set(`${direccion.ciudad}|${direccion.provincia}`, {
-        ciudad: direccion.ciudad,
-        provincia: direccion.provincia,
-      });
-    }
-    return [...vistas.values()];
-  });
-
   /**
-   * Sugerencias del buscador (desde la 3ra letra), de tres fuentes a la vez:
-   *   1. Georef: direcciones con altura ("Pueyrredon 2409") y esquinas
-   *      ("Corrientes y Callao"), en las ciudades donde hay estacionamientos.
-   *   2. Georef: barrios y localidades ("Palermo", "Rosario").
-   *   3. Photon (OpenStreetMap): plazas, lugares conocidos, estaciones, calles
-   *      y ciudades, primero los cercanos.
-   * Van en ese orden (de lo mas preciso a lo mas general), sin repetidos. Si
-   * una fuente falla, se muestran las otras. Offline, barrios y estacionamientos
-   * de la base (buscarDestinosLocales).
+   * Sugerencias del buscador (desde la 3ra letra): los barrios y los
+   * estacionamientos que ya estan en la base (buscarDestinosLocales).
    */
-  protected readonly buscarDirecciones = (texto: string): Observable<Sugerencia[]> => {
-    if (this.offline) {
-      return of(
-        buscarDestinosLocales(texto, this.todos.value())
-          .slice(0, MAX_SUGERENCIAS)
-          .map((lugar) => ({ nombre: lugar.nombre, detalle: lugar.detalle, dato: lugar, icono: ICONO_LUGAR[lugar.tipo ?? 'lugar'] })),
-      );
-    }
-    const zonas = this.zonas();
-    const provincias = [...new Set(zonas.map((zona) => zona.provincia))];
-    const sinFallar = (fuente: Observable<DireccionGeoref[]>) =>
-      fuente.pipe(catchError(() => of([] as DireccionGeoref[])));
-
-    const buscaDireccion = /\d/.test(texto) || PARECE_ESQUINA.test(texto);
-    return forkJoin([
-      buscaDireccion ? sinFallar(this.georef.buscarDestinos(texto, zonas)) : of([]),
-      sinFallar(this.georef.buscarZonas(texto, provincias)),
-      sinFallar(this.lugares.buscar(texto, this.origen())),
-    ]).pipe(
-      map(([direcciones, barrios, lugares]) => {
-        const vistos = new Set<string>();
-        return [...direcciones, ...barrios.slice(0, 3), ...lugares]
-          .filter((lugar) => {
-            // Mismo nombre en la misma provincia/ciudad ("Palermo, CABA" de Georef y
-            // de Photon) es el mismo lugar; "Corrientes" en otra ciudad no.
-            const region = lugar.detalle.split(',').at(-1) ?? '';
-            const clave = `${normalizar(lugar.nombre)}|${normalizar(region)}`;
-            if (vistos.has(clave)) return false;
-            vistos.add(clave);
-            return true;
-          })
-          .slice(0, MAX_SUGERENCIAS)
-          .map((lugar) => ({
-            nombre: lugar.nombre,
-            detalle: lugar.detalle,
-            dato: lugar,
-            icono: ICONO_LUGAR[lugar.tipo ?? 'lugar'],
-          }));
-      }),
+  protected readonly buscarDirecciones = (texto: string): Observable<Sugerencia[]> =>
+    of(
+      buscarDestinosLocales(texto, this.todos.value())
+        .slice(0, MAX_SUGERENCIAS)
+        .map((lugar) => ({
+          nombre: lugar.nombre,
+          detalle: lugar.detalle,
+          dato: lugar,
+          icono: ICONO_LUGAR[lugar.tipo ?? 'lugar'],
+        })),
     );
-  };
 
   /* ------------------------------- Resultados ------------------------------ */
 

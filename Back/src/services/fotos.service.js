@@ -1,6 +1,6 @@
-// Fotos en disco para el modo offline (OFFLINE=true): reemplaza a Cloudinary con
-// el mismo contrato (firma -> subida -> public_id), asi el resto de la API no cambia.
-import { createHmac, timingSafeEqual } from 'node:crypto';
+// Fotos de estacionamientos y vehiculos, guardadas en disco (Back/datos-locales/fotos).
+// Flujo de una subida: firma -> el navegador sube a POST /api/fotos-locales -> public_id.
+import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { mkdir, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
@@ -8,14 +8,18 @@ import { config } from '../config/env.js';
 import { ApiError } from '../utils/ApiError.js';
 
 /**
- * Cada foto vive en `datos-locales/fotos/<public_id>.<ext>`. El `public_id` es
- * el mismo que tendria en Cloudinary (`<carpeta>/<tipo>/<id>/<uuid>`), asi que
- * las fotos copiadas de Cloudinary (npm run offline:fotos) se encuentran igual.
+ * Cada foto vive en `datos-locales/fotos/<public_id>.<ext>`, con
+ * `public_id = parkit/<tipo>/<id>/<uuid>`.
  *
  * La subida la hace el navegador contra la API (POST /api/fotos-locales) con
- * una firma HMAC que cubre el public_id y la hora: igual que con Cloudinary, no
- * sirve para subir otra cosa ni a otro lado, y vence en una hora.
+ * una firma HMAC que cubre el public_id y la hora: no sirve para subir otra
+ * cosa ni a otro lado, y vence en una hora.
  */
+
+/** Carpeta de un estacionamiento o vehiculo: `parkit/<tipo>/<id>`. */
+export function carpetaDe(tipo, id) {
+  return `parkit/${tipo}/${id}`;
+}
 
 /** Extension por formato. La subida detecta el formato por los primeros bytes. */
 export const EXTENSIONES = ['jpg', 'png', 'webp'];
@@ -36,16 +40,15 @@ function firmar(publicId, timestamp) {
   return createHmac('sha256', config.jwt.secret).update(`${publicId}:${timestamp}`).digest('hex');
 }
 
-/** Lo que necesita el navegador para subir UNA foto (mismos campos que Cloudinary, mas `urlSubida`). */
-export function firmarSubida(publicId, allowedFormats) {
+/** Lo que necesita el navegador para subir UNA foto nueva dentro de `carpeta`. */
+export function firmarSubida(carpeta) {
+  const publicId = `${carpeta}/${randomUUID()}`;
   const timestamp = Math.round(Date.now() / 1000);
   return {
-    cloudName: 'local',
-    apiKey: 'local',
     timestamp,
     signature: firmar(publicId, timestamp),
     publicId,
-    allowedFormats,
+    allowedFormats: EXTENSIONES.join(','),
     // Relativa: el front le antepone /api (apiInterceptor).
     urlSubida: '/fotos-locales',
   };
@@ -101,8 +104,14 @@ export async function buscar(publicId) {
   return null;
 }
 
-/** Antes de asociar un public_id a un recurso: tiene que estar subida. */
-export async function verificar(publicId) {
+/**
+ * Antes de asociar un public_id a un recurso: tiene que ser de la carpeta propia
+ * (si no, cualquiera podria "robar" la foto de otro) y tiene que estar subida.
+ */
+export async function verificar(publicId, carpeta) {
+  const propio =
+    typeof publicId === 'string' && publicId.startsWith(`${carpeta}/`) && TRAMO.test(publicId.slice(carpeta.length + 1));
+  if (!propio) throw ApiError.badRequest('La foto no corresponde a este recurso');
   if (!(await buscar(publicId))) throw ApiError.badRequest('La foto no se subio');
 }
 
@@ -111,8 +120,8 @@ export function url(publicId) {
   return `${config.apiPrefix}/fotos-locales/${publicId}`;
 }
 
-/** Borra la foto. Idempotente: si no esta, no pasa nada. */
+/** Borra la foto. Idempotente: si no esta (o no hay public_id), no pasa nada. */
 export async function borrar(publicId) {
-  if (!publicIdValido(publicId)) return;
+  if (!publicId || !publicIdValido(publicId)) return;
   await Promise.all(EXTENSIONES.map((ext) => rm(rutaDe(publicId, ext), { force: true })));
 }

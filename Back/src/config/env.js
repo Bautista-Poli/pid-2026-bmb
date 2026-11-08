@@ -1,6 +1,5 @@
 // Variables de entorno centralizadas.
 // En desarrollo se cargan con `node --env-file=.env` (ver script "dev").
-// En Railway las inyecta la plataforma.
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -16,11 +15,8 @@ function requerido(nombre, valor) {
 
 const nodeEnv = process.env.NODE_ENV || 'development';
 
-/** Back/datos-locales: fotos y mapa del modo offline (no se suben al repo). */
+/** Back/datos-locales: fotos, mapa y copia de la base (no se suben al repo). */
 const DATOS_LOCALES_POR_DEFECTO = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'datos-locales');
-
-/** OFFLINE=true: todo local (fotos en disco, mapa propio, sin geocodificar). */
-const esOffline = () => (process.env.OFFLINE ?? 'false') === 'true';
 
 export const config = {
   nodeEnv,
@@ -28,12 +24,7 @@ export const config = {
   port: Number(process.env.PORT) || 3000,
   apiPrefix: process.env.API_PREFIX || '/api',
 
-  // Modo offline (ver docs/offline.md): la app entera anda sin internet. Las
-  // fotos se guardan en disco en vez de Cloudinary, el mapa sale de un archivo
-  // local y no se geocodifica. Getters: las pruebas lo prenden despues de importar.
-  get offline() {
-    return esOffline();
-  },
+  // Todo corre en esta maquina, sin internet (ver docs/local.md).
   datosLocales: {
     get carpeta() {
       return resolve(process.env.DATOS_LOCALES_DIR || DATOS_LOCALES_POR_DEFECTO);
@@ -47,11 +38,8 @@ export const config = {
   },
 
   db: {
-    // Railway expone DATABASE_URL automaticamente al vincular el servicio Postgres.
+    // Postgres local: postgresql://<usuario>@localhost:5432/parkit_local
     url: requerido('DATABASE_URL', process.env.DATABASE_URL),
-    // Railway (y la mayoria de los proveedores administrados) usan certificados
-    // que no estan en el store local, por eso rejectUnauthorized: false.
-    ssl: (process.env.DATABASE_SSL ?? (nodeEnv === 'production' ? 'true' : 'false')) === 'true',
     poolMax: Number(process.env.DATABASE_POOL_MAX) || 10,
   },
 
@@ -61,47 +49,4 @@ export const config = {
   },
 
   bcryptRounds: Number(process.env.BCRYPT_ROUNDS) || 10,
-
-  // Direccion -> coordenadas con Georef (y Nominatim de respaldo). En las pruebas
-  // arranca apagado para no depender de la red ni gastar el cupo del servicio.
-  // `habilitada` se lee en cada uso (getter) para que las pruebas puedan apagarla
-  // despues de importar la app.
-  geocodificacion: {
-    get habilitada() {
-      const porDefecto = nodeEnv === 'test' || esOffline() ? 'false' : 'true';
-      return (process.env.GEOCODING_ENABLED ?? porDefecto) === 'true';
-    },
-    georefUrl: process.env.GEOREF_URL || 'https://apis.datos.gob.ar/georef/api',
-    nominatimUrl: process.env.NOMINATIM_URL || 'https://nominatim.openstreetmap.org',
-    userAgent: process.env.GEOCODING_USER_AGENT || 'Parkit/1.0 (proyecto PID 2026)',
-  },
-
-  // Fotos de estacionamientos y vehiculos. El navegador sube directo a
-  // Cloudinary con una firma que arma la API (el secreto no sale de aca).
-  // `habilitada` apaga las llamadas a la red de Cloudinary (verificar y borrar)
-  // si faltan las credenciales o con CLOUDINARY_ENABLED=false (las pruebas).
-  // Todo con getters: las pruebas fijan credenciales falsas despues de importar.
-  cloudinary: {
-    get cloudName() {
-      return process.env.CLOUDINARY_CLOUD_NAME ?? '';
-    },
-    get apiKey() {
-      return process.env.CLOUDINARY_API_KEY ?? '';
-    },
-    get apiSecret() {
-      return process.env.CLOUDINARY_API_SECRET ?? '';
-    },
-    get carpeta() {
-      return process.env.CLOUDINARY_FOLDER || 'parkit';
-    },
-    get configurada() {
-      return Boolean(this.cloudName && this.apiKey && this.apiSecret);
-    },
-    get habilitada() {
-      const credenciales = this.configurada;
-      // Se lee en cada uso: las pruebas la apagan despues de importar la app.
-      const encendida = (process.env.CLOUDINARY_ENABLED ?? (nodeEnv === 'test' ? 'false' : 'true')) === 'true';
-      return credenciales && encendida;
-    },
-  },
 };

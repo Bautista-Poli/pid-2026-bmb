@@ -9,7 +9,7 @@ import {
 } from '@angular/core';
 import { Boton, Miniatura, NombreIcono } from '@app/components/ui';
 
-/** Lo que acepta Cloudinary. Antes de subir se achica (utils/imagen.util.ts). */
+/** Lo que acepta la API. Antes de subir se achica (utils/imagen.util.ts). */
 const TIPOS = ['image/jpeg', 'image/png', 'image/webp'];
 const MAXIMO_MB = 10;
 

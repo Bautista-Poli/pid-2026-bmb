@@ -1,7 +1,6 @@
-// Estacionamientos: alta (verificando la direccion), busqueda publica con filtros,
+// Estacionamientos: alta, busqueda publica con filtros,
 // detalle, edicion (vuelve a revision si cambia nombre o direccion) y baja.
 import { query, withTransaction } from '../config/database.js';
-import { config } from '../config/env.js';
 import { ApiError } from '../utils/ApiError.js';
 import { armarSet } from '../utils/sql.js';
 import { ZONA_HORARIA } from '../utils/horario.js';
@@ -10,7 +9,6 @@ import { CAMPOS_TARIFA, HORAS_POR_MODALIDAD } from '../utils/tarifas.js';
 import { ESTADOS_APROBACION, ESTADOS_COCHERA, ESTADOS_VIGENTES } from '../utils/roles.js';
 import { cancelarPorBajaDeEstacionamientos as cancelarAbonos } from './abono.service.js';
 import { listarPorEstacionamiento as listarCocheras } from './cochera.service.js';
-import { geocodificar } from './geocodificacion.service.js';
 import {
   COLUMNAS_REPUTACION,
   DIAS_BUSQUEDA,
@@ -26,23 +24,6 @@ const reputacionPublica = () => lateralReputacion(`now() - interval '${DIAS_BUSQ
 const CAMPOS_DIRECCION = ['calle', 'numero', 'ciudad', 'provincia'];
 // Si cambia alguno de estos en uno aprobado, vuelve a la cola de revision.
 const CAMPOS_REVISION = ['nombre', ...CAMPOS_DIRECCION];
-/** Si los datos ya traen latitud y longitud. */
-const tieneCoordenadas = (datos) => datos.latitud != null && datos.longitud != null;
-
-const DIRECCION_INEXISTENTE =
-  'No encontramos esa direccion. Elegi provincia, ciudad y calle de la lista y revisa la altura.';
-
-/**
- * Verifica la direccion contra Georef y devuelve sus coordenadas. Lanza 400 si
- * Georef responde que no existe. Si no se pudo consultar, deja pasar sin
- * coordenadas: una caida del servicio no tiene que impedir cargar el estacionamiento.
- */
-async function verificarDireccion(direccion) {
-  const resultado = await geocodificar(direccion);
-  if (resultado?.encontrada === false) throw ApiError.badRequest(DIRECCION_INEXISTENTE);
-  return { latitud: resultado?.latitud ?? null, longitud: resultado?.longitud ?? null };
-}
-
 const COLUMNAS = [
   'id_estacionamiento', 'id_propietario', 'nombre', 'descripcion', 'direccion',
   'calle', 'numero', 'ciudad', 'provincia', 'codigo_postal', 'barrio_zona',
@@ -129,13 +110,8 @@ function abiertoEntre(inicio, fin) {
 
 /**
  * Crea el estacionamiento y sus horarios en una sola transaccion.
- * Antes verifica la direccion y obtiene sus coordenadas (fuera de la
- * transaccion, para no tener una conexion tomada mientras se espera a Georef).
  */
-export async function crear(idPropietario, entrada) {
-  const coordenadas = await verificarDireccion(entrada);
-  const datos = tieneCoordenadas(entrada) ? entrada : { ...entrada, ...coordenadas };
-
+export async function crear(idPropietario, datos) {
   return withTransaction(async (client) => {
     const { rows } = await client.query(
       `INSERT INTO estacionamiento
@@ -415,51 +391,6 @@ async function asegurarAlgunaTarifa(client, idEstacionamiento, datos) {
 }
 
 /**
- * Decide las coordenadas que se guardan en un PATCH. El formulario del
- * propietario manda siempre la direccion completa y las coordenadas que tenia,
- * por eso se compara contra lo guardado:
- *   - si cambio la direccion, se verifica (400 si no existe) y se toman las
- *     coordenadas nuevas, salvo que el cliente mande otras explicitamente;
- *   - si no cambio pero el estacionamiento no tiene coordenadas, se intenta
- *     completarlas. No se rechaza: puede ser una direccion cargada antes de
- *     que existiera la validacion, y no tiene que trabar editar otros datos.
- * En modo offline no hay geocodificacion: valen las que marco el propietario.
- */
-async function completarCoordenadas(idEstacionamiento, entrada) {
-  if (config.offline) return entrada;
-  const { rows } = await query(
-    `SELECT ${[...CAMPOS_DIRECCION, 'latitud', 'longitud'].join(', ')}
-       FROM estacionamiento WHERE id_estacionamiento = $1`,
-    [idEstacionamiento],
-  );
-  const guardado = rows[0];
-
-  const direccion = { ...guardado };
-  for (const campo of CAMPOS_DIRECCION) {
-    if (entrada[campo] !== undefined) direccion[campo] = entrada[campo];
-  }
-
-  const coordenadasNuevas =
-    tieneCoordenadas(entrada) &&
-    (entrada.latitud !== guardado.latitud || entrada.longitud !== guardado.longitud);
-  const cambioDireccion = CAMPOS_DIRECCION.some(
-    (campo) => (direccion[campo] ?? '') !== (guardado[campo] ?? ''),
-  );
-
-  if (cambioDireccion) {
-    const coordenadas = await verificarDireccion(direccion);
-    return coordenadasNuevas ? entrada : { ...entrada, ...coordenadas };
-  }
-
-  if (coordenadasNuevas || tieneCoordenadas(guardado)) return entrada;
-
-  const resultado = await geocodificar(direccion);
-  return resultado?.latitud != null
-    ? { ...entrada, latitud: resultado.latitud, longitud: resultado.longitud }
-    : entrada;
-}
-
-/**
  * Si cambiaron el nombre o la direccion (lo que verifica el administrador) y en
  * que estado de aprobacion estaba. Un aprobado con cambios vuelve a PENDIENTE: El formulario manda siempre todos los
  * campos, asi que se compara contra lo guardado (fila ya bloqueada por
@@ -504,11 +435,10 @@ export async function reenviarRevision(idEstacionamiento, idPropietario) {
  * Modifica los datos del estacionamiento. Si vienen `horarios` reemplazan a los
  * cargados: es lo que espera la pantalla, que manda la semana completa.
  */
-export async function actualizar(idEstacionamiento, idPropietario, entrada) {
+export async function actualizar(idEstacionamiento, idPropietario, datos) {
   const { activo } = await asegurarPropiedad(idEstacionamiento, idPropietario);
   if (!activo) throw ApiError.conflict('El estacionamiento esta dado de baja');
 
-  const datos = await completarCoordenadas(idEstacionamiento, entrada);
 
   await withTransaction(async (client) => {
     await asegurarAlgunaTarifa(client, idEstacionamiento, datos);

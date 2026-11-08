@@ -9,7 +9,7 @@ import {
   signal,
   untracked,
 } from '@angular/core';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
   FormBuilder,
@@ -18,20 +18,11 @@ import {
   Validators,
 } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { Observable, catchError, map, of } from 'rxjs';
-import { Boton, CampoAutocompletar, Sugerencia, Tarjeta } from '@app/components/ui';
+import { Boton, Tarjeta } from '@app/components/ui';
 import { FotoEstacionamiento } from '../foto-estacionamiento/foto-estacionamiento';
 import { SelectorUbicacion } from '../selector-ubicacion/selector-ubicacion';
-import { DiaSemana, Direccion, Estacionamiento, NuevoEstacionamiento } from '@app/models';
-import { EntornoService } from '@app/services/entorno.service';
-import {
-  GeorefService,
-  ID_CABA,
-  LugarGeoref,
-  PROVINCIAS,
-  filtrarLugares,
-  normalizar,
-} from '@app/services/georef.service';
+import { DiaSemana, Estacionamiento, NuevoEstacionamiento } from '@app/models';
+import { ID_CABA, PROVINCIAS } from '@app/utils/direcciones.util';
 import { Coordenadas } from '@app/utils/distancia.util';
 import { opcionesHora } from '@app/utils/horario-semana.util';
 
@@ -69,14 +60,11 @@ function algunaTarifa(grupo: AbstractControl): ValidationErrors | null {
 @Component({
   selector: 'app-formulario-estacionamiento',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, RouterLink, Boton, CampoAutocompletar, FotoEstacionamiento, SelectorUbicacion, Tarjeta],
+  imports: [ReactiveFormsModule, RouterLink, Boton, FotoEstacionamiento, SelectorUbicacion, Tarjeta],
   templateUrl: './formulario-estacionamiento.html',
 })
 export class FormularioEstacionamiento {
   private readonly fb = inject(FormBuilder);
-  private readonly georef = inject(GeorefService);
-  /** Offline: sin Georef (provincias de una lista fija, ciudad y calle a mano) y el punto se marca en el mapa. */
-  protected readonly offline = inject(EntornoService).offline();
 
   /** Estacionamiento a editar. `null` (el default) es el modo alta. */
   readonly estacionamiento = input<Estacionamiento | null>(null);
@@ -141,67 +129,15 @@ export class FormularioEstacionamiento {
   protected readonly horarios = this.formulario.controls.horarios;
 
   /* ------------------------------- Direccion ------------------------------- */
-  // Provincia, ciudad y calle salen de Georef (la API oficial de direcciones):
-  // cada una se elige de una lista y depende de la anterior, asi no se puede
-  // cargar una ciudad o una calle inventada. El backend lo vuelve a validar.
+  // Provincia de una lista fija; ciudad y calle se escriben a mano. Las
+  // coordenadas las marca el propietario en el mapa (no se geocodifica).
 
-  protected readonly errorProvincias = signal(false);
-  protected readonly provincias = toSignal(
-    (this.offline ? of(PROVINCIAS) : this.georef.provincias$).pipe(
-      catchError(() => {
-        this.errorProvincias.set(true);
-        return of([] as LugarGeoref[]);
-      }),
-    ),
-    { initialValue: [] as LugarGeoref[] },
-  );
+  protected readonly provincias = PROVINCIAS;
 
-  private readonly provinciaElegida = toSignal(this.formulario.controls.provincia.valueChanges, {
-    initialValue: '',
-  });
-  private readonly provinciaId = computed(
-    () => this.provincias().find((p) => p.nombre === this.provinciaElegida())?.id ?? null,
-  );
-  /** Id de Georef de la ciudad elegida: con el se buscan sus calles. */
-  private readonly ciudadId = signal<string | null>(null);
-
-  /** La direccion guardada no coincide con Georef (cargada antes de este cambio). */
-  protected readonly direccionDesactualizada = signal(false);
-
-  /** Solo offline: el punto que marco el propietario en el mapa. */
+  /** El punto que marco el propietario en el mapa. */
   protected readonly ubicacion = signal<Coordenadas | null>(null);
   private readonly intentoEnviar = signal(false);
-  protected readonly faltaUbicacion = computed(() => this.offline && this.intentoEnviar() && !this.ubicacion());
-
-  protected readonly buscarCiudades = (texto: string): Observable<Sugerencia[]> => {
-    const provinciaId = this.provinciaId();
-    if (!provinciaId) return of([]);
-    return this.georef.ciudadesDe(provinciaId).pipe(
-      map((ciudades) =>
-        filtrarLugares(ciudades, texto).map((c) => ({
-          nombre: c.nombre,
-          detalle: c.detalle,
-          dato: c.id,
-        })),
-      ),
-    );
-  };
-
-  protected readonly buscarCalles = (texto: string): Observable<Sugerencia[]> => {
-    const ciudadId = this.ciudadId();
-    if (!ciudadId) return of([]);
-    return this.georef
-      .callesDe(ciudadId)
-      .pipe(map((calles) => filtrarLugares(calles, texto).map((c) => ({ nombre: c.nombre }))));
-  };
-
-  /** Al elegir ciudad se limpia la calle (depende de la ciudad). */
-  protected elegirCiudad(sugerencia: Sugerencia): void {
-    const ciudadId = sugerencia.dato as string;
-    this.ciudadId.set(ciudadId);
-    // Se piden las calles ya, asi estan listas cuando empiecen a escribir.
-    this.georef.callesDe(ciudadId);
-  }
+  protected readonly faltaUbicacion = computed(() => this.intentoEnviar() && !this.ubicacion());
 
   constructor() {
     const { provincia, ciudad, calle } = this.formulario.controls;
@@ -223,7 +159,6 @@ export class FormularioEstacionamiento {
         calle.enable({ emitEvent: false });
         return;
       }
-      this.ciudadId.set(null);
       calle.setValue('', { emitEvent: false });
       calle.disable({ emitEvent: false });
     });
@@ -273,82 +208,13 @@ export class FormularioEstacionamiento {
         });
       });
     });
-
-    // Al editar, se confirma que la direccion guardada exista en Georef y se
-    // busca el id de su ciudad (hace falta para buscar calles). Si no existe
-    // (se cargo antes de este cambio), se vacia para que la elijan de la lista.
-    effect(() => {
-      const estacionamiento = this.estacionamiento();
-      const provincias = this.provincias();
-      // Offline no hay contra que verificar.
-      if (!estacionamiento || provincias.length === 0 || this.offline) return;
-      untracked(() => this.verificarDireccionGuardada(estacionamiento.direccion, provincias));
-    });
   }
 
-  /**
-   * Si la provincia tiene una sola ciudad (CABA: "Ciudad Autonoma de Buenos
-   * Aires", que nadie busca por ese nombre) se completa sola. No pisa una
-   * ciudad ya cargada, como la que precarga el editor.
-   */
+  /** CABA tiene una sola ciudad, que se llama igual: se completa sola. No pisa una ya cargada. */
   private elegirCiudadUnica(provinciaNombre: string): void {
-    const provincia = this.provincias().find((p) => p.nombre === provinciaNombre);
-    if (!provincia) return;
-
-    const { provincia: controlProvincia, ciudad } = this.formulario.controls;
-    if (this.offline) {
-      // Sin Georef: la unica provincia de una sola ciudad es CABA, que se llama igual.
-      if (provincia.id === ID_CABA && !ciudad.value) ciudad.setValue(provincia.nombre);
-      return;
-    }
-    this.georef
-      .ciudadesDe(provincia.id)
-      .pipe(catchError(() => of([] as LugarGeoref[])))
-      .subscribe((ciudades) => {
-        const [unica] = ciudades;
-        if (ciudades.length !== 1 || ciudad.value || controlProvincia.value !== provinciaNombre) {
-          return;
-        }
-        ciudad.setValue(unica.nombre);
-        this.elegirCiudad({ nombre: unica.nombre, dato: unica.id });
-      });
-  }
-
-  /** Al editar: avisa si la provincia o ciudad guardadas ya no estan en Georef. */
-  private verificarDireccionGuardada(direccion: Direccion, provincias: LugarGeoref[]): void {
-    const { provincia, ciudad } = this.formulario.controls;
-    const desactualizada = () => {
-      this.direccionDesactualizada.set(true);
-      provincia.markAsTouched();
-      ciudad.markAsTouched();
-    };
-
-    const provinciaGuardada = provincias.find((p) => p.nombre === direccion.provincia);
-    if (!provinciaGuardada) {
-      provincia.setValue('');
-      desactualizada();
-      return;
-    }
-
-    const buscada = normalizar(direccion.ciudad);
-    this.georef
-      .ciudadesDe(provinciaGuardada.id)
-      .pipe(
-        map((ciudades) => ciudades.find((c) => normalizar(c.nombre) === buscada) ?? null),
-        catchError(() => of(undefined)),
-      )
-      .subscribe((encontrada) => {
-        // `undefined`: Georef no respondio. Se deja como esta: el backend valida al guardar.
-        if (encontrada === undefined) return;
-        if (encontrada) {
-          this.ciudadId.set(encontrada.id);
-          this.georef.callesDe(encontrada.id);
-        } else {
-          ciudad.setValue('');
-          desactualizada();
-          this.elegirCiudadUnica(provinciaGuardada.nombre);
-        }
-      });
+    const provincia = this.provincias.find((p) => p.nombre === provinciaNombre);
+    const { ciudad } = this.formulario.controls;
+    if (provincia?.id === ID_CABA && !ciudad.value) ciudad.setValue(provincia.nombre);
   }
 
   protected elegirFoto(archivo: File | null): void {
@@ -381,10 +247,9 @@ export class FormularioEstacionamiento {
         ciudad: valores.ciudad.trim(),
         provincia: valores.provincia.trim(),
         codigoPostal: valores.codigoPostal.trim(),
-        // Online no se piden (las calcula el back al verificar la direccion) y
-        // se mandan las que ya estaban; offline, las que marco el propietario.
-        latitud: this.offline ? this.ubicacion()!.latitud : (this.estacionamiento()?.direccion.latitud ?? null),
-        longitud: this.offline ? this.ubicacion()!.longitud : (this.estacionamiento()?.direccion.longitud ?? null),
+        // Las que marco el propietario en el mapa.
+        latitud: this.ubicacion()!.latitud,
+        longitud: this.ubicacion()!.longitud,
       },
       barrioZona: valores.barrioZona.trim() || null,
       telefonoContacto: valores.telefono.trim() || null,

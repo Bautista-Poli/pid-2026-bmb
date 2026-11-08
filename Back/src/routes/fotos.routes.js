@@ -1,19 +1,11 @@
-// Rutas del modo offline (OFFLINE=true): subir y servir fotos guardadas en disco, y el
-// archivo del mapa local. Sin OFFLINE responden 404, como si no existieran.
+// Subir y servir las fotos guardadas en disco, y el archivo del mapa local.
 import express, { Router } from 'express';
 
 import { config } from '../config/env.js';
-import * as local from '../services/fotos-locales.service.js';
+import * as local from '../services/fotos.service.js';
 import { ApiError } from '../utils/ApiError.js';
 
 const router = Router();
-
-/** Se mira en cada pedido (no al importar): las pruebas prenden OFFLINE despues. */
-function soloOffline(_req, _res, next) {
-  next(config.offline ? undefined : ApiError.notFound('Recurso no encontrado'));
-}
-
-router.use(soloOffline);
 
 // El navegador manda la imagen cruda (ya achicada) y la firma en la query.
 const imagen = express.raw({ type: 'image/*', limit: local.MAX_BYTES });
@@ -27,7 +19,7 @@ router.post('/fotos-locales', imagen, async (req, res) => {
   res.status(201).json({ public_id: publicId });
 });
 
-/** GET /api/fotos-locales/<public_id> (publico, como las URLs de Cloudinary) */
+/** GET /api/fotos-locales/<public_id> (publico) */
 router.get('/fotos-locales/*ruta', async (req, res) => {
   const foto = await local.buscar(req.params.ruta.join('/'));
   if (!foto) throw ApiError.notFound('Foto no encontrada');
@@ -35,7 +27,7 @@ router.get('/fotos-locales/*ruta', async (req, res) => {
   res.sendFile(foto.ruta, { headers: { 'Content-Type': foto.mime }, maxAge: '1d' });
 });
 
-// GET /api/mapa/<archivo>.pmtiles: el mapa offline (npm run offline:mapa). El
+// GET /api/mapa/<archivo>.pmtiles: el mapa de CABA (Back/datos-locales/mapa). El
 // front lo lee de a pedazos con pedidos Range, que express.static ya resuelve.
 router.use('/mapa', (req, res, next) => express.static(config.datosLocales.mapa, { maxAge: '7d' })(req, res, next));
 

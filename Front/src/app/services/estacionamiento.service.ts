@@ -9,7 +9,7 @@ import {
   OrdenEstacionamiento,
 } from '@app/models';
 import { EstacionamientoDto } from './api/api.dto';
-import { CloudinaryService, FirmaSubida } from './cloudinary.service';
+import { FirmaSubida, FotosService } from './fotos.service';
 import { achicarImagen } from '@app/utils/imagen.util';
 import { estadoDisponibilidad } from '@app/utils/disponibilidad.util';
 import { distanciaKm } from '@app/utils/distancia.util';
@@ -23,7 +23,7 @@ export const LIMITE_BUSQUEDA = 100;
 @Injectable({ providedIn: 'root' })
 export class EstacionamientoService {
   private readonly http = inject(HttpClient);
-  private readonly cloudinary = inject(CloudinaryService);
+  private readonly fotos = inject(FotosService);
   private readonly ruta = '/estacionamientos';
 
   /** `GET /api/estacionamientos` */
@@ -90,14 +90,14 @@ export class EstacionamientoService {
   }
 
   /**
-   * Portada del estacionamiento, via Cloudinary: la API firma
+   * Portada del estacionamiento: la API firma
    * (`POST .../fotos/firma`), el navegador achica y sube directo, y la API
    * guarda el `public_id` (`PUT .../foto`).
    */
   subirFoto(id: Id, archivo: File, alProgresar?: (porcentaje: number) => void): Observable<void> {
     return this.http.post<{ firma: FirmaSubida }>(`${this.ruta}/${id}/fotos/firma`, {}).pipe(
       switchMap(({ firma }) =>
-        from(achicarImagen(archivo)).pipe(switchMap((imagen) => this.cloudinary.subir(imagen, firma, alProgresar))),
+        from(achicarImagen(archivo)).pipe(switchMap((imagen) => this.fotos.subir(imagen, firma, alProgresar))),
       ),
       switchMap((publicId) => this.http.put<void>(`${this.ruta}/${id}/foto`, { public_id: publicId })),
       map(() => undefined),

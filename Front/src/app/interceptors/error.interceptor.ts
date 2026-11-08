@@ -19,16 +19,6 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
   const router = inject(Router);
 
-  // Las URL absolutas son servicios externos (Cloudinary para las fotos, Georef
-  // y Photon para las direcciones): sus errores no tienen que ver con la sesion
-  // de Parkit y su mensaje no es para mostrar tal cual.
-  if (/^https?:\/\//i.test(req.url)) {
-    const mensaje = /^https?:\/\/api\.cloudinary\.com\//i.test(req.url)
-      ? 'No pudimos subir la foto. Probá de nuevo en un rato.'
-      : 'No pudimos consultar el servicio externo. Probá de nuevo en un rato.';
-    return next(req).pipe(catchError(() => throwError(() => new Error(mensaje))));
-  }
-
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
       if (error.status === 401 && auth.estaAutenticado()) {

@@ -1,5 +1,5 @@
 // Controllers de /api/vehiculos: el ABM de los vehiculos del conductor y sus fotos.
-import { url } from '../services/cloudinary.service.js';
+import { url } from '../services/fotos.service.js';
 import * as vehiculoService from '../services/vehiculo.service.js';
 import { ApiError } from '../utils/ApiError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
@@ -10,9 +10,9 @@ function aRespuesta(vehiculo) {
   const { foto_public_id: publicId, ...resto } = vehiculo;
   return {
     ...resto,
-    foto_url: publicId ? url(publicId, { ancho: 800 }) : null,
+    foto_url: publicId ? url(publicId) : null,
     // Para los recuadros chicos (listas, selector al reservar).
-    foto_miniatura_url: publicId ? url(publicId, { ancho: 240 }) : null,
+    foto_miniatura_url: publicId ? url(publicId) : null,
   };
 }
 

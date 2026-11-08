@@ -1,0 +1,8 @@
+{
+  "name": "parkit",
+  "private": true,
+  "description": "Comandos de todo el proyecto (Back + Front). Ver docs/local.md.",
+  "scripts": {
+    "check": "node scripts/check.mjs"
+  }
+}

@@ -1,9 +1,9 @@
-/** Lado mayor con el que se suben las fotos: de sobra para la app y ahorra cupo de Cloudinary. */
+/** Lado mayor con el que se suben las fotos: de sobra para la app y ocupa poco disco. */
 const LADO_MAXIMO = 1600;
 
 /**
  * Achica la foto en el navegador antes de subirla (las de celular pesan 4 o
- * 5 MB y Cloudinary acepta hasta 5). Si ya es chica, o el navegador no puede
+ * 5 MB y la API acepta hasta 5). Si ya es chica, o el navegador no puede
  * redimensionar, devuelve el archivo tal cual.
  */
 export async function achicarImagen(archivo: Blob, ladoMax = LADO_MAXIMO): Promise<Blob> {

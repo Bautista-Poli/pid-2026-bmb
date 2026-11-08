@@ -32,7 +32,7 @@ export interface Vehiculo {
   /** Se preselecciona al reservar. Como mucho uno por conductor. */
   predeterminado: boolean;
   activo: boolean;
-  /** Foto que subio el conductor (Cloudinary). `null` = se usa la de catalogo. */
+  /** Foto que subio el conductor (en disco, via la API). `null` = se usa la de catalogo. */
   foto: string | null;
   /** La misma foto propia en chico, para recuadros chicos. */
   fotoMiniatura: string | null;

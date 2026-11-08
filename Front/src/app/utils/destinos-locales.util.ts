@@ -1,16 +1,15 @@
 import { Estacionamiento, direccionCorta } from '@app/models';
-import { DireccionGeoref, normalizar } from '@app/services/georef.service';
+import { Destino, normalizar } from '@app/utils/direcciones.util';
 
 /** Tope de barrios sugeridos (van antes que los estacionamientos). */
 const MAX_BARRIOS = 3;
 
 /**
- * Destinos para el buscador del mapa en modo offline, donde no se puede
- * consultar Georef ni Photon: los barrios y los estacionamientos que ya estan en
+ * Destinos para el buscador del mapa: los barrios y los estacionamientos que ya estan en
  * la base y coinciden con lo escrito (nombre, calle o barrio). Un barrio se
  * ubica en el promedio de sus estacionamientos. Solo los que tienen coordenadas.
  */
-export function buscarDestinosLocales(texto: string, estacionamientos: Estacionamiento[]): DireccionGeoref[] {
+export function buscarDestinosLocales(texto: string, estacionamientos: Estacionamiento[]): Destino[] {
   const buscado = normalizar(texto);
   if (!buscado) return [];
   const coincide = (valor: string | null | undefined) => Boolean(valor) && normalizar(valor!).includes(buscado);
@@ -30,14 +29,14 @@ export function buscarDestinosLocales(texto: string, estacionamientos: Estaciona
   }
   const promedio = (valores: number[]) => valores.reduce((suma, v) => suma + v, 0) / valores.length;
 
-  const zonas: DireccionGeoref[] = [...barrios.values()].slice(0, MAX_BARRIOS).map((b) => ({
+  const zonas: Destino[] = [...barrios.values()].slice(0, MAX_BARRIOS).map((b) => ({
     nombre: b.nombre,
     detalle: b.ciudad,
     coordenadas: { latitud: promedio(b.latitudes), longitud: promedio(b.longitudes) },
     tipo: 'zona',
   }));
 
-  const lugares: DireccionGeoref[] = ubicados
+  const lugares: Destino[] = ubicados
     .filter((e) => coincide(e.nombre) || coincide(e.direccion.calle))
     .map((e) => ({
       nombre: e.nombre,

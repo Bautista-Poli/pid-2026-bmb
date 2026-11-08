@@ -17,8 +17,8 @@ const base: Vehiculo = {
 
 describe('fotoDeVehiculo', () => {
   it('prefiere la foto que subio el conductor', () => {
-    expect(fotoDeVehiculo({ ...base, foto: 'https://res.cloudinary.com/x/auto.jpg' })).toBe(
-      'https://res.cloudinary.com/x/auto.jpg',
+    expect(fotoDeVehiculo({ ...base, foto: '/api/fotos-locales/parkit/vehiculos/1/auto' })).toBe(
+      '/api/fotos-locales/parkit/vehiculos/1/auto',
     );
   });
 

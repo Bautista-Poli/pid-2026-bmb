@@ -15,11 +15,10 @@ import {
 import * as L from 'leaflet';
 import { Icono } from '@app/components/ui';
 import { AreaMapa, Estacionamiento, Id } from '@app/models';
-import { EntornoService } from '@app/services/entorno.service';
 import { TemaService } from '@app/services/tema.service';
 import { EstadoDisponibilidad, estadoDisponibilidad } from '@app/utils/disponibilidad.util';
 import { Coordenadas } from '@app/utils/distancia.util';
-import { crearFondoMapa, usaFiltroOsm } from '@app/utils/fondo-mapa.util';
+import { crearFondoMapa } from '@app/utils/fondo-mapa.util';
 
 /** Obelisco: donde arranca el mapa si todavia no hay nada para mostrar. */
 const CENTRO_INICIAL: L.LatLngTuple = [-34.6037, -58.3816];
@@ -117,15 +116,10 @@ const CLASE_ESTADO: Record<EstadoDisponibilidad, string> = {
   host: {
     class: 'relative block overflow-hidden',
     // Solo con los mosaicos de OSM: el filtro que los apaga (y oscurece).
-    '[class.mapa-osm]': 'usaOsm',
-    '[class.mapa-osm--oscuro]': 'usaOsm && tema.esOscuro()',
   },
 })
 export class MapaEstacionamientos {
   protected readonly tema = inject(TemaService);
-  /** Offline el mapa sale del archivo local, sin pedir mosaicos afuera. */
-  private readonly offline = inject(EntornoService).offline();
-  protected readonly usaOsm = usaFiltroOsm(this.offline);
 
   readonly estacionamientos = input.required<Estacionamiento[]>();
   /** Donde esta el conductor (punto azul). */
@@ -207,7 +201,7 @@ export class MapaEstacionamientos {
 
   /** El fondo del mapa para el tema (ver crearFondoMapa). */
   private async ponerFondo(oscuro: boolean): Promise<void> {
-    const fondo = await crearFondoMapa(oscuro, this.offline);
+    const fondo = crearFondoMapa(oscuro);
     if (!this.mapa) return;
     this.mosaicos?.remove();
     this.mosaicos = fondo.addTo(this.mapa);

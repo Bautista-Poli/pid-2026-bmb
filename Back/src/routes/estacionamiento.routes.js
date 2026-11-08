@@ -27,7 +27,7 @@ const router = Router();
 const soloPropietario = [authenticate, requireRole(ROLES.PROPIETARIO)];
 
 /**
- * Las fotos llegan como JSON `{ public_id }` (ya subidas a Cloudinary) o, por
+ * Las fotos llegan como JSON `{ public_id }` (ya subidas a /fotos-locales) o, por
  * compatibilidad con el front anterior, como body crudo: el archivo tal cual,
  * con su tipo en el Content-Type. El parser crudo va montado solo en estas
  * rutas; el express.json() global de app.js se ocupa del JSON.
@@ -88,7 +88,7 @@ router.delete('/:id', ...soloPropietario, estacionamientoController.darDeBaja);
 router.put('/:id/foto', ...soloPropietario, imagen, estacionamientoController.guardarFoto);
 router.delete('/:id/foto', ...soloPropietario, estacionamientoController.borrarFoto);
 
-// Firma para subir una foto directo a Cloudinary (despues se manda su public_id).
+// Firma para subir una foto a /fotos-locales (despues se manda su public_id).
 router.post(
   '/:id/fotos/firma',
   ...soloPropietario,

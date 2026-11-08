@@ -1,7 +1,7 @@
 // Controllers de /api/estacionamientos: busqueda, detalle y ABM del estacionamiento,
 // sus cocheras, fotos, disponibilidad, reservas recibidas y reputacion.
 import * as estacionamientoService from '../services/estacionamiento.service.js';
-import * as cloudinary from '../services/cloudinary.service.js';
+import * as fotos from '../services/fotos.service.js';
 import * as fotoService from '../services/estacionamiento-foto.service.js';
 import * as cocheraService from '../services/cochera.service.js';
 import * as reputacionService from '../services/reputacion.service.js';
@@ -147,13 +147,13 @@ export const listarReservas = asyncHandler(async (req, res) => {
 });
 
 /**
- * Manda una foto: si esta en Cloudinary, redirige a su CDN; si no, los bytes
+ * Manda una foto: si esta en disco (public_id), redirige a su URL; si no, los bytes
  * con cache corto y ETag por version.
  */
 function enviarFoto(res, foto) {
   if (foto.public_id) {
     res.set('Cache-Control', 'public, max-age=300');
-    res.redirect(302, cloudinary.url(foto.public_id, { ancho: 1600 }));
+    res.redirect(302, fotos.url(foto.public_id));
     return;
   }
   res.type(foto.mime);
@@ -168,7 +168,7 @@ function enviarFoto(res, foto) {
  * termina guardando cualquier cosa en la base.
  */
 function imagenDelBody(req) {
-  // El camino normal: la foto ya se subio a Cloudinary y llega su public_id.
+  // El camino normal: la foto ya se subio (POST /fotos-locales) y llega su public_id.
   if (req.body && typeof req.body.public_id === 'string') return { publicId: req.body.public_id };
 
   const bytes = req.body;
@@ -196,7 +196,7 @@ export const guardarFoto = asyncHandler(async (req, res) => {
 
 /**
  * POST /api/estacionamientos/:id/fotos/firma (propietario)
- * Firma para que el navegador suba una foto directo a Cloudinary.
+ * Firma para que el navegador suba una foto a /api/fotos-locales.
  */
 export const firmarFoto = asyncHandler(async (req, res) => {
   const firma = await fotoService.firmar(req.params.id, req.usuario.id);

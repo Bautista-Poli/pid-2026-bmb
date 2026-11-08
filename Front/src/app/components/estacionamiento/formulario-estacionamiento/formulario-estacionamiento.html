@@ -89,21 +89,12 @@
     <fieldset class="flex flex-col gap-4">
       <legend class="mb-4 text-[15px] font-semibold text-tinta">Ubicación</legend>
 
-      @if (direccionDesactualizada()) {
-        <p class="campo-error">
-          La dirección guardada no figura en el registro oficial. Volvé a elegirla de la lista.
-        </p>
-      }
-      @if (errorProvincias()) {
-        <p class="campo-error">No pudimos cargar las provincias. Recargá la página para intentar de nuevo.</p>
-      }
-
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label class="campo">
           <span class="label-campo">Provincia</span>
           <select formControlName="provincia">
             <option value="" disabled>Elegí la provincia</option>
-            @for (provincia of provincias(); track provincia.id) {
+            @for (provincia of provincias; track provincia.id) {
               <option [value]="provincia.nombre">{{ provincia.nombre }}</option>
             }
           </select>
@@ -114,22 +105,9 @@
 
         <div class="campo">
           <label class="label-campo" for="campo-ciudad">Ciudad</label>
-          <!-- Offline no hay lista oficial (Georef): se escribe a mano. -->
-          @if (offline) {
-            <input id="campo-ciudad" type="text" formControlName="ciudad" placeholder="Ciudad" />
-          } @else {
-            <ui-campo-autocompletar
-              formControlName="ciudad"
-              idCampo="campo-ciudad"
-              [buscar]="buscarCiudades"
-              [minimo]="1"
-              marcador="Empezá a escribir la ciudad"
-              sinResultados="No hay ciudades con ese nombre en la provincia"
-              (elegida)="elegirCiudad($event)"
-            />
-          }
+          <input id="campo-ciudad" type="text" formControlName="ciudad" placeholder="Ciudad" />
           @if (invalido('ciudad')) {
-            <span class="campo-error">{{ offline ? 'Escribí la ciudad.' : 'Elegí la ciudad de la lista.' }}</span>
+            <span class="campo-error">Escribí la ciudad.</span>
           }
         </div>
       </div>
@@ -137,19 +115,9 @@
       <div class="grid grid-cols-[1fr_120px] gap-3">
         <div class="campo">
           <label class="label-campo" for="campo-calle">Calle</label>
-          @if (offline) {
-            <input id="campo-calle" type="text" formControlName="calle" placeholder="Calle" />
-          } @else {
-            <ui-campo-autocompletar
-              formControlName="calle"
-              idCampo="campo-calle"
-              [buscar]="buscarCalles"
-              marcador="Empezá a escribir la calle"
-              sinResultados="No hay calles con ese nombre en la ciudad"
-            />
-          }
+          <input id="campo-calle" type="text" formControlName="calle" placeholder="Calle" />
           @if (invalido('calle')) {
-            <span class="campo-error">{{ offline ? 'Escribí la calle.' : 'Elegí la calle de la lista.' }}</span>
+            <span class="campo-error">Escribí la calle.</span>
           }
         </div>
         <label class="campo">
@@ -172,17 +140,15 @@
         </label>
       </div>
 
-      <!-- Offline no se puede ubicar la direccion: el propietario marca el punto. -->
-      @if (offline) {
-        <div class="campo">
-          <span class="label-campo">Ubicación en el mapa</span>
-          <p class="text-[12.5px] text-plomo">Tocá el mapa donde está la entrada del estacionamiento.</p>
-          <app-selector-ubicacion [(coordenadas)]="ubicacion" />
-          @if (faltaUbicacion()) {
-            <span class="campo-error">Marcá la ubicación: sin ella el estacionamiento no aparece en el mapa.</span>
-          }
-        </div>
-      }
+      <!-- No se geocodifica: el propietario marca el punto. -->
+      <div class="campo">
+        <span class="label-campo">Ubicación en el mapa</span>
+        <p class="text-[12.5px] text-plomo">Tocá el mapa donde está la entrada del estacionamiento.</p>
+        <app-selector-ubicacion [(coordenadas)]="ubicacion" />
+        @if (faltaUbicacion()) {
+          <span class="campo-error">Marcá la ubicación: sin ella el estacionamiento no aparece en el mapa.</span>
+        }
+      </div>
     </fieldset>
   </ui-tarjeta>
 

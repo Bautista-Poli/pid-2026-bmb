@@ -3,7 +3,7 @@ import { Vehiculo } from '@app/models';
 /**
  * Fotos de catalogo que vienen con el proyecto (`public/vehiculos/`), indexadas
  * por `marca modelo` normalizado. Son el respaldo cuando el conductor no subio
- * una foto propia de su vehiculo (`vehiculo.foto`, en Cloudinary). Si el
+ * una foto propia de su vehiculo (`vehiculo.foto`, guardada por la API). Si el
  * modelo no esta en la lista no se inventa una foto, la ficha cae en el icono
  * de respaldo. Para sumar una: dejar el archivo en `public/vehiculos/` (400x280)
  * y agregar su entrada aca.

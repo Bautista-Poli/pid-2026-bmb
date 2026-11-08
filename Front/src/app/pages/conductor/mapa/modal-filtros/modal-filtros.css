@@ -1,0 +1,245 @@
+/* Modal "Filtrar" de Explorar (modal-filtros.html). */
+
+.filtros__formulario {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.filtros__fecha-hora {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.filtros__campo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radius-control);
+  background: var(--color-papel);
+}
+
+.filtros__campo:focus-within {
+  border-color: var(--color-acento);
+}
+
+.filtros__campo-icono {
+  color: var(--color-plomo);
+}
+
+.filtros__campo-texto {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.filtros__campo-etiqueta {
+  font-size: 11.5px;
+  color: var(--color-plomo);
+}
+
+.filtros__campo-nota {
+  color: var(--color-humo);
+}
+
+.filtros__campo-input {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-tinta);
+}
+
+.filtros__campo-input:focus {
+  outline: none;
+}
+
+.filtros__horas {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: -0.5rem;
+}
+
+.filtros__horas-texto {
+  display: flex;
+  flex-direction: column;
+}
+
+.filtros__horas-titulo {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--color-tinta);
+}
+
+.filtros__horas-fin {
+  font-size: 12px;
+  color: var(--color-plomo);
+}
+
+.filtros__horas-controles {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.filtros__paso {
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  place-items: center;
+  border: 1px solid var(--color-borde);
+  border-radius: 9999px;
+  color: var(--color-tinta);
+}
+
+.filtros__paso:disabled {
+  opacity: 0.4;
+}
+
+.filtros__horas-valor {
+  min-width: 2.5rem;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-tinta);
+}
+
+.filtros__error {
+  margin-top: -0.75rem;
+}
+
+.filtros__bloque {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.filtros__bloque--chips {
+  gap: 0.625rem;
+}
+
+.filtros__bloque-cabecera {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.filtros__titulo {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--color-tinta);
+}
+
+.filtros__titulo-nota {
+  font-weight: 400;
+  color: var(--color-plomo);
+}
+
+.filtros__valor {
+  font-size: 12.5px;
+  color: var(--color-plomo);
+}
+
+.filtros__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.filtros__chip-contenido {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.filtros__acciones {
+  display: flex;
+  gap: 0.625rem;
+}
+
+.filtros__boton {
+  flex: 1 1 0%;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-control);
+  font-size: 14px;
+  font-weight: 600;
+  transition:
+    color 160ms var(--ease-suave),
+    background-color 160ms var(--ease-suave),
+    border-color 160ms var(--ease-suave);
+}
+
+.filtros__boton--limpiar {
+  border: 1px solid var(--color-borde);
+  background: var(--color-papel);
+  color: var(--color-grafito);
+}
+
+.filtros__boton--limpiar:hover {
+  border-color: var(--color-acento-borde);
+}
+
+.filtros__boton--aplicar {
+  background: var(--color-acento);
+  color: var(--color-sobre-acento);
+  box-shadow: var(--shadow-elevada);
+}
+
+.filtros__boton--aplicar:hover {
+  background: var(--color-acento-fuerte);
+}
+
+/* Gema del nivel en los chips del filtro (el color sale de .nivel--*). */
+.filtros__gema {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--nivel-gema);
+}
+
+/* El mismo selector segmentado que la lista de mapa.css (cada componente
+   tiene su propio CSS, asi que la regla va en los dos). */
+.segmentado {
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 3px;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radius-control);
+  background: var(--color-lienzo);
+}
+
+.segmentado__opcion {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 0.875rem;
+  border: 0;
+  border-radius: calc(var(--radius-control) - 3px);
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-plomo);
+  cursor: pointer;
+  transition:
+    background-color 160ms var(--ease-suave),
+    color 160ms var(--ease-suave);
+}
+
+.segmentado__opcion:hover {
+  color: var(--color-tinta);
+}
+
+.segmentado__opcion--activa {
+  background: var(--color-papel);
+  box-shadow: var(--shadow-tarjeta);
+  color: var(--color-acento);
+}

@@ -3,11 +3,16 @@
 import app from './app.js';
 import { config } from './config/env.js';
 import { connectDatabase, disconnectDatabase } from './config/database.js';
+import { aplicarEsquema } from './db/esquema.js';
 import { activarVencimientosADemanda, desactivarVencimientosADemanda } from './jobs/vencimientos.job.js';
 
 /** Arranca el servidor; si falla la conexion inicial, el proceso termina. */
 async function main() {
   await connectDatabase();
+
+  // En local, cada arranque aplica schema.sql y seed.sql: con `npm run dev`
+  // alcanza con guardar esos archivos para que el cambio llegue a la base.
+  if (!config.isProduction) await aplicarEsquema();
 
   // 0.0.0.0 es necesario para que el contenedor sea alcanzable en Railway.
   const server = app.listen(config.port, '0.0.0.0', () => {

@@ -11,15 +11,12 @@ import {
 } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
-import {
-  RangoHorario,
-  ReservaHecha,
-  ResumenReserva,
-  SelectorDuracion,
-  SelectorFecha,
-  SelectorFranja,
-  SelectorVehiculo,
-} from '@app/components/reserva';
+import { RangoHorario, SelectorFranja } from './selector-franja/selector-franja';
+import { ReservaHecha } from './reserva-hecha/reserva-hecha';
+import { ResumenReserva } from './resumen-reserva/resumen-reserva';
+import { SelectorDuracion } from './selector-duracion/selector-duracion';
+import { SelectorFecha } from './selector-fecha/selector-fecha';
+import { SelectorVehiculo } from './selector-vehiculo/selector-vehiculo';
 import { GaleriaFotos } from '@app/components/estacionamiento';
 import { Boton, Cargando, EstadoVacio, Tarjeta } from '@app/components/ui';
 import { ETIQUETA_MODALIDAD, FranjaDisponible, Id, Reserva, Vehiculo } from '@app/models';

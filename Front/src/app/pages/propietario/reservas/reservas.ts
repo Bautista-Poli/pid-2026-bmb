@@ -1,7 +1,7 @@
 import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
-import { CalificarConductor } from '@app/components/reserva';
+import { CalificarConductor } from './calificar-conductor/calificar-conductor';
 import {
   Boton,
   Cargando,

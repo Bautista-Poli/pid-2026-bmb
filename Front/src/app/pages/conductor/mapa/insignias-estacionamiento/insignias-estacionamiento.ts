@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { CodigoInsignia, ResumenReputacion, TEXTO_INSIGNIA, formatearNota } from '@app/models';
-import { NivelEstacionamiento } from '../nivel-estacionamiento/nivel-estacionamiento';
+import { NivelEstacionamiento } from '@app/components/estacionamiento';
 
 /** Estrella rellena (la de linea esta en `ui-icono`). */
 const ESTRELLA = 'M12 3.8l2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6L7.1 19l.9-5.5-4-3.9 5.5-.8Z';

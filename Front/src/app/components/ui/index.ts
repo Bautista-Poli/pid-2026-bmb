@@ -5,7 +5,6 @@ export * from './boton-tema/boton-tema';
 export * from './tarjeta/tarjeta';
 export * from './etiqueta/etiqueta';
 export * from './chip/chip';
-export * from './punto-estado/punto-estado';
 export * from './estado-vacio/estado-vacio';
 export * from './cargando/cargando';
 export * from './icono/icono';

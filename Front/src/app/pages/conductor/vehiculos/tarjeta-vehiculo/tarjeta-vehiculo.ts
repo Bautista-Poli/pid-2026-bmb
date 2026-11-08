@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 import { Boton, Etiqueta, Icono } from '@app/components/ui';
 import { ETIQUETA_TIPO_VEHICULO, ICONO_TIPO_VEHICULO, Vehiculo } from '@app/models';
 import { fotoDeVehiculo } from '@app/utils/foto-vehiculo.util';
-import { ChapaPatente } from '../chapa-patente/chapa-patente';
+import { ChapaPatente } from '@app/components/vehiculo';
 
 /**
  * Tarjeta de un vehiculo en "Mis vehiculos": foto grande, chapa de patente y

@@ -13,11 +13,8 @@ import {
 import { rxResource } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
 import { Observable, of } from 'rxjs';
-import {
-  InsigniasEstacionamiento,
-  MapaEstacionamientos,
-  NivelEstacionamiento,
-} from '@app/components/estacionamiento';
+import { InsigniasEstacionamiento } from './insignias-estacionamiento/insignias-estacionamiento';
+import { MapaEstacionamientos, NivelEstacionamiento } from '@app/components/estacionamiento';
 import { Cargando, EstadoVacio, Icono } from '@app/components/ui';
 import {
   AreaMapa,

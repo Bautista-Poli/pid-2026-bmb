@@ -2,7 +2,8 @@ import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angu
 import { rxResource } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
 import { Observable } from 'rxjs';
-import { FormularioVehiculo, FotoVehiculo } from '@app/components/vehiculo';
+import { FormularioVehiculo } from '@app/components/vehiculo';
+import { FotoVehiculo } from './foto-vehiculo/foto-vehiculo';
 import { Boton, Cargando, EstadoVacio, Tarjeta } from '@app/components/ui';
 import { descripcionVehiculo, Id, NuevoVehiculo } from '@app/models';
 import { VehiculoService } from '@app/services/vehiculo.service';

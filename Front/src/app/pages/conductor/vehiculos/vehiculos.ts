@@ -2,7 +2,8 @@ import { ChangeDetectionStrategy, Component, computed, inject, input, signal } f
 import { rxResource } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { Boton, Cargando, EstadoVacio, Modal } from '@app/components/ui';
-import { ChapaPatente, TarjetaVehiculo } from '@app/components/vehiculo';
+import { ChapaPatente } from '@app/components/vehiculo';
+import { TarjetaVehiculo } from './tarjeta-vehiculo/tarjeta-vehiculo';
 import { descripcionVehiculo, Id, Vehiculo } from '@app/models';
 import { VehiculoService } from '@app/services/vehiculo.service';
 

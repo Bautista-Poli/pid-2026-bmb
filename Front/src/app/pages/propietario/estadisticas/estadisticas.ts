@@ -6,11 +6,11 @@ import {
   BarraDia,
   BarrasDia,
   CambioPeriodo,
-  MapaCalor,
   SelectorPeriodo,
   TarjetaMetrica,
   TonoMetrica,
 } from '@app/components/estadistica';
+import { MapaCalor } from './mapa-calor/mapa-calor';
 import { Boton, Cargando, EstadoVacio, NombreIcono, Tarjeta } from '@app/components/ui';
 import {
   Estacionamiento,

@@ -4,14 +4,14 @@ import { Observable, from, map, switchMap } from 'rxjs';
 import { CambiosVehiculo, Id, NuevoVehiculo, Vehiculo } from '@app/models';
 import { achicarImagen } from '@app/utils/imagen.util';
 import { VehiculoDto } from './api/api.dto';
-import { CloudinaryService, FirmaSubida } from './cloudinary.service';
+import { FirmaSubida, FotosService } from './fotos.service';
 import { aPayloadCambiosVehiculo, aPayloadVehiculo, aVehiculo } from './api/api.mapeo';
 
 /** Acceso a `/api/vehiculos` (vehiculos del conductor autenticado). */
 @Injectable({ providedIn: 'root' })
 export class VehiculoService {
   private readonly http = inject(HttpClient);
-  private readonly cloudinary = inject(CloudinaryService);
+  private readonly fotos = inject(FotosService);
   private readonly ruta = '/vehiculos';
 
   /** `GET /api/vehiculos` */
@@ -44,13 +44,13 @@ export class VehiculoService {
   }
 
   /**
-   * Foto propia del vehiculo, via Cloudinary: firma, achica y sube desde el
+   * Foto propia del vehiculo: firma, achica y sube desde el
    * navegador, y la API guarda el `public_id`. Reemplaza la anterior.
    */
   subirFoto(id: Id, archivo: File, alProgresar?: (porcentaje: number) => void): Observable<Vehiculo> {
     return this.http.post<{ firma: FirmaSubida }>(`${rutaFoto(this.ruta, id)}/firma`, {}).pipe(
       switchMap(({ firma }) =>
-        from(achicarImagen(archivo)).pipe(switchMap((imagen) => this.cloudinary.subir(imagen, firma, alProgresar))),
+        from(achicarImagen(archivo)).pipe(switchMap((imagen) => this.fotos.subir(imagen, firma, alProgresar))),
       ),
       switchMap((publicId) =>
         this.http.put<{ vehiculo: VehiculoDto }>(rutaFoto(this.ruta, id), { public_id: publicId }),

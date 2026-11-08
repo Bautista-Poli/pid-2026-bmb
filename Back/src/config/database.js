@@ -12,7 +12,6 @@ types.setTypeParser(types.builtins.NUMERIC, (valor) => (valor === null ? null : 
 
 export const pool = new Pool({
   connectionString: config.db.url,
-  ssl: config.db.ssl ? { rejectUnauthorized: false } : false,
   max: config.db.poolMax,
   idleTimeoutMillis: 30_000,
   connectionTimeoutMillis: 10_000,

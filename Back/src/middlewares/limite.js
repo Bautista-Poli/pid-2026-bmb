@@ -4,10 +4,10 @@ import { ApiError } from '../utils/ApiError.js';
  * Limite simple de pedidos por usuario, en memoria (alcanza con una sola
  * instancia de la API). Usar despues de `authenticate`.
  *
- * Lo usan las firmas de Cloudinary: cada una habilita una subida a la cuenta,
+ * Lo usan las firmas de fotos: cada una habilita una subida al disco,
  * asi que un usuario no deberia poder pedir cientos.
  */
-/** Cada firma de Cloudinary habilita una subida: 30 cada 10 minutos sobran. */
+/** Cada firma de foto habilita una subida: 30 cada 10 minutos sobran. */
 export const LIMITE_FIRMAS = Object.freeze({ maximo: 30, ventanaMs: 10 * 60 * 1000 });
 
 /** Middleware: como mucho `maximo` pedidos por usuario cada `ventanaMs`. */

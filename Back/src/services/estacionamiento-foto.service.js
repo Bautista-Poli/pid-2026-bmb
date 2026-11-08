@@ -1,8 +1,8 @@
 // Fotos de un estacionamiento (portada y galeria): guardar, servir y borrar.
-// Las nuevas viven en Cloudinary; las viejas, como bytes en la base.
+// Las nuevas viven en disco (fotos.service); las viejas, como bytes en la base.
 import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
-import * as cloudinary from './cloudinary.service.js';
+import * as fotos from './fotos.service.js';
 import { asegurarPropiedad } from './estacionamiento.service.js';
 
 /**
@@ -12,14 +12,14 @@ import { asegurarPropiedad } from './estacionamiento.service.js';
  * (`/:id/foto`) que usa el formulario del propietario.
  *
  * Cada foto viene de uno de dos lados (`imagen`):
- *   - `{ publicId }`: ya esta en Cloudinary (el navegador subio con una firma
+ *   - `{ publicId }`: ya esta en disco (el navegador subio con una firma
  *     de `firmar`). Es el camino normal.
- *   - `{ mime, bytes }`: los bytes van a la base, como antes de Cloudinary. Se
+ *   - `{ mime, bytes }`: los bytes van a la base (fotos viejas). Se
  *     deja un deploy mas para no romper un front viejo cacheado.
  *
  * Los cambios se hacen con el estacionamiento bloqueado (`bloquear`): dos
- * reemplazos a la vez no pueden crear dos portadas ni borrar en Cloudinary la
- * foto que el otro acaba de poner. Lo de Cloudinary se borra despues del commit.
+ * reemplazos a la vez no pueden crear dos portadas ni borrar del disco la
+ * foto que el otro acaba de poner. Lo del disco se borra despues del commit.
  */
 
 /** Tope de fotos por estacionamiento. */
@@ -38,13 +38,13 @@ const PORTADA = `
 /** Firma para que el navegador suba una foto a la carpeta del estacionamiento. */
 export async function firmar(idEstacionamiento, idPropietario) {
   await asegurarPropiedad(idEstacionamiento, idPropietario);
-  return cloudinary.firmarSubida(cloudinary.carpetaDe('estacionamientos', idEstacionamiento));
+  return fotos.firmarSubida(fotos.carpetaDe('estacionamientos', idEstacionamiento));
 }
 
-/** `{ mime, bytes, public_id }` listo para guardar, verificando la carpeta si es de Cloudinary. */
+/** `{ mime, bytes, public_id }` listo para guardar, verificando la carpeta si viene con public_id. */
 async function normalizar(idEstacionamiento, imagen) {
   if (imagen.publicId) {
-    await cloudinary.verificar(imagen.publicId, cloudinary.carpetaDe('estacionamientos', idEstacionamiento));
+    await fotos.verificar(imagen.publicId, fotos.carpetaDe('estacionamientos', idEstacionamiento));
     return { mime: null, bytes: null, public_id: imagen.publicId };
   }
   return { mime: imagen.mime, bytes: imagen.bytes, public_id: null };
@@ -101,7 +101,7 @@ export async function guardarPortada(idEstacionamiento, idPropietario, imagen) {
     return { foto: rows[0], reemplazada: portada.public_id };
   });
 
-  if (reemplazada !== nueva.public_id) await cloudinary.borrar(reemplazada);
+  if (reemplazada !== nueva.public_id) await fotos.borrar(reemplazada);
   return foto;
 }
 
@@ -119,7 +119,7 @@ export async function borrarPortada(idEstacionamiento, idPropietario) {
     );
     return rows[0]?.public_id;
   });
-  await cloudinary.borrar(borrada);
+  await fotos.borrar(borrada);
 }
 
 /** Una foto de la galeria, o `null` si no es de ese estacionamiento. */
@@ -153,8 +153,8 @@ export async function agregar(idEstacionamiento, idPropietario, imagen) {
   });
 
   if (!agregada) {
-    // La foto ya esta subida a Cloudinary y no entra: no se deja huerfana.
-    await cloudinary.borrar(nueva.public_id);
+    // La foto ya esta subida y no entra: no se deja huerfana.
+    await fotos.borrar(nueva.public_id);
     throw ApiError.conflict(`El estacionamiento ya tiene ${MAX_FOTOS} fotos, borra alguna primero`);
   }
   return agregada;
@@ -170,5 +170,5 @@ export async function borrar(idEstacionamiento, idPropietario, idImagen) {
       RETURNING public_id`,
     [idEstacionamiento, idImagen],
   );
-  await cloudinary.borrar(rows[0]?.public_id);
+  await fotos.borrar(rows[0]?.public_id);
 }

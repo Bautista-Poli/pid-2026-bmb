@@ -17,7 +17,6 @@ import { routes } from './app.routes';
 import { apiInterceptor } from './interceptors/api.interceptor';
 import { errorInterceptor } from './interceptors/error.interceptor';
 import { AuthService } from './services/auth.service';
-import { EntornoService } from './services/entorno.service';
 
 registerLocaleData(localeEsAr);
 
@@ -39,8 +38,6 @@ export const appConfig: ApplicationConfig = {
     // arranque el router hay que preguntarle a /auth/me si hay una vigente,
     // si no los guards seguros verian "sin sesion" en la primera carga.
     provideAppInitializer(() => firstValueFrom(inject(AuthService).cargarSesion())),
-    // Si el back esta offline (mapa local, sin Georef ni Photon): ver EntornoService.
-    provideAppInitializer(() => firstValueFrom(inject(EntornoService).cargar())),
     { provide: LOCALE_ID, useValue: 'es-AR' },
   ],
 };

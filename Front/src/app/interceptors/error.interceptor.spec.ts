@@ -33,28 +33,6 @@ describe('errorInterceptor', () => {
     expect(logout).toHaveBeenCalled();
   });
 
-  it('un error de Cloudinary no cierra la sesion y muestra un mensaje propio', () => {
-    let mensaje = '';
-    const url = 'https://api.cloudinary.com/v1_1/demo/image/upload';
-    http.post(url, {}).subscribe({ error: (e: Error) => (mensaje = e.message) });
-    backend.expectOne(url).flush({ error: { message: 'Invalid Signature abc. String to sign - x' } }, {
-      status: 401,
-      statusText: 'x',
-    });
-
-    expect(logout).not.toHaveBeenCalled();
-    expect(mensaje).toBe('No pudimos subir la foto. Probá de nuevo en un rato.');
-  });
-
-  it('un error de otro servicio externo no habla de fotos', () => {
-    let mensaje = '';
-    const url = 'https://apis.datos.gob.ar/georef/api/calles';
-    http.get(url).subscribe({ error: (e: Error) => (mensaje = e.message) });
-    backend.expectOne(url).flush('caido', { status: 503, statusText: 'x' });
-
-    expect(mensaje).not.toContain('foto');
-  });
-
   it('un error de la API conserva los details', () => {
     let detalles: unknown = null;
     http.post('/api/x', {}).subscribe({ error: (e: ErrorApi) => (detalles = e.detalles) });

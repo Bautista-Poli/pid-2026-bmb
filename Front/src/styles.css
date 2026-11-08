@@ -368,17 +368,6 @@
     background: var(--color-lienzo);
   }
 
-  /* Sin clave de CARTO se usan los mosaicos de OSM, muy coloridos: se apagan
-     para que resalten los pines y en modo oscuro se invierten (el giro de tono
-     deja el agua azul). */
-  .mapa-osm .leaflet-tile-pane {
-    filter: saturate(0.45) brightness(1.04) contrast(0.92);
-  }
-
-  .mapa-osm--oscuro .leaflet-tile-pane {
-    filter: invert(1) hue-rotate(180deg) saturate(0.35) brightness(0.85) contrast(0.9);
-  }
-
   /* Pin: la "P" en una gota de color y, debajo, el precio en una pastilla. */
   .pin {
     --pin-color: var(--color-exito);

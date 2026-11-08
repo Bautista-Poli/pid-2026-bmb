@@ -8,24 +8,15 @@
     "node": ">=20"
   },
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "node --watch --env-file=.env src/index.js",
-    "db:migrate": "node --env-file=.env src/db/migrate.js",
-    "db:migrate:prod": "node src/db/migrate.js",
-    "db:crear-admin": "node --env-file=.env src/db/crear-admin.js",
-    "db:crear-admin:prod": "node src/db/crear-admin.js",
-    "db:mover-reserva": "node --env-file=.env src/db/mover-reserva.js",
-    "db:calificaciones-demo": "node --env-file=.env src/db/calificaciones-demo.js",
-    "test": "node --test --env-file=.env \"pruebas/*.test.mjs\"",
-    "test:ci": "node --test \"pruebas/*.test.mjs\"",
-    "dev:offline": "node --watch --env-file=.env.offline src/index.js",
-    "offline:base": "node --env-file=.env.offline src/offline/crear-base.js && npm run offline:migrar",
-    "offline:migrar": "node --env-file=.env.offline src/db/migrate.js",
-    "offline:copiar": "node --env-file=.env.offline src/offline/copiar-produccion.js",
-    "offline:restaurar": "node --env-file=.env.offline src/offline/restaurar.js && npm run offline:migrar",
-    "offline:fotos": "node --env-file=.env.offline src/offline/bajar-fotos.js",
-    "offline:mapa": "node --env-file=.env.offline src/offline/bajar-mapa.js",
-    "offline:preparar": "npm run offline:base && npm run offline:copiar && npm run offline:restaurar && npm run offline:fotos && npm run offline:mapa"
+    "start": "node --env-file=.env.local src/index.js",
+    "dev": "node --watch --env-file=.env.local src/index.js",
+    "db:crear": "node --env-file=.env.local src/db/local/crear-base.js && npm run db:migrate",
+    "db:migrate": "node --env-file=.env.local src/db/migrate.js",
+    "db:restaurar": "node --env-file=.env.local src/db/local/restaurar.js && npm run db:migrate",
+    "db:crear-admin": "node --env-file=.env.local src/db/crear-admin.js",
+    "db:mover-reserva": "node --env-file=.env.local src/db/mover-reserva.js",
+    "db:calificaciones-demo": "node --env-file=.env.local src/db/calificaciones-demo.js",
+    "test": "node --test --env-file=.env.local \"pruebas/*.test.mjs\""
   },
   "keywords": [
     "parkit",
@@ -39,7 +30,6 @@
   "license": "ISC",
   "dependencies": {
     "bcrypt": "^6.0.0",
-    "cloudinary": "^2.11.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "express": "^5.2.1",

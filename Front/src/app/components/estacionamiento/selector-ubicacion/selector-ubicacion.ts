@@ -12,10 +12,9 @@ import {
   viewChild,
 } from '@angular/core';
 import * as L from 'leaflet';
-import { EntornoService } from '@app/services/entorno.service';
 import { TemaService } from '@app/services/tema.service';
 import { Coordenadas } from '@app/utils/distancia.util';
-import { crearFondoMapa, usaFiltroOsm } from '@app/utils/fondo-mapa.util';
+import { crearFondoMapa } from '@app/utils/fondo-mapa.util';
 
 /** Obelisco: donde arranca si todavia no hay ubicacion. */
 const CENTRO_INICIAL: L.LatLngTuple = [-34.6037, -58.3816];
@@ -24,7 +23,7 @@ const ZOOM_CON_UBICACION = 16;
 
 /**
  * Mapa chico para marcar donde queda el estacionamiento: tocar el mapa pone (o
- * mueve) el punto. Lo usa el formulario en modo offline, donde no se puede
+ * mueve) el punto. Lo usa el formulario, donde no se puede
  * geocodificar la direccion y las coordenadas las marca el propietario.
  */
 @Component({
@@ -33,14 +32,10 @@ const ZOOM_CON_UBICACION = 16;
   template: `<div #contenedor class="absolute inset-0"></div>`,
   host: {
     class: 'relative block h-64 overflow-hidden rounded-control border border-borde',
-    '[class.mapa-osm]': 'usaOsm',
-    '[class.mapa-osm--oscuro]': 'usaOsm && tema.esOscuro()',
   },
 })
 export class SelectorUbicacion {
   protected readonly tema = inject(TemaService);
-  private readonly offline = inject(EntornoService).offline();
-  protected readonly usaOsm = usaFiltroOsm(this.offline);
 
   /** La ubicacion marcada; `null` mientras no se toco el mapa. */
   readonly coordenadas = model<Coordenadas | null>(null);
@@ -93,7 +88,7 @@ export class SelectorUbicacion {
   }
 
   private async ponerFondo(oscuro: boolean): Promise<void> {
-    const fondo = await crearFondoMapa(oscuro, this.offline);
+    const fondo = crearFondoMapa(oscuro);
     if (!this.mapa) return;
     this.fondo?.remove();
     this.fondo = fondo.addTo(this.mapa);

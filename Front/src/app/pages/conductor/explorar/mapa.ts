@@ -37,7 +37,7 @@ import { buscarDestinosLocales } from '@app/utils/destinos-locales.util';
 import { CampoBusqueda, Sugerencia } from './campo-busqueda/campo-busqueda';
 import { DetalleEstacionamiento } from './detalle-estacionamiento/detalle-estacionamiento';
 import { ModalFiltros } from './modal-filtros/modal-filtros';
-import { Panel, horaFin, pesos } from './panel';
+import { Panel, horaFin, pesos } from './panel.interface';
 import {
   CLASE_ESTADO,
   ICONO_LUGAR,

@@ -5,7 +5,7 @@ import { CodigoNivel, OrdenEstacionamiento } from '@app/models';
 import { EstadoDisponibilidad } from '@app/utils/disponibilidad.util';
 import { TipoLugar } from '@app/utils/direcciones.util';
 import { hoyISO } from '@app/utils/fecha.util';
-import { Panel } from './panel';
+import { Panel } from './panel.interface';
 
 /** Tope del rango de precios (por hora). En el tope, el maximo no filtra. */
 export const PRECIO_TOPE = 5000;

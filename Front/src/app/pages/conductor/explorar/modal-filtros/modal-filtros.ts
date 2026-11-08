@@ -3,7 +3,7 @@ import { Chip, Icono, Modal, NombreIcono } from '@app/components/ui';
 import { OrdenEstacionamiento } from '@app/models';
 import { hoyISO } from '@app/utils/fecha.util';
 import { HORAS_MAXIMAS, OPCIONES_NIVEL, ORDENES, PRECIO_PASO, PRECIO_TOPE } from '../constantes';
-import { Panel, horaFin, pesos } from '../panel';
+import { Panel, horaFin, pesos } from '../panel.interface';
 
 /**
  * Modal "Filtrar" de la pantalla Explorar (mapa.ts).

@@ -38,83 +38,8 @@ let siguienteId = 0;
   selector: 'app-campo-busqueda',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [Icono],
-  template: `
-    <label
-      class="group flex items-center gap-2.5 rounded-control border border-borde bg-papel px-3.5 py-3
-             shadow-tarjeta transition-[border-color,box-shadow] duration-160 ease-out
-             hover:border-acento-borde focus-within:border-acento
-             focus-within:ring-[3px] focus-within:ring-acento-suave lg:py-[11px]"
-    >
-      <span class="sr-only">{{ etiqueta() }}</span>
-
-      <svg
-        class="size-4 shrink-0 text-humo transition-colors duration-160 ease-out
-               group-focus-within:text-acento"
-        viewBox="0 0 16 16"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="1.5"
-        aria-hidden="true"
-      >
-        <circle cx="7" cy="7" r="5" />
-        <path d="m10.8 10.8 3 3" stroke-linecap="round" />
-      </svg>
-
-      <input
-        type="search"
-        autocomplete="off"
-        class="w-full border-0 bg-transparent text-sm text-tinta placeholder:text-humo
-               focus:outline-none lg:text-[13.5px]"
-        [attr.role]="buscar() ? 'combobox' : null"
-        [attr.aria-autocomplete]="buscar() ? 'list' : null"
-        [attr.aria-expanded]="buscar() ? abierta() : null"
-        [attr.aria-controls]="buscar() ? idLista : null"
-        [attr.aria-activedescendant]="abierta() && activa() >= 0 ? idLista + '-' + activa() : null"
-        [placeholder]="marcador()"
-        [value]="valor()"
-        (input)="escribir($any($event.target).value)"
-        (keydown)="teclear($event)"
-        (blur)="abierta.set(false)"
-      />
-    </label>
-
-    @if (abierta()) {
-      <ul
-        role="listbox"
-        class="absolute inset-x-0 top-full z-20 mt-1 max-h-72 overflow-auto rounded-control border
-               border-borde bg-papel py-1 shadow-flotante"
-        [id]="idLista"
-      >
-        @for (sugerencia of sugerencias(); track $index; let i = $index) {
-          <li
-            role="option"
-            class="flex cursor-pointer items-center gap-3 px-3.5 py-2.5 text-tinta"
-            [class.bg-acento-suave]="i === activa()"
-            [id]="idLista + '-' + i"
-            [attr.aria-selected]="i === activa()"
-            (mousedown)="$event.preventDefault()"
-            (click)="elegir(sugerencia)"
-            (mouseenter)="activa.set(i)"
-          >
-            @if (sugerencia.icono; as icono) {
-              <span
-                class="grid size-8 shrink-0 place-items-center rounded-full bg-borde-sutil text-plomo"
-                aria-hidden="true"
-              >
-                <ui-icono [nombre]="icono" [tamano]="17" />
-              </span>
-            }
-            <span class="min-w-0">
-              <span class="block truncate text-[14px] font-medium">{{ sugerencia.nombre }}</span>
-              @if (sugerencia.detalle) {
-                <span class="block truncate text-[12px] text-plomo">{{ sugerencia.detalle }}</span>
-              }
-            </span>
-          </li>
-        }
-      </ul>
-    }
-  `,
+  templateUrl: './campo-busqueda.html',
+  styleUrl: './campo-busqueda.css',
   host: { class: 'relative block' },
 })
 export class CampoBusqueda {

@@ -54,7 +54,6 @@ Copiar `Back/.env.example` a `Back/.env.local` y completar:
 | `npm run db:crear` | Crea la base local si no existe y aplica `schema.sql` y `seed.sql` |
 | `npm run db:migrate` | Vuelve a aplicar el esquema (idempotente) |
 | `npm run db:restaurar` | Carga `datos-locales/produccion.dump` (**borra la base antes**) y migra |
-| `npm run db:crear-admin` | Crea un administrador |
 
 Los scripts que escriben en la base se niegan a correr si `DATABASE_URL` no es `localhost`.
 

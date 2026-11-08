@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { PuntoEstado } from '@app/components/ui';
+import { PuntoEstado } from '../punto-estado/punto-estado';
 
 /** Leyenda de colores de la cuadricula de cocheras. */
 @Component({

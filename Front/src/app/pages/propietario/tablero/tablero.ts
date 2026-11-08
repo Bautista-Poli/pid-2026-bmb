@@ -2,8 +2,9 @@ import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
-import { CeldaCochera, LeyendaCocheras } from '@app/components/cochera';
-import { IngresarCodigo } from '@app/components/reserva';
+import { CeldaCochera } from './celda-cochera/celda-cochera';
+import { LeyendaCocheras } from './leyenda-cocheras/leyenda-cocheras';
+import { IngresarCodigo } from './ingresar-codigo/ingresar-codigo';
 import {
   Boton,
   Cargando,

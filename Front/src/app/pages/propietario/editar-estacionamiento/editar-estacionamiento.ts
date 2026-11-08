@@ -1,7 +1,8 @@
 import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
-import { FormularioEstacionamiento, PlanesAbono } from '@app/components/estacionamiento';
+import { FormularioEstacionamiento } from '@app/components/estacionamiento';
+import { PlanesAbono } from './planes-abono/planes-abono';
 import { Boton, Cargando, EstadoVacio } from '@app/components/ui';
 import { Id, NuevoEstacionamiento } from '@app/models';
 import { EstacionamientoService } from '@app/services/estacionamiento.service';

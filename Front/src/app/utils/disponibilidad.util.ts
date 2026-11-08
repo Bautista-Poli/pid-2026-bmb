@@ -1,14 +1,5 @@
-import { TonoPunto } from '@app/components/ui';
-import { DiaSemana, Estacionamiento, EstadoCochera, FranjaAtencion, HoraHHmm } from '@app/models';
+import { DiaSemana, Estacionamiento, FranjaAtencion, HoraHHmm } from '@app/models';
 import { diaSemanaDe, hoyISO } from './fecha.util';
-
-/** Color del punto en la cuadricula del propietario. */
-export const TONO_ESTADO_COCHERA: Record<EstadoCochera, TonoPunto> = {
-  LIBRE: 'acento',
-  OCUPADA: 'ocupada',
-  RESERVADA: 'reservada',
-  INACTIVA: 'reservada',
-};
 
 /** Horario de hoy: `07 – 23 h`, `24 h` si no cierra, o `Cerrado hoy`. */
 export function resumenHorario(

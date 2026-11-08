@@ -1,7 +1,14 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
-import { Cochera, ETIQUETA_ESTADO_COCHERA } from '@app/models';
-import { TONO_ESTADO_COCHERA } from '@app/utils/disponibilidad.util';
-import { PuntoEstado } from '@app/components/ui';
+import { Cochera, ETIQUETA_ESTADO_COCHERA, EstadoCochera } from '@app/models';
+import { PuntoEstado, TonoPunto } from '../punto-estado/punto-estado';
+
+/** Color del punto en la cuadricula del propietario. */
+const TONO_ESTADO_COCHERA: Record<EstadoCochera, TonoPunto> = {
+  LIBRE: 'acento',
+  OCUPADA: 'ocupada',
+  RESERVADA: 'reservada',
+  INACTIVA: 'reservada',
+};
 
 /** Celda de la cuadricula de ocupacion: identificador sobre punto de estado. */
 @Component({

@@ -1,10 +1,9 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
 /**
- * Marca de Parkit para lugares chicos (sidebar, header mobile): la insignia
- * dibujada inline en los colores de la marca —azul de la "P" y verde del
- * check— mas el wordmark opcional "parkit". El logo completo en PNG
- * (`public/logo-parkit.png`) se usa en las pantallas de ingreso y registro.
+ * Marca de Parkit: la insignia dibujada inline en los colores de la marca
+ * —azul de la "P" y verde del check— mas el wordmark opcional "parkit".
+ * Se usa en el sidebar, el header y las pantallas de ingreso y registro.
  */
 @Component({
   selector: 'ui-logo',
@@ -41,7 +40,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
       </svg>
 
       @if (mostrarTexto()) {
-        <span class="text-[16px] leading-none font-semibold tracking-[-0.02em]">
+        <span class="leading-none font-semibold tracking-[-0.02em]" [style.font-size.px]="tamanoTexto()">
           <span [style.color]="'var(--color-acento)'">park</span><span
             [style.color]="'var(--color-exito)'"
             >it</span
@@ -55,4 +54,6 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 export class Logo {
   readonly tamano = input(28);
   readonly mostrarTexto = input(true);
+  /** Tamano del wordmark "parkit" en px. */
+  readonly tamanoTexto = input(16);
 }

@@ -1,0 +1,25 @@
+<!-- Lo que mide Parkit de la operacion. Datos en operacion-reputacion.ts. -->
+<ui-tarjeta relleno="lg">
+  <div class="operacion">
+    <h2 class="panel-titulo">Operación <span class="panel-titulo-aclaracion">(lo mide Parkit)</span></h2>
+    <ul class="lista">
+      @for (fila of filasOperacion(); track fila.titulo; let primera = $first) {
+        <li class="operacion-fila" [class.separada]="!primera">
+          <div class="operacion-info">
+            <p class="operacion-titulo">{{ fila.titulo }}</p>
+            <p class="operacion-detalle">{{ fila.detalle }}</p>
+          </div>
+          <div class="operacion-valores">
+            <span class="num-tabular operacion-valor">{{ fila.valor }}</span>
+            <span
+              class="num-tabular operacion-puntos"
+              [class]="fila.puntos === 10 ? 'puntos-completo' : 'puntos-parcial'"
+            >
+              {{ fila.puntos }}/10
+            </span>
+          </div>
+        </li>
+      }
+    </ul>
+  </div>
+</ui-tarjeta>

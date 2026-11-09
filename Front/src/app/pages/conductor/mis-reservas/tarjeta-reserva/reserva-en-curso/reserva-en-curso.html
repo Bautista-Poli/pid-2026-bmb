@@ -1,0 +1,42 @@
+<!-- Bloque "En curso" de la tarjeta de reserva: cuanto lleva, cuanto falta y la barra de la franja. -->
+<div class="border-b border-acento-borde bg-acento-suave px-5 pt-4 pb-5 lg:px-6">
+  <div class="flex items-center justify-between gap-3">
+    <!-- La etiqueta de estado la pone la tarjeta. -->
+    <ng-content />
+    <span class="text-[12.5px] text-grafito">{{ fechaLarga() }}</span>
+  </div>
+
+  <div class="mt-4 flex flex-col gap-1 lg:flex-row lg:items-end lg:justify-between">
+    <div>
+      <p class="text-[12.5px] text-grafito">Lleva</p>
+      <p
+        class="num-tabular text-[34px] leading-tight font-semibold tracking-[-0.025em]
+               text-tinta lg:text-[40px]"
+        aria-live="polite"
+      >
+        {{ lleva() }}
+      </p>
+    </div>
+    <p class="num-tabular text-[13px] text-grafito lg:pb-2">
+      Termina a las {{ reserva().horaHasta }} · {{ falta() }}
+    </p>
+  </div>
+
+  <div
+    class="mt-4 h-2 overflow-hidden rounded-full bg-borde"
+    role="progressbar"
+    aria-label="Avance de la reserva"
+    [attr.aria-valuenow]="progreso()"
+    aria-valuemin="0"
+    aria-valuemax="100"
+  >
+    <div
+      class="h-full rounded-full bg-exito transition-[width] duration-500 ease-out"
+      [style.width.%]="progreso()"
+    ></div>
+  </div>
+  <div class="num-tabular mt-2 flex justify-between text-[11.5px] text-plomo">
+    <span>{{ reserva().horaDesde }}</span>
+    <span>{{ reserva().horaHasta }}</span>
+  </div>
+</div>

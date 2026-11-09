@@ -1,4 +1,3 @@
-import { DatePipe } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -10,9 +9,9 @@ import {
   untracked,
 } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
-import { Router, RouterLink } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { RangoHorario, SelectorFranja } from './selector-franja/selector-franja';
-import { ReservaHecha } from './reserva-hecha/reserva-hecha';
+import { ReservaConfirmada } from './reserva-confirmada/reserva-confirmada';
 import { ResumenReserva } from './resumen-reserva/resumen-reserva';
 import { SelectorDuracion } from './selector-duracion/selector-duracion';
 import { SelectorFecha } from './selector-fecha/selector-fecha';
@@ -25,7 +24,7 @@ import { ReservaService } from '@app/services/reserva.service';
 import { VehiculoService } from '@app/services/conductor/vehiculo.service';
 import { calcularPrecio, horasReservables, modalidadPorHoras, resumenTarifas } from '@app/utils/tarifa.util';
 import { formatearDistancia, resumenHorario } from '@app/utils/disponibilidad.util';
-import { desdeFechaISO, diaSemanaDe, hoyISO } from '@app/utils/fecha.util';
+import { diaSemanaDe, hoyISO } from '@app/utils/fecha.util';
 
 /**
  * Pantalla `/conductor/reservar/:estacionamientoId` · rol CONDUCTOR
@@ -41,14 +40,13 @@ import { desdeFechaISO, diaSemanaDe, hoyISO } from '@app/utils/fecha.util';
   selector: 'app-reservar',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    DatePipe,
     RouterLink,
     SelectorVehiculo,
     SelectorFecha,
     SelectorFranja,
     SelectorDuracion,
     ResumenReserva,
-    ReservaHecha,
+    ReservaConfirmada,
     GaleriaFotos,
     Tarjeta,
     Boton,
@@ -62,12 +60,10 @@ export class Reservar {
   private readonly estacionamientos = inject(EstacionamientoService);
   private readonly vehiculos = inject(VehiculoService);
   private readonly reservas = inject(ReservaService);
-  private readonly router = inject(Router);
 
   /** Llega del parametro de ruta `:estacionamientoId`. */
   readonly estacionamientoId = input.required<Id>();
 
-  protected readonly desdeFechaISO = desdeFechaISO;
   protected readonly borrador = this.reservas.borrador;
   protected readonly horas = this.reservas.duracionHoras;
   protected readonly completo = this.reservas.borradorCompleto;
@@ -264,9 +260,5 @@ export class Reservar {
         this.recursoDisponibilidad.reload();
       },
     });
-  }
-
-  protected irAMisReservas(): void {
-    void this.router.navigate(['/conductor/mis-reservas']);
   }
 }

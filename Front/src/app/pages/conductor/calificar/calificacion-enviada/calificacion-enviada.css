@@ -1,0 +1,24 @@
+.enviada {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 3rem 1rem;
+  text-align: center;
+}
+
+.enviada__icono {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 999px;
+  background: var(--color-oro-suave);
+  color: var(--color-oro-tinta);
+}
+
+.enviada__texto {
+  max-width: 340px;
+  font-size: 13.5px;
+  color: var(--color-plomo);
+}

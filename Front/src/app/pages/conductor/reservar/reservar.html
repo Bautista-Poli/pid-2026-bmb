@@ -8,53 +8,7 @@
     </ui-estado-vacio>
   } @else if (recursoEstacionamiento.value(); as estacionamiento) {
     @if (reservaConfirmada(); as reserva) {
-      <!-- Confirmacion -->
-      <div class="aparece columna-reserva">
-        <header class="encabezado-confirmacion">
-          <app-reserva-hecha />
-          <div>
-            <p class="eyebrow eyebrow-exito">Reserva enviada</p>
-            <h1 class="titulo-vista titulo-reserva">{{ estacionamiento.nombre }}</h1>
-          </div>
-        </header>
-
-        <ui-tarjeta relleno="lg">
-          <div class="detalle-confirmacion">
-            <p class="texto-detalle">
-              Queda pendiente hasta que el propietario la confirme.
-            </p>
-            <p class="texto-detalle">
-              Guardamos tu cochera el
-              <span class="dato-destacado">
-                {{ desdeFechaISO(reserva.fecha) | date: "EEEE d 'de' MMMM" }}</span
-              >, de
-              <span class="num-tabular dato-destacado"
-                >{{ reserva.horaDesde }} a {{ reserva.horaHasta }}</span
-              >{{ reserva.fechaHasta !== reserva.fecha ? ' del día siguiente' : '' }}.
-            </p>
-            <div class="fila-detalle">
-              <span class="texto-detalle">Cochera asignada</span>
-              <span class="num-tabular dato-destacado">
-                {{ reserva.cocheraIdentificador ?? '—' }}
-              </span>
-            </div>
-            <div class="separador"></div>
-            <div class="fila-detalle">
-              <span class="texto-detalle">Total</span>
-              <span class="num-tabular total-reserva">
-                $ {{ reserva.precioTotal.toLocaleString('es-AR') }}
-              </span>
-            </div>
-          </div>
-        </ui-tarjeta>
-
-        <div class="acciones-confirmacion">
-          <ui-boton variante="primario" [bloque]="true" (presionado)="irAMisReservas()">
-            Ver mis reservas
-          </ui-boton>
-          <ui-boton [bloque]="true" routerLink="/conductor/explorar">Seguir explorando</ui-boton>
-        </div>
-      </div>
+      <app-reserva-confirmada [reserva]="reserva" [estacionamiento]="estacionamiento.nombre" />
     } @else {
       <div class="aparece columna-reserva">
         <header>

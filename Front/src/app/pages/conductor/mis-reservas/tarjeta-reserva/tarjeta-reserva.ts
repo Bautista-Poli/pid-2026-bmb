@@ -1,14 +1,4 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  DestroyRef,
-  inject,
-  input,
-  OnInit,
-  output,
-  signal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Etiqueta, Icono, TonoEtiqueta } from '@app/components/ui';
@@ -24,9 +14,10 @@ import {
   ReservaDetallada,
 } from '@app/models';
 import { reservaEnJuego } from '@app/services/ciclo-reserva';
-import { aInstante, desdeFechaISO } from '@app/utils/fecha.util';
+import { desdeFechaISO } from '@app/utils/fecha.util';
 import { linksComoLlegar } from '@app/utils/mapas.util';
 import { reservaReclamable } from '@app/utils/reclamo.util';
+import { ReservaEnCurso } from './reserva-en-curso/reserva-en-curso';
 
 const TONO_ESTADO: Record<EstadoReserva, TonoEtiqueta> = {
   PENDIENTE: 'aviso',
@@ -37,9 +28,6 @@ const TONO_ESTADO: Record<EstadoReserva, TonoEtiqueta> = {
   NO_SHOW: 'peligro',
 };
 
-/** El reloj de la reserva en curso se refresca cada 30 s: alcanza para los minutos. */
-const REFRESCO_MS = 30_000;
-
 const DIA_SEMANA = new Intl.DateTimeFormat('es-AR', { weekday: 'short' });
 const MES = new Intl.DateTimeFormat('es-AR', { month: 'short' });
 
@@ -47,32 +35,21 @@ const MES = new Intl.DateTimeFormat('es-AR', { month: 'short' });
 const abreviar = (formato: Intl.DateTimeFormat, fecha: Date) =>
   formato.format(fecha).replace('.', '');
 
-/** "1 h 25 min", "45 min", "2 h". */
-function duracion(ms: number): string {
-  const minutos = Math.max(0, Math.round(ms / 60_000));
-  const h = Math.floor(minutos / 60);
-  const m = minutos % 60;
-  if (h === 0) return `${m} min`;
-  return m === 0 ? `${h} h` : `${h} h ${m} min`;
-}
-
 /**
  * Tarjeta de una reserva del conductor.
  *
  *   completa  -> la de "Vigentes". Si la reserva esta en curso, suma arriba el
- *                bloque con el tiempo que lleva y la barra de progreso.
+ *                bloque con el tiempo que lleva y la barra de progreso (reserva-en-curso).
  *   compacta  -> la del historial: una linea con fecha, estacionamiento, precio y estado.
  */
 @Component({
   selector: 'app-tarjeta-reserva',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgTemplateOutlet, RouterLink, Etiqueta, Icono, ChapaPatente],
+  imports: [NgTemplateOutlet, RouterLink, Etiqueta, Icono, ChapaPatente, ReservaEnCurso],
   templateUrl: './tarjeta-reserva.html',
   host: { class: 'block' },
 })
-export class TarjetaReserva implements OnInit {
-  private readonly destroyRef = inject(DestroyRef);
-
+export class TarjetaReserva {
   readonly reserva = input.required<ReservaDetallada>();
   readonly variante = input<'completa' | 'compacta'>('completa');
   readonly cancelando = input(false);
@@ -95,8 +72,6 @@ export class TarjetaReserva implements OnInit {
   protected readonly etiquetaEstado = computed(() => etiquetaReserva(this.reserva(), 'CONDUCTOR'));
   protected readonly etiquetaModalidad = ETIQUETA_MODALIDAD;
   protected readonly turnos = TURNOS;
-
-  protected readonly ahora = signal(Date.now());
 
   protected readonly tono = computed(() =>
     esExpirada(this.reserva()) ? 'aviso' : TONO_ESTADO[this.reserva().estado],
@@ -141,49 +116,9 @@ export class TarjetaReserva implements OnInit {
     mes: abreviar(MES, this.dia()),
   }));
 
-  /** "Hoy · lun 28 sep", "Mañana · mar 29 sep" o "vie 3 oct". */
-  protected readonly fechaLarga = computed(() => {
+  /** "lun 28 sep". */
+  protected readonly textoFecha = computed(() => {
     const { semana, numero, mes } = this.bloqueFecha();
-    const texto = `${semana} ${numero} ${mes}`;
-    const hoy = new Date(this.ahora());
-    hoy.setHours(0, 0, 0, 0);
-    const dias = Math.round((this.dia().getTime() - hoy.getTime()) / 86_400_000);
-    if (dias === 0) return `Hoy · ${texto}`;
-    if (dias === 1) return `Mañana · ${texto}`;
-    return texto;
+    return `${semana} ${numero} ${mes}`;
   });
-
-  /* --------------------------- En curso --------------------------- */
-
-  private readonly inicio = computed(() =>
-    Date.parse(aInstante(this.reserva().fecha, this.reserva().horaDesde)),
-  );
-  private readonly fin = computed(() =>
-    Date.parse(aInstante(this.reserva().fechaHasta, this.reserva().horaHasta)),
-  );
-
-  /** Desde el ingreso real si el propietario lo registro; si no, desde la franja. */
-  protected readonly lleva = computed(() => {
-    const ingreso = this.reserva().ingresoEn;
-    const desde = ingreso ? Date.parse(ingreso) : this.inicio();
-    return duracion(this.ahora() - desde);
-  });
-
-  protected readonly falta = computed(() => {
-    const restante = this.fin() - this.ahora();
-    return restante > 0 ? `faltan ${duracion(restante)}` : 'ya terminó el horario';
-  });
-
-  protected readonly progreso = computed(() => {
-    const total = this.fin() - this.inicio();
-    if (total <= 0) return 100;
-    const avance = (this.ahora() - this.inicio()) / total;
-    return Math.round(Math.min(1, Math.max(0, avance)) * 100);
-  });
-
-  ngOnInit(): void {
-    if (!this.enCurso()) return;
-    const reloj = setInterval(() => this.ahora.set(Date.now()), REFRESCO_MS);
-    this.destroyRef.onDestroy(() => clearInterval(reloj));
-  }
 }

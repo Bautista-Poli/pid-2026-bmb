@@ -2,6 +2,8 @@ import { ChangeDetectionStrategy, Component, computed, inject, input, signal } f
 import { rxResource } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { Boton, Cargando, EstadoVacio } from '@app/components/ui';
+import { CalificacionEnviada } from './calificacion-enviada/calificacion-enviada';
+import { EstrellasCategoria } from './estrellas-categoria/estrellas-categoria';
 import {
   CATEGORIAS_CALIFICACION,
   CategoriaCalificacion,
@@ -14,7 +16,6 @@ import {
 import { CalificacionService } from '@app/services/calificacion.service';
 import { ReservaService } from '@app/services/reserva.service';
 
-const ESTRELLAS = [1, 2, 3, 4, 5] as const;
 const MAX_COMENTARIO = 500;
 
 const HORA = new Intl.DateTimeFormat('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -31,7 +32,7 @@ const hora = (instante: string | null) => (instante ? HORA.format(new Date(insta
 @Component({
   selector: 'app-calificar',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Boton, Cargando, EstadoVacio, RouterLink],
+  imports: [EstrellasCategoria, CalificacionEnviada, Boton, Cargando, EstadoVacio, RouterLink],
   templateUrl: './calificar.html',
   styleUrl: './calificar.css',
 })
@@ -43,7 +44,6 @@ export class Calificar {
   readonly reservaId = input.required<string>();
 
   protected readonly categorias = CATEGORIAS_CALIFICACION;
-  protected readonly estrellas = ESTRELLAS;
   protected readonly etiquetas = ETIQUETAS_CALIFICACION;
   protected readonly textoEtiqueta = TEXTO_ETIQUETA;
   protected readonly maxComentario = MAX_COMENTARIO;
@@ -96,10 +96,6 @@ export class Calificar {
       else nuevas.add(etiqueta);
       return nuevas;
     });
-  }
-
-  protected etiquetaEstrella(categoria: string, valor: number): string {
-    return `${categoria}: ${valor} ${valor === 1 ? 'estrella' : 'estrellas'}`;
   }
 
   /** Guarda la calificacion (5 categorias, etiquetas y comentario) y vuelve a Mis reservas. */

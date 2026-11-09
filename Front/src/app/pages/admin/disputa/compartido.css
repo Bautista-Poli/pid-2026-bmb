@@ -1,0 +1,15 @@
+.campo-mensaje::placeholder,
+.campo-fundamento::placeholder {
+  color: var(--color-humo);
+}
+
+.campo-mensaje:focus,
+.campo-fundamento:focus {
+  border-color: var(--color-acento);
+  outline: none;
+}
+
+.aviso-error {
+  font-size: 13px;
+  color: var(--color-ocupada);
+}

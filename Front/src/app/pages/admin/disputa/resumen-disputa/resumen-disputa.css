@@ -1,0 +1,26 @@
+/* Resumen para decidir: 2 columnas en mobile, 3 desde 640px. */
+.resumen-disputa {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 1.5rem;
+  row-gap: 0.75rem;
+  font-size: 13px;
+}
+
+@media (min-width: 640px) {
+  .resumen-disputa {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.resumen-disputa dt {
+  color: var(--color-plomo);
+}
+
+.resumen-disputa dd {
+  color: var(--color-tinta);
+}
+
+.resumen-disputa__destacado {
+  font-weight: 600;
+}

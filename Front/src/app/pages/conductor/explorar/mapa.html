@@ -5,6 +5,7 @@
   scroll propio). Desktop: columna izquierda con buscador, vehiculo y resultados
   (scrollea sola) y el mapa ocupando el resto. El wrapper de la izquierda es
   `contents` en mobile para que sus dos partes puedan ubicarse arriba y abajo del mapa.
+  
 -->
 <div class="mapa-vista">
   <div class="mapa-columna">
@@ -75,52 +76,12 @@
         <ul class="panel-resultados__lista aparece-en-cadena">
           @for (estacionamiento of resultadosPagina(); track estacionamiento.id) {
             <li [id]="'estacionamiento-' + estacionamiento.id">
-              <button
-                type="button"
-                class="resultado"
-                [class.resultado--seleccionado]="seleccionadoId() === estacionamiento.id"
-                [class.resultado--no-disponible]="estado(estacionamiento) === 'NO_DISPONIBLE'"
-                (mouseenter)="seleccionadoId.set(estacionamiento.id)"
-                (focus)="seleccionadoId.set(estacionamiento.id)"
-                (click)="abrir(estacionamiento)"
-              >
-                @if (estacionamiento.fotoUrl; as foto) {
-                  <img [src]="foto" alt="" loading="lazy" class="resultado__avatar" />
-                } @else {
-                  <span class="resultado__avatar resultado__avatar--inicial" aria-hidden="true">P</span>
-                }
-
-                <span class="resultado__cuerpo">
-                  <span class="resultado__titulo">
-                    <span class="resultado__nombre">{{ estacionamiento.nombre }}</span>
-                    @if (estacionamiento.reputacion.nivel; as nivel) {
-                      <app-nivel-estacionamiento [nivel]="nivel" />
-                    }
-                  </span>
-                  <span class="resultado__reputacion empty:hidden"
-                    ><app-insignias-estacionamiento [reputacion]="estacionamiento.reputacion" modo="compacto"
-                  /></span>
-                  <span class="resultado__direccion">
-                    {{ estacionamiento.direccion.calle }} {{ estacionamiento.direccion.numero }}
-                  </span>
-                  @if (distancia(estacionamiento); as texto) {
-                    <span class="resultado__distancia">
-                      <ui-icono nombre="explorar" [tamano]="14" class="resultado__distancia-icono" />
-                      {{ texto }}
-                    </span>
-                  }
-                </span>
-
-                <span class="resultado__columna">
-                  <span class="num-tabular resultado__precio">{{ precio(estacionamiento) }}</span>
-                  <span class="resultado__estado" [class]="claseEstado[estado(estacionamiento)]"
-                    >{{ etiquetaEstado[estado(estacionamiento)] }}</span
-                  >
-                  <span class="num-tabular resultado__horario">{{ horario(estacionamiento) }}</span>
-                </span>
-
-                <ui-icono nombre="cheuron" [tamano]="18" class="resultado__flecha" />
-              </button>
+              <app-resultado-estacionamiento
+                [estacionamiento]="estacionamiento"
+                [seleccionado]="seleccionadoId() === estacionamiento.id"
+                (enfocado)="seleccionadoId.set(estacionamiento.id)"
+                (elegido)="abrir(estacionamiento)"
+              />
             </li>
           }
         </ul>

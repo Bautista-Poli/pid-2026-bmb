@@ -1,0 +1,47 @@
+<!-- Tarjeta de un resultado de Explorar. Datos en resultado-estacionamiento.ts. -->
+<button
+  type="button"
+  class="resultado"
+  [class.resultado--seleccionado]="seleccionado()"
+  [class.resultado--no-disponible]="estado() === 'NO_DISPONIBLE'"
+  (mouseenter)="enfocado.emit()"
+  (focus)="enfocado.emit()"
+  (click)="elegido.emit()"
+>
+  @if (estacionamiento().fotoUrl; as foto) {
+    <img [src]="foto" alt="" loading="lazy" class="resultado__avatar" />
+  } @else {
+    <span class="resultado__avatar resultado__avatar--inicial" aria-hidden="true">P</span>
+  }
+
+  <span class="resultado__cuerpo">
+    <span class="resultado__titulo">
+      <span class="resultado__nombre">{{ estacionamiento().nombre }}</span>
+      @if (estacionamiento().reputacion.nivel; as nivel) {
+        <app-nivel-estacionamiento [nivel]="nivel" />
+      }
+    </span>
+    <span class="resultado__reputacion"
+      ><app-insignias-estacionamiento [reputacion]="estacionamiento().reputacion" modo="compacto"
+    /></span>
+    <span class="resultado__direccion">
+      {{ estacionamiento().direccion.calle }} {{ estacionamiento().direccion.numero }}
+    </span>
+    @if (distancia(); as texto) {
+      <span class="resultado__distancia">
+        <ui-icono nombre="explorar" [tamano]="14" class="resultado__distancia-icono" />
+        {{ texto }}
+      </span>
+    }
+  </span>
+
+  <span class="resultado__columna">
+    <span class="num-tabular resultado__precio">{{ precio() }}</span>
+    <span class="resultado__estado" [class]="claseEstado[estado()]"
+      >{{ etiquetaEstado[estado()] }}</span
+    >
+    <span class="num-tabular resultado__horario">{{ horario() }}</span>
+  </span>
+
+  <ui-icono nombre="cheuron" [tamano]="18" class="resultado__flecha" />
+</button>

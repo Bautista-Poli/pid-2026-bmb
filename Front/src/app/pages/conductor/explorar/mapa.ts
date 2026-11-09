@@ -31,7 +31,7 @@ import {
 } from '@app/services/estacionamiento.service';
 import { Destino } from '@app/utils/direcciones.util';
 import { buscarDestinosLocales } from '@app/utils/destinos-locales.util';
-import { Sugerencia } from './campo-busqueda/campo-busqueda';
+import { Sugerencia } from './panel-buscador/campo-busqueda/campo-busqueda';
 import { DetalleEstacionamiento } from './detalle-estacionamiento/detalle-estacionamiento';
 import { ModalFiltros } from './modal-filtros/modal-filtros';
 import { ResultadoEstacionamiento } from './resultado-estacionamiento/resultado-estacionamiento';

@@ -3,7 +3,7 @@ import { RouterLink } from '@angular/router';
 import { Icono } from '@app/components/ui';
 import { ICONO_TIPO_VEHICULO, Vehiculo, descripcionVehiculo } from '@app/models';
 import { Observable } from 'rxjs';
-import { CampoBusqueda, Sugerencia } from '../campo-busqueda/campo-busqueda';
+import { CampoBusqueda, Sugerencia } from './campo-busqueda/campo-busqueda';
 
 /**
  * Panel de arriba de Explorar (mapa.ts): buscador de destino, boton "mi

@@ -1,26 +1,18 @@
 import { ChangeDetectionStrategy, Component, computed, inject, linkedSignal } from '@angular/core';
 import { rxResource, toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { BarraDia, BarrasDia, CambioPeriodo, SelectorPeriodo, TarjetaMetrica, TonoMetrica } from '@app/components/estadistica';
-import { Boton, Cargando, EstadoVacio, NombreIcono, Tarjeta } from '@app/components/ui';
-import {
-  ETIQUETA_MOTIVO_RECLAMO,
-  ETIQUETA_RAZON_PROBLEMATICO,
-  ETIQUETA_TIPO_INCIDENCIA,
-  EstadisticasAdmin,
-  MotivoReclamo,
-  TipoIncidencia,
-} from '@app/models';
+import { ActivatedRoute, Router } from '@angular/router';
+import { CambioPeriodo, SelectorPeriodo, TarjetaMetrica, TonoMetrica } from '@app/components/estadistica';
+import { Boton, Cargando, EstadoVacio, NombreIcono } from '@app/components/ui';
+import { EstadisticasAdmin } from '@app/models';
 import { AdminService } from '@app/services/admin/admin.service';
 import { periodoDeUrl, Variacion, variacion } from '@app/utils/periodo.util';
-import { haceCuanto } from '@app/utils/tiempo.util';
-
-// Espacio no separable: el "$" no queda solo en una linea en las tarjetas angostas.
-const NBSP = String.fromCharCode(160);
-const pesos = (monto: number) => `$${NBSP}${Math.round(monto).toLocaleString('es-AR')}`;
-const porciento = (fraccion: number) => `${Math.round(fraccion * 100)} %`;
-const diaYMes = (fecha: string) => `${fecha.slice(8, 10)}/${fecha.slice(5, 7)}`;
-const diaDelMes = (fecha: string) => String(Number(fecha.slice(8, 10)));
+import { CocherasBloqueadas } from './cocheras-bloqueadas/cocheras-bloqueadas';
+import { DisputasPendientes } from './disputas-pendientes/disputas-pendientes';
+import { EstacionamientosProblematicos } from './estacionamientos-problematicos/estacionamientos-problematicos';
+import { pesos, porciento } from './formato';
+import { PendientesAprobacion } from './pendientes-aprobacion/pendientes-aprobacion';
+import { RankingEstacionamientos } from './ranking-estacionamientos/ranking-estacionamientos';
+import { ReservasPorDia } from './reservas-por-dia/reservas-por-dia';
 
 interface Metrica {
   etiqueta: string;
@@ -29,16 +21,6 @@ interface Metrica {
   tono: TonoMetrica;
   variacion: Variacion;
 }
-
-/** Tramos de las barras de reservas por dia, de abajo hacia arriba. */
-const TRAMOS_RESERVAS = [
-  { clave: 'finalizadas', clase: 'bg-exito', etiqueta: 'Finalizadas' },
-  { clave: 'enCurso', clase: 'bg-acento', etiqueta: 'En curso' },
-  { clave: 'confirmadas', clase: 'bg-acento/40', etiqueta: 'Confirmadas' },
-  { clave: 'pendientes', clase: 'bg-baja', etiqueta: 'Pendientes' },
-  { clave: 'canceladas', clase: 'bg-ocupada/70', etiqueta: 'Canceladas' },
-  { clave: 'ausentes', clase: 'bg-humo', etiqueta: 'Ausentes' },
-] as const;
 
 /**
  * Pantalla `/admin/tablero` · rol ADMINISTRADOR
@@ -51,20 +33,26 @@ const TRAMOS_RESERVAS = [
 @Component({
   selector: 'app-tablero-admin',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [BarrasDia, Boton, Cargando, EstadoVacio, RouterLink, SelectorPeriodo, Tarjeta, TarjetaMetrica],
+  imports: [
+    PendientesAprobacion,
+    DisputasPendientes,
+    CocherasBloqueadas,
+    EstacionamientosProblematicos,
+    ReservasPorDia,
+    RankingEstacionamientos,
+    Boton,
+    Cargando,
+    EstadoVacio,
+    SelectorPeriodo,
+    TarjetaMetrica,
+  ],
   templateUrl: './tablero.html',
-  styleUrl: './tablero.css',
+  styleUrls: ['./compartido.css', './tablero.css'],
 })
 export class Tablero {
   private readonly admin = inject(AdminService);
   private readonly router = inject(Router);
   private readonly ruta = inject(ActivatedRoute);
-
-  protected readonly tramosReservas = TRAMOS_RESERVAS;
-  protected readonly etiquetaRazon = ETIQUETA_RAZON_PROBLEMATICO;
-  protected readonly pesos = pesos;
-  protected readonly porciento = porciento;
-  protected readonly haceCuanto = haceCuanto;
 
   private readonly params = toSignal(this.ruta.queryParamMap, { requireSync: true });
 
@@ -92,12 +80,6 @@ export class Tablero {
     computation: (nuevo, previo) => nuevo ?? previo?.value,
   });
 
-  /** "Reclamo · No había cochera libre" o "Auto excedido". */
-  protected tituloDisputa(tipo: string, motivo: string | null): string {
-    const nombre = ETIQUETA_TIPO_INCIDENCIA[tipo as TipoIncidencia] ?? tipo;
-    return motivo ? `${nombre} · ${ETIQUETA_MOTIVO_RECLAMO[motivo as MotivoReclamo] ?? motivo}` : nombre;
-  }
-
   protected readonly metricas = computed<Metrica[]>(() => {
     const datos = this.datos();
     if (!datos) return [];
@@ -111,25 +93,6 @@ export class Tablero {
       { etiqueta: 'Devoluciones', valor: pesos(k.devoluciones.valor), icono: 'moneda', tono: 'rojo', variacion: variacion(k.devoluciones.valor, k.devoluciones.anterior, { menosEsMejor: true }) },
       { etiqueta: 'Cancelaciones', valor: porciento(k.tasaCancelacion.valor), icono: 'cerrar', tono: 'ambar', variacion: variacion(k.tasaCancelacion.valor, k.tasaCancelacion.anterior, { menosEsMejor: true, puntos: true }) },
     ];
-  });
-
-  protected readonly barrasReservas = computed<BarraDia[]>(() =>
-    (this.datos()?.actividad.reservasPorDia ?? []).map((d) => {
-      const partes = TRAMOS_RESERVAS.filter((t) => d[t.clave] > 0).map((t) => `${t.etiqueta} ${d[t.clave]}`);
-      return {
-        clave: d.fecha,
-        etiqueta: diaDelMes(d.fecha),
-        tramos: TRAMOS_RESERVAS.map((t) => ({ valor: d[t.clave], clase: t.clase, etiqueta: t.etiqueta })),
-        detalle: `${diaYMes(d.fecha)} · ${partes.length > 0 ? partes.join(' · ') : 'Sin reservas'}`,
-      };
-    }),
-  );
-
-  protected readonly hayReservas = computed(() => this.barrasReservas().some((b) => b.tramos.some((t) => t.valor > 0)));
-
-  protected readonly totalBloqueos = computed(() => {
-    const b = this.datos()?.conflictos.bloqueos;
-    return b ? b.reasignadas + b.canceladas + b.autosExcedidos + b.sinCochera : 0;
   });
 
   protected elegirPeriodo(cambio: CambioPeriodo): void {

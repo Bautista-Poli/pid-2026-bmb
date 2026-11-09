@@ -1,0 +1,19 @@
+<!-- Reservas por dia de la plataforma. Datos en reservas-por-dia.ts. -->
+<ui-tarjeta relleno="lg">
+  <div class="cuerpo-tarjeta">
+    <div>
+      <h3 class="titulo-tarjeta">Reservas por día</h3>
+      <p class="subtitulo-tarjeta">Todas las reservas de la plataforma, por estado</p>
+    </div>
+    <div class="leyenda-tramos">
+      @for (t of tramosReservas; track t.clave) {
+        <span class="tramo"><span class="tramo__color" [class]="t.clase"></span> {{ t.etiqueta }}</span>
+      }
+    </div>
+    @if (hayReservas()) {
+      <app-barras-dia [barras]="barrasReservas()" descripcion="Reservas por día de la plataforma" />
+    } @else {
+      <p class="vacio vacio--alto">No hubo reservas en este período.</p>
+    }
+  </div>
+</ui-tarjeta>

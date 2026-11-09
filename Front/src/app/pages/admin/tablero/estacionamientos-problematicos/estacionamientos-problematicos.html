@@ -1,0 +1,35 @@
+<!-- Estacionamientos con problemas. Datos en estacionamientos-problematicos.ts. -->
+<ui-tarjeta relleno="lg">
+  <div class="cuerpo-tarjeta">
+    <div>
+      <h3 class="titulo-tarjeta">Estacionamientos con problemas</h3>
+      <p class="subtitulo-tarjeta">
+        Con 5 reservas o más: cancelan más del 30 % por su lado o juntan 2 reclamos o más
+      </p>
+    </div>
+    @if (datos().conflictos.problematicos.length === 0) {
+      <p class="vacio vacio--amplio">Ningún estacionamiento con problemas en este período.</p>
+    } @else {
+      <ul class="lista-divisoria">
+        @for (p of datos().conflictos.problematicos; track p.id) {
+          <li class="fila-problema">
+            <div class="fila-texto">
+              <p class="fila-titulo">{{ p.nombre }}</p>
+              <p class="num-tabular detalle-problema">
+                {{ p.propietario }} · {{ p.reservas }} reservas · cancela {{ porciento(p.tasaCancelacion) }} ·
+                {{ p.reclamos }} {{ p.reclamos === 1 ? 'reclamo' : 'reclamos' }}
+              </p>
+            </div>
+            <div class="razones">
+              @for (razon of p.razones; track razon) {
+                <span class="razon">
+                  {{ etiquetaRazon[razon] }}
+                </span>
+              }
+            </div>
+          </li>
+        }
+      </ul>
+    }
+  </div>
+</ui-tarjeta>

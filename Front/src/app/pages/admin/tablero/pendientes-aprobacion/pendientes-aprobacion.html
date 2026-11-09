@@ -1,0 +1,41 @@
+<!-- Estacionamientos por aprobar. Datos en pendientes-aprobacion.ts. -->
+<ui-tarjeta relleno="lg">
+  <div class="cuerpo-tarjeta cuerpo-tarjeta--compacto">
+    <div class="encabezado-indicador">
+      <div>
+        <p class="nota">Estacionamientos por aprobar</p>
+        <p class="num-tabular indicador-valor">{{ datos().pendientes.enCola }}</p>
+        @if (datos().pendientes.masAntiguoDesde; as desde) {
+          <p class="indicador-alerta">El más antiguo espera {{ haceCuanto(desde) }}</p>
+        }
+      </div>
+      <a routerLink="/admin/pendientes" class="enlace-ver-todos">Ver todos</a>
+    </div>
+    @if (datos().pendientes.primeros.length === 0) {
+      <p class="vacio">No hay estacionamientos para revisar.</p>
+    } @else {
+      <ul class="lista-divisoria">
+        @for (e of datos().pendientes.primeros; track e.id) {
+          <li>
+            <a class="fila fila--interactiva" [routerLink]="['/admin/estacionamientos', e.id]">
+              <span class="fila-texto">
+                <span class="fila-titulo">{{ e.nombre }}</span>
+                <span class="fila-subtitulo">{{ e.propietario }}</span>
+              </span>
+              <span class="fila-hora">{{ haceCuanto(e.enviadoEn) }}</span>
+            </a>
+          </li>
+        }
+      </ul>
+    }
+    @if (datos().pendientes.rechazadosSinReenviar > 0) {
+      <a
+        routerLink="/admin/pendientes"
+        [queryParams]="{ estado: 'RECHAZADO' }"
+        class="enlace-secundario"
+      >
+        {{ datos().pendientes.rechazadosSinReenviar }} rechazados esperando que el propietario los corrija
+      </a>
+    }
+  </div>
+</ui-tarjeta>

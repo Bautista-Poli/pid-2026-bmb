@@ -1,4 +1,5 @@
 import { FechaISO } from './api.model';
+import { OrigenCancelacion } from './reserva.model';
 
 /** Un valor del periodo y el del periodo anterior de igual largo. */
 interface ValorComparado {
@@ -6,7 +7,8 @@ interface ValorComparado {
   anterior: number;
 }
 
-export type OrigenCancelacionEstadistica = 'CONDUCTOR' | 'PROPIETARIO' | 'SISTEMA' | 'SIN_DATO';
+/** Como `OrigenCancelacion`, mas las canceladas antes de que se guardara el dato. */
+export type OrigenCancelacionEstadistica = OrigenCancelacion | 'SIN_DATO';
 
 export const ETIQUETA_ORIGEN_CANCELACION: Record<OrigenCancelacionEstadistica, string> = {
   CONDUCTOR: 'El conductor',

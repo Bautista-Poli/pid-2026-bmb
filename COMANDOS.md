@@ -34,9 +34,9 @@ enunciado, el test quedó viejo (se ajusta o se borra); si no, rompiste algo.
 Desde `Front/`:
 
 ```bash
-ng generate component pages/conductor/mi-pantalla    # corto: ng g c pages/conductor/mi-pantalla
-ng generate service services/mi-servicio             # corto: ng g s services/mi-servicio
-ng generate interface models/mi-modelo               # corto: ng g i models/mi-modelo
+ng generate component ...    
+ng generate service ...             
+ng generate interface ...               
 ```
 
 Una pantalla nueva además hay que agregarla en `Front/src/app/app.routes.ts`.

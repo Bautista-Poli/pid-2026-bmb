@@ -1,0 +1,139 @@
+<article
+  class="pointer-events-auto flex max-h-full min-h-0 flex-col overflow-hidden rounded-t-[20px] border border-borde bg-papel
+         shadow-flotante lg:rounded-tarjeta"
+  role="dialog"
+  [attr.aria-label]="estacionamiento().nombre"
+>
+  <!-- Foto -->
+  <div class="relative h-36 shrink-0 bg-acento-suave lg:h-40">
+    @if (estacionamiento().fotos.length > 0) {
+      <app-galeria-fotos
+        class="size-full"
+        [fotos]="estacionamiento().fotos"
+        [nombre]="'Foto de ' + estacionamiento().nombre"
+      />
+    } @else {
+      <span class="grid size-full place-items-center text-acento/60" aria-hidden="true">
+        <ui-icono nombre="estacionamiento" [tamano]="56" />
+      </span>
+    }
+    <button
+      type="button"
+      class="absolute top-3 right-3 grid size-9 place-items-center rounded-full bg-papel text-tinta
+             shadow-elevada transition-transform duration-160 hover:scale-105"
+      aria-label="Cerrar"
+      (click)="cerrar.emit()"
+    >
+      <ui-icono nombre="cerrar" [tamano]="18" />
+    </button>
+  </div>
+
+  <div class="flex min-h-0 flex-col gap-4 overflow-y-auto p-5">
+    <!-- Nombre y si esta abierto -->
+    <div>
+      <h2 class="text-[18px] leading-tight font-semibold text-tinta">{{ estacionamiento().nombre }}</h2>
+      <p class="mt-1.5 flex items-center gap-1.5 text-[12.5px]">
+        <span
+          class="size-2 rounded-full"
+          [class.bg-exito]="apertura().abierto"
+          [class.bg-ocupada]="!apertura().abierto"
+        ></span>
+        <span [class.text-exito]="apertura().abierto" [class.text-ocupada]="!apertura().abierto">
+          {{ apertura().texto }}
+        </span>
+      </p>
+      <div class="mt-2.5 empty:hidden">
+        <app-insignias-estacionamiento [reputacion]="estacionamiento().reputacion" />
+      </div>
+      @if (mejoresCategorias(); as texto) {
+        <p class="num-tabular mt-1.5 text-[12px] text-plomo">{{ texto }}</p>
+      }
+    </div>
+
+    <!-- Caracteristicas -->
+    <ul class="flex flex-wrap gap-x-5 gap-y-2 text-[12.5px] text-grafito">
+      @if (distancia(); as texto) {
+        <li class="flex items-center gap-1.5">
+          <ui-icono nombre="explorar" [tamano]="16" class="text-plomo" />{{ texto }}
+        </li>
+      }
+      <li class="flex items-center gap-1.5">
+        <ui-icono nombre="techo" [tamano]="16" class="text-plomo" />
+        {{ estacionamiento().cubierto ? 'Cubierto' : 'Descubierto' }}
+      </li>
+      <li class="flex items-center gap-1.5">
+        <ui-icono nombre="auto" [tamano]="16" class="text-plomo" />
+        {{ estacionamiento().cocherasTotales }} {{ estacionamiento().cocherasTotales === 1 ? 'cochera' : 'cocheras' }}
+      </li>
+    </ul>
+
+    <!-- Precio -->
+    <div>
+      <p class="num-tabular text-[22px] font-bold text-tinta">
+        {{ precio().monto }} <span class="text-[13px] font-normal text-plomo">{{ precio().unidad }}</span>
+      </p>
+      @if (otrasTarifas()) {
+        <p class="mt-0.5 text-[12px] text-plomo">{{ otrasTarifas() }}</p>
+      }
+    </div>
+
+    <div class="h-px bg-borde-sutil"></div>
+
+    <!-- Disponibilidad -->
+    <div class="flex items-start justify-between gap-3">
+      <div>
+        <p class="text-[13px] font-semibold text-tinta">Disponibilidad</p>
+        <p class="mt-0.5 text-[12.5px] text-plomo">{{ cuando() }}</p>
+      </div>
+      <span class="shrink-0 rounded-full px-2.5 py-0.5 text-[11.5px] font-semibold" [class]="claseEstado()">
+        {{ etiquetaEstado() }}
+      </span>
+    </div>
+
+    <!-- Direccion -->
+    <div class="flex items-start gap-3 border-t border-borde-sutil pt-4">
+      <ui-icono nombre="explorar" [tamano]="18" class="mt-0.5 text-plomo" />
+      <div class="min-w-0">
+        <p class="text-[12px] font-semibold text-tinta">Dirección</p>
+        <p class="text-[12.5px] text-grafito">{{ direccion() }}</p>
+      </div>
+    </div>
+
+    <!-- Horarios -->
+    <div class="flex items-start gap-3 border-t border-borde-sutil pt-4">
+      <ui-icono nombre="reloj" [tamano]="18" class="mt-0.5 text-plomo" />
+      <div class="min-w-0">
+        <p class="text-[12px] font-semibold text-tinta">Horarios</p>
+        @for (linea of semana(); track linea) {
+          <p class="num-tabular text-[12.5px] text-grafito">{{ linea }}</p>
+        }
+      </div>
+    </div>
+
+    @if (estacionamiento().descripcion) {
+      <p class="border-t border-borde-sutil pt-4 text-[12.5px] leading-normal text-grafito">
+        {{ estacionamiento().descripcion }}
+      </p>
+    }
+  </div>
+
+  <!-- Accion -->
+  <div class="shrink-0 border-t border-borde-sutil p-4" style="padding-bottom: max(1rem, env(safe-area-inset-bottom))">
+    <button
+      type="button"
+      class="w-full rounded-control bg-acento px-4 py-3 text-[14px] font-semibold text-sobre-acento
+             shadow-elevada transition-colors duration-160 hover:bg-acento-fuerte
+             disabled:cursor-not-allowed disabled:opacity-50"
+      [disabled]="agotado()"
+      (click)="reservar.emit(estacionamiento())"
+    >
+      {{ agotado() ? 'No disponible para ese momento' : 'Reservar' }}
+    </button>
+    <a
+      class="mt-2 block text-center text-[13px] font-semibold text-acento hover:underline"
+      [routerLink]="['/conductor/abonos/estacionamiento', estacionamiento().id]"
+    >
+      Ver abonos mensuales
+    </a>
+  </div>
+</article>

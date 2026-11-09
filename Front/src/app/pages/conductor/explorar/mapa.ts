@@ -11,17 +11,14 @@ import {
   viewChild,
 } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { Observable, of } from 'rxjs';
-import { InsigniasEstacionamiento } from './insignias-estacionamiento/insignias-estacionamiento';
-import { MapaEstacionamientos, NivelEstacionamiento } from '@app/components/estacionamiento';
+import { MapaEstacionamientos } from '@app/components/estacionamiento';
 import { Cargando, EstadoVacio, Icono } from '@app/components/ui';
 import {
   AreaMapa,
-  descripcionVehiculo,
   Estacionamiento,
   FiltrosEstacionamiento,
-  ICONO_TIPO_VEHICULO,
   Id,
   Momento,
   OrdenEstacionamiento,
@@ -34,12 +31,13 @@ import {
 } from '@app/services/estacionamiento.service';
 import { Destino } from '@app/utils/direcciones.util';
 import { buscarDestinosLocales } from '@app/utils/destinos-locales.util';
-import { CampoBusqueda, Sugerencia } from './campo-busqueda/campo-busqueda';
+import { Sugerencia } from './panel-buscador/campo-busqueda/campo-busqueda';
 import { DetalleEstacionamiento } from './detalle-estacionamiento/detalle-estacionamiento';
 import { ModalFiltros } from './modal-filtros/modal-filtros';
-import { Panel, horaFin, pesos } from './panel';
+import { ResultadoEstacionamiento } from './resultado-estacionamiento/resultado-estacionamiento';
+import { PanelBuscador } from './panel-buscador/panel-buscador';
+import { Panel, horaFin } from './panel.interface';
 import {
-  CLASE_ESTADO,
   ICONO_LUGAR,
   MAX_SUGERENCIAS,
   ORDENES,
@@ -49,14 +47,6 @@ import {
 } from './constantes';
 import { UbicacionService } from '@app/services/ubicacion.service';
 import { VehiculoService } from '@app/services/vehiculo.service';
-import {
-  ETIQUETA_ESTADO,
-  EstadoDisponibilidad,
-  estadoDisponibilidad,
-  formatearDistancia,
-  resumenHorario,
-} from '@app/utils/disponibilidad.util';
-import { minutosAPie } from '@app/utils/distancia.util';
 import { diaCorto } from '@app/utils/fecha.util';
 
 /**
@@ -82,16 +72,14 @@ import { diaCorto } from '@app/utils/fecha.util';
   selector: 'app-mapa',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    RouterLink,
     MapaEstacionamientos,
     DetalleEstacionamiento,
-    InsigniasEstacionamiento,
-    NivelEstacionamiento,
-    CampoBusqueda,
     Cargando,
     EstadoVacio,
     Icono,
     ModalFiltros,
+    PanelBuscador,
+    ResultadoEstacionamiento,
   ],
   templateUrl: './mapa.html',
   styleUrl: './mapa.css',
@@ -104,10 +92,6 @@ export class Mapa {
   private readonly router = inject(Router);
   private readonly injector = inject(Injector);
 
-  protected readonly descripcion = descripcionVehiculo;
-  protected readonly iconoTipo = ICONO_TIPO_VEHICULO;
-  protected readonly etiquetaEstado = ETIQUETA_ESTADO;
-  protected readonly claseEstado = CLASE_ESTADO;
 
   /* -------------------------------- Vehiculo ------------------------------- */
 
@@ -397,32 +381,6 @@ export class Mapa {
 
   protected irAReservar(estacionamiento: Estacionamiento): void {
     void this.router.navigate(['/conductor/reservar', estacionamiento.id]);
-  }
-
-  /* ---------------------------- Datos de la tarjeta ------------------------ */
-
-  protected estado(estacionamiento: Estacionamiento): EstadoDisponibilidad {
-    return estadoDisponibilidad(estacionamiento);
-  }
-
-  /** "350 m · 5 min a pie" */
-  protected distancia(estacionamiento: Estacionamiento): string | null {
-    const km = estacionamiento.distanciaKm;
-    if (km == null) return null;
-    return `${formatearDistancia(km)} · ${minutosAPie(km)} min a pie`;
-  }
-
-  /** "$1.200/h"; si no cobra por hora, la estadia o la jornada. */
-  protected precio(estacionamiento: Estacionamiento): string {
-    const { hora, estadia, jornada } = estacionamiento.tarifas;
-    if (hora != null) return `${pesos(hora)}/h`;
-    if (estadia != null) return `${pesos(estadia)} estadía`;
-    if (jornada != null) return `${pesos(jornada)} jornada`;
-    return '';
-  }
-
-  protected horario(estacionamiento: Estacionamiento): string {
-    return resumenHorario(estacionamiento.horarios);
   }
 
   constructor() {

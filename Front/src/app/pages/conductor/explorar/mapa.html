@@ -1,0 +1,162 @@
+<!-- Pantalla `/conductor/explorar` · rol CONDUCTOR. Datos y acciones en mapa.ts. -->
+<!--
+  Ocupa justo la pantalla, sin scroll de pagina.
+  Mobile: buscador y vehiculo arriba, el mapa en el medio y la lista abajo (con
+  scroll propio). Desktop: columna izquierda con buscador, vehiculo y resultados
+  (scrollea sola) y el mapa ocupando el resto. El wrapper de la izquierda es
+  `contents` en mobile para que sus dos partes puedan ubicarse arriba y abajo del mapa.
+  
+-->
+<div class="mapa-vista">
+  <div class="mapa-columna">
+    <!-- ============================ Buscador y vehiculo ============================ -->
+    <app-panel-buscador
+      [texto]="texto()"
+      [buscarSugerencias]="buscarDirecciones"
+      [vehiculo]="vehiculoActual()"
+      [variosVehiculos]="vehiculosDelConductor.value().length > 1"
+      [filtrosActivos]="filtrosActivos()"
+      [sinOrigen]="sinOrigen()"
+      (textoCambiado)="escribir($event)"
+      (textoBuscado)="buscarTexto()"
+      (destinoElegido)="elegirDestino($event)"
+      (ubicacionPedida)="usarMiUbicacion()"
+      (vehiculoAnterior)="vehiculoAnterior()"
+      (vehiculoSiguiente)="vehiculoSiguiente()"
+      (filtrosPedidos)="abrirFiltros()"
+    />
+
+    <!-- ================================ Resultados ================================ -->
+    <section #lista class="panel-resultados" aria-labelledby="titulo-resultados">
+      <span class="panel-resultados__agarre" aria-hidden="true"></span>
+
+      <div class="panel-resultados__cabecera">
+        <div>
+          <h2 id="titulo-resultados" class="panel-resultados__titulo">
+            {{ destino() ? 'Cerca de tu destino' : 'Estacionamientos cercanos' }}
+          </h2>
+          <p class="panel-resultados__contador">
+            {{ resultados().length }} {{ resultados().length === 1 ? 'estacionamiento' : 'estacionamientos' }}
+            {{ buscandoPorNombre() ? (resultados().length === 1 ? 'encontrado' : 'encontrados') : 'en esta zona del mapa' }}
+          </p>
+        </div>
+        <div class="segmentado segmentado--chico" role="group" aria-label="Ordenar por">
+          @for (opcion of ordenes; track opcion.orden) {
+            <button
+              type="button"
+              class="segmentado__opcion"
+              [class.segmentado__opcion--activa]="orden() === opcion.orden"
+              [attr.aria-pressed]="orden() === opcion.orden"
+              (click)="ordenar(opcion.orden)"
+            >
+              {{ opcion.texto }}
+            </button>
+          }
+        </div>
+      </div>
+
+      @if (cargandoPrimeraVez()) {
+        <ui-cargando [cantidad]="3" />
+      } @else if (recurso.error(); as error) {
+        <ui-estado-vacio titulo="No pudimos cargar los estacionamientos" [descripcion]="error.message">
+          <button type="button" class="panel-resultados__reintentar" (click)="recurso.reload()">
+            Reintentar
+          </button>
+        </ui-estado-vacio>
+      } @else if (resultados().length === 0) {
+        <ui-estado-vacio
+          titulo="Sin resultados"
+          [descripcion]="
+            buscandoPorNombre()
+              ? 'No hay estacionamientos con ese nombre para esos filtros. Probá con otro nombre o menos filtros.'
+              : 'No hay estacionamientos en esta zona del mapa para esos filtros. Alejá o mové el mapa, o probá con menos filtros.'
+          "
+        />
+      } @else {
+        <ul class="panel-resultados__lista aparece-en-cadena">
+          @for (estacionamiento of resultadosPagina(); track estacionamiento.id) {
+            <li [id]="'estacionamiento-' + estacionamiento.id">
+              <app-resultado-estacionamiento
+                [estacionamiento]="estacionamiento"
+                [seleccionado]="seleccionadoId() === estacionamiento.id"
+                (enfocado)="seleccionadoId.set(estacionamiento.id)"
+                (elegido)="abrir(estacionamiento)"
+              />
+            </li>
+          }
+        </ul>
+
+        @if (hayMasEnLaZona()) {
+          <p class="panel-resultados__aviso">
+            Hay muchos estacionamientos en esta zona: acercá el mapa para ver todos.
+          </p>
+        }
+
+        @if (totalPaginas() > 1) {
+          <nav class="paginacion" aria-label="Páginas de resultados">
+            <button
+              type="button"
+              class="paginacion__boton"
+              [disabled]="pagina() === 0"
+              (click)="irAPagina(pagina() - 1)"
+            >
+              <ui-icono nombre="cheuron" [tamano]="16" class="paginacion__flecha-anterior" />
+              Anterior
+            </button>
+            <span class="num-tabular paginacion__estado">
+              Página {{ pagina() + 1 }} de {{ totalPaginas() }}
+            </span>
+            <button
+              type="button"
+              class="paginacion__boton"
+              [disabled]="pagina() === totalPaginas() - 1"
+              (click)="irAPagina(pagina() + 1)"
+            >
+              Siguiente
+              <ui-icono nombre="cheuron" [tamano]="16" class="paginacion__flecha-siguiente" />
+            </button>
+          </nav>
+        }
+      }
+
+    </section>
+  </div>
+
+  <!-- =================================== Mapa =================================== -->
+  <div class="mapa-contenedor">
+    <app-mapa-estacionamientos
+      class="mapa-contenedor__mapa"
+      [estacionamientos]="resultados()"
+      [ubicacion]="ubicacionActual()"
+      [destino]="destino()?.coordenadas ?? null"
+      [tituloOrigen]="tituloOrigen()"
+      [detalleOrigen]="detalleOrigen()"
+      [seleccionadoId]="seleccionadoId()"
+      [encuadrarResultados]="buscandoPorNombre()"
+      (moverMapa)="moverMapa($event)"
+      (seleccionar)="seleccionarDesdeMapa($event)"
+      (pedirUbicacion)="usarMiUbicacion()"
+    />
+
+    <!-- Ficha del elegido: tarjeta sobre el mapa en desktop, hoja desde abajo en mobile -->
+    @if (abierto(); as elegido) {
+      <button type="button" class="mapa-velo" aria-label="Cerrar" (click)="cerrarDetalle()"></button>
+      <app-detalle-estacionamiento
+        class="mapa-detalle"
+        [estacionamiento]="elegido"
+        [cuando]="cuando()"
+        (cerrar)="cerrarDetalle()"
+        (reservar)="irAReservar($event)"
+      />
+    }
+  </div>
+</div>
+
+<!-- ================================== Filtros ================================== -->
+<app-modal-filtros
+  [abierto]="filtrosAbiertos()"
+  [inicial]="panelInicial()"
+  (cerrado)="filtrosAbiertos.set(false)"
+  (aplicar)="aplicarFiltros($event)"
+  (limpiar)="limpiarFiltros()"
+/>

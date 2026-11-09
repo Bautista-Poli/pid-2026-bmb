@@ -10,9 +10,9 @@
         marcador="Buscar por dirección, lugar o zona..."
         [valor]="texto()"
         [minimo]="3"
-        [buscar]="buscarSugerencias()"
+        [buscar]="buscarSugerencias"
         (valorChange)="textoCambiado.emit($event)"
-        (elegida)="destinoElegido.emit($event)"
+        (elegida)="elegir($event)"
       />
     </form>
     <button

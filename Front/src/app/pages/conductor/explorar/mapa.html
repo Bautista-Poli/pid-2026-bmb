@@ -12,7 +12,7 @@
     <!-- ============================ Buscador y vehiculo ============================ -->
     <app-panel-buscador
       [texto]="texto()"
-      [buscarSugerencias]="buscarDirecciones"
+      [estacionamientos]="todos.value()"
       [vehiculo]="vehiculoActual()"
       [variosVehiculos]="vehiculosDelConductor.value().length > 1"
       [filtrosActivos]="filtrosActivos()"

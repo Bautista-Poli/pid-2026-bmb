@@ -1,29 +1,13 @@
 // Constantes de la pantalla Explorar (mapa.ts): topes de los filtros, valores
 // iniciales del panel, opciones de nivel y orden, y clases de cada estado.
-import { NombreIcono } from '@app/components/ui';
 import { CodigoNivel, OrdenEstacionamiento } from '@app/models';
 import { EstadoDisponibilidad } from '@app/utils/disponibilidad.util';
-import { TipoLugar } from '@app/utils/direcciones.util';
 import { hoyISO } from '@app/utils/fecha.util';
 import { Panel } from './panel.interface';
 
 /** Tope del rango de precios (por hora). En el tope, el maximo no filtra. */
 export const PRECIO_TOPE = 5000;
 export const PRECIO_PASO = 100;
-
-/** Icono de cada sugerencia del buscador, segun que clase de lugar es. */
-export const ICONO_LUGAR: Record<TipoLugar, NombreIcono> = {
-  direccion: 'explorar',
-  esquina: 'esquina',
-  calle: 'calle',
-  zona: 'explorar',
-  ciudad: 'ciudad',
-  plaza: 'arbol',
-  lugar: 'estacionamiento',
-};
-
-/** Sugerencias que muestra el buscador como maximo. */
-export const MAX_SUGERENCIAS = 8;
 
 /** Tope de horas a reservar en el filtro. */
 export const HORAS_MAXIMAS = 12;

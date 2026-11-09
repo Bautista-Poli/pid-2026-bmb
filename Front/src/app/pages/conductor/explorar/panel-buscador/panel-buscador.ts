@@ -1,9 +1,25 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { Icono } from '@app/components/ui';
-import { ICONO_TIPO_VEHICULO, Vehiculo, descripcionVehiculo } from '@app/models';
-import { Observable } from 'rxjs';
+import { Icono, NombreIcono } from '@app/components/ui';
+import { Estacionamiento, ICONO_TIPO_VEHICULO, Vehiculo, descripcionVehiculo } from '@app/models';
+import { Destino, TipoLugar } from '@app/utils/direcciones.util';
+import { buscarDestinosLocales } from '@app/utils/destinos-locales.util';
+import { Observable, of } from 'rxjs';
 import { CampoBusqueda, Sugerencia } from './campo-busqueda/campo-busqueda';
+
+/** Sugerencias que muestra el buscador como maximo. */
+const MAX_SUGERENCIAS = 8;
+
+/** Icono de cada sugerencia del buscador, segun que clase de lugar es. */
+const ICONO_LUGAR: Record<TipoLugar, NombreIcono> = {
+  direccion: 'explorar',
+  esquina: 'esquina',
+  calle: 'calle',
+  zona: 'explorar',
+  ciudad: 'ciudad',
+  plaza: 'arbol',
+  lugar: 'estacionamiento',
+};
 
 /**
  * Panel de arriba de Explorar (mapa.ts): buscador de destino, boton "mi
@@ -22,8 +38,8 @@ import { CampoBusqueda, Sugerencia } from './campo-busqueda/campo-busqueda';
 export class PanelBuscador {
   /** Lo escrito en el buscador. */
   readonly texto = input('');
-  /** Sugerencias para lo escrito (barrios y estacionamientos). */
-  readonly buscarSugerencias = input.required<(texto: string) => Observable<Sugerencia[]>>();
+  /** Estacionamientos publicados: de ahi salen las sugerencias (sus barrios y nombres). */
+  readonly estacionamientos = input<Estacionamiento[]>([]);
   /** Vehiculo elegido; `null` si el conductor no cargo ninguno. */
   readonly vehiculo = input<Vehiculo | null>(null);
   /** Con un solo vehiculo las flechas quedan deshabilitadas. */
@@ -37,7 +53,8 @@ export class PanelBuscador {
   readonly textoCambiado = output<string>();
   /** Enter sin elegir una sugerencia. */
   readonly textoBuscado = output<void>();
-  readonly destinoElegido = output<Sugerencia>();
+  /** Zona, direccion o estacionamiento elegido de las sugerencias. */
+  readonly destinoElegido = output<Destino>();
   readonly ubicacionPedida = output<void>();
   readonly vehiculoAnterior = output<void>();
   readonly vehiculoSiguiente = output<void>();
@@ -45,4 +62,25 @@ export class PanelBuscador {
 
   protected readonly iconoTipo = ICONO_TIPO_VEHICULO;
   protected readonly descripcion = descripcionVehiculo;
+
+  /**
+   * Sugerencias del buscador (desde la 3ra letra): los barrios y los
+   * estacionamientos que ya estan en la base (buscarDestinosLocales).
+   */
+  protected readonly buscarSugerencias = (texto: string): Observable<Sugerencia<Destino>[]> =>
+    of(
+      buscarDestinosLocales(texto, this.estacionamientos())
+        .slice(0, MAX_SUGERENCIAS)
+        .map((lugar) => ({
+          nombre: lugar.nombre,
+          detalle: lugar.detalle,
+          dato: lugar,
+          icono: ICONO_LUGAR[lugar.tipo ?? 'lugar'],
+        })),
+    );
+
+  /** Las sugerencias siempre traen su destino en `dato` (ver `buscarSugerencias`). */
+  protected elegir(sugerencia: Sugerencia): void {
+    this.destinoElegido.emit(sugerencia.dato as Destino);
+  }
 }

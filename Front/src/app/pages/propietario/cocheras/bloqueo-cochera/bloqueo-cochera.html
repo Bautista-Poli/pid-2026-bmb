@@ -1,0 +1,44 @@
+<!-- Modal para bloquear una cochera por mantenimiento. Datos y acciones en bloqueo-cochera.ts. -->
+<ui-modal
+  [titulo]="cochera() ? 'Bloquear cochera ' + cochera()!.identificador : 'Bloquear cochera'"
+  [abierto]="cochera() !== null"
+  (cerrado)="cerrarBloqueo()"
+>
+  <form class="form-bloqueo" [formGroup]="formularioBloqueo" (ngSubmit)="confirmarBloqueo(false)" novalidate>
+    <p class="form-ayuda">
+      Sale de circulación: no se va a poder reservar. Si tiene reservas por delante las reasignamos
+      solas a otra cochera compatible; si alguna no tiene dónde ir, te avisamos antes de bloquear nada.
+    </p>
+
+    <label class="campo">
+      <span class="label-campo">Motivo <span class="aclaracion">(opcional)</span></span>
+      <input type="text" formControlName="motivo" placeholder="Pintura, arreglo del portón…" />
+    </label>
+
+    <label class="campo">
+      <span class="label-campo">Bloqueada hasta <span class="aclaracion">(opcional)</span></span>
+      <input type="date" formControlName="hasta" />
+    </label>
+    <p class="form-ayuda-chica">Vacío = bloqueada hasta que la desbloquees vos.</p>
+
+    @if (errorBloqueo(); as mensaje) {
+      <p
+        class="aviso-error"
+        role="alert"
+      >
+        {{ mensaje }}
+      </p>
+    }
+
+    <div class="form-pie">
+      <ui-boton (presionado)="cerrarBloqueo()">Cancelar</ui-boton>
+      @if (necesitaForzar()) {
+        <ui-boton variante="peligro" [cargando]="enviando()" (presionado)="confirmarBloqueo(true)">
+          Bloquear igual y cancelar esas reservas
+        </ui-boton>
+      } @else {
+        <ui-boton variante="primario" tipo="submit" [cargando]="enviando()">Bloquear</ui-boton>
+      }
+    </div>
+  </form>
+</ui-modal>

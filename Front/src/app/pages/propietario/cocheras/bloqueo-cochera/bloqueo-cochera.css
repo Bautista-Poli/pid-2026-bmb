@@ -1,0 +1,16 @@
+.form-bloqueo {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.aclaracion {
+  font-weight: 400;
+  color: var(--color-plomo);
+}
+
+.form-ayuda-chica {
+  margin-top: -0.5rem;
+  font-size: 12px;
+  color: var(--color-plomo);
+}

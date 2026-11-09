@@ -1,0 +1,104 @@
+<!-- Edicion de varias cocheras juntas en el panel lateral. Datos en edicion-masiva.ts. -->
+<div class="panel-cabecera">
+  <div class="panel-cabecera-info">
+    <h2 class="panel-titulo-masivo">
+      {{ elegidas().length }} cocheras elegidas
+    </h2>
+    <p class="num-tabular elegidas">
+      @for (cochera of elegidas().slice(0, 10); track cochera.id; let ultima = $last) {
+        {{ cochera.identificador }}{{ ultima ? '' : ',' }}
+      }
+      @if (elegidas().length > 10) {
+        y {{ elegidas().length - 10 }} más
+      }
+    </p>
+  </div>
+  <button
+    type="button"
+    class="cerrar"
+    aria-label="Quitar selección"
+    (click)="cerrar.emit()"
+  >
+    <ui-icono nombre="cerrar" [tamano]="16" />
+  </button>
+</div>
+
+<div class="panel-campos">
+  <p class="panel-ayuda">
+    Elegí solo lo que quieras cambiar; lo demás queda como está.
+  </p>
+
+  <div class="grupo-campo" role="group" aria-labelledby="etiqueta-tipo-masivo">
+    <span id="etiqueta-tipo-masivo" class="label-campo">Tipo de vehículo</span>
+    <div class="segmentos-3">
+      @for (tipo of tipos; track tipo) {
+        <button
+          type="button"
+          class="segmento"
+          [class]="
+            masivoTipo() === tipo
+              ? 'segmento-activo'
+              : 'segmento-inactivo'
+          "
+          [attr.aria-pressed]="masivoTipo() === tipo"
+          (click)="masivoTipo.set(masivoTipo() === tipo ? null : tipo)"
+        >
+          <ui-icono [nombre]="iconoTipo[tipo]" [tamano]="16" />
+          {{ etiquetaTipo[tipo] }}
+        </button>
+      }
+    </div>
+  </div>
+
+  <div class="grupo-campo" role="group" aria-labelledby="etiqueta-techo-masivo">
+    <span id="etiqueta-techo-masivo" class="label-campo">Techo</span>
+    <div class="segmentos-2">
+      @for (opcion of [true, false]; track opcion) {
+        <button
+          type="button"
+          class="segmento-techo"
+          [class]="
+            masivoCubierta() === opcion
+              ? 'segmento-activo'
+              : 'segmento-inactivo'
+          "
+          [attr.aria-pressed]="masivoCubierta() === opcion"
+          (click)="masivoCubierta.set(masivoCubierta() === opcion ? null : opcion)"
+        >
+          {{ opcion ? 'Cubiertas' : 'Descubiertas' }}
+        </button>
+      }
+    </div>
+  </div>
+
+  <label class="campo">
+    <span class="label-campo">Mover a planta</span>
+    <input
+      type="text"
+      list="plantas-cargadas"
+      placeholder="Sin cambios"
+      [value]="masivoPlanta()"
+      (input)="masivoPlanta.set(leer($event))"
+    />
+  </label>
+</div>
+
+<div class="panel-pie">
+  <button
+    type="button"
+    class="accion-baja"
+    (click)="darDeBaja.emit()"
+  >
+    Dar de baja
+  </button>
+  <span class="empujar-derecha"></span>
+  <ui-boton
+    variante="primario"
+    tamano="sm"
+    [deshabilitado]="!hayCambiosMasivos()"
+    [cargando]="enviando()"
+    (presionado)="aplicarCambios()"
+  >
+    Aplicar a {{ elegidas().length }}
+  </ui-boton>
+</div>

@@ -1,0 +1,228 @@
+<!-- Modal para agregar cocheras por cantidad, con vista previa. Datos y acciones en alta-cocheras.ts. -->
+<ui-modal titulo="Agregar cocheras" ancho="amplio" [abierto]="abierto()" (cerrado)="cerrarAlta()">
+  <form class="form-nuevas" [formGroup]="formularioLotes" (ngSubmit)="crearLotes()" novalidate>
+    <p class="form-ayuda">
+      Se numeran solas, a continuación de las que ya tenés.
+    </p>
+
+    <div class="form-nuevas-grilla">
+      <!-- Formulario -->
+      <div class="lotes-form" formArrayName="lotes">
+        @for (lote of lotes.controls; track lote; let i = $index) {
+          <fieldset
+            class="lote"
+            [class]="lotes.length > 1 ? 'lote-recuadro' : ''"
+            [formGroupName]="i"
+          >
+            @if (lotes.length > 1) {
+              <div class="lote-cabecera">
+                <legend class="label-campo">Grupo {{ i + 1 }}</legend>
+                <button
+                  type="button"
+                  class="quitar-lote"
+                  (click)="quitarLote(i)"
+                >
+                  Quitar
+                </button>
+              </div>
+            }
+
+            <div class="grupo-campo">
+              <span class="label-campo">¿En qué planta están?</span>
+              <div class="opciones-planta">
+                @for (opcion of opcionesPlanta(); track opcion.detalle) {
+                  <button
+                    type="button"
+                    class="opcion-planta"
+                    [class]="
+                      lote.controls.sector.value === opcion.detalle
+                        ? 'opcion-planta-activa'
+                        : 'opcion-planta-inactiva'
+                    "
+                    (click)="usarPlanta(i, opcion)"
+                  >
+                    {{ opcion.detalle }}
+                  </button>
+                }
+              </div>
+              <div class="campo">
+                <input type="text" formControlName="sector" placeholder="U otra: Terraza, Sector B…" aria-label="Planta" />
+                @if (invalidoLote(i, 'sector')) {
+                  <span class="campo-error">Elegí o escribí una planta (hasta 20 caracteres).</span>
+                }
+              </div>
+            </div>
+
+            <div class="dos-columnas">
+              <div class="cantidad">
+                <span class="label-campo">Cantidad</span>
+                <div class="contador">
+                  <button
+                    type="button"
+                    class="contador-boton"
+                    aria-label="Una menos"
+                    (click)="cambiarCantidad(i, -1)"
+                  >
+                    −
+                  </button>
+                  <input
+                    class="num-tabular contador-input"
+                    type="number"
+                    inputmode="numeric"
+                    min="1"
+                    max="200"
+                    formControlName="cantidad"
+                    aria-label="Cantidad"
+                  />
+                  <button
+                    type="button"
+                    class="contador-boton"
+                    aria-label="Una más"
+                    (click)="cambiarCantidad(i, 1)"
+                  >
+                    +
+                  </button>
+                </div>
+                @if (invalidoLote(i, 'cantidad')) {
+                  <span class="campo-error">Entre 1 y 200.</span>
+                }
+              </div>
+              <label class="campo">
+                <span class="label-campo">Prefijo</span>
+                <input class="mayusculas" type="text" formControlName="prefijo" placeholder="PB" />
+                @if (invalidoLote(i, 'prefijo')) {
+                  <span class="campo-error">Letras y números, hasta 10.</span>
+                }
+              </label>
+            </div>
+
+            <div class="grupo-campo">
+              <span class="label-campo">Tipo de vehículo</span>
+              <div class="segmentos-3">
+                @for (tipo of tipos; track tipo) {
+                  <button
+                    type="button"
+                    class="segmento"
+                    [class]="
+                      lote.controls.tipo.value === tipo
+                        ? 'segmento-activo'
+                        : 'segmento-inactivo'
+                    "
+                    [attr.aria-pressed]="lote.controls.tipo.value === tipo"
+                    (click)="elegirTipoLote(i, tipo)"
+                  >
+                    <ui-icono [nombre]="iconoTipo[tipo]" [tamano]="16" />
+                    {{ etiquetaTipo[tipo] }}
+                  </button>
+                }
+              </div>
+            </div>
+
+            <button
+              type="button"
+              role="switch"
+              class="interruptor-fila"
+              [attr.aria-checked]="lote.controls.cubierta.value"
+              (click)="alternarCubiertaLote(i)"
+            >
+              <span>
+                <span class="interruptor-titulo">Cubiertas</span>
+                <span class="interruptor-ayuda">Tienen techo</span>
+              </span>
+              <span
+                class="interruptor"
+                [class]="lote.controls.cubierta.value ? 'interruptor-on' : 'interruptor-off'"
+              >
+                <span
+                  class="perilla"
+                  [class]="lote.controls.cubierta.value ? 'perilla-on' : 'perilla-off'"
+                ></span>
+              </span>
+            </button>
+          </fieldset>
+        }
+
+        <button
+          type="button"
+          class="sumar-lote"
+          (click)="agregarLote()"
+        >
+          + Sumar otro grupo (por ejemplo, 4 de moto)
+        </button>
+      </div>
+
+      <!-- Vista previa -->
+      <div class="previa">
+        @for (grupo of previa(); track grupo.planta) {
+          <div class="previa-planta">
+            <div class="previa-cabecera">
+              <p class="previa-titulo">Vista previa · {{ grupo.planta }}</p>
+              <div class="previa-leyenda">
+                <span class="leyenda-item-chico">
+                  <span class="muestra-existente"></span>
+                  Existentes ({{ grupo.celdas.length - grupo.nuevas }})
+                </span>
+                <span class="leyenda-item-chico">
+                  <span class="muestra-nueva"></span>
+                  Nuevas ({{ grupo.nuevas }})
+                </span>
+              </div>
+            </div>
+            <div class="previa-grilla">
+              @for (celda of grupo.celdas; track $index) {
+                <span
+                  class="num-tabular celda"
+                  [class]="
+                    celda.nueva
+                      ? 'celda-nueva'
+                      : 'celda-existente'
+                  "
+                >
+                  {{ celda.id }}
+                  @if (celda.cubierta !== null) {
+                    <ui-icono
+                      class="celda-icono"
+                      [class]="celda.cubierta ? 'icono-cubierta' : 'icono-descubierta'"
+                      [nombre]="celda.cubierta ? 'techo' : 'sol'"
+                      [tamano]="11"
+                    />
+                  }
+                </span>
+              }
+            </div>
+          </div>
+        }
+
+        <div class="resumen-creacion">
+          @for (lote of lotes.controls; track lote; let i = $index) {
+            @if (vistaPrevia(i); as rango) {
+              <p class="num-tabular">
+                Se crean <b>{{ rango }}</b>
+                · {{ etiquetaTipo[lote.controls.tipo.value] }}
+                · {{ lote.controls.cubierta.value ? 'cubiertas' : 'descubiertas' }}
+              </p>
+            } @else {
+              <p>Completá cantidad y prefijo para ver cómo quedan.</p>
+            }
+          }
+        </div>
+      </div>
+    </div>
+
+    @if (errorAlta(); as mensaje) {
+      <p
+        class="aviso-error"
+        role="alert"
+      >
+        {{ mensaje }}
+      </p>
+    }
+
+    <div class="form-pie">
+      <ui-boton (presionado)="cerrarAlta()">Cancelar</ui-boton>
+      <ui-boton variante="primario" tipo="submit" [cargando]="enviando()" [deshabilitado]="totalNuevas() === 0">
+        {{ totalNuevas() === 1 ? 'Crear 1 cochera' : 'Crear ' + totalNuevas() + ' cocheras' }}
+      </ui-boton>
+    </div>
+  </form>
+</ui-modal>

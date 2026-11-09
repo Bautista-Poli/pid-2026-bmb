@@ -6,7 +6,7 @@ import { FormularioVehiculo } from '@app/components/vehiculo';
 import { FotoVehiculo } from './foto-vehiculo/foto-vehiculo';
 import { Boton, Cargando, EstadoVacio, Tarjeta } from '@app/components/ui';
 import { descripcionVehiculo, Id, NuevoVehiculo } from '@app/models';
-import { VehiculoService } from '@app/services/vehiculo.service';
+import { VehiculoService } from '@app/services/conductor/vehiculo.service';
 
 /**
  * Pantalla `/conductor/vehiculos/:vehiculoId/editar` · rol CONDUCTOR

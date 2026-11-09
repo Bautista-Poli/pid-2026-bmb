@@ -41,7 +41,7 @@ import {
 import { ErrorApi } from '@app/interceptors/error.interceptor';
 import { AuthService } from '@app/services/auth.service';
 import { reservaEnJuego } from '@app/services/ciclo-reserva';
-import { CocheraService } from '@app/services/cochera.service';
+import { CocheraService } from '@app/services/propietario/cochera.service';
 import { EstacionamientoService } from '@app/services/estacionamiento.service';
 import { ReservaService } from '@app/services/reserva.service';
 import { aInstante, desdeFechaISO } from '@app/utils/fecha.util';

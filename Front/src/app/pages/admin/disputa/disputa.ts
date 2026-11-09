@@ -14,7 +14,7 @@ import {
   MensajeIncidencia,
   ResolucionIncidencia,
 } from '@app/models';
-import { AdminService } from '@app/services/admin.service';
+import { AdminService } from '@app/services/admin/admin.service';
 
 const PESOS = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 2 });
 const FUNDAMENTO_MIN = 20;

@@ -7,7 +7,7 @@ import { Observable } from 'rxjs';
 import { GaleriaFotos, MapaEstacionamientos } from '@app/components/estacionamiento';
 import { Boton, Cargando, EstadoVacio, Etiqueta, Modal, Tarjeta, TonoEtiqueta } from '@app/components/ui';
 import { EstacionamientoEnRevision, EstadoAprobacion } from '@app/models';
-import { AdminService } from '@app/services/admin.service';
+import { AdminService } from '@app/services/admin/admin.service';
 
 const MOTIVO_MIN = 10;
 const MOTIVO_MAX = 300;

@@ -5,7 +5,7 @@ import { Boton, Cargando, EstadoVacio, Modal } from '@app/components/ui';
 import { ChapaPatente } from '@app/components/vehiculo';
 import { TarjetaVehiculo } from './tarjeta-vehiculo/tarjeta-vehiculo';
 import { descripcionVehiculo, Id, Vehiculo } from '@app/models';
-import { VehiculoService } from '@app/services/vehiculo.service';
+import { VehiculoService } from '@app/services/conductor/vehiculo.service';
 
 /**
  * Pantalla `/conductor/vehiculos` · rol CONDUCTOR

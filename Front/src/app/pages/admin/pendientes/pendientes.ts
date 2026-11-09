@@ -5,7 +5,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { map } from 'rxjs';
 import { Boton, Cargando, Chip, EstadoVacio, Miniatura, Tarjeta } from '@app/components/ui';
 import { EstacionamientoEnRevision, EstadoAprobacion } from '@app/models';
-import { AdminService } from '@app/services/admin.service';
+import { AdminService } from '@app/services/admin/admin.service';
 
 const FILTROS: { estado: EstadoAprobacion; etiqueta: string; vacio: string }[] = [
   { estado: 'PENDIENTE', etiqueta: 'Pendientes', vacio: 'No hay estacionamientos esperando revisión' },

@@ -15,8 +15,8 @@ import {
   ResenaDenunciada,
   ResolucionIncidencia,
 } from '@app/models';
-import { EstacionamientoEnRevisionDto, IncidenciaDto, IncidenciaModeradaDto, ResenaDenunciadaDto } from './api/api.dto';
-import { aEstacionamiento, aIncidencia, aIncidenciaModerada, aResenaDenunciada } from './api/api.mapeo';
+import { EstacionamientoEnRevisionDto, IncidenciaDto, IncidenciaModeradaDto, ResenaDenunciadaDto } from '../api/api.dto';
+import { aEstacionamiento, aIncidencia, aIncidenciaModerada, aResenaDenunciada } from '../api/api.mapeo';
 
 function aEnRevision(dto: EstacionamientoEnRevisionDto): EstacionamientoEnRevision {
   return { ...aEstacionamiento(dto), propietario: dto.propietario };

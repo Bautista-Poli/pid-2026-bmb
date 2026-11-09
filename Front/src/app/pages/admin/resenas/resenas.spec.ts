@@ -3,7 +3,7 @@ import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/route
 import { of, throwError } from 'rxjs';
 import { ResenaDenunciada } from '@app/models';
 import { EstadoDenunciaResena } from '@app/models';
-import { AdminService } from '@app/services/admin.service';
+import { AdminService } from '@app/services/admin/admin.service';
 import { Resenas } from './resenas';
 
 const PENDIENTE: ResenaDenunciada = {

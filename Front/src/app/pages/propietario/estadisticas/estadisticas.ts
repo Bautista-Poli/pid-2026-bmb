@@ -20,7 +20,7 @@ import {
 } from '@app/models';
 import { AuthService } from '@app/services/auth.service';
 import { EstacionamientoService } from '@app/services/estacionamiento.service';
-import { EstadisticaService } from '@app/services/estadistica.service';
+import { EstadisticaService } from '@app/services/propietario/estadistica.service';
 import { periodoDeUrl, Variacion, variacion } from '@app/utils/periodo.util';
 
 // Espacio no separable: el "$" no queda solo en una linea.

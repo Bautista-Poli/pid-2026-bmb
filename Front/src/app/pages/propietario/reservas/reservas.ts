@@ -1,38 +1,14 @@
-import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { CalificarConductor } from './calificar-conductor/calificar-conductor';
-import {
-  Boton,
-  Cargando,
-  EstadoVacio,
-  Etiqueta,
-  Icono,
-  Modal,
-  NombreIcono,
-  Tarjeta,
-  TonoEtiqueta,
-} from '@app/components/ui';
-import {
-  EstadoReserva,
-  Estacionamiento,
-  esExpirada,
-  etiquetaReserva,
-  ETIQUETA_TIPO_VEHICULO,
-  Id,
-  ReservaDetallada,
-  TipoVehiculo,
-} from '@app/models';
-import {
-  avanzaConCodigo,
-  avanzarReserva,
-  puedeAvanzar,
-  puedeMarcarAusente,
-} from '@app/services/ciclo-reserva';
+import { FiltrosReservas } from './filtros-reservas/filtros-reservas';
+import { SeccionReservas } from './seccion-reservas/seccion-reservas';
+import { Boton, Cargando, EstadoVacio, Modal } from '@app/components/ui';
+import { EstadoReserva, Estacionamiento, Id, ReservaDetallada } from '@app/models';
+import { avanzarReserva } from '@app/services/ciclo-reserva';
 import { AuthService } from '@app/services/auth.service';
 import { EstacionamientoService } from '@app/services/estacionamiento.service';
 import { ReservaService } from '@app/services/reserva.service';
-import { desdeFechaISO } from '@app/utils/fecha.util';
 
 /**
  * Secciones en el orden en que se muestran, una debajo de la otra: nunca una
@@ -46,26 +22,6 @@ const SECCIONES: { clave: string; titulo: string; estados: EstadoReserva[] }[] =
   { clave: 'CANCELADAS', titulo: 'Canceladas y expiradas', estados: ['CANCELADA'] },
 ];
 
-const TONO_ESTADO: Record<EstadoReserva, TonoEtiqueta> = {
-  PENDIENTE: 'aviso',
-  CONFIRMADA: 'acento',
-  ACTIVA: 'exito',
-  FINALIZADA: 'neutro',
-  CANCELADA: 'peligro',
-  NO_SHOW: 'peligro',
-};
-
-const ICONO_VEHICULO: Record<TipoVehiculo, NombreIcono> = {
-  AUTO: 'auto',
-  CAMIONETA: 'camioneta',
-  MOTO: 'moto',
-};
-
-/** Que puede hacer el propietario desde la lista (ingreso y egreso van con el codigo). */
-const PASOS: Partial<Record<EstadoReserva, string>> = {
-  PENDIENTE: 'Confirmar',
-};
-
 const sinAcentos = (texto: string) =>
   texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
@@ -78,7 +34,7 @@ const sinAcentos = (texto: string) =>
 @Component({
   selector: 'app-reservas',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, NgTemplateOutlet, Tarjeta, Cargando, EstadoVacio, Etiqueta, Icono, Boton, Modal, CalificarConductor],
+  imports: [FiltrosReservas, SeccionReservas, CalificarConductor, Cargando, EstadoVacio, Boton, Modal],
   templateUrl: './reservas.html',
   styleUrl: './reservas.css',
 })
@@ -86,17 +42,6 @@ export class Reservas {
   private readonly estacionamientos = inject(EstacionamientoService);
   private readonly reservas = inject(ReservaService);
   private readonly auth = inject(AuthService);
-
-  protected readonly etiquetaEstado = etiquetaReserva;
-  protected readonly etiquetaTipo = ETIQUETA_TIPO_VEHICULO;
-  /** Expirada (no la confirmaste a tiempo) en amarillo, distinta de una cancelacion. */
-  protected tonoEstado(reserva: ReservaDetallada): TonoEtiqueta {
-    return esExpirada(reserva) ? 'aviso' : TONO_ESTADO[reserva.estado];
-  }
-  protected readonly iconoVehiculo = ICONO_VEHICULO;
-  protected readonly pasos = PASOS;
-  protected readonly avanzaConCodigo = avanzaConCodigo;
-  protected readonly desdeFechaISO = desdeFechaISO;
 
   protected readonly busqueda = signal('');
   protected readonly fecha = signal('');
@@ -150,34 +95,10 @@ export class Reservas {
     })).filter((seccion) => seccion.reservas.length > 0);
   });
 
-  protected readonly hayFiltros = computed(
-    () => Boolean(this.busqueda().trim() || this.fecha() || this.estacionamientoId()),
-  );
-
   /** Reserva que se esta procesando: pinta el spinner en su fila. */
   protected readonly procesandoId = signal<Id | null>(null);
   protected readonly aviso = signal<string | null>(null);
   protected readonly error = signal<string | null>(null);
-
-  /** El boton del paso siguiente (solo confirmar), o null si no hay. */
-  protected pasoDe(reserva: ReservaDetallada): string | null {
-    return puedeAvanzar(reserva) ? (this.pasos[reserva.estado] ?? null) : null;
-  }
-
-  protected vehiculo(reserva: ReservaDetallada): string {
-    const nombre = [reserva.vehiculo.marca, reserva.vehiculo.modelo].filter(Boolean).join(' ');
-    return nombre || this.etiquetaTipo[reserva.vehiculo.tipo];
-  }
-
-  protected leer(evento: Event): string {
-    return (evento.target as HTMLInputElement | HTMLSelectElement).value;
-  }
-
-  protected limpiarFiltros(): void {
-    this.busqueda.set('');
-    this.fecha.set('');
-    this.estacionamientoId.set('');
-  }
 
   /** Confirmar una pendiente; ingreso y egreso solo con el codigo del conductor. */
   protected avanzar(reserva: ReservaDetallada): void {
@@ -205,7 +126,6 @@ export class Reservas {
 
   /** Reserva que se esta por marcar ausente: abre el modal de confirmacion. */
   protected readonly aMarcarAusente = signal<ReservaDetallada | null>(null);
-  protected readonly puedeMarcarAusente = (reserva: ReservaDetallada) => puedeMarcarAusente(reserva);
 
   /** Marca la reserva como ausente (no-show) a mano y libera la cochera. */
   protected marcarAusente(reserva: ReservaDetallada): void {
@@ -232,18 +152,6 @@ export class Reservas {
 
   /** Reserva cuyo conductor se esta calificando: abre el modal. */
   protected readonly aCalificar = signal<ReservaDetallada | null>(null);
-
-  /** "★ 4,6 (12)", o null si todavia nadie lo califico. */
-  protected reputacionConductor(reserva: ReservaDetallada): string | null {
-    const { promedio, cantidad } = reserva.reputacionConductor;
-    if (promedio === null || cantidad === 0) return null;
-    return `★ ${promedio.toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} (${cantidad})`;
-  }
-
-  /** Si la fila ya muestra el boton de calificar o la nota dada (asi no va el "—"). */
-  protected conAccionDeCalificar(reserva: ReservaDetallada): boolean {
-    return reserva.conductorCalificable || reserva.calificacionAlConductor !== null;
-  }
 
   /** Cierra el modal, avisa y recarga la lista. */
   protected conductorCalificado(): void {

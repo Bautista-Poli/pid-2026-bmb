@@ -1,0 +1,58 @@
+<!-- Filtros de Reservas: busqueda, estacionamiento, fecha y canceladas. Datos en filtros-reservas.ts. -->
+<div class="filtros">
+  <label
+    class="buscador"
+  >
+    <ui-icono nombre="buscar" [tamano]="17" class="buscador-icono" />
+    <input
+      type="search"
+      class="buscador-input"
+      placeholder="Buscar por patente, vehículo o estacionamiento…"
+      aria-label="Buscar reservas"
+      [value]="busqueda()"
+      (input)="busqueda.set(leer($event))"
+    />
+  </label>
+
+  @if (estacionamientos().length > 1) {
+    <select
+      class="selector"
+      aria-label="Estacionamiento"
+      [value]="estacionamientoId()"
+      (change)="estacionamientoId.set(leer($event))"
+    >
+      <option value="">Todos los estacionamientos</option>
+      @for (lote of estacionamientos(); track lote.id) {
+        <option [value]="lote.id">{{ lote.nombre }}</option>
+      }
+    </select>
+  }
+
+  <div class="fecha">
+    <input
+      type="date"
+      class="fecha-input"
+      aria-label="Filtrar por fecha"
+      [value]="fecha()"
+      (change)="fecha.set(leer($event))"
+    />
+    @if (hayFiltros()) {
+      <button
+        type="button"
+        class="boton-texto"
+        (click)="limpiarFiltros()"
+      >
+        Limpiar
+      </button>
+    }
+  </div>
+
+  <button
+    type="button"
+    class="boton-texto"
+    [attr.aria-pressed]="verCanceladas()"
+    (click)="verCanceladas.set(!verCanceladas())"
+  >
+    {{ verCanceladas() ? 'Ocultar canceladas' : 'Ver canceladas' }}
+  </button>
+</div>

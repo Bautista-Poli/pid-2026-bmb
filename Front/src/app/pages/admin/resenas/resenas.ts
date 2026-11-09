@@ -12,7 +12,7 @@ import {
   TEXTO_MOTIVO_DENUNCIA,
   formatearNota,
 } from '@app/models';
-import { AdminService } from '@app/services/admin.service';
+import { AdminService } from '@app/services/admin/admin.service';
 
 const FILTROS: { estado: EstadoDenunciaResena; etiqueta: string; vacio: string }[] = [
   { estado: 'PENDIENTE', etiqueta: 'Pendientes', vacio: 'No hay reseñas denunciadas' },

@@ -5,7 +5,7 @@ import { Boton, Cargando, EstadoVacio, Tarjeta } from '@app/components/ui';
 import { Abono, HoraHHmm, Id, TURNOS, Vehiculo } from '@app/models';
 import { AbonoService } from '@app/services/abono.service';
 import { ReservaService } from '@app/services/reserva.service';
-import { VehiculoService } from '@app/services/vehiculo.service';
+import { VehiculoService } from '@app/services/conductor/vehiculo.service';
 import { hoyISO } from '@app/utils/fecha.util';
 
 const dosDigitos = (n: number) => String(n).padStart(2, '0');

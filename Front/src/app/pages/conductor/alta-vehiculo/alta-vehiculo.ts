@@ -4,7 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 import { FormularioVehiculo } from '@app/components/vehiculo';
 import { Tarjeta } from '@app/components/ui';
 import { NuevoVehiculo, Vehiculo } from '@app/models';
-import { VehiculoService } from '@app/services/vehiculo.service';
+import { VehiculoService } from '@app/services/conductor/vehiculo.service';
 
 /**
  * Pantalla `/conductor/vehiculos/nuevo` · rol CONDUCTOR

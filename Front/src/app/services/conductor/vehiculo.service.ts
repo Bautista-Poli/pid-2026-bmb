@@ -3,9 +3,9 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, from, map, switchMap } from 'rxjs';
 import { CambiosVehiculo, Id, NuevoVehiculo, Vehiculo } from '@app/models';
 import { achicarImagen } from '@app/utils/imagen.util';
-import { VehiculoDto } from './api/api.dto';
-import { FirmaSubida, FotosService } from './fotos.service';
-import { aPayloadCambiosVehiculo, aPayloadVehiculo, aVehiculo } from './api/api.mapeo';
+import { VehiculoDto } from '../api/api.dto';
+import { FirmaSubida, FotosService } from '../fotos.service';
+import { aPayloadCambiosVehiculo, aPayloadVehiculo, aVehiculo } from '../api/api.mapeo';
 
 /** Acceso a `/api/vehiculos` (vehiculos del conductor autenticado). */
 @Injectable({ providedIn: 'root' })

@@ -11,7 +11,7 @@ import {
   MotivoReclamo,
   TipoIncidencia,
 } from '@app/models';
-import { AdminService } from '@app/services/admin.service';
+import { AdminService } from '@app/services/admin/admin.service';
 import { periodoDeUrl, Variacion, variacion } from '@app/utils/periodo.util';
 import { haceCuanto } from '@app/utils/tiempo.util';
 

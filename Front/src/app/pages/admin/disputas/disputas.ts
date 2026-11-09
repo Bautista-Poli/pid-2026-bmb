@@ -12,7 +12,7 @@ import {
   EstadoIncidencia,
   Incidencia,
 } from '@app/models';
-import { AdminService } from '@app/services/admin.service';
+import { AdminService } from '@app/services/admin/admin.service';
 
 const FILTROS: { estado: EstadoIncidencia; etiqueta: string; vacio: string }[] = [
   { estado: 'DENUNCIADA', etiqueta: 'Pendientes', vacio: 'No hay disputas pendientes' },

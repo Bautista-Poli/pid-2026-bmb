@@ -22,7 +22,7 @@ import { Boton, Cargando, EstadoVacio, Tarjeta } from '@app/components/ui';
 import { ETIQUETA_MODALIDAD, FranjaDisponible, Id, Reserva, Vehiculo } from '@app/models';
 import { EstacionamientoService } from '@app/services/estacionamiento.service';
 import { ReservaService } from '@app/services/reserva.service';
-import { VehiculoService } from '@app/services/vehiculo.service';
+import { VehiculoService } from '@app/services/conductor/vehiculo.service';
 import { calcularPrecio, horasReservables, modalidadPorHoras, resumenTarifas } from '@app/utils/tarifa.util';
 import { formatearDistancia, resumenHorario } from '@app/utils/disponibilidad.util';
 import { desdeFechaISO, diaSemanaDe, hoyISO } from '@app/utils/fecha.util';

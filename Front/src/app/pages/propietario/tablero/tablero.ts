@@ -29,7 +29,7 @@ import {
 } from '@app/models';
 import { AuthService } from '@app/services/auth.service';
 import { avanzarReserva, puedeAvanzar } from '@app/services/ciclo-reserva';
-import { CocheraService } from '@app/services/cochera.service';
+import { CocheraService } from '@app/services/propietario/cochera.service';
 import { EstacionamientoService } from '@app/services/estacionamiento.service';
 import { ReservaService } from '@app/services/reserva.service';
 import { aFechaISO, hoyISO } from '@app/utils/fecha.util';

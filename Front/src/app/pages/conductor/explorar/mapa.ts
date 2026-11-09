@@ -35,8 +35,8 @@ import { ResultadoEstacionamiento } from './resultado-estacionamiento/resultado-
 import { PanelBuscador } from './panel-buscador/panel-buscador';
 import { Panel, horaFin } from './panel.interface';
 import { ORDENES, PANEL_INICIAL, POR_PAGINA, PRECIO_TOPE } from './constantes';
-import { UbicacionService } from '@app/services/ubicacion.service';
-import { VehiculoService } from '@app/services/vehiculo.service';
+import { UbicacionService } from '@app/services/conductor/ubicacion.service';
+import { VehiculoService } from '@app/services/conductor/vehiculo.service';
 import { diaCorto } from '@app/utils/fecha.util';
 
 /**

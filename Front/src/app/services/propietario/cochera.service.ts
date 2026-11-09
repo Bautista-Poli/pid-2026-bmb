@@ -2,8 +2,8 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import { Cochera, Id, LoteCocheras, NuevaCochera } from '@app/models';
-import { CocheraDto } from './api/api.dto';
-import { aCochera, aPayloadCochera, aPayloadLotes } from './api/api.mapeo';
+import { CocheraDto } from '../api/api.dto';
+import { aCochera, aPayloadCochera, aPayloadLotes } from '../api/api.mapeo';
 
 /** Cocheras de un estacionamiento: `/api/estacionamientos/:id/cocheras`. */
 @Injectable({ providedIn: 'root' })

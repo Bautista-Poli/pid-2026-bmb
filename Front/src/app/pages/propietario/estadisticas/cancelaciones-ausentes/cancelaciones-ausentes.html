@@ -1,0 +1,37 @@
+<!-- Cancelaciones y ausentes. Datos en cancelaciones-ausentes.ts. -->
+<ui-tarjeta relleno="lg">
+  <div class="grafico">
+    <div>
+      <h2 class="grafico-titulo">Cancelaciones y ausentes</h2>
+      <p class="grafico-detalle">
+        {{ datos().cancelaciones.total }} canceladas ({{ porciento(datos().kpis.tasaCancelacion.valor) }}) ·
+        {{ datos().ausentes.total }} ausentes ({{ porciento(datos().ausentes.tasa) }})
+      </p>
+    </div>
+
+    @if (datos().cancelaciones.total === 0) {
+      <p class="sin-cancelaciones">No hubo cancelaciones en este período.</p>
+    } @else {
+      <ul class="origenes">
+        @for (origen of origenes; track origen) {
+          <li class="origen">
+            <div class="origen-fila">
+              <span class="origen-nombre">{{ etiquetaOrigen[origen] }}</span>
+              <span class="num-tabular destacado">{{ datos().cancelaciones.porOrigen[origen] }}</span>
+            </div>
+            <div class="barra">
+              <div class="barra-relleno" [style.width.%]="anchoOrigen(origen)"></div>
+            </div>
+          </li>
+        }
+      </ul>
+      @if (datos().cancelaciones.anticipacionPromedioHoras !== null) {
+        <p class="anticipacion">
+          Los conductores cancelan en promedio
+          <span class="num-tabular destacado">{{ datos().cancelaciones.anticipacionPromedioHoras }} h</span>
+          antes del inicio.
+        </p>
+      }
+    }
+  </div>
+</ui-tarjeta>

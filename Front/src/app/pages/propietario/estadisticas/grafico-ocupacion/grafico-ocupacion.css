@@ -1,0 +1,13 @@
+.muestra-usadas {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 3px;
+  background-color: var(--color-acento);
+}
+
+.muestra-libres {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 3px;
+  background-color: color-mix(in oklab, var(--color-acento) 20%, transparent);
+}

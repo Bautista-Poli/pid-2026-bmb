@@ -57,119 +57,18 @@
 
       <div class="fila-graficos">
         <!-- Ocupacion -->
-        <ui-tarjeta relleno="lg">
-          <div class="grafico">
-            <div class="grafico-cabecera">
-              <div>
-                <h2 class="grafico-titulo">Ocupación por día</h2>
-                <p class="grafico-detalle">Horas reservadas sobre las horas que abren tus cocheras</p>
-              </div>
-              <div class="leyenda">
-                <span class="leyenda-item"><span class="muestra-usadas"></span> Usadas</span>
-                <span class="leyenda-item"><span class="muestra-libres"></span> Libres</span>
-              </div>
-            </div>
-            @if (hayOcupacion() && datos.kpis.ocupacion.valor > 0) {
-              <app-barras-dia [barras]="barrasOcupacion()" descripcion="Ocupación por día del período" />
-            } @else if (hayOcupacion()) {
-              <p class="sin-datos">Tus cocheras no tuvieron reservas en este período.</p>
-            } @else {
-              <p class="sin-datos">
-                Sin horarios de atención cargados: no hay horas para medir.
-              </p>
-            }
-          </div>
-        </ui-tarjeta>
+        <app-grafico-ocupacion [datos]="datos" />
 
         <!-- Ingresos -->
-        <ui-tarjeta relleno="lg">
-          <div class="grafico">
-            <div class="grafico-cabecera">
-              <div>
-                <h2 class="grafico-titulo">Ingresos (simulados)</h2>
-                <p class="grafico-detalle">
-                  Total {{ pesos(datos.kpis.ingresos.valor) }}
-                  @if (datos.kpis.devoluciones.valor > 0) {
-                    (neto de {{ pesos(datos.kpis.devoluciones.valor) }} devueltos por reclamos)
-                  }
-                  @if (datos.ingresosProyectados > 0) {
-                    · {{ pesos(datos.ingresosProyectados) }} por cobrar de reservas confirmadas que vienen
-                  }
-                </p>
-              </div>
-              <div class="leyenda">
-                <span class="leyenda-item"><span class="muestra-reservas"></span> Reservas</span>
-                <span class="leyenda-item"><span class="muestra-abonos"></span> Abonos</span>
-              </div>
-            </div>
-            @if (hayIngresos()) {
-              <app-barras-dia [barras]="barrasIngresos()" descripcion="Ingresos por día del período" />
-            } @else {
-              <p class="sin-datos">Todavía no hubo ingresos en este período.</p>
-            }
-          </div>
-        </ui-tarjeta>
+        <app-grafico-ingresos [datos]="datos" />
       </div>
 
       <div class="fila-graficos-2">
         <!-- Demanda -->
-        <ui-tarjeta relleno="lg">
-          <div class="grafico">
-            <div>
-              <h2 class="grafico-titulo">Demanda por horario</h2>
-              <p class="grafico-detalle">
-                @if (horaPico(); as pico) {
-                  Hora pico: <span class="destacado">{{ pico }}</span>
-                } @else {
-                  Cuántas reservas ocupan cada hora de la semana
-                }
-              </p>
-            </div>
-            @if (datos.demanda.length > 0) {
-              <app-mapa-calor [celdas]="datos.demanda" />
-            } @else {
-              <p class="sin-datos">Sin reservas en este período.</p>
-            }
-          </div>
-        </ui-tarjeta>
+        <app-demanda-horario [datos]="datos" />
 
         <!-- Cancelaciones y ausentes -->
-        <ui-tarjeta relleno="lg">
-          <div class="grafico">
-            <div>
-              <h2 class="grafico-titulo">Cancelaciones y ausentes</h2>
-              <p class="grafico-detalle">
-                {{ datos.cancelaciones.total }} canceladas ({{ porciento(datos.kpis.tasaCancelacion.valor) }}) ·
-                {{ datos.ausentes.total }} ausentes ({{ porciento(datos.ausentes.tasa) }})
-              </p>
-            </div>
-
-            @if (datos.cancelaciones.total === 0) {
-              <p class="sin-cancelaciones">No hubo cancelaciones en este período.</p>
-            } @else {
-              <ul class="origenes">
-                @for (origen of origenes; track origen) {
-                  <li class="origen">
-                    <div class="origen-fila">
-                      <span class="origen-nombre">{{ etiquetaOrigen[origen] }}</span>
-                      <span class="num-tabular destacado">{{ datos.cancelaciones.porOrigen[origen] }}</span>
-                    </div>
-                    <div class="barra">
-                      <div class="barra-relleno" [style.width.%]="anchoOrigen(datos, origen)"></div>
-                    </div>
-                  </li>
-                }
-              </ul>
-              @if (datos.cancelaciones.anticipacionPromedioHoras !== null) {
-                <p class="anticipacion">
-                  Los conductores cancelan en promedio
-                  <span class="num-tabular destacado">{{ datos.cancelaciones.anticipacionPromedioHoras }} h</span>
-                  antes del inicio.
-                </p>
-              }
-            }
-          </div>
-        </ui-tarjeta>
+        <app-cancelaciones-ausentes [datos]="datos" />
       </div>
 
       @if (datos.kpis.reservas.valor === 0) {

@@ -1,0 +1,13 @@
+.muestra-reservas {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 3px;
+  background-color: var(--color-exito);
+}
+
+.muestra-abonos {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 3px;
+  background-color: oklch(60.6% 0.25 292.717); /* violeta (violet-500 de Tailwind) */
+}

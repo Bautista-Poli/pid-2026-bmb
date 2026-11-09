@@ -1,5 +1,4 @@
 /* Pantalla /propietario/estadisticas: KPIs y gráficos del período. */
-
 .vista {
   margin-inline: auto;
   width: 100%;
@@ -85,136 +84,9 @@
   gap: 1.25rem;
 }
 
-.grafico {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.grafico-cabecera {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.grafico-titulo {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--color-tinta);
-}
-
-.grafico-detalle {
-  margin-top: 0.125rem;
-  font-size: 12px;
-  color: var(--color-plomo);
-}
-
-.leyenda {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  font-size: 12px;
-  color: var(--color-plomo);
-}
-
-.leyenda-item {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-}
-
-.muestra-usadas {
-  width: 0.625rem;
-  height: 0.625rem;
-  border-radius: 3px;
-  background-color: var(--color-acento);
-}
-
-.muestra-libres {
-  width: 0.625rem;
-  height: 0.625rem;
-  border-radius: 3px;
-  background-color: color-mix(in oklab, var(--color-acento) 20%, transparent);
-}
-
-.sin-datos {
-  padding-block: 2rem;
-  text-align: center;
-  font-size: 13px;
-  color: var(--color-plomo);
-}
-
-.muestra-reservas {
-  width: 0.625rem;
-  height: 0.625rem;
-  border-radius: 3px;
-  background-color: var(--color-exito);
-}
-
-.muestra-abonos {
-  width: 0.625rem;
-  height: 0.625rem;
-  border-radius: 3px;
-  background-color: oklch(60.6% 0.25 292.717); /* violeta (violet-500 de Tailwind) */
-}
-
 .fila-graficos-2 {
   display: grid;
   gap: 1.25rem;
-}
-
-.destacado {
-  font-weight: 600;
-  color: var(--color-tinta);
-}
-
-.sin-cancelaciones {
-  padding-block: 1rem;
-  text-align: center;
-  font-size: 13px;
-  color: var(--color-plomo);
-}
-
-.origenes {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.origen {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.origen-fila {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12.5px;
-}
-
-.origen-nombre {
-  color: var(--color-grafito);
-}
-
-.barra {
-  height: 0.5rem;
-  overflow: hidden;
-  border-radius: 9999px;
-  background-color: var(--color-borde-sutil);
-}
-
-.barra-relleno {
-  height: 100%;
-  border-radius: 9999px;
-  background-color: var(--color-baja);
-}
-
-.anticipacion {
-  font-size: 12px;
-  color: var(--color-plomo);
 }
 
 /* sm: 640px o más */
@@ -279,8 +151,6 @@
   }
 }
 
-
 .recargando {
   opacity: 60%;
 }
-

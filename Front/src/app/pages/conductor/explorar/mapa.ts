@@ -12,7 +12,6 @@ import {
 } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
-import { Observable, of } from 'rxjs';
 import { MapaEstacionamientos } from '@app/components/estacionamiento';
 import { Cargando, EstadoVacio, Icono } from '@app/components/ui';
 import {
@@ -30,21 +29,12 @@ import {
   ordenarEstacionamientos,
 } from '@app/services/estacionamiento.service';
 import { Destino } from '@app/utils/direcciones.util';
-import { buscarDestinosLocales } from '@app/utils/destinos-locales.util';
-import { Sugerencia } from './panel-buscador/campo-busqueda/campo-busqueda';
 import { DetalleEstacionamiento } from './detalle-estacionamiento/detalle-estacionamiento';
 import { ModalFiltros } from './modal-filtros/modal-filtros';
 import { ResultadoEstacionamiento } from './resultado-estacionamiento/resultado-estacionamiento';
 import { PanelBuscador } from './panel-buscador/panel-buscador';
 import { Panel, horaFin } from './panel.interface';
-import {
-  ICONO_LUGAR,
-  MAX_SUGERENCIAS,
-  ORDENES,
-  PANEL_INICIAL,
-  POR_PAGINA,
-  PRECIO_TOPE,
-} from './constantes';
+import { ORDENES, PANEL_INICIAL, POR_PAGINA, PRECIO_TOPE } from './constantes';
 import { UbicacionService } from '@app/services/ubicacion.service';
 import { VehiculoService } from '@app/services/vehiculo.service';
 import { diaCorto } from '@app/utils/fecha.util';
@@ -190,8 +180,7 @@ export class Mapa {
   }
 
   /** Centra la busqueda en el lugar elegido. */
-  protected elegirDestino(sugerencia: Sugerencia): void {
-    const destino = sugerencia.dato as Destino;
+  protected elegirDestino(destino: Destino): void {
     this.destino.set(destino);
     this.texto.set(destino.nombre);
     this.textoAplicado.set('');
@@ -223,27 +212,11 @@ export class Mapa {
     return !this.destino() && (estado === 'denegada' || estado === 'no-disponible');
   });
 
-  /** Todos los estacionamientos publicados: el buscador sugiere sus barrios y nombres. */
-  private readonly todos = rxResource({
+  /** Todos los estacionamientos publicados: el buscador (panel-buscador) sugiere sus barrios y nombres. */
+  protected readonly todos = rxResource({
     stream: () => this.estacionamientos.listar({}),
     defaultValue: [] as Estacionamiento[],
   });
-
-  /**
-   * Sugerencias del buscador (desde la 3ra letra): los barrios y los
-   * estacionamientos que ya estan en la base (buscarDestinosLocales).
-   */
-  protected readonly buscarDirecciones = (texto: string): Observable<Sugerencia[]> =>
-    of(
-      buscarDestinosLocales(texto, this.todos.value())
-        .slice(0, MAX_SUGERENCIAS)
-        .map((lugar) => ({
-          nombre: lugar.nombre,
-          detalle: lugar.detalle,
-          dato: lugar,
-          icono: ICONO_LUGAR[lugar.tipo ?? 'lugar'],
-        })),
-    );
 
   /* ------------------------------- Resultados ------------------------------ */
 

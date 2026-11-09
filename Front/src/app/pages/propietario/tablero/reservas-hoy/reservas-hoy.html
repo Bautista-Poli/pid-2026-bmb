@@ -1,0 +1,71 @@
+<!-- Lista de reservas de hoy. Datos en reservas-hoy.ts. -->
+<ui-tarjeta relleno="ninguno" [recortar]="true">
+  <div class="reservas-cabecera">
+    <h2 class="panel-titulo">Reservas de hoy</h2>
+    <a
+      class="link-chico"
+      routerLink="/propietario/reservas"
+    >
+      Ver todas
+    </a>
+  </div>
+
+  @if (cargando()) {
+    <p class="reservas-cargando">Cargando…</p>
+  } @else if (reservas().length === 0) {
+    <p class="reservas-vacio">
+      No hay reservas para hoy.
+    </p>
+  } @else {
+    <ul class="aparece-en-cadena">
+      @for (reserva of reservas().slice(0, 6); track reserva.id) {
+        <li
+          class="reserva"
+        >
+          <span class="reserva-icono">
+            <ui-icono [nombre]="iconoVehiculo[reserva.vehiculo.tipo]" [tamano]="19" />
+          </span>
+
+          <div class="reserva-info">
+            <p class="reserva-nombre">
+              {{ reserva.estacionamiento.nombre }}
+            </p>
+            <p class="num-tabular reserva-horario">
+              {{ reserva.horaDesde }} - {{ reserva.horaHasta }}
+            </p>
+            <p class="num-tabular reserva-vehiculo">
+              {{ etiquetaTipo[reserva.vehiculo.tipo] }} · {{ reserva.vehiculo.patente }}
+              @if (reserva.cochera) {
+                · Cochera {{ reserva.cochera.identificador }}
+              }
+            </p>
+          </div>
+
+          <div class="reserva-acciones">
+            <ui-etiqueta [tono]="tonoEstado(reserva)">
+              {{ etiquetaEstado(reserva) }}
+            </ui-etiqueta>
+            @if (pasoDe(reserva); as paso) {
+              <button
+                type="button"
+                class="reserva-boton"
+                [disabled]="procesandoId() === reserva.id"
+                (click)="avanzar.emit(reserva)"
+              >
+                {{ procesandoId() === reserva.id ? 'Guardando…' : paso }}
+              </button>
+            }
+          </div>
+        </li>
+      }
+    </ul>
+    @if (reservas().length > 6) {
+      <a
+        class="ver-mas"
+        routerLink="/propietario/reservas"
+      >
+        Ver {{ reservas().length - 6 }} más
+      </a>
+    }
+  }
+</ui-tarjeta>

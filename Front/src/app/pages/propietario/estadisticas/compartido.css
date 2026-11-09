@@ -1,0 +1,51 @@
+.grafico {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.grafico-cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.grafico-titulo {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-tinta);
+}
+
+.grafico-detalle {
+  margin-top: 0.125rem;
+  font-size: 12px;
+  color: var(--color-plomo);
+}
+
+.leyenda {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 12px;
+  color: var(--color-plomo);
+}
+
+.leyenda-item {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.sin-datos {
+  padding-block: 2rem;
+  text-align: center;
+  font-size: 13px;
+  color: var(--color-plomo);
+}
+
+.destacado {
+  font-weight: 600;
+  color: var(--color-tinta);
+}

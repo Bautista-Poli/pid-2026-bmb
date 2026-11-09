@@ -1,0 +1,20 @@
+<!-- Demanda por horario. Datos en demanda-horario.ts. -->
+<ui-tarjeta relleno="lg">
+  <div class="grafico">
+    <div>
+      <h2 class="grafico-titulo">Demanda por horario</h2>
+      <p class="grafico-detalle">
+        @if (horaPico(); as pico) {
+          Hora pico: <span class="destacado">{{ pico }}</span>
+        } @else {
+          Cuántas reservas ocupan cada hora de la semana
+        }
+      </p>
+    </div>
+    @if (datos().demanda.length > 0) {
+      <app-mapa-calor [celdas]="datos().demanda" />
+    } @else {
+      <p class="sin-datos">Sin reservas en este período.</p>
+    }
+  </div>
+</ui-tarjeta>

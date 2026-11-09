@@ -1,12 +1,11 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
-import { DatePipe } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { AbrirReclamo, ObjetoReclamo } from '@app/components/reclamo';
-import { Boton, Cargando, EstadoVacio, Modal, Tarjeta } from '@app/components/ui';
-import { Abono, Id, TURNOS } from '@app/models';
+import { Boton, Cargando, EstadoVacio, Modal } from '@app/components/ui';
+import { Abono, Id } from '@app/models';
 import { AbonoService } from '@app/services/abono.service';
-import { abonoReclamable } from '@app/utils/reclamo.util';
+import { TarjetaAbono } from './tarjeta-abono/tarjeta-abono';
 
 /**
  * Pantalla `/conductor/abonos` · rol CONDUCTOR
@@ -17,7 +16,7 @@ import { abonoReclamable } from '@app/utils/reclamo.util';
 @Component({
   selector: 'app-abonos',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [AbrirReclamo, Boton, Cargando, EstadoVacio, Modal, Tarjeta, RouterLink, DatePipe],
+  imports: [TarjetaAbono, AbrirReclamo, Boton, Cargando, EstadoVacio, Modal, RouterLink],
   templateUrl: './abonos.html',
   styleUrl: './abonos.css',
 })
@@ -25,7 +24,6 @@ export class Abonos {
   private readonly abonos = inject(AbonoService);
   private readonly router = inject(Router);
 
-  protected readonly reclamable = (abono: Abono) => abonoReclamable(abono);
   /** Abono sobre el que el conductor abre un reclamo: mientras no sea null, el modal esta abierto. */
   protected readonly aReclamar = signal<ObjetoReclamo | null>(null);
 
@@ -44,7 +42,6 @@ export class Abonos {
     this.router.navigate(['/conductor/incidencias'], { queryParams: { id } });
   }
 
-  protected readonly turnos = TURNOS;
   protected readonly aCancelar = signal<Abono | null>(null);
   protected readonly cancelando = signal(false);
   protected readonly error = signal<string | null>(null);

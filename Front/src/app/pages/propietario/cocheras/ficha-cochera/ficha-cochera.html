@@ -1,0 +1,174 @@
+<!-- Ficha de una cochera en el panel lateral. Datos y acciones en ficha-cochera.ts. -->
+<div class="panel-cabecera">
+  <div class="panel-cabecera-info">
+    <p class="panel-planta">{{ cochera().sector || 'Sin planta' }}</p>
+    <div class="panel-titulo-fila">
+      <h2 class="num-tabular panel-titulo">
+        Cochera {{ cochera().identificador }}
+      </h2>
+      <ui-etiqueta [tono]="tonoEstado[cochera().estado]">
+        {{ etiquetaEstado[cochera().estado] }}
+      </ui-etiqueta>
+    </div>
+  </div>
+  <button
+    type="button"
+    class="cerrar"
+    aria-label="Cerrar"
+    (click)="cerrar.emit()"
+  >
+    <ui-icono nombre="cerrar" [tamano]="16" />
+  </button>
+</div>
+
+@if (cochera().estado === 'INACTIVA') {
+  <div class="panel-cuerpo">
+    <p class="panel-texto">
+      Esta cochera está dada de baja: no aparece para reservar. Podés reactivarla o,
+      si nunca tuvo reservas, eliminarla del todo.
+    </p>
+    <div class="panel-botones">
+      <ui-boton variante="primario" [cargando]="enviando()" (presionado)="reactivar.emit()">
+        Reactivar
+      </ui-boton>
+      <ui-boton variante="peligro" (presionado)="eliminar.emit()">Eliminar</ui-boton>
+    </div>
+  </div>
+} @else {
+  <form class="panel-form" [formGroup]="formulario" (ngSubmit)="enviar()" novalidate>
+    <div class="panel-campos">
+      @if (cochera().bloqueada) {
+        <div class="aviso-bloqueo">
+          <ui-icono nombre="candado" [tamano]="15" class="aviso-bloqueo-icono" />
+          <div class="aviso-bloqueo-texto">
+            <p class="aviso-bloqueo-titulo">Bloqueada</p>
+            <p>{{ cochera().motivoBloqueo || 'Sin motivo cargado.' }}</p>
+            <p class="aviso-bloqueo-detalle">
+              {{ cochera().bloqueadaHasta ? ('Hasta ' + (cochera().bloqueadaHasta | date: "d 'de' MMMM")) : 'Sin fecha de fin' }}
+            </p>
+          </div>
+        </div>
+      }
+      <div class="dos-columnas">
+        <label class="campo">
+          <span class="label-campo">Número</span>
+          <input class="mayusculas" type="text" formControlName="identificador" />
+          @if (invalido('identificador')) {
+            <span class="campo-error">Hasta 20 caracteres.</span>
+          }
+        </label>
+        <label class="campo">
+          <span class="label-campo">Planta</span>
+          <input type="text" formControlName="sector" list="plantas-cargadas" placeholder="Planta baja" />
+        </label>
+      </div>
+
+      <div class="grupo-campo" role="group" aria-labelledby="etiqueta-tipo">
+        <span id="etiqueta-tipo" class="label-campo">Tipo de vehículo</span>
+        <div class="segmentos-3">
+          @for (tipo of tipos; track tipo) {
+            <button
+              type="button"
+              class="segmento"
+              [class]="
+                formulario.controls.tipo.value === tipo
+                  ? 'segmento-activo'
+                  : 'segmento-inactivo'
+              "
+              [attr.aria-pressed]="formulario.controls.tipo.value === tipo"
+              (click)="elegirTipo(tipo)"
+            >
+              <ui-icono [nombre]="iconoTipo[tipo]" [tamano]="16" />
+              {{ etiquetaTipo[tipo] }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <button
+        type="button"
+        role="switch"
+        class="interruptor-fila"
+        [attr.aria-checked]="formulario.controls.cubierta.value"
+        (click)="alternarCubierta()"
+      >
+        <span>
+          <span class="interruptor-titulo">Cubierta</span>
+          <span class="interruptor-ayuda">Tiene techo</span>
+        </span>
+        <span
+          class="interruptor"
+          [class]="formulario.controls.cubierta.value ? 'interruptor-on' : 'interruptor-off'"
+        >
+          <span
+            class="perilla"
+            [class]="formulario.controls.cubierta.value ? 'perilla-on' : 'perilla-off'"
+          ></span>
+        </span>
+      </button>
+
+      <div class="grupo-campo">
+        <span class="label-campo">Próximas reservas</span>
+        @if (proximas().length === 0) {
+          <p class="sin-reservas">
+            No tiene reservas por delante.
+          </p>
+        } @else {
+          <ul class="proximas">
+            @for (reserva of proximas(); track reserva.id) {
+              <li
+                class="num-tabular proxima"
+              >
+                <span class="texto-tinta">
+                  <b class="proxima-fecha">{{ desdeFechaISO(reserva.fecha) | date: 'EEE d' }}</b>
+                  · {{ reserva.horaDesde }} – {{ reserva.horaHasta }}
+                </span>
+                <span class="texto-plomo">{{ reserva.vehiculo.patente }}</span>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+    </div>
+
+    <div class="panel-pie">
+      <button
+        type="button"
+        class="accion-baja"
+        (click)="darDeBaja.emit()"
+      >
+        Dar de baja
+      </button>
+      @if (cochera().bloqueada) {
+        <button
+          type="button"
+          class="accion-aviso"
+          (click)="desbloquear.emit()"
+        >
+          Desbloquear
+        </button>
+      } @else {
+        <button
+          type="button"
+          class="accion-aviso"
+          (click)="bloquear.emit()"
+        >
+          Bloquear
+        </button>
+      }
+      <span class="empujar-derecha"></span>
+      @if (formulario.dirty) {
+        <ui-boton variante="fantasma" tamano="sm" (presionado)="descartar()">Descartar</ui-boton>
+      }
+      <ui-boton
+        variante="primario"
+        tamano="sm"
+        tipo="submit"
+        [deshabilitado]="!formulario.dirty"
+        [cargando]="enviando()"
+      >
+        Guardar
+      </ui-boton>
+    </div>
+  </form>
+}

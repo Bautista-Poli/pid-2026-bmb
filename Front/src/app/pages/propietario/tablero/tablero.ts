@@ -1,92 +1,20 @@
-import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
+import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { CeldaCochera } from './celda-cochera/celda-cochera';
-import { LeyendaCocheras } from './leyenda-cocheras/leyenda-cocheras';
+import { EstadoCocheras } from './estado-cocheras/estado-cocheras';
 import { IngresarCodigo } from './ingresar-codigo/ingresar-codigo';
-import {
-  Boton,
-  Cargando,
-  Chip,
-  EstadoVacio,
-  Etiqueta,
-  Icono,
-  NombreIcono,
-  Tarjeta,
-  TonoEtiqueta,
-} from '@app/components/ui';
-import {
-  Cochera,
-  Estacionamiento,
-  EstadoReserva,
-  esExpirada,
-  etiquetaReserva,
-  ETIQUETA_TIPO_VEHICULO,
-  Id,
-  ReservaDetallada,
-  TipoVehiculo,
-} from '@app/models';
+import { DiaOcupacion, OcupacionSemana } from './ocupacion-semana/ocupacion-semana';
+import { ReservasHoy } from './reservas-hoy/reservas-hoy';
+import { Metrica, TarjetaMetrica, Variacion } from './tarjeta-metrica/tarjeta-metrica';
+import { Boton, Cargando, EstadoVacio, Icono } from '@app/components/ui';
+import { Cochera, Estacionamiento, Id, ReservaDetallada } from '@app/models';
 import { AuthService } from '@app/services/auth.service';
-import { avanzarReserva, puedeAvanzar } from '@app/services/ciclo-reserva';
+import { avanzarReserva } from '@app/services/ciclo-reserva';
 import { CocheraService } from '@app/services/propietario/cochera.service';
 import { EstacionamientoService } from '@app/services/estacionamiento.service';
 import { ReservaService } from '@app/services/reserva.service';
 import { aFechaISO, hoyISO } from '@app/utils/fecha.util';
-
-/** Tono de cada tarjeta de metrica: fondo del icono y color del trazo. */
-type TonoMetrica = 'azul' | 'verde' | 'violeta';
-
-/** Clase de cada tono (estilos en tablero.css). */
-const CLASE_TONO: Record<TonoMetrica, string> = {
-  azul: 'tono-azul',
-  verde: 'tono-verde',
-  violeta: 'tono-violeta',
-};
-
-/** Comparacion contra ayer: flecha y color segun el signo. */
-interface Variacion {
-  sube: boolean | null;
-  texto: string;
-}
-
-interface Metrica {
-  etiqueta: string;
-  valor: string;
-  /** Parte chica del valor ("/ 40"). */
-  complemento?: string;
-  icono: NombreIcono;
-  tono: TonoMetrica;
-  variacion?: Variacion;
-  detalle?: string;
-}
-
-interface DiaOcupacion {
-  fecha: string;
-  etiqueta: string;
-  esHoy: boolean;
-  ocupadas: number;
-  libres: number;
-}
-
-const TONO_ESTADO: Record<EstadoReserva, TonoEtiqueta> = {
-  PENDIENTE: 'aviso',
-  CONFIRMADA: 'acento',
-  ACTIVA: 'exito',
-  FINALIZADA: 'neutro',
-  CANCELADA: 'peligro',
-  NO_SHOW: 'peligro',
-};
-
-const ICONO_VEHICULO: Record<TipoVehiculo, NombreIcono> = {
-  AUTO: 'auto',
-  CAMIONETA: 'camioneta',
-  MOTO: 'moto',
-};
-
-const PASOS: Partial<Record<EstadoReserva, string>> = {
-  PENDIENTE: 'Confirmar',
-};
 
 const DIAS_CORTOS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
@@ -104,19 +32,18 @@ const pesos = (monto: number) => `$ ${monto.toLocaleString('es-AR')}`;
   imports: [
     DatePipe,
     RouterLink,
-    CeldaCochera,
-    LeyendaCocheras,
-    Tarjeta,
-    Chip,
+    TarjetaMetrica,
+    OcupacionSemana,
+    ReservasHoy,
+    EstadoCocheras,
+    IngresarCodigo,
     Boton,
     Cargando,
     EstadoVacio,
-    Etiqueta,
     Icono,
-    IngresarCodigo,
   ],
   templateUrl: './tablero.html',
-  styleUrl: './tablero.css',
+  styleUrls: ['./compartido.css', './tablero.css'],
 })
 export class Tablero {
   private readonly estacionamientos = inject(EstacionamientoService);
@@ -128,25 +55,9 @@ export class Tablero {
   private readonly hoyISO = hoyISO();
   private readonly ayerISO = hoyISO(new Date(Date.now() - 86_400_000));
 
-  protected readonly etiquetaTipo = ETIQUETA_TIPO_VEHICULO;
-  protected readonly etiquetaEstado = etiquetaReserva;
-  /** Expirada (no la confirmaste a tiempo) en amarillo, distinta de una cancelacion. */
-  protected tonoEstado(reserva: ReservaDetallada): TonoEtiqueta {
-    return esExpirada(reserva) ? 'aviso' : TONO_ESTADO[reserva.estado];
-  }
-  protected readonly iconoVehiculo = ICONO_VEHICULO;
-  protected readonly pasos = PASOS;
-
-  /** El boton del paso siguiente (solo confirmar), o null si no hay. */
-  protected pasoDe(reserva: ReservaDetallada): string | null {
-    return puedeAvanzar(reserva) ? (PASOS[reserva.estado] ?? null) : null;
-  }
-  protected readonly claseTono = CLASE_TONO;
-
   protected readonly nombre = computed(() => this.auth.usuario()?.nombre ?? '');
 
   protected readonly seleccionadoId = signal<Id | null>(null);
-  protected readonly cocheraAbierta = signal<Cochera | null>(null);
 
   protected readonly recursoEstacionamientos = rxResource({
     params: () => this.auth.usuario()?.id,
@@ -176,7 +87,7 @@ export class Tablero {
       .sort((a, b) => a.horaDesde.localeCompare(b.horaDesde)),
   );
 
-  private readonly totales = computed(() => {
+  protected readonly totales = computed(() => {
     const lista = this.recursoEstacionamientos.value().filter((e) => e.activo);
     return {
       cocheras: lista.reduce((suma, e) => suma + e.cocherasTotales, 0),
@@ -252,19 +163,6 @@ export class Tablero {
     });
   });
 
-  /** Escala del eje Y: 4 tramos redondos que cubren el total de cocheras. */
-  protected readonly escala = computed(() => {
-    const total = Math.max(this.totales().cocheras, 1);
-    const tramo = total / 4;
-    const paso = tramo <= 5 ? Math.ceil(tramo) : Math.ceil(tramo / 5) * 5;
-    const tope = paso * 4;
-    return { tope, marcas: [4, 3, 2, 1, 0].map((n) => n * paso) };
-  });
-
-  protected alto(valor: number): string {
-    return `${(valor / this.escala().tope) * 100}%`;
-  }
-
   /* --------------------------- estado de cocheras -------------------------- */
 
   /** Estacionamiento de la cuadricula: el elegido, o el primero. */
@@ -279,22 +177,8 @@ export class Tablero {
     defaultValue: [] as Cochera[],
   });
 
-  protected readonly actualizadoEn = computed(() => {
-    this.recursoCocheras.value();
-    return new Date();
-  });
-
   protected readonly procesandoId = signal<Id | null>(null);
   protected readonly error = signal<string | null>(null);
-
-  protected seleccionar(id: Id): void {
-    this.seleccionadoId.set(id);
-    this.cocheraAbierta.set(null);
-  }
-
-  protected abrir(cochera: Cochera): void {
-    this.cocheraAbierta.update((actual) => (actual?.id === cochera.id ? null : cochera));
-  }
 
   /** Confirmar una pendiente desde el panel; ingreso y egreso solo con el codigo. */
   protected avanzar(reserva: ReservaDetallada): void {

@@ -23,84 +23,9 @@
     <section class="seccion-revisar" aria-labelledby="titulo-revisar">
       <h2 id="titulo-revisar" class="eyebrow eyebrow-neutro">Para revisar</h2>
       <div class="tarjetas-revisar">
-        <ui-tarjeta relleno="lg">
-          <div class="cuerpo-tarjeta cuerpo-tarjeta--compacto">
-            <div class="encabezado-indicador">
-              <div>
-                <p class="nota">Estacionamientos por aprobar</p>
-                <p class="num-tabular indicador-valor">{{ datos.pendientes.enCola }}</p>
-                @if (datos.pendientes.masAntiguoDesde; as desde) {
-                  <p class="indicador-alerta">El más antiguo espera {{ haceCuanto(desde) }}</p>
-                }
-              </div>
-              <a routerLink="/admin/pendientes" class="enlace-ver-todos">Ver todos</a>
-            </div>
-            @if (datos.pendientes.primeros.length === 0) {
-              <p class="vacio">No hay estacionamientos para revisar.</p>
-            } @else {
-              <ul class="lista-divisoria">
-                @for (e of datos.pendientes.primeros; track e.id) {
-                  <li>
-                    <a class="fila fila--interactiva" [routerLink]="['/admin/estacionamientos', e.id]">
-                      <span class="fila-texto">
-                        <span class="fila-titulo">{{ e.nombre }}</span>
-                        <span class="fila-subtitulo">{{ e.propietario }}</span>
-                      </span>
-                      <span class="fila-hora">{{ haceCuanto(e.enviadoEn) }}</span>
-                    </a>
-                  </li>
-                }
-              </ul>
-            }
-            @if (datos.pendientes.rechazadosSinReenviar > 0) {
-              <a
-                routerLink="/admin/pendientes"
-                [queryParams]="{ estado: 'RECHAZADO' }"
-                class="enlace-secundario"
-              >
-                {{ datos.pendientes.rechazadosSinReenviar }} rechazados esperando que el propietario los corrija
-              </a>
-            }
-          </div>
-        </ui-tarjeta>
+        <app-pendientes-aprobacion [datos]="datos" />
 
-        <ui-tarjeta relleno="lg">
-          <div class="cuerpo-tarjeta cuerpo-tarjeta--compacto">
-            <div class="encabezado-indicador">
-              <div>
-                <p class="nota">Disputas pendientes</p>
-                <p class="num-tabular indicador-valor">{{ datos.disputas.denunciadas }}</p>
-                @if (datos.disputas.masAntiguaDesde; as desde) {
-                  <p class="indicador-alerta">La más antigua espera {{ haceCuanto(desde) }}</p>
-                }
-              </div>
-              <a routerLink="/admin/disputas" class="enlace-ver-todos">Ver todas</a>
-            </div>
-            @if (datos.disputas.primeras.length === 0) {
-              <p class="vacio">No hay disputas pendientes.</p>
-            } @else {
-              <ul class="lista-divisoria">
-                @for (d of datos.disputas.primeras; track d.id) {
-                  <li>
-                    <a class="fila" [routerLink]="['/admin/disputas', d.id]">
-                      <span class="fila-texto">
-                        <span class="fila-titulo">{{ tituloDisputa(d.tipo, d.motivo) }}</span>
-                        <span class="fila-subtitulo">{{ d.estacionamiento }}</span>
-                      </span>
-                      <span class="fila-hora">{{ haceCuanto(d.denunciadaEn) }}</span>
-                    </a>
-                  </li>
-                }
-              </ul>
-            }
-            @if (datos.disputas.reclamosEnConversacion > 0) {
-              <p class="nota-pequena">
-                {{ datos.disputas.reclamosEnConversacion }}
-                {{ datos.disputas.reclamosEnConversacion === 1 ? 'reclamo sigue' : 'reclamos siguen' }} en conversación entre las partes
-              </p>
-            }
-          </div>
-        </ui-tarjeta>
+        <app-disputas-pendientes [datos]="datos" />
       </div>
     </section>
 
@@ -119,92 +44,9 @@
     <div class="cuerpo-tablero" [class.cuerpo-tablero--cargando]="recurso.isLoading()">
       <!-- Conflictos -->
       <div class="grilla-conflictos">
-        <ui-tarjeta relleno="lg">
-          <div class="cuerpo-tarjeta">
-            <div>
-              <h3 class="titulo-tarjeta">Cocheras bloqueadas</h3>
-              <p class="subtitulo-tarjeta">Autos que se pasaron de su horario y lo que provocaron</p>
-            </div>
-            <dl class="num-tabular bloqueos">
-              <div><dt class="bloqueo-etiqueta">Autos excedidos</dt><dd class="bloqueo-valor">{{ datos.conflictos.bloqueos.autosExcedidos }}</dd></div>
-              <div><dt class="bloqueo-etiqueta">Reservas reasignadas</dt><dd class="bloqueo-valor">{{ datos.conflictos.bloqueos.reasignadas }}</dd></div>
-              <div><dt class="bloqueo-etiqueta">Sin cochera</dt><dd class="bloqueo-valor">{{ datos.conflictos.bloqueos.sinCochera }}</dd></div>
-              <div><dt class="bloqueo-etiqueta">Canceladas</dt><dd class="bloqueo-valor">{{ datos.conflictos.bloqueos.canceladas }}</dd></div>
-            </dl>
-            @if (totalBloqueos() > 0) {
-              <div class="tabla-desplazable">
-                <table class="num-tabular tabla-bloqueos">
-                  <caption class="solo-lector">Bloqueos por estacionamiento</caption>
-                  <thead>
-                    <tr class="cabecera-tabla">
-                      <th class="tabla-th tabla-th--nombre">Estacionamiento</th>
-                      <th class="tabla-th tabla-th--numero">
-                        <abbr title="Autos excedidos" aria-hidden="true">Exc.</abbr><span class="solo-lector">Autos excedidos</span>
-                      </th>
-                      <th class="tabla-th tabla-th--numero">
-                        <abbr title="Reasignadas" aria-hidden="true">Reas.</abbr><span class="solo-lector">Reasignadas</span>
-                      </th>
-                      <th class="tabla-th tabla-th--numero">
-                        <abbr title="Sin cochera" aria-hidden="true">S/coch.</abbr><span class="solo-lector">Sin cochera</span>
-                      </th>
-                      <th class="tabla-th tabla-th--numero tabla-th--ultima">
-                        <abbr title="Canceladas" aria-hidden="true">Canc.</abbr><span class="solo-lector">Canceladas</span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (b of datos.conflictos.bloqueos.porEstacionamiento; track b.id) {
-                      <tr class="fila-tabla">
-                        <td class="celda-nombre">{{ b.nombre }}</td>
-                        <td class="celda-numero">{{ b.autosExcedidos }}</td>
-                        <td class="celda-numero">{{ b.reasignadas }}</td>
-                        <td class="celda-numero">{{ b.sinCochera }}</td>
-                        <td class="celda-numero celda-numero--ultima">{{ b.canceladas }}</td>
-                      </tr>
-                    }
-                  </tbody>
-                </table>
-              </div>
-            } @else {
-              <p class="nota">No hubo cocheras bloqueadas en este período.</p>
-            }
-          </div>
-        </ui-tarjeta>
+        <app-cocheras-bloqueadas [datos]="datos" />
 
-        <ui-tarjeta relleno="lg">
-          <div class="cuerpo-tarjeta">
-            <div>
-              <h3 class="titulo-tarjeta">Estacionamientos con problemas</h3>
-              <p class="subtitulo-tarjeta">
-                Con 5 reservas o más: cancelan más del 30 % por su lado o juntan 2 reclamos o más
-              </p>
-            </div>
-            @if (datos.conflictos.problematicos.length === 0) {
-              <p class="vacio vacio--amplio">Ningún estacionamiento con problemas en este período.</p>
-            } @else {
-              <ul class="lista-divisoria">
-                @for (p of datos.conflictos.problematicos; track p.id) {
-                  <li class="fila-problema">
-                    <div class="fila-texto">
-                      <p class="fila-titulo">{{ p.nombre }}</p>
-                      <p class="num-tabular detalle-problema">
-                        {{ p.propietario }} · {{ p.reservas }} reservas · cancela {{ porciento(p.tasaCancelacion) }} ·
-                        {{ p.reclamos }} {{ p.reclamos === 1 ? 'reclamo' : 'reclamos' }}
-                      </p>
-                    </div>
-                    <div class="razones">
-                      @for (razon of p.razones; track razon) {
-                        <span class="razon">
-                          {{ etiquetaRazon[razon] }}
-                        </span>
-                      }
-                    </div>
-                  </li>
-                }
-              </ul>
-            }
-          </div>
-        </ui-tarjeta>
+        <app-estacionamientos-problematicos [datos]="datos" />
       </div>
 
       <!-- Actividad -->
@@ -220,48 +62,14 @@
         }
       </div>
 
-      <ui-tarjeta relleno="lg">
-        <div class="cuerpo-tarjeta">
-          <div>
-            <h3 class="titulo-tarjeta">Reservas por día</h3>
-            <p class="subtitulo-tarjeta">Todas las reservas de la plataforma, por estado</p>
-          </div>
-          <div class="leyenda-tramos">
-            @for (t of tramosReservas; track t.clave) {
-              <span class="tramo"><span class="tramo__color" [class]="t.clase"></span> {{ t.etiqueta }}</span>
-            }
-          </div>
-          @if (hayReservas()) {
-            <app-barras-dia [barras]="barrasReservas()" descripcion="Reservas por día de la plataforma" />
-          } @else {
-            <p class="vacio vacio--alto">No hubo reservas en este período.</p>
-          }
-        </div>
-      </ui-tarjeta>
+      <app-reservas-por-dia [datos]="datos" />
 
       <div class="grilla-rankings">
         @for (ranking of [
           { titulo: 'Más reservas', filas: datos.actividad.topPorReservas, plata: false },
           { titulo: 'Más ingresos', filas: datos.actividad.topPorIngresos, plata: true }
         ]; track ranking.titulo) {
-          <ui-tarjeta relleno="lg">
-            <div class="cuerpo-tarjeta cuerpo-tarjeta--compacto">
-              <h3 class="titulo-tarjeta">{{ ranking.titulo }}</h3>
-              @if (ranking.filas.length === 0) {
-                <p class="vacio">Sin datos en este período.</p>
-              } @else {
-                <ol class="lista-divisoria">
-                  @for (fila of ranking.filas; track fila.id; let i = $index) {
-                    <li class="num-tabular fila-ranking">
-                      <span class="fila-ranking__puesto">{{ i + 1 }}</span>
-                      <span class="fila-ranking__nombre">{{ fila.nombre }}</span>
-                      <span class="fila-ranking__valor">{{ ranking.plata ? pesos(fila.valor) : fila.valor }}</span>
-                    </li>
-                  }
-                </ol>
-              }
-            </div>
-          </ui-tarjeta>
+          <app-ranking-estacionamientos [titulo]="ranking.titulo" [filas]="ranking.filas" [plata]="ranking.plata" />
         }
       </div>
     </div>

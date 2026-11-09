@@ -1,15 +1,15 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
-import { DatePipe } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { AbrirReclamo, ObjetoReclamo } from '@app/components/reclamo';
+import { CancelarReserva } from './cancelar-reserva/cancelar-reserva';
 import { QrReserva } from './qr-reserva/qr-reserva';
 import { TarjetaReserva } from './tarjeta-reserva/tarjeta-reserva';
 import { Boton, Cargando, Chip, EstadoVacio, Modal, Tarjeta } from '@app/components/ui';
 import { Id, ReservaDetallada } from '@app/models';
 import { reservaEnJuego } from '@app/services/ciclo-reserva';
 import { ReservaService } from '@app/services/reserva.service';
-import { aInstante, desdeFechaISO } from '@app/utils/fecha.util';
+import { aInstante } from '@app/utils/fecha.util';
 
 type Pestania = 'VIGENTES' | 'HISTORIAL';
 
@@ -41,7 +41,19 @@ const inicioDe = (reserva: ReservaDetallada) =>
 @Component({
   selector: 'app-mis-reservas',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TarjetaReserva, QrReserva, AbrirReclamo, Tarjeta, Chip, Cargando, EstadoVacio, Boton, Modal, RouterLink, DatePipe],
+  imports: [
+    TarjetaReserva,
+    CancelarReserva,
+    QrReserva,
+    AbrirReclamo,
+    Tarjeta,
+    Chip,
+    Cargando,
+    EstadoVacio,
+    Boton,
+    Modal,
+    RouterLink,
+  ],
   templateUrl: './mis-reservas.html',
   styleUrl: './mis-reservas.css',
 })
@@ -50,8 +62,6 @@ export class MisReservas {
   private readonly router = inject(Router);
 
   protected readonly pestania = signal<Pestania>('VIGENTES');
-
-  protected readonly desdeFechaISO = desdeFechaISO;
 
   /** Reserva que el conductor quiere cancelar: mientras no sea null, el modal esta abierto. */
   protected readonly aCancelar = signal<ReservaDetallada | null>(null);

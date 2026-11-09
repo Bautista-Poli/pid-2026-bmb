@@ -1,0 +1,38 @@
+<!-- Disputas pendientes. Datos en disputas-pendientes.ts. -->
+<ui-tarjeta relleno="lg">
+  <div class="cuerpo-tarjeta cuerpo-tarjeta--compacto">
+    <div class="encabezado-indicador">
+      <div>
+        <p class="nota">Disputas pendientes</p>
+        <p class="num-tabular indicador-valor">{{ datos().disputas.denunciadas }}</p>
+        @if (datos().disputas.masAntiguaDesde; as desde) {
+          <p class="indicador-alerta">La más antigua espera {{ haceCuanto(desde) }}</p>
+        }
+      </div>
+      <a routerLink="/admin/disputas" class="enlace-ver-todos">Ver todas</a>
+    </div>
+    @if (datos().disputas.primeras.length === 0) {
+      <p class="vacio">No hay disputas pendientes.</p>
+    } @else {
+      <ul class="lista-divisoria">
+        @for (d of datos().disputas.primeras; track d.id) {
+          <li>
+            <a class="fila" [routerLink]="['/admin/disputas', d.id]">
+              <span class="fila-texto">
+                <span class="fila-titulo">{{ tituloDisputa(d.tipo, d.motivo) }}</span>
+                <span class="fila-subtitulo">{{ d.estacionamiento }}</span>
+              </span>
+              <span class="fila-hora">{{ haceCuanto(d.denunciadaEn) }}</span>
+            </a>
+          </li>
+        }
+      </ul>
+    }
+    @if (datos().disputas.reclamosEnConversacion > 0) {
+      <p class="nota-pequena">
+        {{ datos().disputas.reclamosEnConversacion }}
+        {{ datos().disputas.reclamosEnConversacion === 1 ? 'reclamo sigue' : 'reclamos siguen' }} en conversación entre las partes
+      </p>
+    }
+  </div>
+</ui-tarjeta>

@@ -1,0 +1,24 @@
+<!-- Ocupacion por dia. Datos en grafico-ocupacion.ts. -->
+<ui-tarjeta relleno="lg">
+  <div class="grafico">
+    <div class="grafico-cabecera">
+      <div>
+        <h2 class="grafico-titulo">Ocupación por día</h2>
+        <p class="grafico-detalle">Horas reservadas sobre las horas que abren tus cocheras</p>
+      </div>
+      <div class="leyenda">
+        <span class="leyenda-item"><span class="muestra-usadas"></span> Usadas</span>
+        <span class="leyenda-item"><span class="muestra-libres"></span> Libres</span>
+      </div>
+    </div>
+    @if (hayOcupacion() && datos().kpis.ocupacion.valor > 0) {
+      <app-barras-dia [barras]="barrasOcupacion()" descripcion="Ocupación por día del período" />
+    } @else if (hayOcupacion()) {
+      <p class="sin-datos">Tus cocheras no tuvieron reservas en este período.</p>
+    } @else {
+      <p class="sin-datos">
+        Sin horarios de atención cargados: no hay horas para medir.
+      </p>
+    }
+  </div>
+</ui-tarjeta>

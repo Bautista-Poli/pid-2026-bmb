@@ -1,0 +1,39 @@
+<!-- Una metrica del tablero. Datos en tarjeta-metrica.ts. -->
+<ui-tarjeta relleno="ninguno">
+  <div class="metrica">
+    <span
+      class="metrica-icono"
+      [class]="claseTono[metrica().tono]"
+    >
+      <ui-icono [nombre]="metrica().icono" [tamano]="21" />
+    </span>
+    <div class="metrica-info">
+      <p class="metrica-etiqueta">{{ metrica().etiqueta }}</p>
+      <p class="num-tabular metrica-valor">
+        {{ metrica().valor }}
+        @if (metrica().complemento) {
+          <span class="metrica-complemento">{{ metrica().complemento }}</span>
+        }
+      </p>
+      @if (metrica().variacion; as variacion) {
+        <p
+          class="metrica-variacion"
+          [class]="
+            variacion.sube === null
+              ? 'variacion-neutra'
+              : variacion.sube
+                ? 'variacion-sube'
+                : 'variacion-baja'
+          "
+        >
+          @if (variacion.sube !== null) {
+            <ui-icono [nombre]="variacion.sube ? 'subir' : 'bajar'" [tamano]="14" />
+          }
+          {{ variacion.texto }}
+        </p>
+      } @else if (metrica().detalle) {
+        <p class="metrica-detalle">{{ metrica().detalle }}</p>
+      }
+    </div>
+  </div>
+</ui-tarjeta>

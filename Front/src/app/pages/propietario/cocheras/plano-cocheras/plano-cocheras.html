@@ -1,0 +1,125 @@
+<!-- Plano de una planta: pestañas de plantas, grilla de cocheras y leyenda. Datos en plano-cocheras.ts. -->
+<section
+  class="plano"
+  aria-label="Plano de cocheras"
+>
+  <div class="plantas">
+    @for (planta of plantas(); track planta.nombre) {
+      <button
+        type="button"
+        class="planta-tab"
+        [class]="
+          plantaActiva()?.nombre === planta.nombre
+            ? 'planta-tab-activa'
+            : 'planta-tab-inactiva'
+        "
+        [attr.aria-pressed]="plantaActiva()?.nombre === planta.nombre"
+        (click)="plantaElegida.emit(planta.nombre)"
+      >
+        {{ planta.nombre }}
+        <span
+          class="num-tabular planta-cantidad"
+          [class]="
+            plantaActiva()?.nombre === planta.nombre
+              ? 'planta-cantidad-activa'
+              : 'planta-cantidad-inactiva'
+          "
+        >
+          {{ planta.cocheras.length }}
+        </span>
+      </button>
+    }
+    <button
+      type="button"
+      class="nueva-planta"
+      (click)="nuevaPlanta.emit()"
+    >
+      + Nueva planta
+    </button>
+    <p class="plano-ayuda">
+      Tocá una cochera para editarla · Shift + clic elige varias
+    </p>
+  </div>
+
+  @if (plantaActiva(); as planta) {
+    <div
+      class="aparece-en-cadena grilla"
+    >
+      @for (cochera of planta.cocheras; track cochera.id) {
+        <button
+          type="button"
+          class="cochera"
+          [class]="
+            claseCochera[cochera.estado] +
+            (cochera.bloqueada ? ' ' + claseBloqueada : '') +
+            (estaElegida(cochera) ? ' cochera-elegida' : '')
+          "
+          [attr.aria-pressed]="estaElegida(cochera)"
+          [attr.aria-label]="
+            'Cochera ' +
+            cochera.identificador +
+            ', ' +
+            (cochera.cubierta ? 'cubierta' : 'descubierta') +
+            ', ' +
+            etiquetaEstado[cochera.estado] +
+            (cochera.bloqueada ? ', bloqueada' : '')
+          "
+          (click)="tocada.emit({ cochera, evento: $event })"
+        >
+          @if (cochera.bloqueada) {
+            <span
+              class="cochera-candado"
+              title="Bloqueada"
+            >
+              <ui-icono nombre="candado" [tamano]="12" />
+            </span>
+          }
+          <!-- Techo: el techito si es cubierta, el sol si esta al aire libre -->
+          <span
+            class="cochera-techo"
+            [class]="cochera.cubierta ? 'techo-cubierta' : 'techo-descubierta'"
+            [attr.title]="cochera.cubierta ? 'Cubierta' : 'Descubierta'"
+          >
+            <ui-icono [nombre]="cochera.cubierta ? 'techo' : 'sol'" [tamano]="13" />
+          </span>
+          <span class="num-tabular cochera-numero">{{ cochera.identificador }}</span>
+          <span class="cochera-tipo">
+            <ui-icono [nombre]="iconoTipo[cochera.tipoVehiculo]" [tamano]="15" />
+            <span class="cochera-punto" [class]="clasePunto[cochera.estado]"></span>
+          </span>
+        </button>
+      }
+    </div>
+
+    <div
+      class="leyenda"
+    >
+      <span class="leyenda-item"><span class="punto-libre-fijo"></span>Libre</span>
+      <span class="leyenda-item"><span class="punto-ocupada-fijo"></span>Ocupada</span>
+      <span class="leyenda-item"><span class="punto-reservada-fijo"></span>Reservada</span>
+      <span class="leyenda-item"><span class="punto-baja-fijo"></span>De baja</span>
+      <span class="leyenda-item-icono">
+        <ui-icono nombre="candado" [tamano]="12" class="icono-aviso" />
+        Bloqueada
+      </span>
+      <span class="leyenda-separador" aria-hidden="true"></span>
+      <span class="leyenda-item-icono">
+        <span class="leyenda-techo-cubierta">
+          <ui-icono nombre="techo" [tamano]="13" />
+        </span>
+        Cubierta
+      </span>
+      <span class="leyenda-item-icono">
+        <span class="leyenda-techo-descubierta"><ui-icono nombre="sol" [tamano]="13" /></span>
+        Descubierta
+      </span>
+      <button
+        type="button"
+        class="elegir-planta"
+        (click)="todaLaPlanta.emit()"
+      >
+        Elegir toda la planta
+      </button>
+    </div>
+  }
+</section>

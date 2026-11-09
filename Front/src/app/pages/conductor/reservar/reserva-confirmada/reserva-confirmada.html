@@ -1,0 +1,48 @@
+<!-- Confirmacion de la reserva recien hecha. Datos en reserva-confirmada.ts. -->
+@let r = reserva();
+<div class="aparece columna-reserva">
+  <header class="encabezado-confirmacion">
+    <app-reserva-hecha />
+    <div>
+      <p class="eyebrow eyebrow-exito">Reserva enviada</p>
+      <h1 class="titulo-vista titulo-reserva">{{ estacionamiento() }}</h1>
+    </div>
+  </header>
+
+  <ui-tarjeta relleno="lg">
+    <div class="detalle-confirmacion">
+      <p class="texto-detalle">
+        Queda pendiente hasta que el propietario la confirme.
+      </p>
+      <p class="texto-detalle">
+        Guardamos tu cochera el
+        <span class="dato-destacado">
+          {{ desdeFechaISO(r.fecha) | date: "EEEE d 'de' MMMM" }}</span
+        >, de
+        <span class="num-tabular dato-destacado"
+          >{{ r.horaDesde }} a {{ r.horaHasta }}</span
+        >{{ r.fechaHasta !== r.fecha ? ' del día siguiente' : '' }}.
+      </p>
+      <div class="fila-detalle">
+        <span class="texto-detalle">Cochera asignada</span>
+        <span class="num-tabular dato-destacado">
+          {{ r.cocheraIdentificador ?? '—' }}
+        </span>
+      </div>
+      <div class="separador"></div>
+      <div class="fila-detalle">
+        <span class="texto-detalle">Total</span>
+        <span class="num-tabular total-reserva">
+          $ {{ r.precioTotal.toLocaleString('es-AR') }}
+        </span>
+      </div>
+    </div>
+  </ui-tarjeta>
+
+  <div class="acciones-confirmacion">
+    <ui-boton variante="primario" [bloque]="true" routerLink="/conductor/mis-reservas">
+      Ver mis reservas
+    </ui-boton>
+    <ui-boton [bloque]="true" routerLink="/conductor/explorar">Seguir explorando</ui-boton>
+  </div>
+</div>

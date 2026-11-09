@@ -1,0 +1,19 @@
+<!-- Un ranking de estacionamientos. Datos en ranking-estacionamientos.ts. -->
+<ui-tarjeta relleno="lg">
+  <div class="cuerpo-tarjeta cuerpo-tarjeta--compacto">
+    <h3 class="titulo-tarjeta">{{ titulo() }}</h3>
+    @if (filas().length === 0) {
+      <p class="vacio">Sin datos en este período.</p>
+    } @else {
+      <ol class="lista-divisoria">
+        @for (fila of filas(); track fila.id; let i = $index) {
+          <li class="num-tabular fila-ranking">
+            <span class="fila-ranking__puesto">{{ i + 1 }}</span>
+            <span class="fila-ranking__nombre">{{ fila.nombre }}</span>
+            <span class="fila-ranking__valor">{{ plata() ? pesos(fila.valor) : fila.valor }}</span>
+          </li>
+        }
+      </ol>
+    }
+  </div>
+</ui-tarjeta>

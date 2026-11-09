@@ -1,0 +1,82 @@
+.metrica {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.25rem;
+}
+
+.metrica-icono {
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 9999px;
+}
+
+.metrica-info {
+  min-width: 0px;
+}
+
+.metrica-etiqueta {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-plomo);
+}
+
+.metrica-valor {
+  margin-top: 0.5rem;
+  font-size: 26px;
+  line-height: 1;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--color-tinta);
+}
+
+.metrica-complemento {
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--color-humo);
+}
+
+.metrica-variacion {
+  margin-top: 0.625rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.metrica-detalle {
+  margin-top: 0.625rem;
+  font-size: 12px;
+  color: var(--color-plomo);
+}
+
+.tono-azul {
+  background-color: var(--color-acento-suave);
+  color: var(--color-acento);
+}
+
+.tono-verde {
+  background-color: var(--color-exito-suave);
+  color: var(--color-exito);
+}
+
+.tono-violeta {
+  background-color: color-mix(in oklab, oklch(60.6% 0.25 292.717) 12%, transparent);
+  color: oklch(60.6% 0.25 292.717);
+}
+
+.variacion-neutra {
+  color: var(--color-plomo);
+}
+
+.variacion-sube {
+  color: var(--color-exito);
+}
+
+.variacion-baja {
+  color: var(--color-ocupada);
+}

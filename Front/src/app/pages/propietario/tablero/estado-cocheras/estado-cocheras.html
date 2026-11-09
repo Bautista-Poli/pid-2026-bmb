@@ -1,0 +1,78 @@
+<!-- Cuadricula con el estado de cada cochera. Datos en estado-cocheras.ts. -->
+<ui-tarjeta relleno="lg">
+  <div class="cocheras">
+    <div class="cocheras-cabecera">
+      <div class="cocheras-titulo">
+        <h2 class="panel-titulo">Estado de cocheras</h2>
+        <a
+          class="link-chico"
+          [routerLink]="['/propietario/cocheras', activo().id]"
+        >
+          Gestionar
+        </a>
+      </div>
+      @if (!cargando()) {
+        <p class="num-tabular actualizado">
+          Actualizado {{ actualizadoEn() | date: 'HH:mm' }}
+        </p>
+      }
+    </div>
+
+    @if (estacionamientos().length > 1) {
+      <div class="lotes">
+        @for (lote of estacionamientos(); track lote.id) {
+          <ui-chip [activo]="lote.id === activo().id" (alternar)="seleccionar.emit(lote.id)">
+            {{ lote.nombre }}
+          </ui-chip>
+        }
+      </div>
+    }
+
+    @if (cargando()) {
+      <ui-cargando [cantidad]="1" />
+    } @else if (cocheras().length === 0) {
+      <ui-estado-vacio titulo="Este estacionamiento no tiene cocheras cargadas">
+        <ui-boton [routerLink]="['/propietario/cocheras', activo().id]">
+          Cargar cocheras
+        </ui-boton>
+      </ui-estado-vacio>
+    } @else {
+      <div class="aparece-en-cadena grilla-cocheras">
+        @for (cochera of cocheras(); track cochera.id) {
+          <app-celda-cochera
+            [cochera]="cochera"
+            [seleccionada]="cocheraAbierta()?.id === cochera.id"
+            (elegida)="abrir($event)"
+          />
+        }
+      </div>
+    }
+
+    <app-leyenda-cocheras />
+
+    @if (cocheraAbierta(); as cochera) {
+      <div class="detalle-cochera">
+        <div class="detalle-cabecera">
+          <p class="num-tabular detalle-nombre">
+            Cochera {{ cochera.identificador }}
+          </p>
+          <p class="detalle-sector">
+            @if (cochera.sector) {
+              {{ cochera.sector }} ·
+            }
+            {{ cochera.cubierta ? 'Cubierta' : 'Descubierta' }} ·
+            {{ etiquetaTipo[cochera.tipoVehiculo] }}
+          </p>
+        </div>
+
+        <!-- El estado lo mueven el ingreso y el egreso; baja y bloqueo estan en Cocheras. -->
+        <p class="detalle-ayuda">
+          Se ocupa y se libera sola con el ingreso y el egreso.
+          <a class="link" routerLink="/propietario/cocheras">
+            Bloquearla o darla de baja
+          </a>
+        </p>
+      </div>
+    }
+  </div>
+</ui-tarjeta>

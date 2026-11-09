@@ -1,0 +1,28 @@
+<!-- Ingresos por dia. Datos en grafico-ingresos.ts. -->
+<ui-tarjeta relleno="lg">
+  <div class="grafico">
+    <div class="grafico-cabecera">
+      <div>
+        <h2 class="grafico-titulo">Ingresos (simulados)</h2>
+        <p class="grafico-detalle">
+          Total {{ pesos(datos().kpis.ingresos.valor) }}
+          @if (datos().kpis.devoluciones.valor > 0) {
+            (neto de {{ pesos(datos().kpis.devoluciones.valor) }} devueltos por reclamos)
+          }
+          @if (datos().ingresosProyectados > 0) {
+            · {{ pesos(datos().ingresosProyectados) }} por cobrar de reservas confirmadas que vienen
+          }
+        </p>
+      </div>
+      <div class="leyenda">
+        <span class="leyenda-item"><span class="muestra-reservas"></span> Reservas</span>
+        <span class="leyenda-item"><span class="muestra-abonos"></span> Abonos</span>
+      </div>
+    </div>
+    @if (hayIngresos()) {
+      <app-barras-dia [barras]="barrasIngresos()" descripcion="Ingresos por día del período" />
+    } @else {
+      <p class="sin-datos">Todavía no hubo ingresos en este período.</p>
+    }
+  </div>
+</ui-tarjeta>

@@ -1,0 +1,35 @@
+<!-- La escalera de niveles. Datos en niveles-reputacion.ts. -->
+<ui-tarjeta relleno="lg">
+  <div class="niveles">
+    <div class="niveles-cabecera">
+      <h2 class="panel-titulo">Niveles</h2>
+      <span class="panel-nota">
+        Hacen falta {{ datos().minimoCalificaciones }} calificaciones para tener nivel
+      </span>
+    </div>
+    <ol class="niveles-lista">
+      @for (nivel of datos().niveles; track nivel.codigo; let i = $index) {
+        <li
+          class="nivel-item"
+          [class]="
+            nivel.codigo === datos().nivel
+              ? 'nivel-actual'
+              : alcanzado(i)
+                ? 'nivel-alcanzado'
+                : 'nivel-pendiente'
+          "
+        >
+          <app-nivel-estacionamiento [nivel]="nivel.codigo" />
+          <span class="num-tabular nivel-rango">{{ rango(i) }}</span>
+          @if (nivel.codigo === datos().nivel) {
+            <span class="nivel-actual-texto">Estás acá</span>
+          } @else if (datos().siguienteNivel?.codigo === nivel.codigo) {
+            <span class="num-tabular nivel-falta">
+              Te faltan {{ datos().siguienteNivel!.faltan }}
+            </span>
+          }
+        </li>
+      }
+    </ol>
+  </div>
+</ui-tarjeta>

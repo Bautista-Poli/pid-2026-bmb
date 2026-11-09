@@ -12,63 +12,13 @@
         </p>
       </div>
 
-      <div class="filtros">
-        <label
-          class="buscador"
-        >
-          <ui-icono nombre="buscar" [tamano]="17" class="buscador-icono" />
-          <input
-            type="search"
-            class="buscador-input"
-            placeholder="Buscar por patente, vehículo o estacionamiento…"
-            aria-label="Buscar reservas"
-            [value]="busqueda()"
-            (input)="busqueda.set(leer($event))"
-          />
-        </label>
-
-        @if (recursoEstacionamientos.value().length > 1) {
-          <select
-            class="selector"
-            aria-label="Estacionamiento"
-            [value]="estacionamientoId()"
-            (change)="estacionamientoId.set(leer($event))"
-          >
-            <option value="">Todos los estacionamientos</option>
-            @for (lote of recursoEstacionamientos.value(); track lote.id) {
-              <option [value]="lote.id">{{ lote.nombre }}</option>
-            }
-          </select>
-        }
-
-        <div class="fecha">
-          <input
-            type="date"
-            class="fecha-input"
-            aria-label="Filtrar por fecha"
-            [value]="fecha()"
-            (change)="fecha.set(leer($event))"
-          />
-          @if (hayFiltros()) {
-            <button
-              type="button"
-              class="boton-texto"
-              (click)="limpiarFiltros()"
-            >
-              Limpiar
-            </button>
-          }
-        </div>
-
-        <button
-          type="button"
-          class="boton-texto"
-          [attr.aria-pressed]="verCanceladas()"
-          (click)="verCanceladas.set(!verCanceladas())"
-        >
-          {{ verCanceladas() ? 'Ocultar canceladas' : 'Ver canceladas' }}
-        </button>
-      </div>
+      <app-filtros-reservas
+        [estacionamientos]="recursoEstacionamientos.value()"
+        [(busqueda)]="busqueda"
+        [(fecha)]="fecha"
+        [(estacionamientoId)]="estacionamientoId"
+        [(verCanceladas)]="verCanceladas"
+      />
     </header>
 
     @if (aviso(); as mensaje) {
@@ -103,172 +53,14 @@
       />
     } @else {
       @for (seccion of secciones(); track seccion.clave) {
-      <section class="seccion" [attr.aria-label]="seccion.titulo">
-        <h2 class="seccion-titulo">
-          {{ seccion.titulo }}
-          <span class="num-tabular seccion-cantidad">
-            {{ seccion.reservas.length }}
-          </span>
-        </h2>
-      <ui-tarjeta relleno="ninguno" [recortar]="true">
-        <!-- Desktop: tabla -->
-        <div class="tabla-contenedor">
-          <table class="tabla">
-            <thead>
-              <tr class="tabla-cabecera">
-                <th class="th-primera">Horario</th>
-                <th class="th">Estacionamiento</th>
-                <th class="th">Espacio</th>
-                <th class="th">Vehículo</th>
-                <th class="th-derecha">Importe</th>
-                <th class="th">Estado</th>
-                <th class="th-ultima">Acciones</th>
-              </tr>
-            </thead>
-            <tbody class="aparece-en-cadena">
-              @for (reserva of seccion.reservas; track reserva.id) {
-                <tr
-                  class="tabla-fila"
-                >
-                  <td class="td-primera">
-                    <div class="horario">
-                      <ui-icono [nombre]="iconoVehiculo[reserva.vehiculo.tipo]" [tamano]="18" class="horario-icono" />
-                      <div>
-                        <p class="num-tabular horario-horas">
-                          {{ reserva.horaDesde }} - {{ reserva.horaHasta }}
-                        </p>
-                        <p class="num-tabular horario-fecha">
-                          {{ desdeFechaISO(reserva.fecha) | date: 'EEE d MMM' }}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="td-nombre">{{ reserva.estacionamiento.nombre }}</td>
-                  <td class="num-tabular td-numero">{{ reserva.cochera?.identificador ?? '—' }}</td>
-                  <td class="td">
-                    {{ vehiculo(reserva) }}
-                    <span class="num-tabular patente">({{ reserva.vehiculo.patente }})</span>
-                    <ng-container [ngTemplateOutlet]="reputacion" [ngTemplateOutletContext]="{ $implicit: reserva }" />
-                  </td>
-                  <td class="num-tabular td-importe">
-                    $ {{ reserva.precioTotal.toLocaleString('es-AR') }}
-                  </td>
-                  <td class="td">
-                    <ui-etiqueta [tono]="tonoEstado(reserva)">
-                      {{ etiquetaEstado(reserva) }}
-                    </ui-etiqueta>
-                  </td>
-                  <td class="td-ultima">
-                    @if (pasoDe(reserva); as paso) {
-                      <button
-                        type="button"
-                        class="boton-paso"
-                        [disabled]="procesandoId() === reserva.id"
-                        (click)="avanzar(reserva)"
-                      >
-                        @if (procesandoId() === reserva.id) {
-                          <span
-                            class="spinner"
-                            aria-hidden="true"
-                          ></span>
-                        }
-                        {{ paso }}
-                      </button>
-                    }
-                    @if (puedeMarcarAusente(reserva)) {
-                      <button
-                        type="button"
-                        class="boton-ausente"
-                        [disabled]="procesandoId() === reserva.id"
-                        (click)="aMarcarAusente.set(reserva)"
-                      >
-                        Marcar ausente
-                      </button>
-                    }
-                    <ng-container [ngTemplateOutlet]="calificacion" [ngTemplateOutletContext]="{ $implicit: reserva }" />
-                    @if (!pasoDe(reserva) && !puedeMarcarAusente(reserva) && !conAccionDeCalificar(reserva)) {
-                      @if (avanzaConCodigo(reserva)) {
-                        <span class="texto-codigo">Con el código</span>
-                      } @else {
-                        <span class="guion">—</span>
-                      }
-                    }
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-
-        <!-- Mobile: lista -->
-        <ul class="aparece-en-cadena lista-mobile">
-          @for (reserva of seccion.reservas; track reserva.id) {
-            <li class="tarjeta-mobile">
-              <div class="tarjeta-cabecera">
-                <span class="tarjeta-icono">
-                  <ui-icono [nombre]="iconoVehiculo[reserva.vehiculo.tipo]" [tamano]="19" />
-                </span>
-                <div class="tarjeta-info">
-                  <p class="tarjeta-nombre">
-                    {{ reserva.estacionamiento.nombre }}
-                  </p>
-                  <p class="num-tabular tarjeta-fecha">
-                    {{ desdeFechaISO(reserva.fecha) | date: 'EEE d MMM' }} ·
-                    {{ reserva.horaDesde }} - {{ reserva.horaHasta }}
-                  </p>
-                  <p class="num-tabular tarjeta-vehiculo">
-                    {{ vehiculo(reserva) }} ({{ reserva.vehiculo.patente }})
-                    @if (reserva.cochera) {
-                      · {{ reserva.cochera.identificador }}
-                    }
-                  </p>
-                  <ng-container [ngTemplateOutlet]="reputacion" [ngTemplateOutletContext]="{ $implicit: reserva }" />
-                </div>
-                <ui-etiqueta [tono]="tonoEstado(reserva)">
-                  {{ etiquetaEstado(reserva) }}
-                </ui-etiqueta>
-              </div>
-
-              <div class="tarjeta-pie">
-                <span class="num-tabular tarjeta-importe">
-                  $ {{ reserva.precioTotal.toLocaleString('es-AR') }}
-                </span>
-                @if (pasoDe(reserva); as paso) {
-                  <button
-                    type="button"
-                    class="boton-paso-mobile"
-                    [disabled]="procesandoId() === reserva.id"
-                    (click)="avanzar(reserva)"
-                  >
-                    @if (procesandoId() === reserva.id) {
-                      <span
-                        class="spinner"
-                        aria-hidden="true"
-                      ></span>
-                    }
-                    {{ paso }}
-                  </button>
-                }
-                @if (puedeMarcarAusente(reserva)) {
-                  <button
-                    type="button"
-                    class="boton-ausente-mobile"
-                    [disabled]="procesandoId() === reserva.id"
-                    (click)="aMarcarAusente.set(reserva)"
-                  >
-                    Marcar ausente
-                  </button>
-                }
-                @if (!pasoDe(reserva) && !puedeMarcarAusente(reserva) && avanzaConCodigo(reserva)) {
-                  <span class="texto-codigo">Con el código</span>
-                }
-                <ng-container [ngTemplateOutlet]="calificacion" [ngTemplateOutletContext]="{ $implicit: reserva }" />
-              </div>
-            </li>
-          }
-        </ul>
-      </ui-tarjeta>
-      </section>
+        <app-seccion-reservas
+          [titulo]="seccion.titulo"
+          [reservas]="seccion.reservas"
+          [procesandoId]="procesandoId()"
+          (avanzar)="avanzar($event)"
+          (marcarAusente)="aMarcarAusente.set($event)"
+          (calificar)="aCalificar.set($event)"
+        />
       }
     }
   </div>
@@ -296,31 +88,5 @@
     </div>
   }
 </ui-modal>
-
-<!-- Reputacion del conductor: la ve el propietario antes de confirmar. -->
-<ng-template #reputacion let-reserva>
-  @if (reputacionConductor(reserva); as texto) {
-    <p class="num-tabular reputacion-texto" title="Lo que le pusieron otros estacionamientos">
-      {{ texto }}
-    </p>
-  } @else {
-    <p class="reputacion-vacia">Sin calificaciones</p>
-  }
-</ng-template>
-
-<!-- Calificar al conductor (finalizada o ausente) o lo que ya le puso. -->
-<ng-template #calificacion let-reserva>
-  @if (reserva.conductorCalificable) {
-    <button
-      type="button"
-      class="boton-calificar"
-      (click)="aCalificar.set(reserva)"
-    >
-      Calificar conductor
-    </button>
-  } @else if (reserva.calificacionAlConductor !== null) {
-    <span class="num-tabular calificado">Calificaste ★ {{ reserva.calificacionAlConductor }}</span>
-  }
-</ng-template>
 
 <app-calificar-conductor [reserva]="aCalificar()" (cerrado)="aCalificar.set(null)" (calificada)="conductorCalificado()" />

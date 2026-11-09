@@ -1,0 +1,44 @@
+<!-- Lo que califican los conductores, por categoria. Datos en categorias-reputacion.ts. -->
+<ui-tarjeta relleno="lg">
+  <div class="categorias-panel">
+    <div class="panel-cabecera">
+      <h2 class="panel-titulo">Lo que califican los conductores</h2>
+      <span class="panel-nota">Promedio de 1 a 5</span>
+    </div>
+    @if (datos().calificaciones.cantidad === 0) {
+      <p class="sin-calificaciones">
+        Todavía nadie calificó en este período. Los conductores califican después de entrar y salir;
+        mientras tanto, el puntaje toma un 4 de promedio.
+      </p>
+    } @else {
+      <ul class="categorias">
+        @for (categoria of datos().calificaciones.categorias; track categoria.codigo) {
+          @let tend = tendencia(categoria);
+          <li class="categoria">
+            <span class="categoria-nombre">{{ categoria.nombre }}</span>
+            <span class="categoria-barra">
+              <span
+                class="categoria-relleno"
+                [style.width.%]="((categoria.promedio ?? 0) / 5) * 100"
+              ></span>
+            </span>
+            <span class="num-tabular categoria-nota">{{ nota(categoria.promedio) }}</span>
+            <span class="num-tabular categoria-tendencia" [class]="tend.clase">{{ tend.texto }}</span>
+          </li>
+        }
+      </ul>
+    }
+    @if (etiquetasMarcadas().length > 0) {
+      <div class="etiquetas">
+        @for (etiqueta of etiquetasMarcadas(); track etiqueta.codigo) {
+          <span
+            class="num-tabular etiqueta"
+            [class]="etiqueta.positiva ? 'etiqueta-positiva' : 'etiqueta-negativa'"
+          >
+            {{ textoDeEtiqueta(etiqueta.codigo) }} · {{ etiqueta.cantidad }}
+          </span>
+        }
+      </div>
+    }
+  </div>
+</ui-tarjeta>

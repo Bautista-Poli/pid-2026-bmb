@@ -1,0 +1,89 @@
+<!-- Grafico de ocupacion de la semana. Datos en ocupacion-semana.ts. -->
+<ui-tarjeta relleno="lg">
+  <div class="ocupacion">
+    <div class="panel-cabecera">
+      <div>
+        <h2 class="panel-titulo">Ocupación de cocheras</h2>
+        <p class="panel-detalle">Cocheras con reservas cada día de esta semana</p>
+      </div>
+      <div class="leyenda">
+        <span class="leyenda-item">
+          <span class="muestra-ocupadas"></span> Ocupadas
+        </span>
+        <span class="leyenda-item">
+          <span class="muestra-disponibles"></span> Disponibles
+        </span>
+      </div>
+    </div>
+
+    @if (cargando()) {
+      <div class="esqueleto esqueleto-grafico"></div>
+    } @else {
+      <div class="grafico" role="img" aria-label="Ocupación de cocheras por día de esta semana">
+        <!-- Eje Y -->
+        <div class="escala">
+          @for (marca of escala().marcas; track marca) {
+            <span class="num-tabular escala-marca">
+              {{ marca }}
+            </span>
+          }
+        </div>
+
+        <div class="grafico-area">
+          <div class="grafico-lienzo">
+            <!-- Grilla -->
+            <div class="lineas-guia">
+              @for (marca of escala().marcas; track marca) {
+                <div class="linea-guia"></div>
+              }
+            </div>
+
+            <!-- Barras -->
+            <div class="barras">
+              @for (dia of semana(); track dia.fecha) {
+                <div class="columna grupo">
+                  <div class="columna-pila" [style.height]="alto(dia.ocupadas + dia.libres)">
+                    @if (dia.libres > 0) {
+                      <div
+                        class="barra-disponibles"
+                        [class.redondeada-abajo]="dia.ocupadas === 0"
+                        [style.flex-grow]="dia.libres"
+                      ></div>
+                    }
+                    @if (dia.ocupadas > 0) {
+                      <div
+                        class="barra-ocupadas"
+                        [class.redondeada-arriba]="dia.libres === 0"
+                        [style.flex-grow]="dia.ocupadas"
+                      ></div>
+                    }
+                  </div>
+
+                  <!-- Tooltip -->
+                  <div
+                    class="tooltip"
+                  >
+                    <p class="tooltip-titulo">{{ dia.etiqueta }}</p>
+                    <p class="num-tabular tooltip-detalle">{{ dia.ocupadas }} ocupadas · {{ dia.libres }} disponibles</p>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+
+          <!-- Eje X -->
+          <div class="dias">
+            @for (dia of semana(); track dia.fecha) {
+              <span
+                class="dia"
+                [class]="dia.esHoy ? 'dia-hoy' : 'dia-otro'"
+              >
+                {{ dia.etiqueta }}
+              </span>
+            }
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+</ui-tarjeta>

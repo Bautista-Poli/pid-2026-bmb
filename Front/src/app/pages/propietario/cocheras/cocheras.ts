@@ -1,4 +1,3 @@
-import { DatePipe } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -10,82 +9,23 @@ import {
   untracked,
 } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { Observable, forkJoin } from 'rxjs';
-import {
-  Boton,
-  Cargando,
-  Chip,
-  EstadoVacio,
-  Etiqueta,
-  Icono,
-  Miniatura,
-  Modal,
-  TonoEtiqueta,
-} from '@app/components/ui';
-import {
-  Cochera,
-  direccionCorta,
-  Estacionamiento,
-  EstadoCochera,
-  ETIQUETA_ESTADO_COCHERA,
-  ETIQUETA_TIPO_VEHICULO,
-  ICONO_TIPO_VEHICULO,
-  Id,
-  NuevaCochera,
-  ReservaDetallada,
-  TIPOS_VEHICULO,
-  TipoVehiculo,
-} from '@app/models';
-import { ErrorApi } from '@app/interceptors/error.interceptor';
+import { Boton, Cargando, Chip, EstadoVacio, Icono, Miniatura, Modal } from '@app/components/ui';
+import { Cochera, direccionCorta, Estacionamiento, Id, NuevaCochera, ReservaDetallada } from '@app/models';
 import { AuthService } from '@app/services/auth.service';
 import { reservaEnJuego } from '@app/services/ciclo-reserva';
 import { CocheraService } from '@app/services/propietario/cochera.service';
 import { EstacionamientoService } from '@app/services/estacionamiento.service';
 import { ReservaService } from '@app/services/reserva.service';
-import { aInstante, desdeFechaISO } from '@app/utils/fecha.util';
-
-/** Plantas comunes; al elegir una se sugiere tambien el prefijo. */
-const SUGERENCIAS_PLANTA = [
-  { detalle: 'Planta baja', prefijo: 'PB' },
-  { detalle: 'Primer piso', prefijo: 'P1' },
-  { detalle: 'Segundo piso', prefijo: 'P2' },
-  { detalle: 'Subsuelo', prefijo: 'SS' },
-];
-
-const SIN_PLANTA = 'Sin planta';
-
-const TONO_ESTADO: Record<EstadoCochera, TonoEtiqueta> = {
-  LIBRE: 'exito',
-  OCUPADA: 'peligro',
-  RESERVADA: 'aviso',
-  INACTIVA: 'neutro',
-};
-
-/** Fondo y borde de cada cochera del plano segun su estado (estilos en cocheras.css). */
-const CLASE_COCHERA: Record<EstadoCochera, string> = {
-  LIBRE: 'cochera-libre',
-  OCUPADA: 'cochera-ocupada',
-  RESERVADA: 'cochera-reservada',
-  INACTIVA: 'cochera-inactiva',
-};
-
-/** Color del punto de estado de cada cochera (estilos en cocheras.css). */
-const CLASE_PUNTO: Record<EstadoCochera, string> = {
-  LIBRE: 'punto-libre',
-  OCUPADA: 'punto-ocupada',
-  RESERVADA: 'punto-reservada',
-  INACTIVA: 'punto-inactiva',
-};
-
-/** Bloqueada por mantenimiento: se superpone al color del estado, no lo reemplaza. */
-const CLASE_BLOQUEADA = 'cochera-bloqueada';
-
-interface Planta {
-  nombre: string;
-  cocheras: Cochera[];
-}
+import { aInstante } from '@app/utils/fecha.util';
+import { AltaCocheras } from './alta-cocheras/alta-cocheras';
+import { BloqueoCochera } from './bloqueo-cochera/bloqueo-cochera';
+import { Planta, SIN_PLANTA } from './constantes';
+import { EdicionMasiva } from './edicion-masiva/edicion-masiva';
+import { FichaCochera } from './ficha-cochera/ficha-cochera';
+import { PlanoCocheras } from './plano-cocheras/plano-cocheras';
+import { ResumenCocheras } from './resumen-cocheras/resumen-cocheras';
 
 interface Confirmacion {
   titulo: string;
@@ -94,62 +34,48 @@ interface Confirmacion {
   accion: () => void;
 }
 
-/** Una celda de la vista previa del alta: existente o nueva. */
-interface CeldaPrevia {
-  id: string;
-  nueva: boolean;
-  /** Techo de las nuevas; `null` en las existentes (van en gris, sin detalle). */
-  cubierta: boolean | null;
-}
-
 /**
  * Pantalla `/propietario/cocheras` (y `/propietario/cocheras/:estacionamientoId`) · rol PROPIETARIO
  *
- * Plano de cocheras por planta. Arriba, un selector para pasar entre los
- * estacionamientos del propietario. Tocar una cochera abre su ficha al costado (en
- * mobile, una hoja desde abajo); con Shift / Ctrl / Cmd se eligen varios y se
- * editan juntos. El alta por cantidad vive en un modal con vista previa.
+ * Plano de cocheras por planta (plano-cocheras). Arriba, un selector para pasar
+ * entre los estacionamientos del propietario. Tocar una cochera abre su ficha al
+ * costado (ficha-cochera; en mobile, una hoja desde abajo); con Shift / Ctrl /
+ * Cmd se eligen varias y se editan juntas (edicion-masiva). El alta por cantidad
+ * (alta-cocheras) y el bloqueo (bloqueo-cochera) viven en modales.
  */
 @Component({
   selector: 'app-cocheras',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    DatePipe,
-    ReactiveFormsModule,
     RouterLink,
+    AltaCocheras,
+    BloqueoCochera,
+    EdicionMasiva,
+    FichaCochera,
+    PlanoCocheras,
+    ResumenCocheras,
     Boton,
     Cargando,
     Chip,
     EstadoVacio,
-    Etiqueta,
     Icono,
     Miniatura,
     Modal,
   ],
   templateUrl: './cocheras.html',
-  styleUrl: './cocheras.css',
+  styleUrls: ['./compartido.css', './cocheras.css'],
 })
 export class Cocheras {
   private readonly estacionamientos = inject(EstacionamientoService);
   private readonly cocheras = inject(CocheraService);
   private readonly reservas = inject(ReservaService);
-  private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
 
   /** Desde la ruta con id; sin id, la pantalla muestra el primer estacionamiento. */
   readonly estacionamientoId = input<Id>();
 
-  protected readonly tipos = TIPOS_VEHICULO;
-  protected readonly iconoTipo = ICONO_TIPO_VEHICULO;
-  protected readonly etiquetaTipo = ETIQUETA_TIPO_VEHICULO;
-  protected readonly etiquetaEstado = ETIQUETA_ESTADO_COCHERA;
-  protected readonly tonoEstado = TONO_ESTADO;
-  protected readonly claseCochera = CLASE_COCHERA;
-  protected readonly clasePunto = CLASE_PUNTO;
-  protected readonly claseBloqueada = CLASE_BLOQUEADA;
   protected readonly direccionCorta = direccionCorta;
-  protected readonly desdeFechaISO = desdeFechaISO;
 
   /* ---------------------------- estacionamientos ---------------------------- */
 
@@ -175,8 +101,6 @@ export class Cocheras {
     untracked(() => {
       this.seleccion.set([]);
       this.plantaElegida.set(null);
-      this.reiniciarMasivo();
-      this.formulario.reset();
       this.aviso.set(null);
       this.error.set(null);
     });
@@ -200,22 +124,6 @@ export class Cocheras {
     defaultValue: [] as ReservaDetallada[],
   });
 
-  /* -------------------------------- resumen -------------------------------- */
-
-  protected readonly resumen = computed(() => {
-    const lista = this.recursoCocheras.value();
-    const contar = (estado: EstadoCochera) => lista.filter((c) => c.estado === estado).length;
-    return {
-      total: lista.length - contar('INACTIVA'),
-      libres: contar('LIBRE'),
-      ocupadas: contar('OCUPADA'),
-      reservadas: contar('RESERVADA'),
-      inactivas: contar('INACTIVA'),
-      cubiertas: lista.filter((c) => c.estado !== 'INACTIVA' && c.cubierta).length,
-      descubiertas: lista.filter((c) => c.estado !== 'INACTIVA' && !c.cubierta).length,
-    };
-  });
-
   /* -------------------------------- plantas -------------------------------- */
 
   /** Cocheras agrupadas por planta (la columna `sector`), en el orden en que aparecen. */
@@ -228,6 +136,7 @@ export class Cocheras {
     return [...porPlanta].map(([nombre, cocheras]) => ({ nombre, cocheras }));
   });
 
+  /** Para el `<datalist>` de plantas que usan la ficha y la edicion masiva. */
   protected readonly nombresPlantas = computed(() =>
     this.plantas()
       .map((p) => p.nombre)
@@ -259,10 +168,6 @@ export class Cocheras {
     return lista.length === 1 ? lista[0] : null;
   });
 
-  protected estaElegida(cochera: Cochera): boolean {
-    return this.seleccion().includes(cochera.id);
-  }
-
   /** Clic: elige solo esa (o la suelta). Shift / Ctrl / Cmd: la suma o la saca. */
   protected tocar(cochera: Cochera, evento: MouseEvent): void {
     this.error.set(null);
@@ -277,32 +182,20 @@ export class Cocheras {
     } else {
       this.seleccion.set([cochera.id]);
     }
-
-    const unica = this.unica();
-    if (unica) this.cargarFormulario(unica);
-    this.reiniciarMasivo();
   }
 
-  /** Selecciona (o deselecciona) todas las cocheras de una planta. */
+  /** Selecciona todas las cocheras activas de la planta. */
   protected elegirTodaLaPlanta(): void {
     const planta = this.plantaActiva();
     if (!planta) return;
     this.seleccion.set(planta.cocheras.filter((c) => c.estado !== 'INACTIVA').map((c) => c.id));
-    this.reiniciarMasivo();
   }
 
   protected cerrarPanel(): void {
     this.seleccion.set([]);
   }
 
-  /* ---------------------------- ficha de una ------------------------------- */
-
-  protected readonly formulario = this.fb.nonNullable.group({
-    identificador: ['', [Validators.required, Validators.maxLength(20)]],
-    sector: ['', [Validators.maxLength(20)]],
-    tipo: this.fb.nonNullable.control<TipoVehiculo>('AUTO'),
-    cubierta: false,
-  });
+  /* ------------------------------ edicion -------------------------------- */
 
   /** Las proximas 3 reservas vigentes de la cochera abierta. */
   protected readonly proximas = computed(() => {
@@ -317,104 +210,24 @@ export class Cocheras {
       .slice(0, 3);
   });
 
-  protected invalido(campo: string): boolean {
-    const control = this.formulario.get(campo);
-    return Boolean(control?.invalid && control.touched);
-  }
-
-  protected elegirTipo(tipo: TipoVehiculo): void {
-    this.formulario.controls.tipo.setValue(tipo);
-    this.formulario.markAsDirty();
-  }
-
-  protected alternarCubierta(): void {
-    const control = this.formulario.controls.cubierta;
-    control.setValue(!control.value);
-    this.formulario.markAsDirty();
-  }
-
-  /** Llena la ficha con los datos de la cochera elegida. */
-  private cargarFormulario(cochera: Cochera): void {
-    this.formulario.reset({
-      identificador: cochera.identificador,
-      sector: cochera.sector ?? '',
-      tipo: cochera.tipoVehiculo,
-      cubierta: cochera.cubierta,
-    });
-  }
-
-  /** Guarda los cambios de la cochera de la ficha. */
-  protected guardar(): void {
-    const cochera = this.unica();
-    if (!cochera) return;
-
-    if (this.formulario.invalid) {
-      this.formulario.markAllAsTouched();
-      return;
-    }
-
-    const valores = this.formulario.getRawValue();
-    const cambios: Partial<NuevaCochera> = {
-      identificador: valores.identificador.trim().toUpperCase(),
-      sector: valores.sector.trim(),
-      tipoVehiculo: valores.tipo,
-      cubierta: valores.cubierta,
-    };
-
+  /** Guarda los cambios de la ficha de una cochera. */
+  protected guardar(cochera: Cochera, cambios: Partial<NuevaCochera>): void {
     this.ejecutar([this.cocheras.actualizar(cochera, cambios)], (guardadas) => {
       const guardada = guardadas[0] as Cochera;
-      this.formulario.markAsPristine();
       if (cambios.sector) this.plantaElegida.set(cambios.sector);
       return `Guardamos los cambios de la cochera ${guardada.identificador}.`;
     });
   }
 
-  protected descartar(): void {
-    const cochera = this.unica();
-    if (cochera) this.cargarFormulario(cochera);
-  }
-
-  /* ------------------------------ varias juntas ---------------------------- */
-
-  protected readonly masivoTipo = signal<TipoVehiculo | null>(null);
-  protected readonly masivoCubierta = signal<boolean | null>(null);
-  protected readonly masivoPlanta = signal('');
-
-  protected readonly hayCambiosMasivos = computed(
-    () =>
-      this.masivoTipo() !== null ||
-      this.masivoCubierta() !== null ||
-      this.masivoPlanta().trim() !== '',
-  );
-
-  private reiniciarMasivo(): void {
-    this.masivoTipo.set(null);
-    this.masivoCubierta.set(null);
-    this.masivoPlanta.set('');
-  }
-
-  protected leer(evento: Event): string {
-    return (evento.target as HTMLInputElement).value;
-  }
-
-  /** Aplica tipo y techo a todas las cocheras elegidas. */
-  protected aplicarMasivo(): void {
+  /** Aplica los cambios de la edicion masiva a todas las elegidas activas. */
+  protected aplicarMasivo(cambios: Partial<NuevaCochera>): void {
     const lista = this.elegidas().filter((c) => c.estado !== 'INACTIVA');
-    if (lista.length === 0 || !this.hayCambiosMasivos()) return;
-
-    const cambios: Partial<NuevaCochera> = {};
-    const tipo = this.masivoTipo();
-    const cubierta = this.masivoCubierta();
-    const planta = this.masivoPlanta().trim();
-    if (tipo) cambios.tipoVehiculo = tipo;
-    if (cubierta !== null) cambios.cubierta = cubierta;
-    if (planta) cambios.sector = planta;
+    if (lista.length === 0) return;
 
     this.ejecutar(
       lista.map((c) => this.cocheras.actualizar(c, cambios)),
       () => {
-        this.reiniciarMasivo();
-        if (planta) this.plantaElegida.set(planta);
+        if (cambios.sector) this.plantaElegida.set(cambios.sector);
         return `Actualizamos ${lista.length} cocheras.`;
       },
     );
@@ -462,75 +275,13 @@ export class Cocheras {
 
   /** Cochera para la que esta abierto el modal de bloqueo, o null si esta cerrado. */
   protected readonly bloqueando = signal<Cochera | null>(null);
-  /** Se prendio con el 409 de "sin alternativa": habilita el boton de bloquear igual. */
-  protected readonly necesitaForzar = signal(false);
-  protected readonly errorBloqueo = signal<string | null>(null);
 
-  protected readonly formularioBloqueo = this.fb.nonNullable.group({
-    motivo: ['', [Validators.maxLength(300)]],
-    hasta: [''],
-  });
-
-  /** Abre el modal para bloquear la cochera por mantenimiento. */
-  protected abrirBloqueo(cochera: Cochera): void {
-    this.bloqueando.set(cochera);
-    this.necesitaForzar.set(false);
-    this.errorBloqueo.set(null);
-    this.formularioBloqueo.reset({ motivo: '', hasta: '' });
-  }
-
-  protected cerrarBloqueo(): void {
+  protected alBloquear(mensaje: string): void {
     this.bloqueando.set(null);
-    this.necesitaForzar.set(false);
-    this.errorBloqueo.set(null);
-  }
-
-  /**
-   * Sin `forzar`: si alguna reserva de la cochera no tiene otra cochera
-   * compatible para reasignar, el backend responde 409 (todo o nada, no se
-   * bloquea nada) y se ofrece "bloquear igual" (`forzar: true`), que cancela
-   * esas puntuales en vez de trabar el bloqueo.
-   */
-  protected confirmarBloqueo(forzar: boolean): void {
-    const cochera = this.bloqueando();
-    if (!cochera) return;
-
-    const { motivo, hasta } = this.formularioBloqueo.getRawValue();
-    this.enviando.set(true);
-    this.errorBloqueo.set(null);
-
-    this.cocheras
-      .bloquear(cochera, {
-        motivo: motivo.trim() || undefined,
-        hasta: hasta ? new Date(hasta).toISOString() : null,
-        forzar,
-      })
-      .subscribe({
-        next: ({ reasignadas, canceladas }) => {
-          this.enviando.set(false);
-          this.cerrarBloqueo();
-          this.seleccion.set([]);
-          const partes = [
-            reasignadas > 0 ? `reasignamos ${reasignadas} reserva(s)` : null,
-            canceladas > 0 ? `cancelamos ${canceladas} reserva(s) sin alternativa` : null,
-          ].filter(Boolean);
-          this.aviso.set(
-            `La cochera ${cochera.identificador} quedó bloqueada` +
-              (partes.length ? `: ${partes.join(' y ')}.` : '.'),
-          );
-          this.recursoCocheras.reload();
-          this.recursoReservas.reload();
-        },
-        error: (e: Error) => {
-          this.enviando.set(false);
-          this.errorBloqueo.set(e.message);
-          // cochera.service.js: bloquear() lista en `details` las que no tienen alternativa.
-          const detalles = e instanceof ErrorApi ? e.detalles : null;
-          this.necesitaForzar.set(
-            typeof detalles === 'object' && detalles !== null && 'reservas_sin_alternativa' in detalles,
-          );
-        },
-      });
+    this.seleccion.set([]);
+    this.aviso.set(mensaje);
+    this.recursoCocheras.reload();
+    this.recursoReservas.reload();
   }
 
   /** Saca el bloqueo de la cochera. */
@@ -559,163 +310,19 @@ export class Cocheras {
   /* ------------------------ alta por cantidad (modal) ---------------------- */
 
   protected readonly agregando = signal(false);
-  protected readonly sugerencias = SUGERENCIAS_PLANTA;
+  /** Planta con la que arranca el alta ('' = nueva planta). */
+  protected readonly plantaAlta = signal<string | null>(null);
 
-  protected readonly formularioLotes = this.fb.group({
-    lotes: this.fb.array([this.nuevoLote()]),
-  });
-
-  protected get lotes() {
-    return this.formularioLotes.controls.lotes;
-  }
-
-  /** Plantas para los chips del alta: las cargadas primero, despues las sugeridas. */
-  protected readonly opcionesPlanta = computed(() => {
-    const cargadas = this.nombresPlantas().map((detalle) => ({
-      detalle,
-      prefijo: this.prefijoDePlanta(detalle),
-    }));
-    const nombres = new Set(cargadas.map((p) => p.detalle.toLowerCase()));
-    return [...cargadas, ...SUGERENCIAS_PLANTA.filter((s) => !nombres.has(s.detalle.toLowerCase()))];
-  });
-
-  /** Abre el modal de alta por cantidad con un lote vacio. */
   protected abrirAlta(planta?: string): void {
-    this.lotes.clear();
-    this.lotes.push(this.nuevoLote());
-    const destino = planta ?? this.plantaActiva()?.nombre;
-    if (destino && destino !== SIN_PLANTA) {
-      this.usarPlanta(0, { detalle: destino, prefijo: this.prefijoDePlanta(destino) });
-    }
-    this.errorAlta.set(null);
+    this.plantaAlta.set(planta ?? this.plantaActiva()?.nombre ?? null);
     this.agregando.set(true);
   }
 
-  protected cerrarAlta(): void {
+  protected alCrear({ cantidad, planta }: { cantidad: number; planta: string }): void {
     this.agregando.set(false);
-  }
-
-  protected agregarLote(): void {
-    this.lotes.push(this.nuevoLote());
-  }
-
-  protected quitarLote(indice: number): void {
-    if (this.lotes.length > 1) this.lotes.removeAt(indice);
-  }
-
-  protected elegirTipoLote(indice: number, tipo: TipoVehiculo): void {
-    this.lotes.at(indice).controls.tipo.setValue(tipo);
-  }
-
-  protected alternarCubiertaLote(indice: number): void {
-    const control = this.lotes.at(indice).controls.cubierta;
-    control.setValue(!control.value);
-  }
-
-  protected cambiarCantidad(indice: number, delta: number): void {
-    const control = this.lotes.at(indice).controls.cantidad;
-    const actual = Number.isInteger(control.value) ? control.value : 0;
-    control.setValue(Math.min(200, Math.max(1, actual + delta)));
-  }
-
-  protected usarPlanta(indice: number, planta: { detalle: string; prefijo: string }): void {
-    this.lotes.at(indice).patchValue({ sector: planta.detalle, prefijo: planta.prefijo });
-  }
-
-  protected invalidoLote(indice: number, campo: 'cantidad' | 'sector' | 'prefijo'): boolean {
-    const control = this.lotes.at(indice).controls[campo];
-    return control.invalid && control.touched;
-  }
-
-  /** Identificadores que va a generar el lote, continuando la numeracion existente. */
-  protected vistaPrevia(indice: number): string {
-    const rango = this.rango(indice);
-    if (!rango) return '';
-    const { prefijo, desde, hasta } = rango;
-    return desde === hasta ? `${prefijo}-${desde}` : `${prefijo}-${desde} … ${prefijo}-${hasta}`;
-  }
-
-  /** Cuantas cocheras se van a crear en total, para el boton. */
-  protected totalNuevas(): number {
-    return this.lotes
-      .getRawValue()
-      .reduce((suma, lote) => suma + (Number.isInteger(lote.cantidad) && lote.cantidad > 0 ? lote.cantidad : 0), 0);
-  }
-
-  /**
-   * Vista previa de cada planta tocada por el alta: sus cocheras actuales en
-   * gris y las nuevas resaltadas. Se muestran hasta 60 cocheras por planta.
-   */
-  protected previa(): { planta: string; celdas: CeldaPrevia[]; nuevas: number }[] {
-    const porPlanta = new Map<string, CeldaPrevia[]>();
-
-    this.lotes.getRawValue().forEach((lote, indice) => {
-      const planta = lote.sector.trim() || 'Nueva planta';
-      if (!porPlanta.has(planta)) {
-        const existentes = this.plantas().find((p) => p.nombre === planta)?.cocheras ?? [];
-        porPlanta.set(
-          planta,
-          existentes.map((c) => ({ id: c.identificador, nueva: false, cubierta: null })),
-        );
-      }
-      const rango = this.rango(indice);
-      if (rango) {
-        const celdas = porPlanta.get(planta) as CeldaPrevia[];
-        for (let n = rango.desde; n <= rango.hasta; n++) {
-          celdas.push({ id: `${rango.prefijo}-${n}`, nueva: true, cubierta: lote.cubierta });
-        }
-      }
-    });
-
-    return [...porPlanta].map(([planta, celdas]) => {
-      const existentes = celdas.filter((c) => !c.nueva);
-      const nuevas = celdas.filter((c) => c.nueva).slice(0, 60);
-      // Si no entran todas, se ven las ultimas existentes (las vecinas de las nuevas).
-      const lugar = Math.max(0, 60 - nuevas.length);
-      return {
-        planta,
-        nuevas: celdas.length - existentes.length,
-        celdas: [...existentes.slice(Math.max(0, existentes.length - lugar)), ...nuevas],
-      };
-    });
-  }
-
-  protected readonly errorAlta = signal<string | null>(null);
-
-  /** Crea todas las cocheras de los lotes cargados. */
-  protected crearLotes(): void {
-    if (this.lotes.invalid) {
-      this.lotes.markAllAsTouched();
-      return;
-    }
-
-    const lotes = this.lotes.getRawValue().map((lote) => ({
-      cantidad: lote.cantidad,
-      sector: lote.sector.trim(),
-      prefijo: lote.prefijo.trim().toUpperCase(),
-      tipoVehiculo: lote.tipo,
-      cubierta: lote.cubierta,
-    }));
-
-    const idActivo = this.idActivo();
-    if (!idActivo) return;
-
-    this.enviando.set(true);
-    this.errorAlta.set(null);
-
-    this.cocheras.crearLote(idActivo, lotes).subscribe({
-      next: (creadas) => {
-        this.enviando.set(false);
-        this.agregando.set(false);
-        this.plantaElegida.set(lotes[0].sector);
-        this.aviso.set(creadas.length === 1 ? 'Agregamos 1 cochera.' : `Agregamos ${creadas.length} cocheras.`);
-        this.recursoCocheras.reload();
-      },
-      error: (e: Error) => {
-        this.enviando.set(false);
-        this.errorAlta.set(e.message);
-      },
-    });
+    this.plantaElegida.set(planta);
+    this.aviso.set(cantidad === 1 ? 'Agregamos 1 cochera.' : `Agregamos ${cantidad} cocheras.`);
+    this.recursoCocheras.reload();
   }
 
   /* -------------------------------- comun ---------------------------------- */
@@ -743,57 +350,5 @@ export class Cocheras {
         this.recursoCocheras.reload();
       },
     });
-  }
-
-  /** Formulario de un lote: cantidad, sector, prefijo, tipo y techo. */
-  private nuevoLote() {
-    return this.fb.nonNullable.group({
-      cantidad: [10, [Validators.required, Validators.min(1), Validators.max(200)]],
-      sector: ['', [Validators.required, Validators.maxLength(20)]],
-      prefijo: [
-        '',
-        [Validators.required, Validators.maxLength(10), Validators.pattern(/^[A-Za-z0-9_-]+$/)],
-      ],
-      tipo: this.fb.nonNullable.control<TipoVehiculo>('AUTO'),
-      cubierta: false,
-    });
-  }
-
-  /** Prefijo que ya usa una planta ("PB" de "PB-7"), o uno sugerido por su nombre. */
-  private prefijoDePlanta(planta: string): string {
-    const cochera = this.plantas()
-      .find((p) => p.nombre === planta)
-      ?.cocheras.find((c) => /^.+-\d+$/.test(c.identificador));
-    const deCochera = cochera?.identificador.replace(/-\d+$/, '');
-    if (deCochera) return deCochera;
-    const sugerida = SUGERENCIAS_PLANTA.find((s) => s.detalle.toLowerCase() === planta.toLowerCase());
-    return sugerida?.prefijo ?? '';
-  }
-
-  private rango(indice: number): { prefijo: string; desde: number; hasta: number } | null {
-    const { cantidad, prefijo } = this.lotes.at(indice).getRawValue();
-    const base = prefijo.trim().toUpperCase();
-    if (!base || !Number.isInteger(cantidad) || cantidad < 1) return null;
-    const desde = this.ultimoNumero(base, indice) + 1;
-    return { prefijo: base, desde, hasta: desde + cantidad - 1 };
-  }
-
-  /**
-   * Ultimo numero usado con ese prefijo, entre las cocheras cargadas y los lotes
-   * anteriores del formulario que comparten prefijo.
-   */
-  private ultimoNumero(prefijo: string, hastaLote: number): number {
-    const patron = new RegExp(`^${prefijo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-(\\d+)$`, 'i');
-    const numeros = this.recursoCocheras
-      .value()
-      .map((c) => Number(patron.exec(c.identificador)?.[1] ?? 0));
-
-    const anteriores = this.lotes
-      .getRawValue()
-      .slice(0, hastaLote)
-      .filter((lote) => lote.prefijo.trim().toUpperCase() === prefijo)
-      .reduce((suma, lote) => suma + (Number.isInteger(lote.cantidad) ? lote.cantidad : 0), 0);
-
-    return Math.max(0, ...numeros) + anteriores;
   }
 }

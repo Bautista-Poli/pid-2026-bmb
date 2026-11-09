@@ -1,0 +1,70 @@
+/* Confirmacion de la reserva recien hecha. */
+
+.encabezado-confirmacion {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.eyebrow-exito {
+  color: var(--color-exito);
+}
+
+.detalle-confirmacion {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.texto-detalle {
+  font-size: 13px;
+  color: var(--color-plomo);
+}
+
+.dato-destacado {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-tinta);
+}
+
+.fila-detalle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.separador {
+  height: 1px;
+  background: var(--color-borde-sutil);
+}
+
+.total-reserva {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--color-acento);
+}
+
+.acciones-confirmacion {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+@media (min-width: 1024px) {
+  .acciones-confirmacion {
+    flex-direction: row;
+  }
+}
+
+.titulo-reserva {
+  margin-top: 0.375rem;
+}
+
+.columna-reserva {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}

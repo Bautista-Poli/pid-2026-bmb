@@ -1,0 +1,32 @@
+<!-- Conteo de cocheras por estado y techo. Datos en resumen-cocheras.ts. -->
+<ul class="resumen">
+  <li class="resumen-item">
+    <b class="num-tabular resumen-numero">{{ resumen().total }}</b> cocheras
+  </li>
+  <li class="resumen-item-con-icono">
+    <span class="punto-libre-fijo"></span>
+    <b class="num-tabular resumen-numero">{{ resumen().libres }}</b> libres
+  </li>
+  <li class="resumen-item-con-icono">
+    <span class="punto-ocupada-fijo"></span>
+    <b class="num-tabular resumen-numero">{{ resumen().ocupadas }}</b> ocupadas
+  </li>
+  <li class="resumen-item-con-icono">
+    <span class="punto-reservada-fijo"></span>
+    <b class="num-tabular resumen-numero">{{ resumen().reservadas }}</b> reservadas
+  </li>
+  <li class="resumen-item-con-icono">
+    <ui-icono nombre="techo" [tamano]="14" class="icono-acento" />
+    <b class="num-tabular resumen-numero">{{ resumen().cubiertas }}</b> cubiertas
+  </li>
+  <li class="resumen-item-con-icono">
+    <ui-icono nombre="sol" [tamano]="14" class="icono-baja" />
+    <b class="num-tabular resumen-numero">{{ resumen().descubiertas }}</b> descubiertas
+  </li>
+  @if (resumen().inactivas > 0) {
+    <li class="resumen-item-con-icono">
+      <span class="punto-baja-fijo"></span>
+      <b class="num-tabular resumen-numero">{{ resumen().inactivas }}</b> de baja
+    </li>
+  }
+</ul>

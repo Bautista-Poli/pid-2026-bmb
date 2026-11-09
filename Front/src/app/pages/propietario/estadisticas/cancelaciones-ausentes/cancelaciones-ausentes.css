@@ -1,0 +1,46 @@
+.sin-cancelaciones {
+  padding-block: 1rem;
+  text-align: center;
+  font-size: 13px;
+  color: var(--color-plomo);
+}
+
+.origenes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.origen {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.origen-fila {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12.5px;
+}
+
+.origen-nombre {
+  color: var(--color-grafito);
+}
+
+.barra {
+  height: 0.5rem;
+  overflow: hidden;
+  border-radius: 9999px;
+  background-color: var(--color-borde-sutil);
+}
+
+.barra-relleno {
+  height: 100%;
+  border-radius: 9999px;
+  background-color: var(--color-baja);
+}
+
+.anticipacion {
+  font-size: 12px;
+  color: var(--color-plomo);
+}

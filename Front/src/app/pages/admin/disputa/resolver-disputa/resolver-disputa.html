@@ -1,0 +1,42 @@
+<!-- Formulario para resolver la disputa. Datos en resolver-disputa.ts. -->
+@if (error(); as mensaje) {
+  <p class="aviso-error" role="alert">{{ mensaje }}</p>
+}
+
+<ui-tarjeta>
+  <form class="form-resolver" (submit)="$event.preventDefault(); resolver()">
+    <h2 class="form-resolver__titulo">Resolver</h2>
+    <fieldset class="opciones-resolucion">
+      <legend class="label-campo opciones-resolucion__leyenda">A favor de</legend>
+      <label class="opcion-resolucion">
+        <input type="radio" name="resolucion" [checked]="resolucion() === 'A_FAVOR_CONDUCTOR'" (change)="resolucion.set('A_FAVOR_CONDUCTOR')" />
+        El conductor (se le devuelve plata)
+      </label>
+      <label class="opcion-resolucion">
+        <input type="radio" name="resolucion" [checked]="resolucion() === 'A_FAVOR_PROPIETARIO'" (change)="resolucion.set('A_FAVOR_PROPIETARIO')" />
+        El estacionamiento (sin devolución)
+      </label>
+    </fieldset>
+    @if (resolucion() === 'A_FAVOR_CONDUCTOR') {
+      <label class="campo">
+        <span class="label-campo">Monto a devolver</span>
+        <input type="number" inputmode="decimal" min="1" [max]="d().tope" [value]="monto() ?? ''" (input)="leerMonto($event)" />
+        <span class="campo-ayuda num-tabular">Hasta {{ pesos(d().tope) }}. Se aplica en el acto y se descuenta de los ingresos del estacionamiento.</span>
+      </label>
+    }
+    <label class="campo">
+      <span class="label-campo">Fundamento (lo leen las dos partes)</span>
+      <textarea
+        rows="3"
+        [maxLength]="fundamentoMax"
+        class="campo-fundamento"
+        [value]="fundamento()"
+        (input)="fundamento.set(leer($event))"
+      ></textarea>
+      <span class="campo-ayuda num-tabular">{{ fundamento().trim().length }}/{{ fundamentoMax }} · mínimo {{ fundamentoMin }}</span>
+    </label>
+    <ui-boton variante="primario" tipo="submit" [bloque]="true" [cargando]="resolviendo()" [deshabilitado]="!resolucionValida()">
+      Resolver disputa
+    </ui-boton>
+  </form>
+</ui-tarjeta>

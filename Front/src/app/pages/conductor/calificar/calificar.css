@@ -81,60 +81,6 @@
   box-shadow: var(--shadow-tarjeta);
 }
 
-.calificar__categoria {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.625rem 0;
-  border-top: 1px solid var(--color-borde-sutil);
-}
-
-.calificar__categoria--primera {
-  border-top: 0;
-}
-
-.calificar__categoria-nombre {
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--color-tinta);
-}
-
-.calificar__categoria-ayuda {
-  margin-top: 1px;
-  font-size: 11.5px;
-  color: var(--color-plomo);
-}
-
-.calificar__estrellas {
-  display: flex;
-  flex-shrink: 0;
-}
-
-/* 30x44: el alto llega al minimo tactil sin agrandar la fila. */
-.calificar__estrella {
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 44px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-  fill: none;
-  stroke: var(--color-humo);
-  transition: transform 160ms var(--ease-suave);
-}
-
-.calificar__estrella:hover {
-  transform: scale(1.12);
-}
-
-.calificar__estrella--llena {
-  fill: var(--color-oro);
-  stroke: var(--color-baja);
-}
-
 .calificar__etiquetas {
   display: flex;
   flex-direction: column;
@@ -207,29 +153,4 @@
   background: color-mix(in oklab, var(--color-ocupada) 5%, transparent);
   font-size: 13px;
   color: var(--color-ocupada);
-}
-
-.calificar-listo {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.875rem;
-  padding: 3rem 1rem;
-  text-align: center;
-}
-
-.calificar-listo__icono {
-  display: grid;
-  place-items: center;
-  width: 72px;
-  height: 72px;
-  border-radius: 999px;
-  background: var(--color-oro-suave);
-  color: var(--color-oro-tinta);
-}
-
-.calificar-listo__texto {
-  max-width: 340px;
-  font-size: 13.5px;
-  color: var(--color-plomo);
 }

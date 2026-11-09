@@ -2,36 +2,18 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { rxResource, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { map } from 'rxjs';
-import {
-  BarraDia,
-  BarrasDia,
-  CambioPeriodo,
-  SelectorPeriodo,
-  TarjetaMetrica,
-  TonoMetrica,
-} from '@app/components/estadistica';
-import { MapaCalor } from './mapa-calor/mapa-calor';
-import { Boton, Cargando, EstadoVacio, NombreIcono, Tarjeta } from '@app/components/ui';
-import {
-  Estacionamiento,
-  EstadisticasPropietario,
-  ETIQUETA_ORIGEN_CANCELACION,
-  OrigenCancelacionEstadistica,
-} from '@app/models';
+import { CambioPeriodo, SelectorPeriodo, TarjetaMetrica, TonoMetrica } from '@app/components/estadistica';
+import { Boton, Cargando, EstadoVacio, NombreIcono } from '@app/components/ui';
+import { Estacionamiento } from '@app/models';
 import { AuthService } from '@app/services/auth.service';
 import { EstacionamientoService } from '@app/services/estacionamiento.service';
 import { EstadisticaService } from '@app/services/propietario/estadistica.service';
 import { periodoDeUrl, Variacion, variacion } from '@app/utils/periodo.util';
-
-// Espacio no separable: el "$" no queda solo en una linea.
-const NBSP = String.fromCharCode(160);
-const pesos = (monto: number) => `$${NBSP}${Math.round(monto).toLocaleString('es-AR')}`;
-const porciento = (fraccion: number) => `${Math.round(fraccion * 100)} %`;
-const DIAS_PLURAL = ['domingos', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábados'];
-
-/** "12/10" para el tooltip; debajo de la barra alcanza con el dia ("12"). */
-const diaYMes = (fecha: string) => `${fecha.slice(8, 10)}/${fecha.slice(5, 7)}`;
-const diaDelMes = (fecha: string) => String(Number(fecha.slice(8, 10)));
+import { CancelacionesAusentes } from './cancelaciones-ausentes/cancelaciones-ausentes';
+import { DemandaHorario } from './demanda-horario/demanda-horario';
+import { pesos, porciento } from './formato';
+import { GraficoIngresos } from './grafico-ingresos/grafico-ingresos';
+import { GraficoOcupacion } from './grafico-ocupacion/grafico-ocupacion';
 
 interface Metrica {
   etiqueta: string;
@@ -40,8 +22,6 @@ interface Metrica {
   tono: TonoMetrica;
   variacion: Variacion;
 }
-
-const ORIGENES: OrigenCancelacionEstadistica[] = ['CONDUCTOR', 'PROPIETARIO', 'SISTEMA', 'SIN_DATO'];
 
 /**
  * Pantalla `/propietario/estadisticas` · rol PROPIETARIO
@@ -53,9 +33,20 @@ const ORIGENES: OrigenCancelacionEstadistica[] = ['CONDUCTOR', 'PROPIETARIO', 'S
 @Component({
   selector: 'app-estadisticas',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [BarrasDia, Boton, Cargando, EstadoVacio, MapaCalor, RouterLink, SelectorPeriodo, Tarjeta, TarjetaMetrica],
+  imports: [
+    GraficoOcupacion,
+    GraficoIngresos,
+    DemandaHorario,
+    CancelacionesAusentes,
+    Boton,
+    Cargando,
+    EstadoVacio,
+    RouterLink,
+    SelectorPeriodo,
+    TarjetaMetrica,
+  ],
   templateUrl: './estadisticas.html',
-  styleUrl: './estadisticas.css',
+  styleUrls: ['./compartido.css', './estadisticas.css'],
 })
 export class Estadisticas {
   private readonly estadisticas = inject(EstadisticaService);
@@ -63,10 +54,6 @@ export class Estadisticas {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly ruta = inject(ActivatedRoute);
-
-  protected readonly origenes = ORIGENES;
-  protected readonly etiquetaOrigen = ETIQUETA_ORIGEN_CANCELACION;
-  protected readonly pesos = pesos;
 
   private readonly params = toSignal(this.ruta.queryParamMap, { requireSync: true });
 
@@ -109,52 +96,6 @@ export class Estadisticas {
       { etiqueta: 'Devoluciones', valor: pesos(devoluciones.valor), icono: 'moneda', tono: 'rojo', variacion: variacion(devoluciones.valor, devoluciones.anterior, { menosEsMejor: true }) },
     ];
   });
-
-  protected readonly barrasOcupacion = computed<BarraDia[]>(() =>
-    (this.recurso.value()?.ocupacionPorDia ?? []).map((d) => ({
-      clave: d.fecha,
-      etiqueta: diaDelMes(d.fecha),
-      tramos: [
-        { valor: d.horasUsadas, clase: 'bg-acento', etiqueta: 'usadas' },
-        { valor: Math.max(0, d.horasOfrecidas - d.horasUsadas), clase: 'bg-acento/20', etiqueta: 'libres' },
-      ],
-      detalle: `${diaYMes(d.fecha)} · ${d.horasUsadas} h usadas de ${d.horasOfrecidas} h`,
-    })),
-  );
-
-  protected readonly barrasIngresos = computed<BarraDia[]>(() =>
-    (this.recurso.value()?.ingresosPorDia ?? []).map((d) => ({
-      clave: d.fecha,
-      etiqueta: diaDelMes(d.fecha),
-      tramos: [
-        { valor: d.reservas, clase: 'bg-exito', etiqueta: 'reservas' },
-        { valor: d.abonos, clase: 'bg-violet-500', etiqueta: 'abonos' },
-      ],
-      detalle:
-        `${diaYMes(d.fecha)} · Reservas ${pesos(d.reservas)} · Abonos ${pesos(d.abonos)}` +
-        (d.devoluciones > 0 ? ` · − ${pesos(d.devoluciones)} devuelto` : ''),
-    })),
-  );
-
-  protected readonly hayIngresos = computed(() => this.barrasIngresos().some((b) => b.tramos.some((t) => t.valor > 0)));
-  protected readonly hayOcupacion = computed(() =>
-    (this.recurso.value()?.ocupacionPorDia ?? []).some((d) => d.horasOfrecidas > 0),
-  );
-
-  protected readonly horaPico = computed(() => {
-    const pico = this.recurso.value()?.horaPico;
-    return pico ? `Los ${DIAS_PLURAL[pico.diaSemana]} a las ${pico.hora}:00` : null;
-  });
-
-  /** Barras horizontales de cancelaciones: ancho relativo a la mas grande. */
-  protected anchoOrigen(datos: EstadisticasPropietario, origen: OrigenCancelacionEstadistica): number {
-    const mayor = Math.max(1, ...ORIGENES.map((o) => datos.cancelaciones.porOrigen[o]));
-    return (datos.cancelaciones.porOrigen[origen] / mayor) * 100;
-  }
-
-  protected porciento(fraccion: number): string {
-    return porciento(fraccion);
-  }
 
   protected elegirPeriodo(cambio: CambioPeriodo): void {
     void this.router.navigate([], { queryParams: cambio, queryParamsHandling: 'merge', replaceUrl: true });

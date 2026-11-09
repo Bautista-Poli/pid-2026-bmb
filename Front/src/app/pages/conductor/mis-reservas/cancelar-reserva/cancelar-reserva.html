@@ -1,0 +1,59 @@
+<!-- Modal para confirmar la cancelacion de una reserva. Datos en cancelar-reserva.ts. -->
+<ui-modal
+  titulo="Cancelar reserva"
+  [abierto]="reserva() !== null"
+  (cerrado)="cerrado.emit()"
+>
+  @if (reserva(); as r) {
+    <div class="detalle-modal">
+      <dl class="resumen-cancelacion">
+        <div class="fila-cancelacion">
+          <dt class="etiqueta-fila">Estacionamiento</dt>
+          <dd class="valor-fila valor-fila-destacado">{{ r.estacionamiento.nombre }}</dd>
+        </div>
+        <div class="fila-cancelacion">
+          <dt class="etiqueta-fila">Día</dt>
+          <dd class="valor-fila dia-capitalizado">
+            {{ desdeFechaISO(r.fecha) | date: "EEEE d 'de' MMMM" }}
+          </dd>
+        </div>
+        <div class="fila-cancelacion">
+          <dt class="etiqueta-fila">Horario</dt>
+          <dd class="num-tabular valor-fila">{{ r.horaDesde }} – {{ r.horaHasta }}</dd>
+        </div>
+        <div class="fila-cancelacion">
+          <dt class="etiqueta-fila">Vehículo</dt>
+          <dd class="num-tabular valor-fila">{{ r.vehiculo.patente }}</dd>
+        </div>
+      </dl>
+
+      <p class="texto-cancelacion">
+        La cochera queda libre para otro conductor y la reserva pasa al historial. Si después
+        querés esa cochera, vas a tener que reservarla de nuevo.
+      </p>
+
+      @if (error(); as mensaje) {
+        <p class="aviso-error" role="alert">
+          {{ mensaje }}
+        </p>
+      }
+
+      <div class="acciones-cancelacion">
+        <ui-boton
+          variante="fantasma"
+          [deshabilitado]="cancelando()"
+          (presionado)="cerrado.emit()"
+        >
+          Volver
+        </ui-boton>
+        <ui-boton
+          variante="peligro"
+          [cargando]="cancelando()"
+          (presionado)="confirmar.emit()"
+        >
+          Cancelar reserva
+        </ui-boton>
+      </div>
+    </div>
+  }
+</ui-modal>

@@ -40,44 +40,7 @@
       <!-- Metricas -->
       <div class="aparece-en-cadena metricas">
         @for (metrica of metricas(); track metrica.etiqueta) {
-          <ui-tarjeta relleno="ninguno">
-            <div class="metrica">
-              <span
-                class="metrica-icono"
-                [class]="claseTono[metrica.tono]"
-              >
-                <ui-icono [nombre]="metrica.icono" [tamano]="21" />
-              </span>
-              <div class="metrica-info">
-                <p class="metrica-etiqueta">{{ metrica.etiqueta }}</p>
-                <p class="num-tabular metrica-valor">
-                  {{ metrica.valor }}
-                  @if (metrica.complemento) {
-                    <span class="metrica-complemento">{{ metrica.complemento }}</span>
-                  }
-                </p>
-                @if (metrica.variacion; as variacion) {
-                  <p
-                    class="metrica-variacion"
-                    [class]="
-                      variacion.sube === null
-                        ? 'variacion-neutra'
-                        : variacion.sube
-                          ? 'variacion-sube'
-                          : 'variacion-baja'
-                    "
-                  >
-                    @if (variacion.sube !== null) {
-                      <ui-icono [nombre]="variacion.sube ? 'subir' : 'bajar'" [tamano]="14" />
-                    }
-                    {{ variacion.texto }}
-                  </p>
-                } @else if (metrica.detalle) {
-                  <p class="metrica-detalle">{{ metrica.detalle }}</p>
-                }
-              </div>
-            </div>
-          </ui-tarjeta>
+          <app-tarjeta-metrica [metrica]="metrica" />
         }
       </div>
 
@@ -92,247 +55,30 @@
 
       <div class="fila-paneles">
         <!-- Ocupacion de la semana -->
-        <ui-tarjeta relleno="lg">
-          <div class="ocupacion">
-            <div class="panel-cabecera">
-              <div>
-                <h2 class="panel-titulo">Ocupación de cocheras</h2>
-                <p class="panel-detalle">Cocheras con reservas cada día de esta semana</p>
-              </div>
-              <div class="leyenda">
-                <span class="leyenda-item">
-                  <span class="muestra-ocupadas"></span> Ocupadas
-                </span>
-                <span class="leyenda-item">
-                  <span class="muestra-disponibles"></span> Disponibles
-                </span>
-              </div>
-            </div>
-
-            @if (recursoReservas.isLoading()) {
-              <div class="esqueleto esqueleto-grafico"></div>
-            } @else {
-              <div class="grafico" role="img" aria-label="Ocupación de cocheras por día de esta semana">
-                <!-- Eje Y -->
-                <div class="escala">
-                  @for (marca of escala().marcas; track marca) {
-                    <span class="num-tabular escala-marca">
-                      {{ marca }}
-                    </span>
-                  }
-                </div>
-
-                <div class="grafico-area">
-                  <div class="grafico-lienzo">
-                    <!-- Grilla -->
-                    <div class="lineas-guia">
-                      @for (marca of escala().marcas; track marca) {
-                        <div class="linea-guia"></div>
-                      }
-                    </div>
-
-                    <!-- Barras -->
-                    <div class="barras">
-                      @for (dia of semana(); track dia.fecha) {
-                        <div class="columna grupo">
-                          <div class="columna-pila" [style.height]="alto(dia.ocupadas + dia.libres)">
-                            @if (dia.libres > 0) {
-                              <div
-                                class="barra-disponibles"
-                                [class.redondeada-abajo]="dia.ocupadas === 0"
-                                [style.flex-grow]="dia.libres"
-                              ></div>
-                            }
-                            @if (dia.ocupadas > 0) {
-                              <div
-                                class="barra-ocupadas"
-                                [class.redondeada-arriba]="dia.libres === 0"
-                                [style.flex-grow]="dia.ocupadas"
-                              ></div>
-                            }
-                          </div>
-
-                          <!-- Tooltip -->
-                          <div
-                            class="tooltip"
-                          >
-                            <p class="tooltip-titulo">{{ dia.etiqueta }}</p>
-                            <p class="num-tabular tooltip-detalle">{{ dia.ocupadas }} ocupadas · {{ dia.libres }} disponibles</p>
-                          </div>
-                        </div>
-                      }
-                    </div>
-                  </div>
-
-                  <!-- Eje X -->
-                  <div class="dias">
-                    @for (dia of semana(); track dia.fecha) {
-                      <span
-                        class="dia"
-                        [class]="dia.esHoy ? 'dia-hoy' : 'dia-otro'"
-                      >
-                        {{ dia.etiqueta }}
-                      </span>
-                    }
-                  </div>
-                </div>
-              </div>
-            }
-          </div>
-        </ui-tarjeta>
+        <app-ocupacion-semana
+          [semana]="semana()"
+          [totalCocheras]="totales().cocheras"
+          [cargando]="recursoReservas.isLoading()"
+        />
 
         <!-- Reservas de hoy -->
-        <ui-tarjeta relleno="ninguno" [recortar]="true">
-          <div class="reservas-cabecera">
-            <h2 class="panel-titulo">Reservas de hoy</h2>
-            <a
-              class="link-chico"
-              routerLink="/propietario/reservas"
-            >
-              Ver todas
-            </a>
-          </div>
-
-          @if (recursoReservas.isLoading()) {
-            <p class="reservas-cargando">Cargando…</p>
-          } @else if (reservasHoy().length === 0) {
-            <p class="reservas-vacio">
-              No hay reservas para hoy.
-            </p>
-          } @else {
-            <ul class="aparece-en-cadena">
-              @for (reserva of reservasHoy().slice(0, 6); track reserva.id) {
-                <li
-                  class="reserva"
-                >
-                  <span class="reserva-icono">
-                    <ui-icono [nombre]="iconoVehiculo[reserva.vehiculo.tipo]" [tamano]="19" />
-                  </span>
-
-                  <div class="reserva-info">
-                    <p class="reserva-nombre">
-                      {{ reserva.estacionamiento.nombre }}
-                    </p>
-                    <p class="num-tabular reserva-horario">
-                      {{ reserva.horaDesde }} - {{ reserva.horaHasta }}
-                    </p>
-                    <p class="num-tabular reserva-vehiculo">
-                      {{ etiquetaTipo[reserva.vehiculo.tipo] }} · {{ reserva.vehiculo.patente }}
-                      @if (reserva.cochera) {
-                        · Cochera {{ reserva.cochera.identificador }}
-                      }
-                    </p>
-                  </div>
-
-                  <div class="reserva-acciones">
-                    <ui-etiqueta [tono]="tonoEstado(reserva)">
-                      {{ etiquetaEstado(reserva) }}
-                    </ui-etiqueta>
-                    @if (pasoDe(reserva); as paso) {
-                      <button
-                        type="button"
-                        class="reserva-boton"
-                        [disabled]="procesandoId() === reserva.id"
-                        (click)="avanzar(reserva)"
-                      >
-                        {{ procesandoId() === reserva.id ? 'Guardando…' : paso }}
-                      </button>
-                    }
-                  </div>
-                </li>
-              }
-            </ul>
-            @if (reservasHoy().length > 6) {
-              <a
-                class="ver-mas"
-                routerLink="/propietario/reservas"
-              >
-                Ver {{ reservasHoy().length - 6 }} más
-              </a>
-            }
-          }
-        </ui-tarjeta>
+        <app-reservas-hoy
+          [reservas]="reservasHoy()"
+          [cargando]="recursoReservas.isLoading()"
+          [procesandoId]="procesandoId()"
+          (avanzar)="avanzar($event)"
+        />
       </div>
 
       <!-- Estado de cocheras -->
       @if (activo(); as estacionamiento) {
-        <ui-tarjeta relleno="lg">
-          <div class="cocheras">
-            <div class="cocheras-cabecera">
-              <div class="cocheras-titulo">
-                <h2 class="panel-titulo">Estado de cocheras</h2>
-                <a
-                  class="link-chico"
-                  [routerLink]="['/propietario/cocheras', estacionamiento.id]"
-                >
-                  Gestionar
-                </a>
-              </div>
-              @if (!recursoCocheras.isLoading()) {
-                <p class="num-tabular actualizado">
-                  Actualizado {{ actualizadoEn() | date: 'HH:mm' }}
-                </p>
-              }
-            </div>
-
-            @if (recursoEstacionamientos.value().length > 1) {
-              <div class="lotes">
-                @for (lote of recursoEstacionamientos.value(); track lote.id) {
-                  <ui-chip [activo]="lote.id === estacionamiento.id" (alternar)="seleccionar(lote.id)">
-                    {{ lote.nombre }}
-                  </ui-chip>
-                }
-              </div>
-            }
-
-            @if (recursoCocheras.isLoading()) {
-              <ui-cargando [cantidad]="1" />
-            } @else if (recursoCocheras.value().length === 0) {
-              <ui-estado-vacio titulo="Este estacionamiento no tiene cocheras cargadas">
-                <ui-boton [routerLink]="['/propietario/cocheras', estacionamiento.id]">
-                  Cargar cocheras
-                </ui-boton>
-              </ui-estado-vacio>
-            } @else {
-              <div class="aparece-en-cadena grilla-cocheras">
-                @for (cochera of recursoCocheras.value(); track cochera.id) {
-                  <app-celda-cochera
-                    [cochera]="cochera"
-                    [seleccionada]="cocheraAbierta()?.id === cochera.id"
-                    (elegida)="abrir($event)"
-                  />
-                }
-              </div>
-            }
-
-            <app-leyenda-cocheras />
-
-            @if (cocheraAbierta(); as cochera) {
-              <div class="detalle-cochera">
-                <div class="detalle-cabecera">
-                  <p class="num-tabular detalle-nombre">
-                    Cochera {{ cochera.identificador }}
-                  </p>
-                  <p class="detalle-sector">
-                    @if (cochera.sector) {
-                      {{ cochera.sector }} ·
-                    }
-                    {{ cochera.cubierta ? 'Cubierta' : 'Descubierta' }} ·
-                    {{ etiquetaTipo[cochera.tipoVehiculo] }}
-                  </p>
-                </div>
-
-                <!-- El estado lo mueven el ingreso y el egreso; baja y bloqueo estan en Cocheras. -->
-                <p class="detalle-ayuda">
-                  Se ocupa y se libera sola con el ingreso y el egreso.
-                  <a class="link" routerLink="/propietario/cocheras">
-                    Bloquearla o darla de baja
-                  </a>
-                </p>
-              </div>
-            }
-          </div>
-        </ui-tarjeta>
+        <app-estado-cocheras
+          [estacionamientos]="recursoEstacionamientos.value()"
+          [activo]="estacionamiento"
+          [cocheras]="recursoCocheras.value()"
+          [cargando]="recursoCocheras.isLoading()"
+          (seleccionar)="seleccionadoId.set($event)"
+        />
       }
     </div>
   }

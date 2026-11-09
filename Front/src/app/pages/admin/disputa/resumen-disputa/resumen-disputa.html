@@ -1,0 +1,36 @@
+<!-- Resumen para decidir: lo pagado, lo devuelto y los horarios reales. Datos en resumen-disputa.ts. -->
+@let i = d();
+<ui-tarjeta>
+  <dl class="num-tabular resumen-disputa">
+    <div><dt>Pagó</dt><dd class="resumen-disputa__destacado">{{ pesos(i.pagado) }}</dd></div>
+    <div><dt>Ya devuelto</dt><dd class="resumen-disputa__destacado">{{ pesos(i.devuelto) }}</dd></div>
+    <div><dt>Se puede devolver</dt><dd class="resumen-disputa__destacado">{{ pesos(i.tope) }}</dd></div>
+    @if (i.montoPedido !== null) {
+      <div><dt>Pide el conductor</dt><dd>{{ pesos(i.montoPedido) }}</dd></div>
+    }
+    @if (i.propuestaVigente !== null) {
+      <div><dt>Ofreció el estacionamiento</dt><dd>{{ pesos(i.propuestaVigente) }}</dd></div>
+    }
+    @if (i.resumen.inicio) {
+      <div>
+        <dt>Reserva</dt>
+        <dd>{{ i.resumen.inicio | date: 'd MMM HH:mm' }} a {{ i.resumen.fin | date: 'HH:mm' }}</dd>
+      </div>
+      <div>
+        <dt>Ingreso / egreso</dt>
+        <dd>
+          {{ i.resumen.ingresoEn ? (i.resumen.ingresoEn | date: 'HH:mm') : '—' }} /
+          {{ i.resumen.egresoEn ? (i.resumen.egresoEn | date: 'HH:mm') : '—' }}
+        </dd>
+      </div>
+      @if (i.resumen.canceladaPor; as quien) {
+        <div><dt>Cancelada por</dt><dd>{{ quien.toLowerCase() }}</dd></div>
+      }
+    } @else if (i.resumen.desde) {
+      <div>
+        <dt>Abono</dt>
+        <dd>{{ i.resumen.desde | date: 'd MMM' }} al {{ i.resumen.hasta | date: 'd MMM' }}</dd>
+      </div>
+    }
+  </dl>
+</ui-tarjeta>

@@ -1,0 +1,57 @@
+<!-- Tarjeta de un abono del conductor. Datos en tarjeta-abono().ts. -->
+<ui-tarjeta>
+  <div class="tarjeta-abono__cuerpo">
+    <div>
+      <p class="tarjeta-abono__estacionamiento">{{ abono().estacionamiento }}</p>
+      <p class="tarjeta-abono__turno">
+        Turno {{ turnos[abono().turno].etiqueta.toLowerCase() }}
+        ({{ turnos[abono().turno].desde }} a {{ turnos[abono().turno].hasta }}) ·
+        vence el {{ abono().hasta | date: 'd MMM' }}
+      </p>
+      <p class="tarjeta-abono__usos">
+        {{ abono().cuposRestantes }} de {{ abono().cuposTotales }} usos disponibles
+        @if (abono().estado !== 'VIGENTE') {
+          <span class="tarjeta-abono__estado">· {{ abono().estado.toLowerCase() }}</span>
+        }
+      </p>
+      @if (abono().devuelto > 0) {
+        <p class="num-tabular tarjeta-abono__devuelto">
+          Devuelto $ {{ abono().devuelto.toLocaleString('es-AR') }}
+        </p>
+      }
+    </div>
+    @if (abono().estado === 'VIGENTE') {
+      <div class="tarjeta-abono__acciones">
+        @if (abono().cuposRestantes > 0) {
+          <ui-boton
+            variante="primario"
+            tamano="sm"
+            [routerLink]="['/conductor/abonos', abono().id, 'reservar']"
+          >
+            Reservar con este abono
+          </ui-boton>
+        } @else {
+          <ui-boton variante="primario" tamano="sm" [deshabilitado]="true">
+            Sin usos disponibles
+          </ui-boton>
+        }
+        <ui-boton variante="peligro" tamano="sm" (presionado)="cancelar.emit(abono())">
+          Cancelar abono
+        </ui-boton>
+      </div>
+    }
+    @if (abono().reclamoAbierto; as id) {
+      <div>
+        <ui-boton variante="secundario" tamano="sm" routerLink="/conductor/incidencias" [queryParams]="{ id }">
+          Ver reclamo
+        </ui-boton>
+      </div>
+    } @else if (reclamable()) {
+      <div>
+        <ui-boton variante="secundario" tamano="sm" (presionado)="reclamar.emit(abono())">
+          Tengo un problema
+        </ui-boton>
+      </div>
+    }
+  </div>
+</ui-tarjeta>

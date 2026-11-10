@@ -88,7 +88,7 @@
     <rect class="caja-f" x="215" y="70" width="180" height="90" rx="10"/><text x="305" y="98" text-anchor="middle">Front/ (Angular)</text><text class="chico" x="305" y="118" text-anchor="middle">npm start → :4200</text><text class="chico" x="305" y="136" text-anchor="middle">proxy.conf.json: /api → :3000</text>
     <rect class="caja-b" x="450" y="70" width="180" height="90" rx="10"/><text x="540" y="98" text-anchor="middle">Back/ (Express)</text><text class="chico" x="540" y="118" text-anchor="middle">npm run dev → :3000</text><text class="chico" x="540" y="136" text-anchor="middle">aplica schema.sql al arrancar</text>
     <rect class="caja-d" x="690" y="70" width="200" height="90" rx="10"/><text x="790" y="98" text-anchor="middle">Postgres local</text><text class="chico" x="790" y="118" text-anchor="middle">base parkit_local</text><text class="chico" x="790" y="136" text-anchor="middle">URL en Back/.env.local</text>
-    <rect class="caja-e" x="420" y="195" width="330" height="60" rx="10"/><text x="585" y="219" text-anchor="middle">Back/datos-locales/ (no va al repo)</text><text class="chico" x="585" y="239" text-anchor="middle">fotos/ → /api/fotos-locales · mapa/caba.pmtiles → /api/mapa</text>
+    <rect class="caja-e" x="420" y="195" width="330" height="60" rx="10"/><text x="585" y="219" text-anchor="middle">Back/datos-locales/ (no va al repo)</text><text class="chico" x="585" y="239" text-anchor="middle">mapa/caba.pmtiles (el mapa de CABA) → /api/mapa</text>
     <path class="flecha" d="M160 115 H213"/><path class="flecha" d="M395 115 H448"/><path class="flecha" d="M630 115 H688"/>
     <path class="flecha" d="M540 160 V193"/>
     <text class="chico" x="420" y="105" text-anchor="middle">/api</text>
@@ -97,7 +97,7 @@
   <div class="caja">
     <strong>Carpetas raíz</strong>
     <ul>
-      <li><code>Back/</code> — API REST: <code>src/</code> (código), <code>pruebas/</code> (tests <code>node --test</code>), <code>src/db/schema.sql</code> (toda la base), <code>.env.local</code> (configuración, no va al repo), <code>datos-locales/</code> (fotos y mapa, no va al repo).</li>
+      <li><code>Back/</code> — API REST: <code>src/</code> (código), <code>pruebas/</code> (tests <code>node --test</code>), <code>src/db/schema.sql</code> (toda la base), <code>.env.local</code> (configuración, no va al repo), <code>datos-locales/</code> (el mapa de CABA, no va al repo).</li>
       <li><code>Front/</code> — app Angular: <code>src/app/</code> (código), <code>proxy.conf.json</code> (<code>/api</code> → <code>localhost:3000</code>).</li>
       <li><code>docs/</code> — <code>local.md</code> (cómo está armada la versión sin internet) y este mapa.</li>
       <li><code>COMANDOS.md</code> — los comandos del día a día. <code>scripts/check.mjs</code> — lo que corre <code>npm run check</code>.</li>
@@ -134,7 +134,6 @@
       <li><code>utils/sql.js</code>: <code>armarSet(campos, datos, parametros)</code> arma el <code>SET campo = $n</code> de un UPDATE con los campos que vinieron.</li>
       <li><code>utils/horario.js</code>: hora argentina (<code>ZONA_HORARIA</code>, <code>HOY_LOCAL_SQL</code>, <code>HORA_LOCAL</code>, <code>instanteLocal</code>, <code>partesLocales</code>).</li>
       <li><code>db/esquema.js</code>: <code>aplicarEsquema()</code> corre <code>schema.sql</code> y <code>seed.sql</code>. Lo llama <code>index.js</code> al arrancar con <code>npm run dev</code>, así que un cambio en el esquema se aplica solo.</li>
-      <li><code>services/fotos.service.js</code>: guarda y busca las fotos en <code>datos-locales/fotos</code> (antes estaban en Cloudinary).</li>
     </ul>
     <p><strong>Cómo están comentados:</strong> cada archivo arranca con qué es y con qué se conecta; cada función tiene una línea arriba; cada controller dice qué ruta atiende y quién la puede llamar (ej. <code>/** POST /api/abonos (conductor) */</code>).</p>
   </div>
@@ -144,7 +143,7 @@
     <tr><td>Sesión y cuenta</td><td><code>auth.routes / auth.controller / auth.service</code></td><td><code>POST /auth/register, /auth/login, /auth/logout, /auth/rol</code> · <code>GET|PATCH|DELETE /auth/me</code></td></tr>
     <tr><td>Estacionamientos</td><td><code>estacionamiento.routes / .controller / .service</code></td><td><code>GET /estacionamientos</code> (búsqueda) · <code>GET /:id</code> · <code>GET /mios</code> · <code>POST /</code> · <code>PATCH /:id</code> · <code>GET /:id/disponibilidad</code> · <code>GET /:id/reputacion</code></td></tr>
     <tr><td>Cocheras</td><td><code>cochera.service</code> (rutas en estacionamiento.routes)</td><td><code>/estacionamientos/:id/cocheras</code> (alta, lote, editar, baja, reactivar, bloquear, desbloquear)</td></tr>
-    <tr><td>Vehículos</td><td><code>vehiculo.routes / .controller / .service</code></td><td><code>GET /vehiculos/tipos</code> · <code>GET|POST /vehiculos</code> · <code>PATCH|DELETE /vehiculos/:id</code> · foto</td></tr>
+    <tr><td>Vehículos</td><td><code>vehiculo.routes / .controller / .service</code></td><td><code>GET /vehiculos/tipos</code> · <code>GET|POST /vehiculos</code> · <code>PATCH|DELETE /vehiculos/:id</code></td></tr>
     <tr><td>Reservas y acceso</td><td><code>reserva.routes / .controller / .service</code></td><td><code>POST /reservas</code> · <code>GET /reservas</code> · <code>PATCH /:id/cancelar|confirmar|ausente</code> · <code>GET /acceso/:codigo</code> · <code>POST /acceso</code></td></tr>
     <tr><td>Abonos</td><td><code>abono.routes / .controller / .service</code></td><td><code>/estacionamientos/:id/planes-abono</code> · <code>POST|GET /abonos</code> · <code>PATCH /abonos/:id/cancelar</code></td></tr>
     <tr><td>Incidencias y reclamos</td><td><code>incidencia.*</code>, <code>devolucion.service</code>, <code>moderacion.service</code></td><td><code>POST /incidencias/reclamos</code> · <code>GET /incidencias</code> · mensajes · resolver · denunciar · aceptar · retirar</td></tr>
@@ -152,7 +151,7 @@
     <tr><td>Denuncia de reseñas</td><td><code>calificacion.routes / .controller</code>, <code>denuncia-resena.service</code></td><td><code>POST /calificaciones/:id/denuncia</code></td></tr>
     <tr><td>Admin</td><td><code>admin.routes / .controller</code>, <code>admin.service</code>, <code>admin-estadistica.service</code></td><td><code>/admin/estacionamientos</code> (aprobar/rechazar) · <code>/admin/incidencias</code> · <code>/admin/resenas</code> · <code>/admin/estadisticas</code></td></tr>
     <tr><td>Estadísticas del propietario</td><td><code>estadistica.*</code></td><td><code>GET /estadisticas/propietario</code></td></tr>
-    <tr><td>Fotos y mapa (en disco)</td><td><code>fotos.routes</code>, <code>fotos.service</code></td><td><code>POST /fotos-locales</code> (subir) · <code>GET /fotos-locales/…</code> (ver) · <code>GET /mapa/caba.pmtiles</code></td></tr>
+    <tr><td>Mapa (en disco)</td><td><code>mapa.routes</code></td><td><code>GET /mapa/caba.pmtiles</code> (sirve el archivo de <code>datos-locales/mapa</code>)</td></tr>
   </table></div>
   <p class="nota">Los módulos se montan en <code>routes/index.js</code> (<code>router.use('/vehiculos', vehiculoRoutes)</code>, etc.). Un módulo nuevo necesita su línea ahí.</p>
 
@@ -181,6 +180,13 @@
       <li>Los errores ya llegan como <code>Error</code> con un mensaje mostrable (lo arma <code>error.interceptor.ts</code>): se muestran con <code>error.set(e.message)</code>.</li>
     </ol>
     <p><strong>Dónde está un componente:</strong> si lo usa <strong>una sola pantalla</strong>, vive dentro de la carpeta de esa pantalla (ej. <code>pages/conductor/mis-reservas/tarjeta-reserva</code>, <code>pages/propietario/reservas/calificar-conductor</code>). Si lo usan <strong>varias</strong>, está en <code>components/</code> (ej. <code>components/reclamo/denunciar-resena</code>, <code>components/estacionamiento/formulario-estacionamiento</code>).</p>
+    <p><strong>Pantallas divididas en secciones:</strong> las pantallas grandes están partidas en un componente por sección (ej. <code>pages/propietario/tablero/</code> tiene <code>reservas-hoy</code>, <code>estado-cocheras</code>, <code>ocupacion-semana</code>…). La regla es siempre la misma:</p>
+    <ul>
+      <li>La <strong>página</strong> (<code>tablero.ts</code>) carga los datos y hace las acciones (llama a los services).</li>
+      <li>La <strong>sección</strong> recibe los datos con <code>input()</code> y avisa lo que tocó el usuario con <code>output()</code>; no llama a la API. Ej.: <code>reservas = input.required&lt;ReservaDetallada[]&gt;()</code> y <code>avanzar = output&lt;ReservaDetallada&gt;()</code> en <code>reservas-hoy.ts</code>.</li>
+      <li>En el <code>.html</code> de la página: <code>&lt;app-reservas-hoy [reservas]="reservasHoy()" (avanzar)="avanzar($event)" /&gt;</code>. <code>[x]</code> manda un dato hacia la sección; <code>(x)</code> recibe un aviso de la sección.</li>
+    </ul>
+    <p>Para tocar una parte de una pantalla: abrí la página, buscá en su <code>.html</code> la etiqueta <code>&lt;app-…&gt;</code> de esa parte y entrá a su carpeta.</p>
     <p><strong>Estilos:</strong> los colores y medidas (tokens) están en <code>src/tailwind.css</code>. Las pantallas de propietario tienen todo su CSS en su <code>.css</code> (clases con nombre propio, como <code>.encabezado</code>); muchas de conductor usan además clases de Tailwind directo en el HTML (<code>flex</code>, <code>gap-6</code>, <code>mt-1.5</code>). Para algo nuevo, lo más fácil es copiar las clases de una pantalla parecida.</p>
     <p>Cada <code>.html</code> arranca con un comentario que dice qué pantalla es y en qué <code>.ts</code> están sus datos. Constantes que se repiten en muchas pantallas: <code>TIPOS_VEHICULO</code>, <code>ICONO_TIPO_VEHICULO</code> y <code>ETIQUETA_TIPO_VEHICULO</code> (en <code>models/vehiculo.model.ts</code>); fechas con <code>diaCorto</code>, <code>desdeFechaISO</code> y <code>aFechaISO</code> (en <code>utils/fecha.util.ts</code>).</p>
   </div>

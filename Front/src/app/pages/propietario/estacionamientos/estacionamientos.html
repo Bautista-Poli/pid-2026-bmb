@@ -34,18 +34,14 @@
         @for (estacionamiento of recurso.value(); track estacionamiento.id) {
           <ui-tarjeta relleno="ninguno" [interactiva]="true">
             <div class="fila">
-              <!-- Foto -->
+              <!-- Icono -->
               <a
                 class="foto"
                 [routerLink]="['/propietario/estacionamientos', estacionamiento.id, 'editar']"
                 tabindex="-1"
                 aria-hidden="true"
               >
-                <ui-miniatura
-                  [src]="estacionamiento.fotoUrl"
-                  [optimizada]="false"
-                  icono="estacionamiento"
-                />
+                <ui-miniatura icono="estacionamiento" />
               </a>
 
               <!-- Datos -->

@@ -87,7 +87,7 @@ function aFranjaAtencion(dto: HorarioDto): FranjaAtencion {
   };
 }
 
-/** EstacionamientoDto -> Estacionamiento (direccion, tarifas, fotos, reputacion…). */
+/** EstacionamientoDto -> Estacionamiento (direccion, tarifas, reputacion…). */
 export function aEstacionamiento(dto: EstacionamientoDto): Estacionamiento {
   return {
     id: dto.id_estacionamiento,
@@ -115,8 +115,6 @@ export function aEstacionamiento(dto: EstacionamientoDto): Estacionamiento {
     disponible: dto.disponible,
     tiposAdmitidos: (dto.tipos_vehiculo ?? []).map((id) => TIPO_POR_ID[id]),
     cubierto: dto.cubierto,
-    fotoUrl: urlDeFoto(dto),
-    fotos: urlsDeGaleria(dto),
     publicado: dto.publicado,
     activo: dto.activo,
     estadoAprobacion: dto.estado_aprobacion,
@@ -227,25 +225,6 @@ export function aResenaDenunciada(dto: ResenaDenunciadaDto): ResenaDenunciada {
   };
 }
 
-/**
- * La foto se pide a la API, pero un `<img src>` no pasa por los interceptores,
- * asi que la URL lleva el prefijo `/api` escrito. El `?v=` la hace cambiar
- * cuando el propietario sube una nueva, para saltear el cache del navegador.
- */
-function urlDeFoto(dto: EstacionamientoDto): string | null {
-  if (!dto.foto_actualizada) return null;
-  const version = Date.parse(dto.foto_actualizada);
-  return `/api/estacionamientos/${dto.id_estacionamiento}/foto?v=${version}`;
-}
-
-/** Las URLs de las fotos de la galeria (con ?v= para saltear la cache). */
-function urlsDeGaleria(dto: EstacionamientoDto): string[] {
-  return (dto.fotos ?? []).map(
-    ({ id_foto, actualizada }) =>
-      `/api/estacionamientos/${dto.id_estacionamiento}/fotos/${id_foto}?v=${Date.parse(actualizada)}`,
-  );
-}
-
 /** NuevoEstacionamiento -> body de la API (snake_case). */
 export function aPayloadEstacionamiento(datos: NuevoEstacionamiento) {
   const { direccion } = datos;
@@ -341,8 +320,6 @@ export function aVehiculo(dto: VehiculoDto): Vehiculo {
     tipo: TIPO_POR_ID[dto.id_tipo_vehiculo],
     predeterminado: dto.predeterminado,
     activo: dto.activo,
-    foto: dto.foto_url ?? null,
-    fotoMiniatura: dto.foto_miniatura_url ?? null,
   };
 }
 

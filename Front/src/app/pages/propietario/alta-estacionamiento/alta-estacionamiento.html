@@ -12,28 +12,11 @@
       <h1 class="titulo-vista encabezado-titulo">Nuevo estacionamiento</h1>
     </header>
 
-    @if (avisoFoto(); as id) {
-      <p
-        class="aviso-foto"
-        role="alert"
-      >
-        Creamos el estacionamiento, pero no pudimos subir la foto. Podés reintentar desde Editar.
-      </p>
-      <ui-boton variante="primario" [bloque]="true" (presionado)="continuarSinFoto()">
-        Continuar sin la foto
-      </ui-boton>
-    } @else {
-      <app-formulario-estacionamiento
-        textoEnviar="Crear estacionamiento"
-        [enviando]="enviando()"
-        [error]="error()"
-        (guardar)="crear($event)"
-        (fotoElegida)="elegirFoto($event)"
-      />
-      @if (progresoFoto() !== null) {
-        <p class="num-tabular progreso-foto" role="status">Subiendo la foto… {{ progresoFoto() }}%</p>
-      }
-
-    }
+    <app-formulario-estacionamiento
+      textoEnviar="Crear estacionamiento"
+      [enviando]="enviando()"
+      [error]="error()"
+      (guardar)="crear($event)"
+    />
   </div>
 </div>

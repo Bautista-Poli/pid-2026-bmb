@@ -1,13 +1,6 @@
 <!-- Formulario de un estacionamiento, compartido por el alta y la edicion. Datos y acciones en formulario-estacionamiento.ts. -->
 <form class="flex flex-col gap-5" [formGroup]="formulario" (ngSubmit)="enviar()" novalidate>
   <ui-tarjeta relleno="lg">
-    <app-foto-estacionamiento
-      [fotoActual]="estacionamiento()?.fotoUrl ?? null"
-      (cambio)="elegirFoto($event)"
-    />
-  </ui-tarjeta>
-
-  <ui-tarjeta relleno="lg">
     <fieldset class="flex flex-col gap-4">
       <legend class="mb-4 text-[15px] font-semibold text-tinta">Datos</legend>
 

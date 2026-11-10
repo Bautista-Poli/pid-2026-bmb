@@ -15,7 +15,7 @@ function requerido(nombre, valor) {
 
 const nodeEnv = process.env.NODE_ENV || 'development';
 
-/** Back/datos-locales: fotos, mapa y copia de la base (no se suben al repo). */
+/** Back/datos-locales: mapa y copia de la base (no se suben al repo). */
 const DATOS_LOCALES_POR_DEFECTO = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'datos-locales');
 
 export const config = {
@@ -28,9 +28,6 @@ export const config = {
   datosLocales: {
     get carpeta() {
       return resolve(process.env.DATOS_LOCALES_DIR || DATOS_LOCALES_POR_DEFECTO);
-    },
-    get fotos() {
-      return join(this.carpeta, 'fotos');
     },
     get mapa() {
       return join(this.carpeta, 'mapa');

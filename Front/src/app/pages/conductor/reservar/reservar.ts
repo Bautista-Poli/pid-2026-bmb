@@ -16,7 +16,6 @@ import { ResumenReserva } from './resumen-reserva/resumen-reserva';
 import { SelectorDuracion } from './selector-duracion/selector-duracion';
 import { SelectorFecha } from './selector-fecha/selector-fecha';
 import { SelectorVehiculo } from './selector-vehiculo/selector-vehiculo';
-import { GaleriaFotos } from '@app/components/estacionamiento';
 import { Boton, Cargando, EstadoVacio, Tarjeta } from '@app/components/ui';
 import { ETIQUETA_MODALIDAD, FranjaDisponible, Id, Reserva, Vehiculo } from '@app/models';
 import { EstacionamientoService } from '@app/services/estacionamiento.service';
@@ -29,7 +28,7 @@ import { diaSemanaDe, hoyISO } from '@app/utils/fecha.util';
 /**
  * Pantalla `/conductor/reservar/:estacionamientoId` · rol CONDUCTOR
  *
- * Flujo de reserva: foto del estacionamiento, vehiculo, fecha, cuantas horas y
+ * Flujo de reserva: vehiculo, fecha, cuantas horas y
  * hora de ingreso en una sola vista, con el resumen y la confirmacion al pie
  * (columna derecha sticky en desktop).
  *
@@ -47,7 +46,6 @@ import { diaSemanaDe, hoyISO } from '@app/utils/fecha.util';
     SelectorDuracion,
     ResumenReserva,
     ReservaConfirmada,
-    GaleriaFotos,
     Tarjeta,
     Boton,
     Cargando,

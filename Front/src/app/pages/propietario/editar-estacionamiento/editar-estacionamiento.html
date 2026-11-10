@@ -67,12 +67,7 @@
           [enviando]="enviando()"
           [error]="error()"
           (guardar)="guardar($event)"
-          (fotoElegida)="elegirFoto($event)"
         />
-        @if (progresoFoto() !== null) {
-          <p class="num-tabular progreso-foto" role="status">Subiendo la foto… {{ progresoFoto() }}%</p>
-        }
-
 
         <section
           class="baja"

@@ -4,7 +4,7 @@ import { rxResource } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { Observable } from 'rxjs';
-import { GaleriaFotos, MapaEstacionamientos } from '@app/components/estacionamiento';
+import { MapaEstacionamientos } from '@app/components/estacionamiento';
 import { Boton, Cargando, EstadoVacio, Etiqueta, Modal, Tarjeta, TonoEtiqueta } from '@app/components/ui';
 import { EstacionamientoEnRevision, EstadoAprobacion } from '@app/models';
 import { AdminService } from '@app/services/admin/admin.service';
@@ -29,7 +29,7 @@ const pesos = (monto: number | null) => (monto === null ? null : `$ ${monto.toLo
 /**
  * Pantalla `/admin/estacionamientos/:estacionamientoId` · rol ADMINISTRADOR
  *
- * Todo lo que hace falta para decidir: fotos, ubicacion, horarios, tarifas,
+ * Todo lo que hace falta para decidir: ubicacion, horarios, tarifas,
  * cocheras y el propietario. Si esta pendiente, se aprueba o se rechaza con un
  * motivo que despues ve el propietario.
  */
@@ -43,7 +43,6 @@ const pesos = (monto: number | null) => (monto === null ? null : `$ ${monto.toLo
     Etiqueta,
     EstadoVacio,
     FormsModule,
-    GaleriaFotos,
     MapaEstacionamientos,
     Modal,
     RouterLink,

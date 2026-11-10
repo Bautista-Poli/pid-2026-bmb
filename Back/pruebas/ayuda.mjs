@@ -43,8 +43,7 @@ export async function cerrarApi() {
  * Devuelve `{ estado, datos }`; nunca lanza por un 4xx.
  *
  * `body` se manda como JSON, salvo que venga `raw`: un Buffer que se manda tal
- * cual, con el `contentType` indicado (asi se prueba la subida de fotos, que
- * la API espera como body binario y no como JSON).
+ * cual, con el `contentType` indicado (para probar un body que no es JSON).
  *
  * La sesion viaja en la cookie httpOnly que pone `/auth/login` (ver
  * `middlewares/auth.js`), asi que `token` aca es el par `nombre=valor` de esa

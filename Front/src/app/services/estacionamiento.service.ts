@@ -1,6 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, from, map, switchMap } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import {
   Estacionamiento,
   FiltrosEstacionamiento,
@@ -9,8 +9,6 @@ import {
   OrdenEstacionamiento,
 } from '@app/models';
 import { EstacionamientoDto } from './api/api.dto';
-import { FirmaSubida, FotosService } from './fotos.service';
-import { achicarImagen } from '@app/utils/imagen.util';
 import { estadoDisponibilidad } from '@app/utils/disponibilidad.util';
 import { distanciaKm } from '@app/utils/distancia.util';
 import { aInstante } from '@app/utils/fecha.util';
@@ -23,7 +21,6 @@ export const LIMITE_BUSQUEDA = 100;
 @Injectable({ providedIn: 'root' })
 export class EstacionamientoService {
   private readonly http = inject(HttpClient);
-  private readonly fotos = inject(FotosService);
   private readonly ruta = '/estacionamientos';
 
   /** `GET /api/estacionamientos` */
@@ -87,26 +84,6 @@ export class EstacionamientoService {
     return this.http
       .delete<{ estacionamiento: EstacionamientoDto }>(`${this.ruta}/${id}`)
       .pipe(map(({ estacionamiento }) => aEstacionamiento(estacionamiento)));
-  }
-
-  /**
-   * Portada del estacionamiento: la API firma
-   * (`POST .../fotos/firma`), el navegador achica y sube directo, y la API
-   * guarda el `public_id` (`PUT .../foto`).
-   */
-  subirFoto(id: Id, archivo: File, alProgresar?: (porcentaje: number) => void): Observable<void> {
-    return this.http.post<{ firma: FirmaSubida }>(`${this.ruta}/${id}/fotos/firma`, {}).pipe(
-      switchMap(({ firma }) =>
-        from(achicarImagen(archivo)).pipe(switchMap((imagen) => this.fotos.subir(imagen, firma, alProgresar))),
-      ),
-      switchMap((publicId) => this.http.put<void>(`${this.ruta}/${id}/foto`, { public_id: publicId })),
-      map(() => undefined),
-    );
-  }
-
-  /** `DELETE /api/estacionamientos/:id/foto` */
-  borrarFoto(id: Id): Observable<void> {
-    return this.http.delete<void>(`${this.ruta}/${id}/foto`);
   }
 }
 

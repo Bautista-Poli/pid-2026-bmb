@@ -3,7 +3,7 @@
 import { query } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
 import { ESTADOS_APROBACION } from '../utils/roles.js';
-import { AGREGADOS, CAMPOS_E, obtenerPorId } from './estacionamiento.service.js';
+import { AGREGADOS, CAMPOS_E, obtenerPorId } from './estacionamiento/estacionamiento.service.js';
 
 /**
  * Revision de estacionamientos por el Administrador de plataforma. Cada

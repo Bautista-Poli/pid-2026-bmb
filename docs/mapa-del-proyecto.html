@@ -140,7 +140,7 @@
     <tr><th>Módulo</th><th>Archivos</th><th>Endpoints principales</th></tr>
     <tr><td>Sesión y cuenta</td><td><code>auth.routes / auth.controller / auth.service</code></td><td><code>POST /auth/register, /auth/login, /auth/logout, /auth/rol</code> · <code>GET|PATCH|DELETE /auth/me</code></td></tr>
     <tr><td>Estacionamientos</td><td><code>estacionamiento.routes / .controller / .service</code>, <code>geocodificacion.service</code></td><td><code>GET /estacionamientos</code> (búsqueda) · <code>GET /:id</code> · <code>GET /mios</code> · <code>POST /</code> · <code>PATCH /:id</code> · <code>GET /:id/disponibilidad</code> · <code>GET /:id/reputacion</code></td></tr>
-    <tr><td>Cocheras</td><td><code>cochera.service</code> (rutas en estacionamiento.routes)</td><td><code>/estacionamientos/:id/cocheras</code> (alta, lote, editar, baja, reactivar, bloquear, desbloquear)</td></tr>
+    <tr><td>Cocheras</td><td><code>cochera.service</code> (rutas en estacionamiento/estacionamiento-cochera.routes)</td><td><code>/estacionamientos/:id/cocheras</code> (alta, lote, editar, baja, reactivar, bloquear, desbloquear)</td></tr>
     <tr><td>Vehículos</td><td><code>vehiculo.routes / .controller / .service</code></td><td><code>GET /vehiculos/tipos</code> · <code>GET|POST /vehiculos</code> · <code>PATCH|DELETE /vehiculos/:id</code> · foto</td></tr>
     <tr><td>Reservas y acceso</td><td><code>reserva.routes / .controller / .service</code></td><td><code>POST /reservas</code> · <code>GET /reservas</code> · <code>PATCH /:id/cancelar|confirmar|ausente</code> · <code>GET /acceso/:codigo</code> · <code>POST /acceso</code></td></tr>
     <tr><td>Abonos</td><td><code>abono.routes / .controller / .service</code></td><td><code>/estacionamientos/:id/planes-abono</code> · <code>POST|GET /abonos</code> · <code>PATCH /abonos/:id/cancelar</code></td></tr>
@@ -287,7 +287,7 @@
   <h3>A. Agregar un campo a una tabla y mostrarlo</h3>
   <ol class="pasos">
     <li><code>schema.sql</code> (al final): <code>ALTER TABLE x ADD COLUMN IF NOT EXISTS campo TIPO;</code> → <code>npm run db:migrate</code>.</li>
-    <li>Service del back: sumarlo al <code>SELECT</code> (o a la lista de columnas, ej. <code>COLUMNAS</code> en <code>estacionamiento.service.js</code>) y, si se edita, al <code>INSERT</code>/<code>UPDATE</code> (lista <code>CAMPOS_EDITABLES</code>).</li>
+    <li>Service del back: sumarlo al <code>SELECT</code> (o a la lista de columnas, ej. <code>COLUMNAS</code> en <code>estacionamiento/estacionamiento.service.js</code>) y, si se edita, al <code>INSERT</code>/<code>UPDATE</code> (lista <code>CAMPOS_EDITABLES</code>).</li>
     <li>Validador: <code>.texto('campo', body.campo, { requerido: false })</code> o el tipo que corresponda.</li>
     <li>Front: el DTO en <code>api.dto.ts</code>, el modelo en <code>models/</code>, el mapeo en <code>api.mapeo.ts</code> (<code>campo: dto.campo</code>) y el payload si se envía.</li>
     <li>Pantalla: mostrarlo en el <code>.html</code> (<code>{{ x.campo }}</code>) o sumarlo al formulario.</li>

@@ -1,33 +1,16 @@
 import {
-  ChangeDetectionStrategy,
-  Component,
-  ElementRef,
-  Injector,
-  afterNextRender,
-  computed,
-  inject,
-  linkedSignal,
-  signal,
-  viewChild,
+  ChangeDetectionStrategy, Component, ElementRef, Injector, afterNextRender, computed, inject, linkedSignal, signal, viewChild,
 } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { MapaEstacionamientos } from '@app/components/estacionamiento';
 import { Cargando, EstadoVacio, Icono } from '@app/components/ui';
-import {
-  AreaMapa,
-  Estacionamiento,
-  FiltrosEstacionamiento,
-  Id,
-  Momento,
-  OrdenEstacionamiento,
-  Vehiculo,
+import { AreaMapa, Estacionamiento, FiltrosEstacionamiento, Id, Momento, OrdenEstacionamiento, Vehiculo,
 } from '@app/models';
-import {
-  EstacionamientoService,
-  LIMITE_BUSQUEDA,
-  ordenarEstacionamientos,
+
+import { EstacionamientoService, LIMITE_BUSQUEDA, ordenarEstacionamientos,
 } from '@app/services/estacionamiento.service';
+
 import { Destino } from '@app/utils/direcciones.util';
 import { DetalleEstacionamiento } from './detalle-estacionamiento/detalle-estacionamiento';
 import { ModalFiltros } from './modal-filtros/modal-filtros';
@@ -35,8 +18,10 @@ import { ResultadoEstacionamiento } from './resultado-estacionamiento/resultado-
 import { PanelBuscador } from './panel-buscador/panel-buscador';
 import { Panel, horaFin } from './panel.interface';
 import { ORDENES, PANEL_INICIAL, POR_PAGINA, PRECIO_TOPE } from './constantes';
+
 import { UbicacionService } from '@app/services/conductor/ubicacion.service';
 import { VehiculoService } from '@app/services/conductor/vehiculo.service';
+
 import { diaCorto } from '@app/utils/fecha.util';
 
 /**

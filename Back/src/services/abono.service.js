@@ -6,7 +6,7 @@ import { ApiError } from '../utils/ApiError.js';
 import { HOY_LOCAL_SQL, partesLocales } from '../utils/horario.js';
 import { motivoFueraDeTurno, TURNOS } from '../utils/turnos.js';
 import { crearDevolucion, topeDe } from './devolucion.service.js';
-import { aceptaReservas, asegurarPropiedad } from './estacionamiento.service.js';
+import { aceptaReservas, asegurarPropiedad } from './estacionamiento/estacionamiento.service.js';
 
 const VIOLACION_UNIQUE = '23505';
 

@@ -34,12 +34,7 @@ export class IncidenciaService {
    * con la moderacion. En un reclamo, el propietario puede sumar una propuesta
    * de devolucion (`montoPropuesto`, solo en el general).
    */
-  responder(
-    id: Id,
-    texto: string,
-    canal: CanalIncidencia = 'GENERAL',
-    montoPropuesto?: number,
-  ): Observable<IncidenciaDetallada> {
+  responder(id: Id, texto: string, canal: CanalIncidencia = 'GENERAL', montoPropuesto?: number,): Observable<IncidenciaDetallada> {
     const body = montoPropuesto === undefined ? { texto, canal } : { texto, canal, monto_propuesto: montoPropuesto };
     return this.http
       .post<{ incidencia: IncidenciaDetalladaDto }>(`${this.ruta}/${id}/mensajes`, body)

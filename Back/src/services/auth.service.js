@@ -7,7 +7,7 @@ import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
 import { firmarToken } from '../utils/jwt.js';
 import { ROLES } from '../utils/roles.js';
-import { darDeBajaEnTransaccion } from './estacionamiento.service.js';
+import { darDeBajaEnTransaccion } from './estacionamiento/estacionamiento-baja.service.js';
 
 // `roles` va como text[]: el driver no sabe leer arreglos de un ENUM propio y
 // los devolveria como el texto crudo '{CONDUCTOR,PROPIETARIO}'.

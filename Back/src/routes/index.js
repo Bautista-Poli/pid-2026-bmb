@@ -6,7 +6,7 @@ import abonoRoutes from './abono.routes.js';
 import adminRoutes from './admin.routes.js';
 import authRoutes from './auth.routes.js';
 import calificacionRoutes from './calificacion.routes.js';
-import estacionamientoRoutes from './estacionamiento.routes.js';
+import estacionamientoRoutes from './estacionamiento/estacionamiento.routes.js';
 import estadisticaRoutes from './estadistica.routes.js';
 import incidenciaRoutes from './incidencia.routes.js';
 import mapaRoutes from './mapa.routes.js';

@@ -14,11 +14,8 @@ import {
   motivo,
   query,
 } from './ayuda.mjs';
-import {
-  TOLERANCIA_NO_SHOW_MS,
-  vencerAusentes,
-  vencerPendientesSinConfirmar,
-} from '../src/services/reserva.service.js';
+import { TOLERANCIA_NO_SHOW_MS } from '../src/services/reserva/reserva-estados.js';
+import { vencerAusentes, vencerPendientesSinConfirmar } from '../src/services/reserva/reserva-vencimientos.service.js';
 
 before(() => levantarApi('noshow'));
 after(() => cerrarApi());

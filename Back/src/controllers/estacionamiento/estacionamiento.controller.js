@@ -4,8 +4,9 @@
 import * as estacionamientoService from '../../services/estacionamiento/estacionamiento.service.js';
 import * as busquedaService from '../../services/estacionamiento/estacionamiento-busqueda.service.js';
 import * as bajaService from '../../services/estacionamiento/estacionamiento-baja.service.js';
-import * as reputacionService from '../../services/reputacion.service.js';
-import * as reservaService from '../../services/reserva.service.js';
+import * as reputacionService from '../../services/reputacion/reputacion.service.js';
+import * as reservaService from '../../services/reserva/reserva.service.js';
+import * as disponibilidadService from '../../services/reserva/reserva-disponibilidad.service.js';
 import { ROLES } from '../../utils/roles.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 
@@ -67,7 +68,7 @@ export const darDeBaja = asyncHandler(async (req, res) => {
 
 /** GET /api/estacionamientos/:id/disponibilidad (publico) */
 export const disponibilidad = asyncHandler(async (req, res) => {
-  const resultado = await reservaService.disponibilidad(req.params.id, req.query);
+  const resultado = await disponibilidadService.disponibilidad(req.params.id, req.query);
   res.json(resultado);
 });
 

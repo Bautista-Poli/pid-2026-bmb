@@ -1,6 +1,6 @@
 // Validadores de calificaciones: la del conductor (5 categorias) y la del
 // propietario (puntaje), con sus etiquetas; y el periodo de la reputacion.
-import { CODIGOS_ETIQUETA, CODIGOS_ETIQUETA_CONDUCTOR } from '../services/reputacion.service.js';
+import { CODIGOS_ETIQUETA, CODIGOS_ETIQUETA_CONDUCTOR } from '../services/reputacion/reputacion-reglas.js';
 import { campos } from './helpers.js';
 
 const NOTA = { min: 1, max: 5 };

@@ -1,6 +1,6 @@
 // Validadores de estacionamientos y cocheras: alta, cambios, busqueda, disponibilidad,
 // lotes y bloqueo. Devuelven { valores, errores } y validate() responde 400.
-import { NIVELES } from '../services/reputacion.service.js';
+import { NIVELES } from '../services/reputacion/reputacion-reglas.js';
 import { CAMPOS_TARIFA, MODALIDADES } from '../utils/tarifas.js';
 import { campos } from './helpers.js';
 

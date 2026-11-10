@@ -6,7 +6,7 @@ import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
 import { ESTADOS_DENUNCIA, LIMITE_DENUNCIAS } from '../utils/denuncias.js';
 import { ROLES } from '../utils/roles.js';
-import { RESENA_VISIBLE_PARA_EL_CONDUCTOR } from './reputacion.service.js';
+import { RESENA_VISIBLE_PARA_EL_CONDUCTOR } from './reputacion/reputacion-conductor.service.js';
 
 /**
  * Si la reseña es sobre quien la denuncia, segun el perfil con el que entro. El

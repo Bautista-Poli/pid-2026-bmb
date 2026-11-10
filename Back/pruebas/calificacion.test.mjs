@@ -460,7 +460,7 @@ describe('insignias en la busqueda', () => {
 
 describe('niveles', () => {
   test('cada nivel arranca en su puntaje y pide el minimo de calificaciones', async () => {
-    const { nivelDe } = await import('../src/services/reputacion.service.js');
+    const { nivelDe } = await import('../src/services/reputacion/reputacion-reglas.js');
     assert.equal(nivelDe(30, 5), 'COBRE');
     assert.equal(nivelDe(50, 5), 'PLATA');
     assert.equal(nivelDe(64, 9), 'PLATA');

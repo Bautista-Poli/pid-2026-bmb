@@ -14,7 +14,7 @@ import {
   motivo,
   query,
 } from './ayuda.mjs';
-import { detectarExcedidos, protegerReservasSiguientes } from '../src/services/incidencia.service.js';
+import { detectarExcedidos, protegerReservasSiguientes } from '../src/services/incidencia/incidencia-vencimientos.service.js';
 
 before(() => levantarApi('incidencia'));
 after(() => cerrarApi());

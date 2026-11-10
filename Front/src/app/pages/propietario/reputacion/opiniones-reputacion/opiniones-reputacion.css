@@ -1,15 +1,5 @@
-.opiniones {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.sin-opiniones {
-  font-size: 13px;
-  color: var(--color-plomo);
-}
-
-.opinion {
+/* El host es la opinion: la lista y los separadores los pone reputacion.html. */
+:host {
   display: flex;
   flex-direction: column;
   gap: 0.375rem;

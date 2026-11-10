@@ -1,9 +1,8 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
-import { Tarjeta } from '@app/components/ui';
 import {
   EtiquetaCalificacion,
   Id,
-  ReputacionEstacionamiento,
+  Opinion,
   TEXTO_ESTADO_DENUNCIA,
   TEXTO_ETIQUETA,
   formatearNota,
@@ -23,19 +22,17 @@ function haceCuanto(instante: string, ahora = Date.now()): string {
 }
 
 /**
- * Opiniones recientes en Reputacion (reputacion.ts): autor, nota, comentario y
- * etiquetas. Cada una se puede denunciar (`denunciar`, con el id de la calificacion).
+ * Una opinion de Reputacion (reputacion.ts): autor, nota, comentario y etiquetas.
+ * Se puede denunciar (`denunciar`, con el id de la calificacion).
  */
 @Component({
   selector: 'app-opiniones-reputacion',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Tarjeta],
   templateUrl: './opiniones-reputacion.html',
   styleUrls: ['../compartido.css', './opiniones-reputacion.css'],
-  host: { style: 'display: contents' },
 })
 export class OpinionesReputacion {
-  readonly datos = input.required<ReputacionEstacionamiento>();
+  readonly opinion = input.required<Opinion>();
 
   readonly denunciar = output<Id>();
 

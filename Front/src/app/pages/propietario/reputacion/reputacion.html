@@ -72,24 +72,23 @@
         <app-operacion-reputacion [datos]="datos" />
 
         <div class="columna-derecha">
-          <!-- Sugerencia -->
-          @if (datos.sugerencia; as sugerencia) {
-            <section class="sugerencia" aria-label="Dónde ganás más puntos">
-              <p class="sugerencia-titulo">Dónde ganás más puntos</p>
-              <p class="sugerencia-texto">
-                {{ sugerencia.nombre }} está en {{ nota(sugerencia.promedio) }}.
-                @if (sugerencia.etiqueta; as etiqueta) {
-                  {{ etiqueta.cantidad }} {{ etiqueta.cantidad === 1 ? 'conductor marcó' : 'conductores marcaron' }}
-                  “{{ textoDeEtiqueta(etiqueta.codigo).toLowerCase() }}”.
-                }
-                Subirla a {{ nota(sugerencia.objetivo) }} te suma unos {{ sugerencia.puntos }}
-                {{ sugerencia.puntos === 1 ? 'punto' : 'puntos' }}.
-              </p>
-            </section>
-          }
-
           <!-- Opiniones -->
-          <app-opiniones-reputacion [datos]="datos" (denunciar)="aDenunciar.set($event)" />
+          <ui-tarjeta relleno="lg">
+            <div class="opiniones">
+              <h2 class="panel-titulo">Opiniones recientes</h2>
+              @if (datos.opiniones.length === 0) {
+                <p class="sin-opiniones">Todavía no hay opiniones.</p>
+              } @else {
+                <ul class="lista">
+                  @for (opinion of datos.opiniones; track opinion.id; let primera = $first) {
+                    <li [class.separada]="!primera">
+                      <app-opiniones-reputacion [opinion]="opinion" (denunciar)="aDenunciar.set($event)" />
+                    </li>
+                  }
+                </ul>
+              }
+            </div>
+          </ui-tarjeta>
         </div>
       </div>
 

@@ -2,7 +2,6 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
 import { RouterLink } from '@angular/router';
 import { Icono } from '@app/components/ui';
 import { CATEGORIAS_CALIFICACION, Estacionamiento, formatearNota } from '@app/models';
-import { GaleriaFotos } from '@app/components/estacionamiento';
 import { InsigniasEstacionamiento } from '../insignias-estacionamiento/insignias-estacionamiento';
 import {
   ETIQUETA_ESTADO,
@@ -22,7 +21,7 @@ const CLASE_ESTADO: Record<EstadoDisponibilidad, string> = {
 const pesos = (monto: number) => `$${monto.toLocaleString('es-AR')}`;
 
 /**
- * Ficha de un estacionamiento que se abre sobre el mapa al elegirlo: foto,
+ * Ficha de un estacionamiento que se abre sobre el mapa al elegirlo:
  * si esta abierto, distancia, precio, disponibilidad para el momento buscado,
  * direccion, horarios de la semana y el boton para reservar.
  *
@@ -32,11 +31,11 @@ const pesos = (monto: number) => `$${monto.toLocaleString('es-AR')}`;
 @Component({
   selector: 'app-detalle-estacionamiento',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Icono, GaleriaFotos, RouterLink, InsigniasEstacionamiento],
+  imports: [Icono, RouterLink, InsigniasEstacionamiento],
   templateUrl: './detalle-estacionamiento.html',
   styleUrl: './detalle-estacionamiento.css',
   host: {
-    // Columna flex: si no entra, la foto y el boton quedan fijos y el medio scrollea.
+    // Columna flex: si no entra, el encabezado y el boton quedan fijos y el medio scrollea.
     // El host no atrapa clicks (en desktop ocupa todo el alto del mapa); la tarjeta si.
     class: 'pointer-events-none flex flex-col',
     '(document:keydown.escape)': 'cerrar.emit()',

@@ -6,7 +6,6 @@ import {
   ValidationErrors,
   Validators,
 } from '@angular/forms';
-import { FotoEstacionamiento } from '@app/components/estacionamiento/foto-estacionamiento/foto-estacionamiento';
 import { Boton, Chip } from '@app/components/ui';
 import {
   ETIQUETA_TIPO_VEHICULO,
@@ -46,7 +45,7 @@ function patenteSegunTipo(grupo: AbstractControl): ValidationErrors | null {
 @Component({
   selector: 'app-formulario-vehiculo',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, Boton, Chip, FotoEstacionamiento],
+  imports: [ReactiveFormsModule, Boton, Chip],
   templateUrl: './formulario-vehiculo.html',
 })
 export class FormularioVehiculo {
@@ -61,11 +60,6 @@ export class FormularioVehiculo {
   readonly textoEnviar = input('Guardar');
 
   readonly guardar = output<NuevoVehiculo>();
-  /**
-   * La foto elegida (`null` = sacar la que tenia). Se sube despues de guardar
-   * los datos: en el alta recien ahi existe el id del vehiculo.
-   */
-  readonly fotoElegida = output<File | null>();
 
   protected readonly tipos = TIPOS_VEHICULO;
   protected readonly etiquetaTipo = ETIQUETA_TIPO_VEHICULO;

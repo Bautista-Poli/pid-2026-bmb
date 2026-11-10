@@ -1,5 +1,5 @@
 import { NuevaReserva, NuevoEstacionamiento } from '@app/models';
-import { EstacionamientoDto, ReservaDto, VehiculoDto } from './api.dto';
+import { EstacionamientoDto, ReservaDto, VehiculoDto } from '@app/services/api/api.dto';
 import {
   aAbono,
   aEstacionamiento,
@@ -11,7 +11,7 @@ import {
   aResenaDenunciada,
   aReserva,
   aVehiculo,
-} from './api.mapeo';
+} from '@app/services/api/api.mapeo';
 
 const BASE: NuevoEstacionamiento = {
   nombre: 'Cochera Centro',
@@ -124,19 +124,20 @@ describe('aVehiculo', () => {
     color: null,
     predeterminado: false,
     activo: true,
-    foto_url: 'https://res.cloudinary.com/demo/image/upload/auto.jpg',
   };
 
-  it('mapea la foto propia del vehiculo', () => {
-    expect(aVehiculo(dto).foto).toBe('https://res.cloudinary.com/demo/image/upload/auto.jpg');
-    expect(aVehiculo({ ...dto, foto_url: null }).foto).toBeNull();
-  });
-
-  it('mapea la miniatura de la foto propia', () => {
-    expect(aVehiculo({ ...dto, foto_miniatura_url: 'https://res.cloudinary.com/demo/w_240/auto.jpg' }).fotoMiniatura).toBe(
-      'https://res.cloudinary.com/demo/w_240/auto.jpg',
-    );
-    expect(aVehiculo({ ...dto, foto_miniatura_url: null }).fotoMiniatura).toBeNull();
+  it('mapea el vehiculo con su tipo', () => {
+    expect(aVehiculo(dto)).toEqual({
+      id: 'v1',
+      usuarioId: 'u1',
+      patente: 'AB123CD',
+      marca: null,
+      modelo: null,
+      color: null,
+      tipo: 'AUTO',
+      predeterminado: false,
+      activo: true,
+    });
   });
 });
 

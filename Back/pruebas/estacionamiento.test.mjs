@@ -481,130 +481,20 @@ describe('busqueda con filtros', () => {
   });
 });
 
-// PNG de 1x1 valido: alcanza para probar la firma de bytes sin sumar un archivo binario al repo.
-const PNG_MINIMO = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
-  'base64',
-);
-
-describe('foto del estacionamiento', () => {
-  test('se sube, se lee y se borra', async () => {
+describe('ubicacion del estacionamiento', () => {
+  test('sin geocodificar, las coordenadas que marca el propietario se conservan al cambiar la direccion', async () => {
     const propietario = await nuevoPropietario();
-    const estacionamiento = await crearEstacionamiento(propietario.token, { cocheras: 0 });
-    const ruta = `/estacionamientos/${estacionamiento.id_estacionamiento}/foto`;
+    const estacionamiento = await crearEstacionamiento(propietario.token);
+    const ruta = `/estacionamientos/${estacionamiento.id_estacionamiento}`;
+    const ubicacion = { latitud: -34.588, longitud: -58.43 };
 
-    const antes = await api('GET', ruta);
-    assert.equal(antes.estado, 404);
+    const marcada = await api('PATCH', ruta, { token: propietario.token, body: { calle: 'Gurruchaga', ...ubicacion } });
+    assert.equal(marcada.estado, 200);
 
-    const subida = await api('PUT', ruta, {
-      token: propietario.token,
-      raw: PNG_MINIMO,
-      contentType: 'image/png',
-    });
-    assert.equal(subida.estado, 200);
-
-    const leida = await api('GET', ruta);
-    assert.equal(leida.estado, 200);
-    assert.equal(leida.headers.get('content-type'), 'image/png');
-    assert.ok(leida.datos.equals(PNG_MINIMO));
-
-    const borrada = await api('DELETE', ruta, { token: propietario.token });
-    assert.equal(borrada.estado, 204);
-
-    const despues = await api('GET', ruta);
-    assert.equal(despues.estado, 404);
-  });
-
-  test('rechaza un archivo que no es una imagen valida', async () => {
-    const propietario = await nuevoPropietario();
-    const estacionamiento = await crearEstacionamiento(propietario.token, { cocheras: 0 });
-    const ruta = `/estacionamientos/${estacionamiento.id_estacionamiento}/foto`;
-
-    const { estado } = await api('PUT', ruta, {
-      token: propietario.token,
-      raw: Buffer.from('no es una imagen'),
-      contentType: 'image/png',
-    });
-    assert.equal(estado, 400);
-  });
-
-  test('un propietario ajeno no puede subir ni borrar la foto', async () => {
-    const propietario = await nuevoPropietario();
-    const otro = await nuevoPropietario();
-    const estacionamiento = await crearEstacionamiento(propietario.token, { cocheras: 0 });
-    const ruta = `/estacionamientos/${estacionamiento.id_estacionamiento}/foto`;
-
-    const subida = await api('PUT', ruta, { token: otro.token, raw: PNG_MINIMO, contentType: 'image/png' });
-    assert.equal(subida.estado, 403);
-
-    const borrada = await api('DELETE', ruta, { token: otro.token });
-    assert.equal(borrada.estado, 403);
-  });
-});
-
-describe('galeria de fotos', () => {
-  const JPEG_MINIMO = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]);
-
-  test('suma fotos en orden, la primera es la portada y cada una se lee por su id', async () => {
-    const propietario = await nuevoPropietario();
-    const estacionamiento = await crearEstacionamiento(propietario.token, { cocheras: 0 });
-    const base = `/estacionamientos/${estacionamiento.id_estacionamiento}`;
-
-    const primera = await api('POST', `${base}/fotos`, {
-      token: propietario.token,
-      raw: PNG_MINIMO,
-      contentType: 'image/png',
-    });
-    assert.equal(primera.estado, 201);
-    const segunda = await api('POST', `${base}/fotos`, {
-      token: propietario.token,
-      raw: JPEG_MINIMO,
-      contentType: 'image/jpeg',
-    });
-    assert.equal(segunda.estado, 201);
-
-    const { datos } = await api('GET', base);
-    const ids = datos.estacionamiento.fotos.map((foto) => foto.id_foto);
-    assert.deepEqual(ids, [primera.datos.foto.id_imagen, segunda.datos.foto.id_imagen]);
-
-    const portada = await api('GET', `${base}/foto`);
-    assert.ok(portada.datos.equals(PNG_MINIMO));
-
-    const leida = await api('GET', `${base}/fotos/${ids[1]}`);
-    assert.equal(leida.headers.get('content-type'), 'image/jpeg');
-    assert.ok(leida.datos.equals(JPEG_MINIMO));
-  });
-
-  test('al borrar la portada, la siguiente pasa a serlo', async () => {
-    const propietario = await nuevoPropietario();
-    const estacionamiento = await crearEstacionamiento(propietario.token, { cocheras: 0 });
-    const base = `/estacionamientos/${estacionamiento.id_estacionamiento}`;
-    const subir = (raw, contentType) =>
-      api('POST', `${base}/fotos`, { token: propietario.token, raw, contentType });
-
-    const primera = await subir(PNG_MINIMO, 'image/png');
-    await subir(JPEG_MINIMO, 'image/jpeg');
-
-    const borrada = await api('DELETE', `${base}/fotos/${primera.datos.foto.id_imagen}`, {
-      token: propietario.token,
-    });
-    assert.equal(borrada.estado, 204);
-
-    const portada = await api('GET', `${base}/foto`);
-    assert.ok(portada.datos.equals(JPEG_MINIMO));
-  });
-
-  test('un propietario ajeno no puede sumar fotos', async () => {
-    const propietario = await nuevoPropietario();
-    const otro = await nuevoPropietario();
-    const estacionamiento = await crearEstacionamiento(propietario.token, { cocheras: 0 });
-
-    const { estado } = await api('POST', `/estacionamientos/${estacionamiento.id_estacionamiento}/fotos`, {
-      token: otro.token,
-      raw: PNG_MINIMO,
-      contentType: 'image/png',
-    });
-    assert.equal(estado, 403);
+    const otraCalle = await api('PATCH', ruta, { token: propietario.token, body: { calle: 'Honduras', ...ubicacion } });
+    assert.equal(otraCalle.estado, 200);
+    assert.equal(otraCalle.datos.estacionamiento.latitud, ubicacion.latitud);
+    assert.equal(otraCalle.datos.estacionamiento.longitud, ubicacion.longitud);
   });
 });
 

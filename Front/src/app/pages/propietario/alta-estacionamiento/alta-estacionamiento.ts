@@ -1,6 +1,5 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { Boton } from '@app/components/ui';
 import { FormularioEstacionamiento } from '@app/components/estacionamiento';
 import { Id, NuevoEstacionamiento } from '@app/models';
 import { EstacionamientoService } from '@app/services/estacionamiento.service';
@@ -9,13 +8,12 @@ import { EstacionamientoService } from '@app/services/estacionamiento.service';
  * Pantalla `/propietario/estacionamientos/nuevo` · rol PROPIETARIO
  *
  * Alta de estacionamiento. El formulario es el mismo que usa la edicion; aca
- * solo se decide que hacer con los datos: crearlo, subir la foto si se elegio
- * una, y llevar a sus cocheras.
+ * solo se decide que hacer con los datos: crearlo y llevar a sus cocheras.
  */
 @Component({
   selector: 'app-alta-estacionamiento',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, Boton, FormularioEstacionamiento],
+  imports: [RouterLink, FormularioEstacionamiento],
   templateUrl: './alta-estacionamiento.html',
   styleUrl: './alta-estacionamiento.css',
 })
@@ -25,61 +23,22 @@ export class AltaEstacionamiento {
 
   protected readonly enviando = signal(false);
   protected readonly error = signal<string | null>(null);
-  /** Porcentaje de la subida de la foto en curso, o `null`. */
-  protected readonly progresoFoto = signal<number | null>(null);
-  // Se completa si el estacionamiento se creo pero la foto no se pudo subir:
-  // ya existe, asi que no tiene sentido bloquear al propietario por la foto.
-  protected readonly avisoFoto = signal<Id | null>(null);
 
-  // Se guarda hasta que el estacionamiento exista: la foto se sube con su id,
-  // que recien llega en la respuesta del POST.
-  private foto: File | null = null;
-
-  protected elegirFoto(archivo: File | null): void {
-    this.foto = archivo;
-  }
-
-  /** `POST /api/estacionamientos`, y despues la foto si se elegio una. */
+  /** `POST /api/estacionamientos` y a cargar sus cocheras. */
   protected crear(datos: NuevoEstacionamiento): void {
     this.enviando.set(true);
     this.error.set(null);
-    this.avisoFoto.set(null);
 
     this.estacionamientos.crear(datos).subscribe({
-      next: (estacionamiento) => this.subirFotoYNavegar(estacionamiento.id),
+      next: (estacionamiento) => {
+        this.enviando.set(false);
+        this.irACocheras(estacionamiento.id);
+      },
       error: (e: Error) => {
         this.enviando.set(false);
         this.error.set(e.message);
       },
     });
-  }
-
-  /** Sube la foto (si eligio una) y va a cargar las cocheras. */
-  private subirFotoYNavegar(id: Id): void {
-    if (!this.foto) {
-      this.enviando.set(false);
-      this.irACocheras(id);
-      return;
-    }
-
-    this.estacionamientos.subirFoto(id, this.foto, (porcentaje) => this.progresoFoto.set(porcentaje)).subscribe({
-      next: () => {
-        this.enviando.set(false);
-        this.irACocheras(id);
-      },
-      error: () => {
-        // El estacionamiento ya quedo creado: se deja elegir si reintentar
-        // (desde Editar) o seguir igual, en vez de perder la navegacion.
-        this.progresoFoto.set(null);
-        this.enviando.set(false);
-        this.avisoFoto.set(id);
-      },
-    });
-  }
-
-  protected continuarSinFoto(): void {
-    const id = this.avisoFoto();
-    if (id) this.irACocheras(id);
   }
 
   private irACocheras(id: Id): void {

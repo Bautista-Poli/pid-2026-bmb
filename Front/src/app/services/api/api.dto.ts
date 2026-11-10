@@ -109,10 +109,6 @@ export interface EstacionamientoDto {
   disponible?: boolean;
   tipos_vehiculo?: number[];
   horarios?: HorarioDto[];
-  /** Cuando se subio la portada. `null` o ausente si el estacionamiento no tiene. */
-  foto_actualizada?: string | null;
-  /** La galeria en orden; la primera es la portada. */
-  fotos?: { id_foto: string; actualizada: string }[];
   /** Reputacion de los ultimos 90 dias (ver reputacion.service.js del backend). */
   calificaciones?: number;
   calificacion_promedio?: number | null;
@@ -183,9 +179,6 @@ export interface VehiculoDto {
   color: string | null;
   predeterminado: boolean;
   activo: boolean;
-  /** URL de la foto propia (servida por la API), o `null`. */
-  foto_url?: string | null;
-  foto_miniatura_url?: string | null;
 }
 
 export interface ReservaDto {

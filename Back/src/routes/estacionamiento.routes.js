@@ -1,11 +1,10 @@
-// Rutas de /api/estacionamientos: lo publico (busqueda, detalle, fotos, disponibilidad)
+// Rutas de /api/estacionamientos: lo publico (busqueda, detalle, disponibilidad)
 // y lo del propietario (ABM, cocheras, planes de abono, reservas recibidas, reputacion).
-import express, { Router } from 'express';
+import { Router } from 'express';
 
 import * as abonoController from '../controllers/abono.controller.js';
 import * as estacionamientoController from '../controllers/estacionamiento.controller.js';
 import { authenticate, authenticateOpcional, requireRole } from '../middlewares/auth.js';
-import { LIMITE_FIRMAS, limitarPorUsuario } from '../middlewares/limite.js';
 import { validate } from '../middlewares/validate.js';
 import { ROLES } from '../utils/roles.js';
 import { validarCambiosPlanAbono, validarPlanAbono } from '../validators/abono.validator.js';
@@ -26,14 +25,6 @@ const router = Router();
 
 const soloPropietario = [authenticate, requireRole(ROLES.PROPIETARIO)];
 
-/**
- * Las fotos llegan como JSON `{ public_id }` (ya subidas a /fotos-locales) o, por
- * compatibilidad con el front anterior, como body crudo: el archivo tal cual,
- * con su tipo en el Content-Type. El parser crudo va montado solo en estas
- * rutas; el express.json() global de app.js se ocupa del JSON.
- */
-const imagen = express.raw({ type: ['image/jpeg', 'image/png', 'image/webp'], limit: '2mb' });
-
 // Publico: busqueda y detalle de estacionamientos publicados.
 router.get('/', validate(validarBusqueda, 'query'), estacionamientoController.buscar);
 
@@ -43,8 +34,9 @@ router.get('/mios', ...soloPropietario, estacionamientoController.listarMios);
 // Con sesion opcional: el dueno ve el suyo aunque todavia no este aprobado.
 router.get('/:id', authenticateOpcional, estacionamientoController.obtener);
 router.get('/:id/cocheras', estacionamientoController.listarCocheras);
-router.get('/:id/foto', estacionamientoController.obtenerFoto);
-router.get('/:id/fotos/:idFoto', estacionamientoController.obtenerFotoDeGaleria);
+
+router.get('/:id/cocheras', estacionamientoController.listarCocheras);
+
 router.get(
   '/:id/disponibilidad',
   validate(validarDisponibilidad, 'query'),
@@ -85,20 +77,7 @@ router.patch('/:id/reenviar-revision', ...soloPropietario, estacionamientoContro
 
 router.delete('/:id', ...soloPropietario, estacionamientoController.darDeBaja);
 
-router.put('/:id/foto', ...soloPropietario, imagen, estacionamientoController.guardarFoto);
-router.delete('/:id/foto', ...soloPropietario, estacionamientoController.borrarFoto);
 
-// Firma para subir una foto a /fotos-locales (despues se manda su public_id).
-router.post(
-  '/:id/fotos/firma',
-  ...soloPropietario,
-  limitarPorUsuario(LIMITE_FIRMAS),
-  estacionamientoController.firmarFoto,
-);
-
-// Galeria: `/:id/foto` es la portada; estas suman y sacan el resto de las fotos.
-router.post('/:id/fotos', ...soloPropietario, imagen, estacionamientoController.agregarFoto);
-router.delete('/:id/fotos/:idFoto', ...soloPropietario, estacionamientoController.borrarFotoDeGaleria);
 
 router.post(
   '/:id/cocheras',

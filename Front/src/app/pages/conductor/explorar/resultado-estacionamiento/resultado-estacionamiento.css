@@ -36,13 +36,12 @@
   opacity: 0.6;
 }
 
-/* Foto y, si no hay, la inicial "P": mismo tamano para que la fila no salte. */
+/* La inicial "P" del estacionamiento. */
 .resultado__avatar {
   width: 2.5rem;
   height: 2.5rem;
   flex-shrink: 0;
   border-radius: 9999px;
-  object-fit: cover;
 }
 
 .resultado__avatar--inicial {

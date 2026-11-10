@@ -4,19 +4,11 @@
   role="dialog"
   [attr.aria-label]="estacionamiento().nombre"
 >
-  <!-- Foto -->
+  <!-- Encabezado con el icono del estacionamiento -->
   <div class="relative h-36 shrink-0 bg-acento-suave lg:h-40">
-    @if (estacionamiento().fotos.length > 0) {
-      <app-galeria-fotos
-        class="size-full"
-        [fotos]="estacionamiento().fotos"
-        [nombre]="'Foto de ' + estacionamiento().nombre"
-      />
-    } @else {
-      <span class="grid size-full place-items-center text-acento/60" aria-hidden="true">
-        <ui-icono nombre="estacionamiento" [tamano]="56" />
-      </span>
-    }
+    <span class="grid size-full place-items-center text-acento/60" aria-hidden="true">
+      <ui-icono nombre="estacionamiento" [tamano]="56" />
+    </span>
     <button
       type="button"
       class="absolute top-3 right-3 grid size-9 place-items-center rounded-full bg-papel text-tinta

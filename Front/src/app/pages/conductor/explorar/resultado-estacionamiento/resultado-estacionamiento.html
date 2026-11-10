@@ -8,11 +8,7 @@
   (focus)="enfocado.emit()"
   (click)="elegido.emit()"
 >
-  @if (estacionamiento().fotoUrl; as foto) {
-    <img [src]="foto" alt="" loading="lazy" class="resultado__avatar" />
-  } @else {
-    <span class="resultado__avatar resultado__avatar--inicial" aria-hidden="true">P</span>
-  }
+  <span class="resultado__avatar resultado__avatar--inicial" aria-hidden="true">P</span>
 
   <span class="resultado__cuerpo">
     <span class="resultado__titulo">

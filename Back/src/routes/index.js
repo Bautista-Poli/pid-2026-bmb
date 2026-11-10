@@ -9,7 +9,7 @@ import calificacionRoutes from './calificacion.routes.js';
 import estacionamientoRoutes from './estacionamiento.routes.js';
 import estadisticaRoutes from './estadistica.routes.js';
 import incidenciaRoutes from './incidencia.routes.js';
-import fotosRoutes from './fotos.routes.js';
+import mapaRoutes from './mapa.routes.js';
 import reservaRoutes from './reserva.routes.js';
 import vehiculoRoutes from './vehiculo.routes.js';
 
@@ -26,7 +26,7 @@ router.use('/admin', adminRoutes);
 router.use('/incidencias', incidenciaRoutes);
 router.use('/estadisticas', estadisticaRoutes);
 router.use('/calificaciones', calificacionRoutes);
-// Fotos en disco (/fotos-locales) y el mapa (/mapa).
-router.use(fotosRoutes);
+// El mapa local (/mapa).
+router.use(mapaRoutes);
 
 export default router;

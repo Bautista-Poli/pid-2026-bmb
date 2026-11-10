@@ -73,18 +73,7 @@ export const AGREGADOS = `
             'hora_cierre', to_char(h.hora_cierre, 'HH24:MI')
           ) ORDER BY h.dia_semana), '[]'::json)
      FROM horario h
-    WHERE h.id_estacionamiento = e.id_estacionamiento) AS horarios,
-  (SELECT COALESCE(json_agg(json_build_object(
-            'id_foto', f.id_imagen,
-            'actualizada', f.actualizada
-          ) ORDER BY f.orden, f.actualizada), '[]'::json)
-     FROM estacionamiento_imagen f
-    WHERE f.id_estacionamiento = e.id_estacionamiento) AS fotos,
-  (SELECT f.actualizada
-     FROM estacionamiento_imagen f
-    WHERE f.id_estacionamiento = e.id_estacionamiento
-    ORDER BY f.orden, f.actualizada
-    LIMIT 1) AS foto_actualizada
+    WHERE h.id_estacionamiento = e.id_estacionamiento) AS horarios
 `;
 
 /**

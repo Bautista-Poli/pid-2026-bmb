@@ -14,7 +14,7 @@ import { InsigniasEstacionamiento } from '../insignias-estacionamiento/insignias
 import { pesos } from '../panel.interface';
 
 /**
- * Una tarjeta de la lista de resultados de Explorar (mapa.ts): foto, nombre,
+ * Una tarjeta de la lista de resultados de Explorar (mapa.ts): nombre,
  * nivel, reputacion, direccion, distancia, precio, disponibilidad y horario.
  *
  * Avisa con `enfocado` cuando el mouse pasa por encima o recibe el foco (la

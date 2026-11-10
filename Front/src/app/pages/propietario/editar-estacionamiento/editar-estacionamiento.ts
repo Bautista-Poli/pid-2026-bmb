@@ -37,19 +37,9 @@ export class EditarEstacionamiento {
   protected readonly publicando = signal(false);
   protected readonly borrando = signal(false);
   protected readonly error = signal<string | null>(null);
-  /** Porcentaje de la subida de la foto en curso, o `null`. */
-  protected readonly progresoFoto = signal<number | null>(null);
   protected readonly aviso = signal<string | null>(null);
 
-  // `undefined` = no se toco la foto en este envio, `null` = se pidio
-  // quitarla, `File` = se elige una nueva.
-  private foto: File | null | undefined;
-
-  protected elegirFoto(archivo: File | null): void {
-    this.foto = archivo;
-  }
-
-  /** `PATCH /api/estacionamientos/:id` con el formulario completo, y la foto si se toco. */
+  /** `PATCH /api/estacionamientos/:id` con el formulario completo. */
   protected guardar(datos: NuevoEstacionamiento): void {
     const actual = this.recurso.value();
     if (actual && vuelveARevision(actual, datos)) {
@@ -64,32 +54,10 @@ export class EditarEstacionamiento {
     this.error.set(null);
 
     this.estacionamientos.actualizar(this.estacionamientoId(), datos).subscribe({
-      next: () => this.guardarFoto(),
+      next: () => this.volverAlListado(),
       error: (e: Error) => {
         this.enviando.set(false);
         this.error.set(e.message);
-      },
-    });
-  }
-
-  /** Sube o reemplaza la portada del estacionamiento. */
-  private guardarFoto(): void {
-    if (this.foto === undefined) {
-      this.volverAlListado();
-      return;
-    }
-
-    const id = this.estacionamientoId();
-    const pedido = this.foto
-      ? this.estacionamientos.subirFoto(id, this.foto, (porcentaje) => this.progresoFoto.set(porcentaje))
-      : this.estacionamientos.borrarFoto(id);
-
-    pedido.subscribe({
-      next: () => this.volverAlListado(),
-      error: (e: Error) => {
-        this.progresoFoto.set(null);
-        this.enviando.set(false);
-        this.error.set(`Guardamos los datos, pero la foto no se pudo actualizar: ${e.message}`);
       },
     });
   }

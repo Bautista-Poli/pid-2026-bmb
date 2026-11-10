@@ -5,7 +5,8 @@ import { ApiError } from '../utils/ApiError.js';
 import { armarSet } from '../utils/sql.js';
 import { ESTADOS_COCHERA, ESTADOS_RESERVA, ESTADOS_VIGENTES } from '../utils/roles.js';
 import { cocheraReservable, finEfectivo, sinSolapamiento } from '../utils/solapamiento.js';
-import { MENSAJE_VEHICULO_ADENTRO, asegurarPropiedad } from './estacionamiento.service.js';
+import { MENSAJE_VEHICULO_ADENTRO } from './estacionamiento/estacionamiento-baja.service.js';
+import { asegurarPropiedad } from './estacionamiento/estacionamiento.service.js';
 
 const VIOLACION_UNIQUE = '23505';
 const VIOLACION_FK = '23503';

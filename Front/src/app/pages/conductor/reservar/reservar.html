@@ -20,22 +20,6 @@
           <p class="num-tabular contexto-reserva">{{ contexto() }}</p>
         </header>
 
-        <!-- Foto del estacionamiento -->
-        @if (estacionamiento.fotos.length > 0) {
-          <app-galeria-fotos
-            class="galeria-reserva"
-            [fotos]="estacionamiento.fotos"
-            [nombre]="'Foto de ' + estacionamiento.nombre"
-          />
-        } @else {
-          <div class="foto-vacia">
-            <span class="contenido-foto-vacia">
-              <span class="logo-foto-vacia" aria-hidden="true">P</span>
-              <span class="leyenda-foto-vacia">Este estacionamiento todavía no cargó fotos</span>
-            </span>
-          </div>
-        }
-
         <div class="layout-reserva">
           <!-- Campos: sueltos en mobile, dentro de una tarjeta en desktop -->
           <div class="campos-reserva">

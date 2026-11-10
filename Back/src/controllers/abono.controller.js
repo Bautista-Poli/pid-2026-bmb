@@ -1,5 +1,5 @@
 // Controllers de abonos: leen el pedido (params, body, req.usuario), llaman a
-// abono.service y responden JSON. Las rutas estan en abono.routes y estacionamiento.routes.
+// abono.service y responden JSON. Las rutas estan en abono.routes y estacionamiento/estacionamiento-abono.routes.
 import * as abonoService from '../services/abono.service.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 

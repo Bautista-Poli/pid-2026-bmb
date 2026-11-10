@@ -1,5 +1,5 @@
 // Rutas de /api/abonos (conductor): comprar, listar los propios y cancelar.
-// Los planes de cada estacionamiento estan en estacionamiento.routes.
+// Los planes de cada estacionamiento estan en estacionamiento/estacionamiento-abono.routes.
 import { Router } from 'express';
 
 import * as abonoController from '../controllers/abono.controller.js';

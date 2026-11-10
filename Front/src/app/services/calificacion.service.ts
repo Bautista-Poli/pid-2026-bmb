@@ -22,8 +22,7 @@ export class CalificacionService {
   /** `POST /api/reservas/:id/calificacion`: solo despues de entrar y salir, una vez. */
   calificar(reservaId: Id, datos: NuevaCalificacion): Observable<Calificacion> {
     const comentario = datos.comentario.trim();
-    return this.http
-      .post<{ calificacion: CalificacionDto }>(`/reservas/${reservaId}/calificacion`, {
+    return this.http.post<{ calificacion: CalificacionDto }>(`/reservas/${reservaId}/calificacion`, {
         ...datos.notas,
         etiquetas: datos.etiquetas,
         ...(comentario ? { comentario } : {}),

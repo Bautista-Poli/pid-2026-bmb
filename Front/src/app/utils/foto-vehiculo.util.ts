@@ -2,8 +2,7 @@ import { Vehiculo } from '@app/models';
 
 /**
  * Fotos de catalogo que vienen con el proyecto (`public/vehiculos/`), indexadas
- * por `marca modelo` normalizado. Son el respaldo cuando el conductor no subio
- * una foto propia de su vehiculo (`vehiculo.foto`, guardada por la API). Si el
+ * por `marca modelo` normalizado. Si el
  * modelo no esta en la lista no se inventa una foto, la ficha cae en el icono
  * de respaldo. Para sumar una: dejar el archivo en `public/vehiculos/` (400x280)
  * y agregar su entrada aca.
@@ -29,14 +28,8 @@ function normalizar(texto: string): string {
     .replace(/\s+/g, ' ');
 }
 
-/** La foto propia del vehiculo, si no la del modelo, o `null` si no hay ninguna. */
+/** La foto de catalogo del modelo, o `null` si no hay. */
 export function fotoDeVehiculo(vehiculo: Vehiculo): string | null {
-  if (vehiculo.foto) return vehiculo.foto;
   const clave = normalizar([vehiculo.marca, vehiculo.modelo].filter(Boolean).join(' '));
   return clave ? (FOTOS[clave] ?? null) : null;
-}
-
-/** Para recuadros chicos: la miniatura de la foto propia, o la de catalogo. */
-export function miniaturaDeVehiculo(vehiculo: Vehiculo): string | null {
-  return vehiculo.fotoMiniatura ?? fotoDeVehiculo(vehiculo);
 }

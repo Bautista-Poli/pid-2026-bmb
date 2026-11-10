@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
-import { Observable } from 'rxjs';
 import { FormularioVehiculo } from '@app/components/vehiculo';
 import { FotoVehiculo } from './foto-vehiculo/foto-vehiculo';
 import { Boton, Cargando, EstadoVacio, Tarjeta } from '@app/components/ui';
@@ -38,35 +37,6 @@ export class EditarVehiculo {
   protected readonly enviando = signal(false);
   protected readonly borrando = signal(false);
   protected readonly error = signal<string | null>(null);
-  /** Porcentaje de la subida de la foto en curso, o `null`. */
-  protected readonly progresoFoto = signal<number | null>(null);
-
-  // `undefined` = no se toco la foto, `null` = se pidio sacarla, `File` = una nueva.
-  private foto: File | null | undefined;
-
-  protected elegirFoto(archivo: File | null): void {
-    this.foto = archivo;
-  }
-
-  /** Sube o reemplaza la foto del vehiculo. */
-  private guardarFoto(id: Id): void {
-    if (this.foto === undefined) {
-      this.volverAlListado();
-      return;
-    }
-    const pedido: Observable<unknown> = this.foto
-      ? this.vehiculos.subirFoto(id, this.foto, (porcentaje) => this.progresoFoto.set(porcentaje))
-      : this.vehiculos.borrarFoto(id);
-    pedido.subscribe({
-      next: () => this.volverAlListado(),
-      error: (e: Error) => {
-        this.progresoFoto.set(null);
-        this.enviando.set(false);
-        this.error.set(`Guardamos los datos, pero la foto no se pudo actualizar: ${e.message}`);
-      },
-    });
-  }
-
   /** `PATCH /api/vehiculos/:id` */
   protected guardar(cambios: NuevoVehiculo): void {
     const vehiculo = this.recurso.value();
@@ -76,7 +46,7 @@ export class EditarVehiculo {
     this.error.set(null);
 
     this.vehiculos.actualizar(vehiculo, cambios).subscribe({
-      next: () => this.guardarFoto(vehiculo.id),
+      next: () => this.volverAlListado(),
       error: (e: Error) => {
         this.enviando.set(false);
         this.error.set(e.message);

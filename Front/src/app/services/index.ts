@@ -6,6 +6,5 @@ export * from './conductor/vehiculo.service';
 export * from './reserva.service';
 export * from './abono.service';
 export * from './admin/admin.service';
-export * from './fotos.service';
 export * from './propietario/estadistica.service';
 export * from './calificacion.service';

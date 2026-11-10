@@ -1,21 +1,18 @@
-// Vehiculos del conductor: ABM, predeterminado, fotos y el catalogo de tipos.
+// Vehiculos del conductor: ABM, predeterminado y el catalogo de tipos.
 import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
 import { errorPatente } from '../validators/vehiculo.validator.js';
-import * as fotos from './fotos.service.js';
 
 const VIOLACION_UNIQUE = '23505';
 const VIOLACION_FK = '23503';
 
 const CAMPOS = `
   id_vehiculo, id_conductor, id_tipo_vehiculo, patente, marca, modelo, color,
-  predeterminado, activo, foto_public_id
+  predeterminado, activo
 `;
 
 // Columnas que el PATCH puede tocar; predeterminado se maneja aparte por el
 // indice `vehiculo_un_predeterminado` (uno solo por conductor).
-// CAMPOS con el alias `v.`, para el UPDATE ... FROM de la foto.
-const CAMPOS_V = CAMPOS.split(',').map((c) => `v.${c.trim()}`).join(', ');
 
 const CAMPOS_EDITABLES = ['patente', 'id_tipo_vehiculo', 'marca', 'modelo', 'color'];
 
@@ -78,7 +75,7 @@ export async function crear(idConductor, datos) {
 export async function listarPorConductor(idConductor) {
   const { rows } = await query(
     `SELECT v.id_vehiculo, v.id_conductor, v.id_tipo_vehiculo, v.patente,
-            v.marca, v.modelo, v.color, v.predeterminado, v.activo, v.foto_public_id,
+            v.marca, v.modelo, v.color, v.predeterminado, v.activo,
             t.nombre AS tipo_vehiculo
        FROM vehiculo v
        JOIN tipo_vehiculo t ON t.id_tipo_vehiculo = v.id_tipo_vehiculo
@@ -183,9 +180,6 @@ export async function darDeBaja(idVehiculo, idConductor) {
   if (vigentes[0]) {
     throw ApiError.conflict('El vehiculo tiene reservas vigentes: cancelalas antes de darlo de baja');
   }
-  // La foto no se va a volver a ver: se borra tambien del disco.
-  await cambiarFoto(idVehiculo, null);
-
   const { rows } = await query(
     `UPDATE vehiculo SET activo = FALSE, predeterminado = FALSE
       WHERE id_vehiculo = $1 AND id_conductor = $2
@@ -201,54 +195,4 @@ export async function listarTipos() {
     'SELECT id_tipo_vehiculo, nombre FROM tipo_vehiculo ORDER BY id_tipo_vehiculo',
   );
   return rows;
-}
-
-/* --------------------------------- foto ---------------------------------- */
-
-/** El vehiculo activo del conductor (404 si no es suyo o esta dado de baja). */
-async function activoDelConductor(idVehiculo, idConductor) {
-  const vehiculo = await obtenerDelConductor(idVehiculo, idConductor);
-  if (!vehiculo.activo) throw ApiError.notFound('Vehiculo no encontrado para este conductor');
-  return vehiculo;
-}
-
-/** Firma para que el navegador suba la foto del vehiculo a su carpeta. */
-export async function firmarFoto(idVehiculo, idConductor) {
-  await activoDelConductor(idVehiculo, idConductor);
-  return fotos.firmarSubida(fotos.carpetaDe('vehiculos', idVehiculo));
-}
-
-/**
- * Cambia la foto en un solo UPDATE que devuelve tambien la anterior (tomada con
- * la fila bloqueada): dos cambios a la vez no pueden borrar la que puso el otro.
- */
-async function cambiarFoto(idVehiculo, publicId) {
-  try {
-    const { rows } = await query(
-      `UPDATE vehiculo v SET foto_public_id = $2
-         FROM (SELECT foto_public_id FROM vehiculo WHERE id_vehiculo = $1 FOR UPDATE) anterior
-        WHERE v.id_vehiculo = $1
-        RETURNING ${CAMPOS_V}, anterior.foto_public_id AS foto_anterior`,
-      [idVehiculo, publicId],
-    );
-    const { foto_anterior: anterior, ...vehiculo } = rows[0];
-    if (anterior !== publicId) await fotos.borrar(anterior);
-    return vehiculo;
-  } catch (error) {
-    if (error.code === VIOLACION_UNIQUE) throw ApiError.conflict('Esa foto ya esta cargada');
-    throw error;
-  }
-}
-
-/** Pone (o reemplaza) la foto propia del vehiculo. La anterior se borra del disco. */
-export async function guardarFoto(idVehiculo, idConductor, publicId) {
-  await activoDelConductor(idVehiculo, idConductor);
-  await fotos.verificar(publicId, fotos.carpetaDe('vehiculos', idVehiculo));
-  return cambiarFoto(idVehiculo, publicId);
-}
-
-/** Saca la foto propia: el front vuelve a la de catalogo. Idempotente. */
-export async function borrarFoto(idVehiculo, idConductor) {
-  await obtenerDelConductor(idVehiculo, idConductor);
-  await cambiarFoto(idVehiculo, null);
 }

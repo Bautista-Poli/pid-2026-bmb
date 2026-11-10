@@ -20,7 +20,7 @@ import { validarAbonoParaReservar } from './abono.service.js';
 import { PLAZO_CALIFICACION_DIAS } from './calificacion.service.js';
 import { lateralReputacionConductor } from './reputacion.service.js';
 import { registrarEgresoEnIncidencia } from './incidencia.service.js';
-import { aceptaReservas, asegurarPropiedad } from './estacionamiento.service.js';
+import { aceptaReservas, asegurarPropiedad } from './estacionamiento/estacionamiento.service.js';
 
 const VIOLACION_EXCLUSION = '23P01';
 

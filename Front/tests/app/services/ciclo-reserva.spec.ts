@@ -1,0 +1,186 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { Reserva } from '@app/models';
+import {
+  avanzaConCodigo,
+  avanzarReserva,
+  puedeAvanzar,
+  puedeMarcarAusente,
+  reservaEnJuego,
+} from '@app/services/ciclo-reserva';
+
+const reserva = (datos: Partial<Reserva>) =>
+  ({ estado: 'CONFIRMADA', modalidad: 'HORA', ...datos }) as Reserva;
+
+// Con el auto adentro (ACTIVA): una CONFIRMADA sin ingreso deja de estar en
+// juego al vencer la tolerancia, y estas pruebas miran el cruce de medianoche.
+const jornada = reserva({
+  estado: 'ACTIVA',
+  modalidad: 'JORNADA',
+  fecha: '2026-09-14',
+  horaDesde: '08:00',
+  fechaHasta: '2026-09-15',
+  horaHasta: '08:00',
+});
+
+const estadia = reserva({
+  estado: 'ACTIVA',
+  modalidad: 'ESTADIA',
+  fecha: '2026-09-14',
+  horaDesde: '18:00',
+  fechaHasta: '2026-09-15',
+  horaHasta: '06:00',
+});
+
+describe('reservaEnJuego', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  const ahora = (instante: string) => vi.setSystemTime(new Date(instante));
+
+  it('una jornada que cruza la medianoche esta en juego a mitad del dia', () => {
+    ahora('2026-09-14T12:00:00-03:00');
+    expect(reservaEnJuego(jornada)).toBe(true);
+  });
+
+  it('una estadia esta en juego de noche y pasada la medianoche', () => {
+    ahora('2026-09-14T20:00:00-03:00');
+    expect(reservaEnJuego(estadia)).toBe(true);
+    ahora('2026-09-15T02:00:00-03:00');
+    expect(reservaEnJuego(estadia)).toBe(true);
+  });
+
+  it('la estadia ya no esta en juego despues de su fin', () => {
+    ahora('2026-09-15T07:00:00-03:00');
+    expect(reservaEnJuego(estadia)).toBe(false);
+  });
+
+  it('una reserva cancelada nunca esta en juego', () => {
+    ahora('2026-09-14T12:00:00-03:00');
+    expect(reservaEnJuego({ ...jornada, estado: 'CANCELADA' })).toBe(false);
+  });
+
+  it('una reserva por hora del mismo dia se comporta como siempre', () => {
+    const porHora = reserva({
+      estado: 'ACTIVA',
+      fecha: '2026-09-14',
+      horaDesde: '10:00',
+      fechaHasta: '2026-09-14',
+      horaHasta: '12:00',
+    });
+    ahora('2026-09-14T11:00:00-03:00');
+    expect(reservaEnJuego(porHora)).toBe(true);
+    ahora('2026-09-14T13:00:00-03:00');
+    expect(reservaEnJuego(porHora)).toBe(false);
+  });
+});
+
+describe('pasos del propietario', () => {
+  const porHora = reserva({
+    estado: 'CONFIRMADA',
+    fecha: '2026-09-14',
+    horaDesde: '10:00',
+    fechaHasta: '2026-09-14',
+    horaHasta: '12:00',
+  });
+
+  it('solo una pendiente tiene boton (confirmar)', () => {
+    expect(puedeAvanzar({ ...porHora, estado: 'PENDIENTE' })).toBe(true);
+    expect(puedeAvanzar(porHora)).toBe(false);
+    expect(puedeAvanzar({ ...porHora, estado: 'ACTIVA' })).toBe(false);
+    expect(puedeAvanzar({ ...porHora, estado: 'FINALIZADA' })).toBe(false);
+  });
+
+  it('ingreso y egreso van con el codigo: confirmada y en curso', () => {
+    expect(avanzaConCodigo(porHora)).toBe(true);
+    expect(avanzaConCodigo({ ...porHora, estado: 'ACTIVA' })).toBe(true);
+    expect(avanzaConCodigo({ ...porHora, estado: 'PENDIENTE' })).toBe(false);
+    expect(avanzaConCodigo({ ...porHora, estado: 'NO_SHOW' })).toBe(false);
+  });
+
+  it('avanzarReserva confirma una pendiente', () => {
+    const confirmar = vi.fn();
+    const paso = avanzarReserva({ confirmar } as never, {
+      ...porHora,
+      id: 7,
+      estado: 'PENDIENTE',
+      vehiculo: { patente: 'AB 123 CD' },
+    } as never);
+    expect(confirmar).toHaveBeenCalledWith(7);
+    expect(paso?.aviso).toContain('AB 123 CD');
+  });
+
+  it('avanzarReserva no ofrece ingreso ni egreso', () => {
+    const servicio = { confirmar: vi.fn() } as never;
+    const conVehiculo = { ...porHora, vehiculo: { patente: 'AB 123 CD' } };
+    expect(avanzarReserva(servicio, conVehiculo as never)).toBeNull();
+    expect(avanzarReserva(servicio, { ...conVehiculo, estado: 'ACTIVA' } as never)).toBeNull();
+  });
+});
+
+describe('tolerancia de no-show', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  const ahora = (instante: string) => vi.setSystemTime(new Date(instante));
+
+  const confirmada = reserva({
+    estado: 'CONFIRMADA',
+    fecha: '2026-09-14',
+    horaDesde: '10:00',
+    fechaHasta: '2026-09-14',
+    horaHasta: '12:00',
+  });
+
+  it('una confirmada sin ingreso sigue en juego dentro de la tolerancia', () => {
+    ahora('2026-09-14T10:10:00-03:00');
+    expect(reservaEnJuego(confirmada)).toBe(true);
+  });
+
+  it('pasada la tolerancia deja de estar en juego aunque la franja siga', () => {
+    ahora('2026-09-14T10:20:00-03:00');
+    expect(reservaEnJuego(confirmada)).toBe(false);
+    expect(puedeAvanzar(confirmada)).toBe(false);
+  });
+
+  it('una ACTIVA sigue en juego pasada la tolerancia', () => {
+    ahora('2026-09-14T10:20:00-03:00');
+    expect(reservaEnJuego({ ...confirmada, estado: 'ACTIVA' })).toBe(true);
+  });
+
+  it('una NO_SHOW nunca esta en juego', () => {
+    ahora('2026-09-14T10:05:00-03:00');
+    expect(reservaEnJuego({ ...confirmada, estado: 'NO_SHOW' })).toBe(false);
+  });
+
+  it('funciona como callback de filter (no toma el indice como hora)', () => {
+    ahora('2026-09-14T10:10:00-03:00');
+    expect([confirmada].filter(reservaEnJuego)).toHaveLength(1);
+  });
+});
+
+describe('marcar ausente a mano', () => {
+  const confirmada = reserva({
+    estado: 'CONFIRMADA',
+    fecha: '2026-09-14',
+    horaDesde: '10:00',
+    fechaHasta: '2026-09-14',
+    horaHasta: '12:00',
+  });
+  const a = (instante: string) => Date.parse(instante);
+
+  it('no antes del inicio: todavia puede llegar', () => {
+    expect(puedeMarcarAusente(confirmada, a('2026-09-14T09:59:00-03:00'))).toBe(false);
+  });
+
+  it('desde el inicio hasta el fin de la franja', () => {
+    expect(puedeMarcarAusente(confirmada, a('2026-09-14T10:00:00-03:00'))).toBe(true);
+    expect(puedeMarcarAusente(confirmada, a('2026-09-14T11:30:00-03:00'))).toBe(true);
+    expect(puedeMarcarAusente(confirmada, a('2026-09-14T12:00:00-03:00'))).toBe(false);
+  });
+
+  it('solo una confirmada (no pendiente ni en curso)', () => {
+    const ahora = a('2026-09-14T10:05:00-03:00');
+    expect(puedeMarcarAusente({ ...confirmada, estado: 'PENDIENTE' }, ahora)).toBe(false);
+    expect(puedeMarcarAusente({ ...confirmada, estado: 'ACTIVA' }, ahora)).toBe(false);
+  });
+});

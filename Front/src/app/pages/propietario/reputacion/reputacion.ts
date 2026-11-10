@@ -3,20 +3,13 @@ import { rxResource, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { map } from 'rxjs';
 import { DenunciarResena } from '@app/components/reclamo';
-import { Boton, Cargando, EstadoVacio } from '@app/components/ui';
+import { Boton, Cargando, EstadoVacio, Tarjeta } from '@app/components/ui';
 import { CategoriasReputacion } from './categorias-reputacion/categorias-reputacion';
 import { NivelesReputacion } from './niveles-reputacion/niveles-reputacion';
 import { OperacionReputacion } from './operacion-reputacion/operacion-reputacion';
 import { OpinionesReputacion } from './opiniones-reputacion/opiniones-reputacion';
 import { PuntajeReputacion } from './puntaje-reputacion/puntaje-reputacion';
-import {
-  Estacionamiento,
-  EtiquetaCalificacion,
-  Id,
-  PeriodoReputacion,
-  TEXTO_ETIQUETA,
-  formatearNota,
-} from '@app/models';
+import { Estacionamiento, Id, PeriodoReputacion } from '@app/models';
 import { AuthService } from '@app/services/auth.service';
 import { CalificacionService } from '@app/services/calificacion.service';
 import { EstacionamientoService } from '@app/services/estacionamiento.service';
@@ -48,6 +41,7 @@ const PERIODOS: { dias: PeriodoReputacion; etiqueta: string }[] = [
     DenunciarResena,
     EstadoVacio,
     RouterLink,
+    Tarjeta,
   ],
   templateUrl: './reputacion.html',
   styleUrls: ['./compartido.css', './reputacion.css'],
@@ -60,7 +54,6 @@ export class Reputacion {
   private readonly ruta = inject(ActivatedRoute);
 
   protected readonly periodos = PERIODOS;
-  protected readonly nota = formatearNota;
 
   private readonly params = toSignal(this.ruta.queryParamMap, { requireSync: true });
 
@@ -88,10 +81,6 @@ export class Reputacion {
     },
     stream: ({ params }) => this.calificaciones.reputacion(params.id, params.dias),
   });
-
-  protected textoDeEtiqueta(codigo: EtiquetaCalificacion): string {
-    return TEXTO_ETIQUETA[codigo];
-  }
 
   protected elegirPeriodo(dias: PeriodoReputacion): void {
     void this.router.navigate([], { queryParams: { dias }, queryParamsHandling: 'merge', replaceUrl: true });

@@ -51,7 +51,7 @@ export function sumarDias(fecha, dias) {
  * si esta dentro. Un estacionamiento sin horarios cargados no se restringe.
  * Un fin justo a la medianoche cuenta como '24:00' del mismo dia (como en
  * utils/turnos.js), y un cierre a las 23:59 como abierto hasta la medianoche
- * (como en estadistica.service.js).
+ * (como en estadistica/estadistica-sql.js).
  */
 export function motivoFueraDeHorario(horarios, inicio, fin) {
   if (horarios.length === 0) return null;

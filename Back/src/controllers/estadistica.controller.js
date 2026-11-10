@@ -1,5 +1,5 @@
 // Controller del dashboard de estadisticas del propietario.
-import * as estadisticaService from '../services/estadistica.service.js';
+import * as estadisticaService from '../services/estadistica/estadistica.service.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
 /** GET /api/estadisticas/propietario (propietario) */

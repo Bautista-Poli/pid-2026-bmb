@@ -6,13 +6,9 @@ import { ApiError } from '../../utils/ApiError.js';
 import { armarSet } from '../../utils/sql.js';
 import { CAMPOS_TARIFA } from '../../utils/tarifas.js';
 import { ESTADOS_APROBACION } from '../../utils/roles.js';
-import { listarPorEstacionamiento as listarCocheras } from '../cochera.service.js';
-import {
-  COLUMNAS_REPUTACION,
-  DIAS_BUSQUEDA,
-  darFormaReputacion,
-  lateralReputacion,
-} from '../reputacion.service.js';
+import { listarPorEstacionamiento as listarCocheras } from '../cochera/cochera.service.js';
+import { DIAS_BUSQUEDA } from '../reputacion/reputacion-reglas.js';
+import { COLUMNAS_REPUTACION, darFormaReputacion, lateralReputacion } from '../reputacion/reputacion-sql.js';
 
 /** Reputacion publica (calificaciones e insignias) de los ultimos DIAS_BUSQUEDA dias. */
 export const reputacionPublica = () => lateralReputacion(`now() - interval '${DIAS_BUSQUEDA} days'`, 'now()');

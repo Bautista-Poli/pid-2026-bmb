@@ -4,7 +4,7 @@
 // que estadistica.service.js: todo en SQL, consultas en paralelo, dias en hora
 // argentina. Ver docs/.../dashboard-administrador-design.md.
 import { query } from '../config/database.js';
-import { AVISO_CANCELADA_SIN_ALTERNATIVA, AVISO_REASIGNADA } from './cochera.service.js';
+import { AVISO_CANCELADA_SIN_ALTERNATIVA, AVISO_REASIGNADA } from './cochera/cochera-bloqueo.service.js';
 import { COBRADAS, ESTACIONAMIENTO_DE_DEVOLUCION, ZONA, anteriorA, desdeDia, hastaDia, numero, redondear } from './estadistica.service.js';
 
 const LIMITE_LISTA = 5;
@@ -90,7 +90,7 @@ async function disputas() {
  * (hoy quedan como canceladas por el propietario, con el aviso cargado) y las
  * incidencias del sistema. Una reasignada que despues cancelo el conductor no
  * es ni una cosa ni la otra. Se cuentan por el aviso del bloqueo: los de un
- * auto excedido (incidencia.service.js) ya cuentan como incidencia.
+ * auto excedido (incidencia/incidencia-vencimientos.service.js) ya cuentan como incidencia.
  */
 async function bloqueos(desde, hasta) {
   const { rows } = await query(

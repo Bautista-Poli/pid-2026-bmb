@@ -1,6 +1,6 @@
 // Abonos por turno. El abono no es una reserva anticipada: es un cupo de usos
 // prepago. Con el, el conductor reserva gratis dentro de su turno y cada
-// reserva descuenta un uso (ver validarAbonoParaReservar y reserva.service.js).
+// reserva descuenta un uso (ver validarAbonoParaReservar y reserva/reserva.service.js).
 import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
 import { HOY_LOCAL_SQL, partesLocales } from '../utils/horario.js';
@@ -262,7 +262,7 @@ export async function vencerAbonos() {
 
 /**
  * Reglas para reservar con el abono. Se llama dentro de la transaccion de
- * reserva.service.js: crear, ANTES de bloquear vehiculo y cocheras. El
+ * reserva/reserva.service.js: crear, ANTES de bloquear vehiculo y cocheras. El
  * FOR UPDATE serializa dos reservas con el mismo abono: la segunda espera y
  * ya cuenta el uso de la primera, asi el ultimo uso no se consume dos veces.
  */

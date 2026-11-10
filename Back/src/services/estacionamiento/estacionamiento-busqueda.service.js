@@ -11,7 +11,7 @@ import {
   ES_DESTACADO,
   condicionNivelMinimo,
   darFormaReputacion,
-} from '../reputacion.service.js';
+} from '../reputacion/reputacion-sql.js';
 
 /**
  * Condicion SQL "el estacionamiento `e` atiende durante [inicio, fin)", en hora

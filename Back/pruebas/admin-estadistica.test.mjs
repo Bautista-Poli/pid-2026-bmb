@@ -17,8 +17,8 @@ import {
   levantarApi,
   query,
 } from './ayuda.mjs';
-import { AVISO_CANCELADA_SIN_ALTERNATIVA, AVISO_REASIGNADA } from '../src/services/cochera.service.js';
-import { AVISO_AFECTADA_POR_EXCESO, AVISO_REASIGNADA_POR_EXCESO } from '../src/services/incidencia.service.js';
+import { AVISO_CANCELADA_SIN_ALTERNATIVA, AVISO_REASIGNADA } from '../src/services/cochera/cochera-bloqueo.service.js';
+import { AVISO_AFECTADA_POR_EXCESO, AVISO_REASIGNADA_POR_EXCESO } from '../src/services/incidencia/incidencia-vencimientos.service.js';
 
 before(() => levantarApi('admin-estadistica'));
 after(() => cerrarApi());

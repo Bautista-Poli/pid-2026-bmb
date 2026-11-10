@@ -1,11 +1,11 @@
 // Tareas automaticas (las revisa `revisar`):
-// - reserva.service.js: PENDIENTE sin confirmar que ya empezo -> CANCELADA, y
+// - reserva/reserva-vencimientos.service.js: PENDIENTE sin confirmar que ya empezo -> CANCELADA, y
 //   CONFIRMADA sin ingreso pasada TOLERANCIA_NO_SHOW_MS -> NO_SHOW.
-// - incidencia.service.js: ACTIVA que se paso de su fin sin egreso -> incidencia
+// - incidencia/incidencia-vencimientos.service.js: ACTIVA que se paso de su fin sin egreso -> incidencia
 //   AUTO_EXCEDIDO (la reserva NO se cierra: la cochera queda bloqueada hasta el
 //   egreso), y las reservas siguientes de esa cochera se reasignan a otra o,
 //   sin alternativa, quedan con una incidencia RESERVA_AFECTADA.
-// - cochera.service.js: cocheras bloqueadas con `bloqueada_hasta` vencido se desbloquean solas.
+// - cochera/cochera-bloqueo.service.js: cocheras bloqueadas con `bloqueada_hasta` vencido se desbloquean solas.
 // - abono.service.js: abonos VIGENTES con `hasta` vencido -> VENCIDO.
 //
 // Corren A DEMANDA, no con un reloj: cada pedido a la API dispara la revision,
@@ -21,9 +21,9 @@
 // levantan la app sin llamar a `activarVencimientosADemanda`, asi que durante
 // `npm test` el middleware no hace nada.
 import { vencerAbonos } from '../services/abono.service.js';
-import { desbloquearVencidas } from '../services/cochera.service.js';
-import { detectarExcedidos, protegerReservasSiguientes } from '../services/incidencia.service.js';
-import { vencerAusentes, vencerPendientesSinConfirmar } from '../services/reserva.service.js';
+import { desbloquearVencidas } from '../services/cochera/cochera-bloqueo.service.js';
+import { detectarExcedidos, protegerReservasSiguientes } from '../services/incidencia/incidencia-vencimientos.service.js';
+import { vencerAusentes, vencerPendientesSinConfirmar } from '../services/reserva/reserva-vencimientos.service.js';
 
 const INTERVALO_MINIMO_MS = 60_000;
 

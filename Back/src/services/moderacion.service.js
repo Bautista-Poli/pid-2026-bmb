@@ -14,7 +14,7 @@ import {
   bloquearObjeto,
   conMontos,
   objetoDe,
-} from './incidencia.service.js';
+} from './incidencia/incidencia-comun.js';
 
 const RESOLUCIONES = Object.freeze({
   A_FAVOR_CONDUCTOR: 'A_FAVOR_CONDUCTOR',

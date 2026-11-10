@@ -130,7 +130,7 @@
       <li><code>utils/ApiError.js</code>: <code>ApiError.badRequest / unauthorized / forbidden / notFound / conflict</code> → 400 / 401 / 403 / 404 / 409.</li>
       <li><code>utils/asyncHandler.js</code>: envuelve cada controller para que los errores lleguen al <code>errorHandler</code>.</li>
       <li><code>utils/roles.js</code>: estados y roles (<code>ROLES</code>, <code>ESTADOS_RESERVA</code>, <code>ESTADOS_VIGENTES</code>, …).</li>
-      <li><code>utils/solapamiento.js</code>: <code>cocheraReservable()</code> (cochera activa, sin bloqueo, no dada de baja) y <code>sinSolapamiento()</code> (sin reservas que se pisen). Para elegir una cochera libre se usa <code>buscarCocheraLibre</code> de <code>cochera.service.js</code>.</li>
+      <li><code>utils/solapamiento.js</code>: <code>cocheraReservable()</code> (cochera activa, sin bloqueo, no dada de baja) y <code>sinSolapamiento()</code> (sin reservas que se pisen). Para elegir una cochera libre se usa <code>buscarCocheraLibre</code> de <code>cochera/cochera-libre.js</code>.</li>
       <li><code>utils/sql.js</code>: <code>armarSet(campos, datos, parametros)</code> arma el <code>SET campo = $n</code> de un UPDATE con los campos que vinieron.</li>
       <li><code>utils/horario.js</code>: hora argentina (<code>ZONA_HORARIA</code>, <code>HOY_LOCAL_SQL</code>, <code>HORA_LOCAL</code>, <code>instanteLocal</code>, <code>partesLocales</code>).</li>
       <li><code>db/esquema.js</code>: <code>aplicarEsquema()</code> corre <code>schema.sql</code> y <code>seed.sql</code>. Lo llama <code>index.js</code> al arrancar con <code>npm run dev</code>, así que un cambio en el esquema se aplica solo.</li>
@@ -142,12 +142,12 @@
     <tr><th>Módulo</th><th>Archivos</th><th>Endpoints principales</th></tr>
     <tr><td>Sesión y cuenta</td><td><code>auth.routes / auth.controller / auth.service</code></td><td><code>POST /auth/register, /auth/login, /auth/logout, /auth/rol</code> · <code>GET|PATCH|DELETE /auth/me</code></td></tr>
     <tr><td>Estacionamientos</td><td><code>estacionamiento.routes / .controller / .service</code></td><td><code>GET /estacionamientos</code> (búsqueda) · <code>GET /:id</code> · <code>GET /mios</code> · <code>POST /</code> · <code>PATCH /:id</code> · <code>GET /:id/disponibilidad</code> · <code>GET /:id/reputacion</code></td></tr>
-    <tr><td>Cocheras</td><td><code>cochera.service</code> (rutas en estacionamiento/estacionamiento-cochera.routes)</td><td><code>/estacionamientos/:id/cocheras</code> (alta, lote, editar, baja, reactivar, bloquear, desbloquear)</td></tr>
+    <tr><td>Cocheras</td><td><code>cochera/</code> (<code>cochera.service</code>, <code>-baja.service</code>, <code>-bloqueo.service</code>, <code>-libre</code>; rutas en estacionamiento/estacionamiento-cochera.routes)</td><td><code>/estacionamientos/:id/cocheras</code> (alta, lote, editar, baja, reactivar, bloquear, desbloquear)</td></tr>
     <tr><td>Vehículos</td><td><code>vehiculo.routes / .controller / .service</code></td><td><code>GET /vehiculos/tipos</code> · <code>GET|POST /vehiculos</code> · <code>PATCH|DELETE /vehiculos/:id</code></td></tr>
     <tr><td>Reservas y acceso</td><td><code>reserva.routes / .controller / .service</code></td><td><code>POST /reservas</code> · <code>GET /reservas</code> · <code>PATCH /:id/cancelar|confirmar|ausente</code> · <code>GET /acceso/:codigo</code> · <code>POST /acceso</code></td></tr>
     <tr><td>Abonos</td><td><code>abono.routes / .controller / .service</code></td><td><code>/estacionamientos/:id/planes-abono</code> · <code>POST|GET /abonos</code> · <code>PATCH /abonos/:id/cancelar</code></td></tr>
     <tr><td>Incidencias y reclamos</td><td><code>incidencia.*</code>, <code>devolucion.service</code>, <code>moderacion.service</code></td><td><code>POST /incidencias/reclamos</code> · <code>GET /incidencias</code> · mensajes · resolver · denunciar · aceptar · retirar</td></tr>
-    <tr><td>Calificaciones y reputación</td><td><code>calificacion.service</code>, <code>reputacion.service</code></td><td><code>POST /reservas/:id/calificacion</code> (conductor) · <code>POST /reservas/:id/calificacion-conductor</code> (propietario) · <code>GET /reservas/mi-reputacion</code></td></tr>
+    <tr><td>Calificaciones y reputación</td><td><code>calificacion.service</code>, <code>reputacion/</code> (<code>reputacion.service</code>, <code>-conductor.service</code>, <code>-sql</code>, <code>-reglas</code>)</td><td><code>POST /reservas/:id/calificacion</code> (conductor) · <code>POST /reservas/:id/calificacion-conductor</code> (propietario) · <code>GET /reservas/mi-reputacion</code></td></tr>
     <tr><td>Denuncia de reseñas</td><td><code>calificacion.routes / .controller</code>, <code>denuncia-resena.service</code></td><td><code>POST /calificaciones/:id/denuncia</code></td></tr>
     <tr><td>Admin</td><td><code>admin.routes / .controller</code>, <code>admin.service</code>, <code>admin-estadistica.service</code></td><td><code>/admin/estacionamientos</code> (aprobar/rechazar) · <code>/admin/incidencias</code> · <code>/admin/resenas</code> · <code>/admin/estadisticas</code></td></tr>
     <tr><td>Estadísticas del propietario</td><td><code>estadistica.*</code></td><td><code>GET /estadisticas/propietario</code></td></tr>
@@ -268,7 +268,7 @@
     <path class="flecha" style="marker-end:url(#punta5)" d="M75 130 L170 173"/><text class="chico" x="40" y="160">cancela conductor / vence</text>
     <path class="flecha" style="marker-end:url(#punta5)" d="M280 130 L220 173"/>
     <path class="flecha" style="marker-end:url(#punta5)" d="M320 130 L380 173"/><text class="chico" x="470" y="160">15 min sin ingreso / marca ausente</text>
-    <text class="chico" x="10" y="30">Transiciones permitidas: TRANSICIONES en Back/src/services/reserva.service.js. Todas pasan por cambiarEstado(client, reserva, estadoNuevo).</text>
+    <text class="chico" x="10" y="30">Transiciones permitidas: TRANSICIONES en Back/src/services/reserva/reserva-estados.js. Todas pasan por cambiarEstado(client, reserva, estadoNuevo).</text>
     <text class="chico" x="10" y="50">Automáticas (jobs/vencimientos.job.js, a demanda, máx. 1 vez por minuto): PENDIENTE vencida → CANCELADA, CONFIRMADA sin ingreso → NO_SHOW.</text>
   </svg>
   <ul>
@@ -287,7 +287,7 @@
     <li><strong>Service:</strong> <code>services/denuncia-resena.service.js</code> → <code>denunciar</code> (transacción, <code>FOR UPDATE</code>, reglas de quién puede, <code>UPDATE … RETURNING</code>), <code>listarDenuncias</code>, <code>moderar</code>.</li>
     <li><strong>Controller:</strong> <code>controllers/calificacion.controller.js</code> → <code>denunciar</code> (responde 201).</li>
     <li><strong>Ruta:</strong> <code>routes/calificacion.routes.js</code> (<code>POST /:id/denuncia</code> con <code>authenticate</code>, <code>requireRole</code>, <code>validate</code>) y montaje en <code>routes/index.js</code>. Las de admin, en <code>routes/admin.routes.js</code>.</li>
-    <li><strong>Efecto en otras partes:</strong> <code>reputacion.service.js</code> excluye <code>oculta</code> en todos los cálculos.</li>
+    <li><strong>Efecto en otras partes:</strong> <code>reputacion/reputacion-sql.js</code> excluye <code>oculta</code> en todos los cálculos.</li>
     <li><strong>Tests del back:</strong> <code>pruebas/denuncia-resena.test.mjs</code> (helpers de <code>pruebas/ayuda.mjs</code>: <code>crearUsuario</code>, <code>crearEstacionamiento</code>, <code>api(...)</code>).</li>
     <li><strong>Front, datos:</strong> tipos en <code>models/calificacion.model.ts</code>, DTO en <code>services/api/api.dto.ts</code>, mapeo <code>aResenaDenunciada</code> en <code>api.mapeo.ts</code>, métodos en <code>services/calificacion.service.ts</code> (<code>denunciar</code>) y <code>services/admin/admin.service.ts</code> (<code>resenas</code>, <code>desestimarResena</code>, <code>ocultarResena</code>).</li>
     <li><strong>Front, pantallas:</strong> modal <code>components/reclamo/denunciar-resena</code>, botón en <code>pages/propietario/reputacion</code> y <code>pages/perfil</code>, página <code>pages/admin/resenas</code> + ruta en <code>app.routes.ts</code> + ítem en <code>layout-app.ts</code>.</li>

@@ -1,11 +1,12 @@
 // Dashboard del administrador: lo que hay para revisar (estacionamientos
 // pendientes y disputas), los conflictos del periodo (bloqueos de cocheras y
 // estacionamientos problematicos) y la actividad de toda la plataforma. Igual
-// que estadistica.service.js: todo en SQL, consultas en paralelo, dias en hora
+// que estadistica/estadistica.service.js: todo en SQL, consultas en paralelo, dias en hora
 // argentina. Ver docs/.../dashboard-administrador-design.md.
 import { query } from '../config/database.js';
 import { AVISO_CANCELADA_SIN_ALTERNATIVA, AVISO_REASIGNADA } from './cochera/cochera-bloqueo.service.js';
-import { COBRADAS, ESTACIONAMIENTO_DE_DEVOLUCION, ZONA, anteriorA, desdeDia, hastaDia, numero, redondear } from './estadistica.service.js';
+import { anteriorA, numero, redondear } from './estadistica/estadistica-calculos.js';
+import { COBRADAS, ESTACIONAMIENTO_DE_DEVOLUCION, ZONA, desdeDia, hastaDia } from './estadistica/estadistica-sql.js';
 
 const LIMITE_LISTA = 5;
 const LIMITE_PROBLEMATICOS = 20;

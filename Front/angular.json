@@ -41,7 +41,8 @@
             ],
             "allowedCommonJsDependencies": [
               "leaflet",
-              "rbush"
+              "rbush",
+              "qrcode"
             ]
           },
           "configurations": {

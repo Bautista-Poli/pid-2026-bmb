@@ -22,13 +22,13 @@ import { ResumenDisputa } from './resumen-disputa/resumen-disputa';
  * cada una y el formulario para resolver.
  */
 @Component({
-  selector: 'app-disputa',
+  selector: 'app-detalle-disputa',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ResumenDisputa, ChatsDisputa, ResolverDisputa, Boton, Cargando, EstadoVacio, Etiqueta, RouterLink, DatePipe],
-  templateUrl: './disputa.html',
-  styleUrl: './disputa.css',
+  templateUrl: './detalle-disputa.html',
+  styleUrl: './detalle-disputa.css',
 })
-export class Disputa {
+export class DetalleDisputa {
   private readonly admin = inject(AdminService);
 
   /** Del path `/admin/disputas/:incidenciaId` (withComponentInputBinding). */

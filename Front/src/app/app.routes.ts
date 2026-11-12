@@ -240,7 +240,7 @@ export const routes: Routes = [
       {
         path: 'disputas/:incidenciaId',
         title: 'Parkit · Disputa',
-        loadComponent: () => import('./pages/admin/disputa/disputa').then((m) => m.Disputa),
+        loadComponent: () => import('./pages/admin/detalle-disputa/detalle-disputa').then((m) => m.DetalleDisputa),
       },
       {
         path: 'perfil',

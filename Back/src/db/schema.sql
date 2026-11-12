@@ -5,6 +5,8 @@
 -- Ejecutar con: npm run db:migrate
 -- El script es idempotente: se puede correr varias veces sin romper nada.
 -- ============================================================================
+-- git stash list
+-- git stash pop
 
 -- Extensiones -----------------------------------------------------------------
 CREATE EXTENSION IF NOT EXISTS pgcrypto;   -- gen_random_uuid()

@@ -1,0 +1,7 @@
+cambios: en el back deberiamos empezar con una nueva ruta para el cambio en "reserva.routes.js". Luego deberiamos crear una nueva validacion
+ya que la anterior interferiria por varios motivos: ya existe y esta confirmado una reserva para ese mismo horario (la que quiero modificar),
+se deberia constatar que el usuario es quien dice ser nuevamente, para que no pueda ocupar la reserva de alguien mas, se deberia incluir un cambio en el 
+estado de la reserva, ya que quiza estaba confirmada y se debe volver a confirmar por el dueño del estacionamiento. El cambio debe contemplar los cambios
+de modalidad asi como la variacion de precios de los mismos. Si un usuario pago con abonos mensuales no se le debde cobrar el estacionamiento ya reservado
+y se le debe permitir continuar con la misma modalidad. Finalmente recrear una nueva pantalla donde podamos cambiar la reserva (como la de cancelar)
+que nos incluya el monto nuevo y la modalidad. 

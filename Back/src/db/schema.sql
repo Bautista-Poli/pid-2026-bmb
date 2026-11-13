@@ -948,6 +948,17 @@ BEGIN
 END
 $$;
 
+/*
+ALTER TABLE public.reserva 
+  ADD COLUMN IF NOT EXISTS oculta           BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS adicionado                          TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS precio_adicionado           DECIMAL(10, 2) NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS precio_total_con_adicionado           DECIMAL(10, 2) DEFAULT 0
+  En la base de datos me funciona asi
+*/
+
+
+
 -- Denuncia de reseñas (Sprint 3). La parte calificada denuncia una reseña (una
 -- vez); el administrador la desestima o la oculta. Una oculta deja de contar en
 -- la reputacion y de mostrarse, pero sigue ocupando su lugar (no se vuelve a

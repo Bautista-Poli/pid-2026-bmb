@@ -56,6 +56,12 @@ export const routes: Routes = [
           import('./pages/conductor/mis-reservas/mis-reservas').then((m) => m.MisReservas),
       },
       {
+        path: 'extension',
+        title: 'Parkit · Reservas extendidas',
+        loadComponent: () =>
+          import('./pages/conductor/extender-reserva/extender-reserva').then((m) => m.ExtenderReserva),
+      },
+      {
         path: 'calificar/:reservaId',
         title: 'Parkit · Calificar',
         loadComponent: () => import('./pages/conductor/calificar/calificar').then((m) => m.Calificar),

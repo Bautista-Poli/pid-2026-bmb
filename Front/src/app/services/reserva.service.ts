@@ -27,6 +27,7 @@ import { ID_TIPO_VEHICULO, aAccesoReserva, aFranja, aPayloadReserva, aPayloadRes
  */
 @Injectable({ providedIn: 'root' })
 export class ReservaService {
+  
   private readonly http = inject(HttpClient);
   private readonly ruta = '/reservas';
 
@@ -145,6 +146,18 @@ export class ReservaService {
       .patch<{ reserva: ReservaDto }>(`${this.ruta}/${id}/cancelar`, {})
       .pipe(map(({ reserva }) => aReserva(reserva)));
   }
+  extender(id: Id) {
+    return this.http.patch<{}>(`${this.ruta}/${id}/extender`, {})
+  }
+  /**
+   * 
+   * extender(id: Id, fecha_adicionada, precio_adicionado, precio_total_adicionado) {
+    return this.http
+      .patch<{}>(`${this.ruta}/${id}/extender`, {fecha_adicionada, precio_adicionado, precio_total_adicionado})
+  }
+   */
+  
+  //this.reservas.extender(id,fechaAExtender,).subscribe({});
 
   /**
    * Ciclo que maneja el propietario: confirmar la reserva. El ingreso y el

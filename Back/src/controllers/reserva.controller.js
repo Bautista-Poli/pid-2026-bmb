@@ -52,6 +52,14 @@ export const calificar = asyncHandler(async (req, res) => {
   res.status(201).json({ calificacion });
 });
 
+
+/** PATCH /api/reservas/:id/extender (propietario) */
+export const extender = asyncHandler(async (req, res) => {
+  //const result = await extenderReserva.extenderReserva(req.body.precio_adicionado, req.body.fecha_adicionada , req.body.precio_total_adicionado, req.params.id);
+  const result = await extenderReserva.extenderReserva();
+  res.status(201).json(result);
+});
+
 /** GET /api/reservas/mi-reputacion (conductor) */
 export const miReputacion = asyncHandler(async (req, res) => {
   res.json({ reputacion: await reputacionConductorService.reputacionDelConductor(req.usuario.id) });

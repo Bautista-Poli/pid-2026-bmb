@@ -1,0 +1,13 @@
+
+
+<app-selector-fecha
+    [seleccionada]="borrador().fecha"
+    (seleccionadaChange)="elegirFecha($event)"
+/>
+@for (reserva of enCurso(); track reserva.id) {
+        <p>{{reserva}}</p>
+        
+}
+
+<button (click)="extender('05cbbd15-2166-444a-89a3-469e65f0ab74')">extender</button>
+

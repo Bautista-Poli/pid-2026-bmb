@@ -45,6 +45,8 @@ router.patch('/:id/confirmar', ...soloPropietario, reservaController.confirmar);
 // No-show a mano, si el conductor avisó que no viene (el automatico lo hace la revision de vencimientos).
 router.patch('/:id/ausente', ...soloPropietario, reservaController.marcarAusente);
 
+router.patch('/:id/extender',reservaController.extender);
+
 // El operador escanea (o tipea) el QR de la reserva al entrar y al salir.
 router.get('/acceso/:codigo', ...soloPropietario, reservaController.previaAcceso);
 router.post('/acceso', ...soloPropietario, validate(validarAcceso), reservaController.registrarAcceso);

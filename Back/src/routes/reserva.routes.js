@@ -7,7 +7,7 @@ import { authenticate, requireRole } from '../middlewares/auth.js';
 import { validate } from '../middlewares/validate.js';
 import { ROLES } from '../utils/roles.js';
 import { validarCalificacion, validarCalificacionConductor } from '../validators/calificacion.validator.js';
-import { validarAcceso, validarReserva } from '../validators/reserva.validator.js';
+import { validarAcceso, validarReserva, cambiarReserva } from '../validators/reserva.validator.js';
 
 const router = Router();
 
@@ -15,6 +15,7 @@ const soloConductor = [authenticate, requireRole(ROLES.CONDUCTOR)];
 const soloPropietario = [authenticate, requireRole(ROLES.PROPIETARIO)];
 
 router.post('/', ...soloConductor, validate(validarReserva), reservaController.crear);
+router.post('/', ...soloConductor, validate(cambiarReserva), reservaController.cambiar);
 
 router.get('/', ...soloConductor, reservaController.listarMias);
 

@@ -12,6 +12,12 @@ export const crear = asyncHandler(async (req, res) => {
   res.status(201).json({ reserva });
 });
 
+export const cambiar = asyncHandler(async (req, res) => {
+  const reserva = await reservaService.cambiar(req.usuario.id, req.body);
+  res.status(201).json({ reserva });
+});
+
+
 /** GET /api/reservas (conductor) */
 export const listarMias = asyncHandler(async (req, res) => {
   const reservas = await reservaService.listarPorConductor(req.usuario.id);

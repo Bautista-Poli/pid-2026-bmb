@@ -181,4 +181,14 @@ export class ReservaService {
   precioEstimado(tarifas: Tarifas): number {
     return calcularPrecio(this.borradorInterno().modalidad, tarifas, this.duracionHoras());
   }
+
+  // cambiarFechaFin(horaHasta): Observable<AccesoReserva> {
+  //   return this.http
+  //     .patch<AccesoReservaDto>(`${this.ruta}/acceso`, { horaHasta })
+  //     .pipe(map(aAccesoReserva));
+  // }
+
+
 }
+
+

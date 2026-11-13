@@ -69,8 +69,14 @@ export class ReservaEnCurso implements OnInit {
   });
 
   protected readonly falta = computed(() => {
-    const restante = this.fin() - this.ahora();
-    return restante > 0 ? `faltan ${duracion(restante)}` : 'ya terminó el horario';
+    return ;
+  });
+
+  // vamos a hacer una prueba basica cambiando la fecha final al tocar una vez el boton, luego vemos formato de fecha
+  private readonly extender = signal(false);
+
+  protected readonly extension = computed(() => {
+    return this.extender.set(true);
   });
 
   protected readonly progreso = computed(() => {

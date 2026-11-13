@@ -703,6 +703,14 @@ CREATE UNIQUE INDEX IF NOT EXISTS vehiculo_foto_public_id_unico
 -- cada llamador: hay varios caminos que cancelan y asi ninguno se olvida.
 ALTER TABLE reserva
   ADD COLUMN IF NOT EXISTS cancelada_en TIMESTAMPTZ;
+  
+
+ALTER TABLE reserva
+  ADD COLUMN IF NOT EXISTS hora_extendiad TIMESTAMPTZ;
+  
+ALTER TABLE reserva
+  ADD COLUMN IF NOT EXISTS adicional int;
+
 
 CREATE OR REPLACE FUNCTION marcar_cancelada_en() RETURNS trigger AS $$
 BEGIN

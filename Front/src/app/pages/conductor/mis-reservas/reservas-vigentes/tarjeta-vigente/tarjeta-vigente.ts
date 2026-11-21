@@ -1,12 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
-import { NgTemplateOutlet } from '@angular/common';
-import { RouterLink } from '@angular/router';
-import { Etiqueta, Icono, TonoEtiqueta } from '@app/components/ui';
+import { Icono } from '@app/components/ui';
 import { ChapaPatente } from '@app/components/vehiculo';
 import {
-  EstadoReserva,
-  esExpirada,
-  etiquetaReserva,
   ETIQUETA_MODALIDAD,
   ETIQUETA_TIPO_VEHICULO,
   TURNOS,
@@ -14,43 +9,26 @@ import {
   ReservaDetallada,
 } from '@app/models';
 import { reservaEnJuego } from '@app/services/ciclo-reserva';
-import { desdeFechaISO } from '@app/utils/fecha.util';
 import { linksComoLlegar } from '@app/utils/mapas.util';
+import { AvisoReasignacion } from '../../partes-tarjeta/aviso-reasignacion';
+import { EstadoReserva } from '../../partes-tarjeta/estado-reserva';
+import { FechaReserva, partesDeFecha } from '../../partes-tarjeta/fecha-reserva';
 import { ReservaEnCurso } from './reserva-en-curso/reserva-en-curso';
 
-const TONO_ESTADO: Record<EstadoReserva, TonoEtiqueta> = {
-  PENDIENTE: 'aviso',
-  CONFIRMADA: 'acento',
-  ACTIVA: 'exito',
-  FINALIZADA: 'neutro',
-  CANCELADA: 'peligro',
-  NO_SHOW: 'peligro',
-};
-
-const DIA_SEMANA = new Intl.DateTimeFormat('es-AR', { weekday: 'short' });
-const MES = new Intl.DateTimeFormat('es-AR', { month: 'short' });
-
-/** "sept." -> "sept": sin el punto de la abreviatura, que ensucia los bloques de fecha. */
-const abreviar = (formato: Intl.DateTimeFormat, fecha: Date) =>
-  formato.format(fecha).replace('.', '');
-
 /**
- * Tarjeta de una reserva del conductor.
- *
- *   completa  -> la de "Vigentes". Si la reserva esta en curso, suma arriba el
- *                bloque con el tiempo que lleva y la barra de progreso (reserva-en-curso).
- *   compacta  -> la del historial: una linea con fecha, estacionamiento, precio y estado.
+ * Tarjeta de una reserva vigente del conductor. Si la reserva esta en curso,
+ * suma arriba el bloque con el tiempo que lleva y la barra de progreso
+ * (reserva-en-curso).
  */
 @Component({
-  selector: 'app-tarjeta-reserva',
+  selector: 'app-tarjeta-vigente',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgTemplateOutlet, RouterLink, Etiqueta, Icono, ChapaPatente, ReservaEnCurso],
-  templateUrl: './tarjeta-reserva.html',
+  imports: [Icono, ChapaPatente, ReservaEnCurso, EstadoReserva, AvisoReasignacion, FechaReserva],
+  templateUrl: './tarjeta-vigente.html',
   host: { class: 'block' },
 })
-export class TarjetaReserva {
+export class TarjetaVigente {
   readonly reserva = input.required<ReservaDetallada>();
-  readonly variante = input<'completa' | 'compacta'>('completa');
   readonly cancelando = input(false);
 
   readonly cancelar = output<ReservaDetallada>();
@@ -63,16 +41,10 @@ export class TarjetaReserva {
     return r.estado === 'ACTIVA' || (r.estado === 'CONFIRMADA' && reservaEnJuego(r));
   });
 
-  protected readonly etiquetaEstado = computed(() => etiquetaReserva(this.reserva(), 'CONDUCTOR'));
   protected readonly etiquetaModalidad = ETIQUETA_MODALIDAD;
   protected readonly turnos = TURNOS;
 
-  protected readonly tono = computed(() =>
-    esExpirada(this.reserva()) ? 'aviso' : TONO_ESTADO[this.reserva().estado],
-  );
-  protected readonly enCurso = computed(
-    () => this.variante() === 'completa' && this.reserva().estado === 'ACTIVA',
-  );
+  protected readonly enCurso = computed(() => this.reserva().estado === 'ACTIVA');
 
   /** La tarjeta en curso respira un poco mas a los costados, como el bloque de arriba. */
   protected readonly margen = computed(() => (this.enCurso() ? 'px-5 lg:px-6' : 'px-4 lg:px-5'));
@@ -100,19 +72,9 @@ export class TarjetaReserva {
     () => this.reserva().fechaHasta !== this.reserva().fecha,
   );
 
-  /* ------------------------------ Fecha ------------------------------ */
-
-  private readonly dia = computed(() => desdeFechaISO(this.reserva().fecha));
-
-  protected readonly bloqueFecha = computed(() => ({
-    semana: abreviar(DIA_SEMANA, this.dia()),
-    numero: this.dia().getDate(),
-    mes: abreviar(MES, this.dia()),
-  }));
-
   /** "lun 28 sep". */
   protected readonly textoFecha = computed(() => {
-    const { semana, numero, mes } = this.bloqueFecha();
+    const { semana, numero, mes } = partesDeFecha(this.reserva().fecha);
     return `${semana} ${numero} ${mes}`;
   });
 }

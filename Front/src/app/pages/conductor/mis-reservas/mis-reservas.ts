@@ -1,31 +1,14 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
-import { CancelarReserva } from './cancelar-reserva/cancelar-reserva';
-import { QrReserva } from './qr-reserva/qr-reserva';
-import { TarjetaReserva } from './tarjeta-reserva/tarjeta-reserva';
-import { Boton, Cargando, Chip, EstadoVacio, Modal, Tarjeta } from '@app/components/ui';
-import { Id, ReservaDetallada } from '@app/models';
+import { HistorialReservas, sinUsar } from './historial-reservas/historial-reservas';
+import { Pestania, PestaniasReservas } from './menu-pestanias/pestanias-reservas';
+import { ReservasVigentes } from './reservas-vigentes/reservas-vigentes';
+import { Boton, Cargando, EstadoVacio } from '@app/components/ui';
+import { ReservaDetallada } from '@app/models';
 import { reservaEnJuego } from '@app/services/ciclo-reserva';
 import { ReservaService } from '@app/services/reserva.service';
 import { aInstante } from '@app/utils/fecha.util';
-
-type Pestania = 'VIGENTES' | 'HISTORIAL';
-
-interface MesHistorial {
-  clave: string;
-  titulo: string;
-  reservas: ReservaDetallada[];
-}
-
-const MES_Y_ANIO = new Intl.DateTimeFormat('es-AR', { month: 'long', year: 'numeric' });
-
-/**
- * Reservas que no llegaron a usarse (canceladas, expiradas y ausentes): en el
- * historial quedan ocultas hasta que el conductor pide verlas.
- */
-const sinUsar = (reserva: ReservaDetallada) =>
-  reserva.estado === 'CANCELADA' || reserva.estado === 'NO_SHOW';
 
 const inicioDe = (reserva: ReservaDetallada) =>
   Date.parse(aInstante(reserva.fecha, reserva.horaDesde));
@@ -33,23 +16,19 @@ const inicioDe = (reserva: ReservaDetallada) =>
 /**
  * Pantalla `/conductor/mis-reservas` · rol CONDUCTOR
  *
- * Vigentes: la reserva en curso arriba, con su reloj, y despues las proximas
- * de la mas cercana a la mas lejana. Historial: agrupado por mes, lo mas
- * reciente primero.
+ * Carga las reservas del conductor y las reparte entre las dos pestañas:
+ * Vigentes (reservas-vigentes) e Historial (historial-reservas).
  */
 @Component({
   selector: 'app-mis-reservas',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    TarjetaReserva,
-    CancelarReserva,
-    QrReserva,
-    Tarjeta,
-    Chip,
+    PestaniasReservas,
+    ReservasVigentes,
+    HistorialReservas,
     Cargando,
     EstadoVacio,
     Boton,
-    Modal,
     RouterLink,
   ],
   templateUrl: './mis-reservas.html',
@@ -60,30 +39,22 @@ export class MisReservas {
 
   protected readonly pestania = signal<Pestania>('VIGENTES');
 
-  /** Reserva que el conductor quiere cancelar: mientras no sea null, el modal esta abierto. */
-  protected readonly aCancelar = signal<ReservaDetallada | null>(null);
-  /** Reserva que se esta cancelando: pinta el spinner en su tarjeta y en el modal. */
-  protected readonly cancelandoId = signal<Id | null>(null);
-  /** Error del ultimo intento, se muestra adentro del modal para poder reintentar. */
-  protected readonly errorCancelar = signal<string | null>(null);
   /** Confirmacion visible: la reserva cancelada se va a Historial. */
   protected readonly aviso = signal<string | null>(null);
-  /** Reserva cuyo QR se esta mostrando: mientras no sea null, el modal esta abierto. */
-  protected readonly conQrAbierto = signal<ReservaDetallada | null>(null);
 
   protected readonly recurso = rxResource({
     stream: () => this.reservas.listarMisReservas(),
     defaultValue: [] as ReservaDetallada[],
   });
 
-  private readonly vigentes = computed(() =>
+  protected readonly vigentes = computed(() =>
     this.recurso
       .value()
       .filter(reservaEnJuego)
       .sort((a, b) => inicioDe(a) - inicioDe(b)),
   );
 
-  private readonly pasadas = computed(() =>
+  protected readonly pasadas = computed(() =>
     this.recurso
       .value()
       .filter((reserva) => !reservaEnJuego(reserva))
@@ -93,43 +64,17 @@ export class MisReservas {
   /** La mas reciente que todavia puede calificar (entro y salio hace menos de 7 dias). */
   protected readonly porCalificar = computed(() => this.pasadas().find((reserva) => reserva.calificable) ?? null);
 
-  /** Si el historial muestra tambien las canceladas, expiradas y ausentes. */
+  /**
+   * Si el historial muestra tambien las canceladas, expiradas y ausentes. Vive
+   * aca y no en la pestaña porque cambia el contador de "Historial".
+   */
   protected readonly mostrarSinUsar = signal(false);
 
-  private readonly pasadasVisibles = computed(() =>
-    this.mostrarSinUsar() ? this.pasadas() : this.pasadas().filter((reserva) => !sinUsar(reserva)),
-  );
-
   protected readonly cantidadVigentes = computed(() => this.vigentes().length);
-  protected readonly cantidadHistorial = computed(() => this.pasadasVisibles().length);
-  protected readonly cantidadSinUsar = computed(() => this.pasadas().filter(sinUsar).length);
-
-  protected readonly enCurso = computed(() =>
-    this.vigentes().filter((reserva) => reserva.estado === 'ACTIVA'),
-  );
-  protected readonly proximas = computed(() =>
-    this.vigentes().filter((reserva) => reserva.estado !== 'ACTIVA'),
-  );
-
-  protected readonly historial = computed<MesHistorial[]>(() => {
-    const meses: MesHistorial[] = [];
-    for (const reserva of this.pasadasVisibles()) {
-      const clave = reserva.fecha.slice(0, 7);
-      let mes = meses.at(-1);
-      if (mes?.clave !== clave) {
-        const [anio, numero] = clave.split('-').map(Number);
-        mes = { clave, titulo: MES_Y_ANIO.format(new Date(anio, numero - 1, 1)), reservas: [] };
-        meses.push(mes);
-      }
-      mes.reservas.push(reserva);
-    }
-    return meses;
-  });
-
-  protected readonly vacia = computed(() =>
-    this.pestania() === 'VIGENTES'
-      ? this.cantidadVigentes() === 0
-      : this.pasadas().length === 0,
+  protected readonly cantidadHistorial = computed(() =>
+    this.mostrarSinUsar()
+      ? this.pasadas().length
+      : this.pasadas().filter((reserva) => !sinUsar(reserva)).length,
   );
 
   protected cambiarPestania(pestania: Pestania): void {
@@ -138,38 +83,9 @@ export class MisReservas {
     this.aviso.set(null);
   }
 
-  protected pedirCancelacion(reserva: ReservaDetallada): void {
-    this.errorCancelar.set(null);
-    this.aCancelar.set(reserva);
-  }
-
-  protected cerrarCancelacion(): void {
-    // Mientras viaja el PATCH el modal queda abierto: si falla, el error se ve ahi.
-    if (this.cancelandoId()) return;
-    this.aCancelar.set(null);
-  }
-
-  /** `PATCH /api/reservas/:id/cancelar` */
-  protected confirmarCancelacion(): void {
-    const reserva = this.aCancelar();
-    if (!reserva) return;
-
-    this.cancelandoId.set(reserva.id);
-    this.aviso.set(null);
-    this.errorCancelar.set(null);
-
-    this.reservas.cancelar(reserva.id).subscribe({
-      next: () => {
-        this.cancelandoId.set(null);
-        this.aCancelar.set(null);
-        // La reserva pasa a CANCELADA: sale de Vigentes y aparece en Historial.
-        this.aviso.set(`Cancelamos tu reserva en ${reserva.estacionamiento.nombre}.`);
-        this.recurso.reload();
-      },
-      error: (e: Error) => {
-        this.cancelandoId.set(null);
-        this.errorCancelar.set(e.message);
-      },
-    });
+  /** La reserva pasa a CANCELADA: sale de Vigentes y aparece en Historial. */
+  protected alCancelar(reserva: ReservaDetallada): void {
+    this.aviso.set(`Cancelamos tu reserva en ${reserva.estacionamiento.nombre}.`);
+    this.recurso.reload();
   }
 }

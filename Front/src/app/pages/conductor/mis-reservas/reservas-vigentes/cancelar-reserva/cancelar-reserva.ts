@@ -5,9 +5,9 @@ import { ReservaDetallada } from '@app/models';
 import { desdeFechaISO } from '@app/utils/fecha.util';
 
 /**
- * Modal de Mis reservas para confirmar que se cancela una reserva: muestra
+ * Modal de las reservas vigentes para confirmar que se cancela una reserva: muestra
  * estacionamiento, dia, horario y vehiculo. La cancelacion la hace la pantalla
- * (mis-reservas.ts) al recibir `confirmar`.
+ * (reservas-vigentes.ts) al recibir `confirmar`.
  */
 @Component({
   selector: 'app-cancelar-reserva',

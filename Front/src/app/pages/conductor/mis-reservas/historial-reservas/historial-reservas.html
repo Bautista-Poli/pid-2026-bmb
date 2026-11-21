@@ -1,0 +1,40 @@
+<!-- Pestaña "Historial" de Mis reservas. Datos en historial-reservas.ts. -->
+@if (reservas().length === 0) {
+  <ui-estado-vacio
+    titulo="Todavia no hay historial"
+    descripcion="Cuando reserves una cochera la vas a ver aca."
+  >
+    <ui-boton routerLink="/conductor/explorar">Explorar estacionamientos</ui-boton>
+  </ui-estado-vacio>
+} @else {
+  @if (cantidadSinUsar() > 0) {
+    <div class="barra-historial">
+      <p class="nota-historial">
+        @if (mostrarSinUsar()) {
+          Incluye canceladas y ausentes.
+        } @else if (cantidadVisibles() === 0) {
+          Solo tenés reservas canceladas o ausentes.
+        } @else {
+          Sin canceladas ni ausentes.
+        }
+      </p>
+      <ui-boton tamano="sm" (presionado)="mostrarSinUsar.set(!mostrarSinUsar())">
+        {{ mostrarSinUsar() ? 'Ocultar canceladas' : 'Mostrar canceladas (' + cantidadSinUsar() + ')' }}
+      </ui-boton>
+    </div>
+  }
+  @for (mes of meses(); track mes.clave) {
+    <section class="grupo-seccion" [attr.aria-label]="mes.titulo">
+      <h2 class="eyebrow eyebrow-neutro">{{ mes.titulo }}</h2>
+      <ui-tarjeta relleno="ninguno" [recortar]="true">
+        <ul class="aparece-en-cadena">
+          @for (reserva of mes.reservas; track reserva.id) {
+            <li class="item-historial">
+              <app-tarjeta-historial [reserva]="reserva" />
+            </li>
+          }
+        </ul>
+      </ui-tarjeta>
+    </section>
+  }
+}

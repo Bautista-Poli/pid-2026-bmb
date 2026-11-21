@@ -1,0 +1,51 @@
+<!-- Pestaña "Vigentes" de Mis reservas. Datos y acciones en reservas-vigentes.ts. -->
+@if (reservas().length === 0) {
+  <ui-estado-vacio
+    titulo="No tenes reservas activas"
+    descripcion="Cuando reserves una cochera la vas a ver aca."
+  >
+    <ui-boton routerLink="/conductor/explorar">Explorar estacionamientos</ui-boton>
+  </ui-estado-vacio>
+} @else {
+  <div class="columna-vigentes">
+    @for (reserva of enCurso(); track reserva.id) {
+      <app-tarjeta-vigente class="aparece" [reserva]="reserva" (verQr)="conQrAbierto.set($event)" />
+    }
+
+    @if (proximas().length > 0) {
+      <section class="grupo-seccion" aria-labelledby="titulo-proximas">
+        <h2 id="titulo-proximas" class="eyebrow eyebrow-neutro">Próximas</h2>
+        <div class="aparece-en-cadena lista-reservas">
+          @for (reserva of proximas(); track reserva.id) {
+            <app-tarjeta-vigente
+              [reserva]="reserva"
+              [cancelando]="cancelandoId() === reserva.id"
+              (cancelar)="pedirCancelacion($event)"
+              (verQr)="conQrAbierto.set($event)"
+            />
+          }
+        </div>
+      </section>
+    }
+  </div>
+}
+
+<app-cancelar-reserva
+  [reserva]="aCancelar()"
+  [cancelando]="cancelandoId() !== null"
+  [error]="errorCancelar()"
+  (cerrado)="cerrarCancelacion()"
+  (confirmar)="confirmarCancelacion()"
+/>
+
+<ui-modal titulo="QR de tu reserva" [abierto]="conQrAbierto() !== null" (cerrado)="conQrAbierto.set(null)">
+  @if (conQrAbierto(); as r) {
+    <div class="detalle-modal">
+      <p class="texto-qr">
+        {{ r.estacionamiento.nombre }} · Cochera {{ r.cochera?.identificador ?? 'a asignar' }} ·
+        {{ r.horaDesde }}–{{ r.horaHasta }}
+      </p>
+      <app-qr-reserva [codigo]="r.codigoAcceso ?? ''" />
+    </div>
+  }
+</ui-modal>

@@ -1,0 +1,33 @@
+/* Mismo ritmo vertical que la columna de la pantalla. */
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.barra-historial {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.nota-historial {
+  font-size: 13px;
+  color: var(--color-plomo);
+}
+
+.grupo-seccion {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.item-historial {
+  border-top: 1px solid var(--color-borde-sutil);
+}
+
+.item-historial:first-child {
+  border-top: 0;
+}

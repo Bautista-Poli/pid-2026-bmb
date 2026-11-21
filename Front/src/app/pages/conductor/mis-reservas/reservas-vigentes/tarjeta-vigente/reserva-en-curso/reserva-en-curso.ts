@@ -24,7 +24,7 @@ function duracion(ms: number): string {
 }
 
 /**
- * Bloque de arriba de la tarjeta de una reserva en curso (tarjeta-reserva.ts):
+ * Bloque de arriba de la tarjeta de una reserva en curso (tarjeta-vigente.ts):
  * cuanto lleva, cuanto falta y la barra de progreso de la franja. Tiene su
  * propio reloj, que se refresca cada 30 s.
  */

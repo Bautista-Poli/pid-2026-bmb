@@ -1,0 +1,36 @@
+:host {
+  display: block;
+}
+
+/* Mismo ritmo vertical que la columna de la pantalla. */
+.columna-vigentes {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.grupo-seccion {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.lista-reservas {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Modal del QR */
+
+.detalle-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.texto-qr {
+  text-align: center;
+  font-size: 13px;
+  color: var(--color-plomo);
+}

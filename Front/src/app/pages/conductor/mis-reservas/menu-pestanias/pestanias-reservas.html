@@ -1,0 +1,16 @@
+<ui-chip [activo]="activa() === 'VIGENTES'" (alternar)="cambiar.emit('VIGENTES')">
+  Vigentes
+  @if (!cargando()) {
+    <span class="num-tabular contador-pestania">
+      {{ cantidadVigentes() }}
+    </span>
+  }
+</ui-chip>
+<ui-chip [activo]="activa() === 'HISTORIAL'" (alternar)="cambiar.emit('HISTORIAL')">
+  Historial
+  @if (!cargando()) {
+    <span class="num-tabular contador-pestania">
+      {{ cantidadHistorial() }}
+    </span>
+  }
+</ui-chip>

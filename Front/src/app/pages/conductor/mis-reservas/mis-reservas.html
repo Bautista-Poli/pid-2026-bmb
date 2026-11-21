@@ -5,24 +5,14 @@
       <p class="eyebrow">Conductor</p>
       <h1 class="titulo-vista titulo-pagina">Mis reservas</h1>
 
-      <div class="pestanias">
-        <ui-chip [activo]="pestania() === 'VIGENTES'" (alternar)="cambiarPestania('VIGENTES')">
-          Vigentes
-          @if (!recurso.isLoading()) {
-            <span class="num-tabular contador-pestania">
-              {{ cantidadVigentes() }}
-            </span>
-          }
-        </ui-chip>
-        <ui-chip [activo]="pestania() === 'HISTORIAL'" (alternar)="cambiarPestania('HISTORIAL')">
-          Historial
-          @if (!recurso.isLoading()) {
-            <span class="num-tabular contador-pestania">
-              {{ cantidadHistorial() }}
-            </span>
-          }
-        </ui-chip>
-      </div>
+      <app-pestanias-reservas
+        class="pestanias"
+        [activa]="pestania()"
+        [cantidadVigentes]="cantidadVigentes()"
+        [cantidadHistorial]="cantidadHistorial()"
+        [cargando]="recurso.isLoading()"
+        (cambiar)="cambiarPestania($event)"
+      />
     </header>
 
     @if (aviso(); as mensaje) {
@@ -52,88 +42,10 @@
       <ui-estado-vacio titulo="No pudimos cargar tus reservas" [descripcion]="error.message">
         <ui-boton (presionado)="recurso.reload()">Reintentar</ui-boton>
       </ui-estado-vacio>
-    } @else if (vacia()) {
-      <ui-estado-vacio
-        [titulo]="pestania() === 'VIGENTES' ? 'No tenes reservas activas' : 'Todavia no hay historial'"
-        descripcion="Cuando reserves una cochera la vas a ver aca."
-      >
-        <ui-boton routerLink="/conductor/explorar">Explorar estacionamientos</ui-boton>
-      </ui-estado-vacio>
     } @else if (pestania() === 'VIGENTES') {
-      @for (reserva of enCurso(); track reserva.id) {
-        <app-tarjeta-reserva
-          class="aparece"
-          [reserva]="reserva"
-          (verQr)="conQrAbierto.set($event)"
-        />
-      }
-
-      @if (proximas().length > 0) {
-        <section class="grupo-seccion" aria-labelledby="titulo-proximas">
-          <h2 id="titulo-proximas" class="eyebrow eyebrow-neutro">Próximas</h2>
-          <div class="aparece-en-cadena lista-reservas">
-            @for (reserva of proximas(); track reserva.id) {
-              <app-tarjeta-reserva
-                [reserva]="reserva"
-                [cancelando]="cancelandoId() === reserva.id"
-                (cancelar)="pedirCancelacion($event)"
-                (verQr)="conQrAbierto.set($event)"
-              />
-            }
-          </div>
-        </section>
-      }
+      <app-reservas-vigentes [reservas]="vigentes()" (cancelada)="alCancelar($event)" />
     } @else {
-      @if (cantidadSinUsar() > 0) {
-        <div class="barra-historial">
-          <p class="nota-historial">
-            @if (mostrarSinUsar()) {
-              Incluye canceladas y ausentes.
-            } @else if (cantidadHistorial() === 0) {
-              Solo tenés reservas canceladas o ausentes.
-            } @else {
-              Sin canceladas ni ausentes.
-            }
-          </p>
-          <ui-boton tamano="sm" (presionado)="mostrarSinUsar.set(!mostrarSinUsar())">
-            {{ mostrarSinUsar() ? 'Ocultar canceladas' : 'Mostrar canceladas (' + cantidadSinUsar() + ')' }}
-          </ui-boton>
-        </div>
-      }
-      @for (mes of historial(); track mes.clave) {
-        <section class="grupo-seccion" [attr.aria-label]="mes.titulo">
-          <h2 class="eyebrow eyebrow-neutro">{{ mes.titulo }}</h2>
-          <ui-tarjeta relleno="ninguno" [recortar]="true">
-            <ul class="aparece-en-cadena">
-              @for (reserva of mes.reservas; track reserva.id) {
-                <li class="item-historial">
-                  <app-tarjeta-reserva [reserva]="reserva" variante="compacta" />
-                </li>
-              }
-            </ul>
-          </ui-tarjeta>
-        </section>
-      }
+      <app-historial-reservas [reservas]="pasadas()" [(mostrarSinUsar)]="mostrarSinUsar" />
     }
   </div>
-
-  <app-cancelar-reserva
-    [reserva]="aCancelar()"
-    [cancelando]="cancelandoId() !== null"
-    [error]="errorCancelar()"
-    (cerrado)="cerrarCancelacion()"
-    (confirmar)="confirmarCancelacion()"
-  />
-
-  <ui-modal titulo="QR de tu reserva" [abierto]="conQrAbierto() !== null" (cerrado)="conQrAbierto.set(null)">
-    @if (conQrAbierto(); as r) {
-      <div class="detalle-modal">
-        <p class="texto-qr">
-          {{ r.estacionamiento.nombre }} · Cochera {{ r.cochera?.identificador ?? 'a asignar' }} ·
-          {{ r.horaDesde }}–{{ r.horaHasta }}
-        </p>
-        <app-qr-reserva [codigo]="r.codigoAcceso ?? ''" />
-      </div>
-    }
-  </ui-modal>
 </div>

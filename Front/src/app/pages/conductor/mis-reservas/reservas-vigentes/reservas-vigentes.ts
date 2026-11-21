@@ -1,21 +1,21 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { Boton, EstadoVacio, Modal } from '@app/components/ui';
+import { Boton, EstadoVacio } from '@app/components/ui';
 import { Id, ReservaDetallada } from '@app/models';
 import { ReservaService } from '@app/services/reserva.service';
-import { TarjetaVigente } from './tarjeta-vigente/tarjeta-vigente';
+import { TarjetaEnCurso } from './tarjeta-en-curso/tarjeta-en-curso';
+import { TarjetaProxima } from './tarjeta-proxima/tarjeta-proxima';
 import { CancelarReserva } from './cancelar-reserva/cancelar-reserva';
-import { QrReserva } from './qr-reserva/qr-reserva';
 
 /**
  * Pestaña "Vigentes" de Mis reservas: la reserva en curso arriba, con su reloj,
  * y despues las proximas de la mas cercana a la mas lejana. Tambien es dueña
- * de lo que solo se hace con una reserva vigente: ver su QR y cancelarla.
+ * de cancelar una proxima: el modal de confirmacion y el pedido al back.
  */
 @Component({
   selector: 'app-reservas-vigentes',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TarjetaVigente, CancelarReserva, QrReserva, EstadoVacio, Boton, Modal, RouterLink],
+  imports: [TarjetaEnCurso, TarjetaProxima, CancelarReserva, EstadoVacio, Boton, RouterLink],
   templateUrl: './reservas-vigentes.html',
   styleUrl: './reservas-vigentes.css',
 })
@@ -34,8 +34,6 @@ export class ReservasVigentes {
   protected readonly cancelandoId = signal<Id | null>(null);
   /** Error del ultimo intento, se muestra adentro del modal para poder reintentar. */
   protected readonly errorCancelar = signal<string | null>(null);
-  /** Reserva cuyo QR se esta mostrando: mientras no sea null, el modal esta abierto. */
-  protected readonly conQrAbierto = signal<ReservaDetallada | null>(null);
 
   protected readonly enCurso = computed(() =>
     this.reservas().filter((reserva) => reserva.estado === 'ACTIVA'),

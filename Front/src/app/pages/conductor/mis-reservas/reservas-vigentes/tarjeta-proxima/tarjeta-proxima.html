@@ -1,0 +1,49 @@
+<!-- Tarjeta de una reserva proxima del conductor. Datos y acciones en tarjeta-proxima.ts. -->
+@let r = reserva();
+
+<article class="tarjeta">
+  <div class="cabecera bloque">
+    <app-fecha-reserva [fecha]="r.fecha" />
+    <div class="datos">
+      <div class="titulo-y-estado">
+        <h3 class="nombre">{{ r.estacionamiento.nombre }}</h3>
+        <app-estado-reserva [reserva]="r" />
+      </div>
+      <p class="direccion">{{ direccion() }}</p>
+      <p class="num-tabular horario">
+        <ui-icono class="icono-horario" nombre="reloj" [tamano]="15" />
+        {{ r.horaDesde }} – {{ r.horaHasta }}
+        @if (cruzaMedianoche()) {
+          <span class="dia-siguiente">(día siguiente)</span>
+        }
+      </p>
+    </div>
+  </div>
+
+  <app-vehiculo-y-cochera class="bloque" [reserva]="r" />
+  <app-como-llegar class="bloque bloque-junto" [reserva]="r" />
+
+  @if (r.motivoReasignacion) {
+    <div class="bloque bloque-junto">
+      <app-aviso-reasignacion [reserva]="r" />
+    </div>
+  }
+
+  <footer class="pie">
+    <app-precio-reserva [reserva]="r" />
+
+    <div class="acciones">
+      @if (conQr()) {
+        <app-ver-qr [reserva]="r" />
+      }
+      @if (cancelable()) {
+        <button type="button" class="boton-cancelar" [disabled]="cancelando()" (click)="cancelar.emit(r)">
+          @if (cancelando()) {
+            <span class="girando" aria-hidden="true"></span>
+          }
+          Cancelar
+        </button>
+      }
+    </div>
+  </footer>
+</article>

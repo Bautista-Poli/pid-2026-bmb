@@ -8,8 +8,16 @@ import {
   OnInit,
   signal,
 } from '@angular/core';
-import { ReservaDetallada } from '@app/models';
+import { Icono } from '@app/components/ui';
+import { direccionCorta, ReservaDetallada } from '@app/models';
 import { aInstante, desdeFechaISO } from '@app/utils/fecha.util';
+import { AvisoReasignacion } from '../../partes-tarjeta/aviso-reasignacion';
+import { EstadoReserva } from '../../partes-tarjeta/estado-reserva';
+import { partesDeFecha } from '../../partes-tarjeta/fecha-reserva';
+import { ComoLlegar } from '../partes-tarjeta/como-llegar';
+import { PrecioReserva } from '../partes-tarjeta/precio-reserva';
+import { VehiculoYCochera } from '../partes-tarjeta/vehiculo-y-cochera';
+import { VerQr } from '../ver-qr/ver-qr';
 
 /** El reloj de la reserva en curso se refresca cada 30 s: alcanza para los minutos. */
 const REFRESCO_MS = 30_000;
@@ -24,34 +32,41 @@ function duracion(ms: number): string {
 }
 
 /**
- * Bloque de arriba de la tarjeta de una reserva en curso (tarjeta-vigente.ts):
- * cuanto lleva, cuanto falta y la barra de progreso de la franja. Tiene su
- * propio reloj, que se refresca cada 30 s.
+ * Tarjeta de la reserva en curso del conductor: arriba cuanto lleva, cuanto
+ * falta y la barra de progreso de la franja; abajo el estacionamiento, el
+ * auto, la cochera y el QR para salir. Tiene su propio reloj, que se refresca
+ * cada 30 s.
  */
 @Component({
-  selector: 'app-reserva-en-curso',
+  selector: 'app-tarjeta-en-curso',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  templateUrl: './reserva-en-curso.html',
+  imports: [Icono, EstadoReserva, AvisoReasignacion, VehiculoYCochera, ComoLlegar, PrecioReserva, VerQr],
+  templateUrl: './tarjeta-en-curso.html',
   host: { class: 'block' },
 })
-export class ReservaEnCurso implements OnInit {
+export class TarjetaEnCurso implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly reserva = input.required<ReservaDetallada>();
-  /** "lun 28 sep": la fecha como la muestra la tarjeta. */
-  readonly fecha = input.required<string>();
 
   private readonly ahora = signal(Date.now());
 
+  protected readonly direccion = computed(() =>
+    direccionCorta(this.reserva().estacionamiento.direccion),
+  );
+
   /** "Hoy · lun 28 sep", "Mañana · mar 29 sep" o "vie 3 oct". */
   protected readonly fechaLarga = computed(() => {
+    const { semana, numero, mes } = partesDeFecha(this.reserva().fecha);
+    const fecha = `${semana} ${numero} ${mes}`;
+
     const hoy = new Date(this.ahora());
     hoy.setHours(0, 0, 0, 0);
     const dia = desdeFechaISO(this.reserva().fecha);
     const dias = Math.round((dia.getTime() - hoy.getTime()) / 86_400_000);
-    if (dias === 0) return `Hoy · ${this.fecha()}`;
-    if (dias === 1) return `Mañana · ${this.fecha()}`;
-    return this.fecha();
+    if (dias === 0) return `Hoy · ${fecha}`;
+    if (dias === 1) return `Mañana · ${fecha}`;
+    return fecha;
   });
 
   private readonly inicio = computed(() =>

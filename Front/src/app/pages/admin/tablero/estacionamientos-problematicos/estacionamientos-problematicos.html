@@ -4,7 +4,7 @@
     <div>
       <h3 class="titulo-tarjeta">Estacionamientos con problemas</h3>
       <p class="subtitulo-tarjeta">
-        Con 5 reservas o más: cancelan más del 30 % por su lado o juntan 2 reclamos o más
+        Con 5 reservas o más: cancelan más del 30 % por su lado
       </p>
     </div>
     @if (datos().conflictos.problematicos.length === 0) {
@@ -16,17 +16,10 @@
             <div class="fila-texto">
               <p class="fila-titulo">{{ p.nombre }}</p>
               <p class="num-tabular detalle-problema">
-                {{ p.propietario }} · {{ p.reservas }} reservas · cancela {{ porciento(p.tasaCancelacion) }} ·
-                {{ p.reclamos }} {{ p.reclamos === 1 ? 'reclamo' : 'reclamos' }}
+                {{ p.propietario }} · {{ p.reservas }} reservas · cancela {{ porciento(p.tasaCancelacion) }}
               </p>
             </div>
-            <div class="razones">
-              @for (razon of p.razones; track razon) {
-                <span class="razon">
-                  {{ etiquetaRazon[razon] }}
-                </span>
-              }
-            </div>
+            <span class="razon">Cancela mucho</span>
           </li>
         }
       </ul>

@@ -14,17 +14,16 @@ import { ESTADOS_COCHERA, ESTADOS_RESERVA } from '../../utils/roles.js';
    una PENDIENTE que nunca se confirmo se cancela sola al empezar su franja, y
    una CONFIRMADA sin ingreso pasa a NO_SHOW a los TOLERANCIA_NO_SHOW_MS de
    `inicio` (y libera la cochera). Una ACTIVA sin egreso registrado, en cambio,
-   no se cierra sola: la cochera queda bloqueada hasta el egreso y se abre una
-   incidencia (incidencia/incidencia-vencimientos.service.js). Todas las transiciones, manuales y
-   automaticas, pasan por cambiarEstado() / TRANSICIONES (abajo).
+   no se cierra sola: la cochera queda bloqueada hasta el egreso. Todas las
+   transiciones, manuales y automaticas, pasan por cambiarEstado() / TRANSICIONES (abajo).
 -------------------------------------------------------------------------- */
 
 // El vehiculo puede llegar hasta 30 minutos antes de su franja.
 export const MARGEN_INGRESO_MS = 30 * 60 * 1000;
 
 // Una ACTIVA no se cierra sola: mientras el auto no egrese, la cochera queda
-// bloqueada (ver finEfectivo en utils/solapamiento.js) y, pasado el margen, se
-// abre una incidencia AUTO_EXCEDIDO para el propietario (incidencia/incidencia-vencimientos.service.js).
+// bloqueada (ver finEfectivo en utils/solapamiento.js) y las reservas siguientes
+// se reasignan (protegerReservasSiguientes en reserva-vencimientos.service.js).
 
 // Tolerancia de llegada: una CONFIRMADA sin ingreso a los 15 minutos de su
 // `inicio` pasa a NO_SHOW y la cochera vuelve a estar disponible. Desde ese

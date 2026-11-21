@@ -65,7 +65,6 @@
           class="aparece"
           [reserva]="reserva"
           (verQr)="conQrAbierto.set($event)"
-          (reclamar)="pedirReclamo($event)"
         />
       }
 
@@ -79,7 +78,6 @@
                 [cancelando]="cancelandoId() === reserva.id"
                 (cancelar)="pedirCancelacion($event)"
                 (verQr)="conQrAbierto.set($event)"
-                (reclamar)="pedirReclamo($event)"
               />
             }
           </div>
@@ -109,7 +107,7 @@
             <ul class="aparece-en-cadena">
               @for (reserva of mes.reservas; track reserva.id) {
                 <li class="item-historial">
-                  <app-tarjeta-reserva [reserva]="reserva" variante="compacta" (reclamar)="pedirReclamo($event)" />
+                  <app-tarjeta-reserva [reserva]="reserva" variante="compacta" />
                 </li>
               }
             </ul>
@@ -139,5 +137,3 @@
     }
   </ui-modal>
 </div>
-
-<app-abrir-reclamo [objeto]="aReclamar()" (cerrado)="aReclamar.set(null)" (creado)="verReclamo($event)" />

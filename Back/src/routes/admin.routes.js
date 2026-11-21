@@ -8,11 +8,8 @@ import { ROLES } from '../utils/roles.js';
 import {
   validarAprobacion,
   validarFiltroAdmin,
-  validarFiltroIncidencias,
   validarFiltroResenas,
-  validarMensajeModeracion,
   validarRechazo,
-  validarResolucionModeracion,
 } from '../validators/admin.validator.js';
 import { validarPeriodo } from '../validators/estadistica.validator.js';
 
@@ -32,16 +29,6 @@ router.patch(
   '/estacionamientos/:id/rechazar',
   validate(validarRechazo),
   adminController.rechazar,
-);
-
-// Moderacion de incidencias denunciadas.
-router.get('/incidencias', validate(validarFiltroIncidencias, 'query'), adminController.listarIncidencias);
-router.get('/incidencias/:id', adminController.obtenerIncidencia);
-router.post('/incidencias/:id/mensajes', validate(validarMensajeModeracion), adminController.escribirEnIncidencia);
-router.patch(
-  '/incidencias/:id/resolver',
-  validate(validarResolucionModeracion),
-  adminController.resolverIncidencia,
 );
 
 // Moderacion de reseñas denunciadas: desestimar u ocultar.

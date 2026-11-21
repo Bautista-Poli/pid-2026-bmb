@@ -1,19 +1,18 @@
 // Dashboard del administrador: lo que hay para revisar (estacionamientos
-// pendientes y disputas), los conflictos del periodo (bloqueos de cocheras y
+// pendientes), los conflictos del periodo (bloqueos de cocheras y
 // estacionamientos problematicos) y la actividad de toda la plataforma. Igual
 // que estadistica/estadistica.service.js: todo en SQL, consultas en paralelo, dias en hora
 // argentina. Ver docs/.../dashboard-administrador-design.md.
 import { query } from '../config/database.js';
 import { AVISO_CANCELADA_SIN_ALTERNATIVA, AVISO_REASIGNADA } from './cochera/cochera-bloqueo.service.js';
 import { anteriorA, numero, redondear } from './estadistica/estadistica-calculos.js';
-import { COBRADAS, ESTACIONAMIENTO_DE_DEVOLUCION, ZONA, desdeDia, hastaDia } from './estadistica/estadistica-sql.js';
+import { COBRADAS, ZONA, desdeDia, hastaDia } from './estadistica/estadistica-sql.js';
 
 const LIMITE_LISTA = 5;
 const LIMITE_PROBLEMATICOS = 20;
 
 const MIN_RESERVAS_PROBLEMATICO = 5;
 const TASA_CANCELACION_PROBLEMATICO = 0.3;
-const MIN_RECLAMOS_PROBLEMATICO = 2;
 
 /** Instante en el periodo [$1, $2] (dias locales). */
 const EN_PERIODO = (columna) => `${columna} >= ${desdeDia('$1')} AND ${columna} < ${hastaDia('$2')}`;
@@ -52,88 +51,30 @@ async function pendientes() {
   };
 }
 
-/** Incidencias denunciadas (la cola de /admin/disputas) y reclamos que siguen entre las partes. */
-async function disputas() {
-  const [{ rows: cola }, { rows: totales }] = await Promise.all([
-    query(
-      `SELECT i.id_incidencia AS id, i.tipo::text AS tipo, i.motivo::text AS motivo,
-              e.nombre AS estacionamiento, i.denunciada_at
-         FROM incidencia i JOIN estacionamiento e ON e.id_estacionamiento = i.id_estacionamiento
-        WHERE i.estado = 'DENUNCIADA'
-        ORDER BY i.denunciada_at ASC NULLS LAST, i.id_incidencia
-        LIMIT $1`,
-      [LIMITE_LISTA],
-    ),
-    query(
-      `SELECT COUNT(*) FILTER (WHERE estado = 'DENUNCIADA')::int AS denunciadas,
-              COUNT(*) FILTER (WHERE estado = 'ABIERTA' AND abierta_por IS NOT NULL)::int AS en_conversacion
-         FROM incidencia`,
-    ),
-  ]);
-  return {
-    denunciadas: totales[0].denunciadas,
-    masAntiguaDesde: cola[0]?.denunciada_at ?? null,
-    primeras: cola.map((d) => ({
-      id: d.id,
-      tipo: d.tipo,
-      motivo: d.motivo,
-      estacionamiento: d.estacionamiento,
-      denunciadaEn: d.denunciada_at,
-    })),
-    reclamosEnConversacion: totales[0].en_conversacion,
-  };
-}
-
 /* ------------------------------ conflictos ------------------------------ */
 
 /**
  * Lo que dejan los bloqueos de cocheras: reservas reasignadas o canceladas
- * (hoy quedan como canceladas por el propietario, con el aviso cargado) y las
- * incidencias del sistema. Una reasignada que despues cancelo el conductor no
- * es ni una cosa ni la otra. Se cuentan por el aviso del bloqueo: los de un
- * auto excedido (incidencia/incidencia-vencimientos.service.js) ya cuentan como incidencia.
+ * (quedan como canceladas por el propietario, con el aviso cargado). Una
+ * reasignada que despues cancelo el conductor no es ni una cosa ni la otra.
  */
 async function bloqueos(desde, hasta) {
   const { rows } = await query(
-    `WITH r AS (${RESERVAS}),
-     por_reserva AS (
-       SELECT id_estacionamiento,
-              COUNT(*) FILTER (WHERE motivo_reasignacion = $3 AND estado <> 'CANCELADA') AS reasignadas,
-              COUNT(*) FILTER (WHERE estado = 'CANCELADA' AND motivo_reasignacion = $4
-                                 AND cancelada_por IS DISTINCT FROM 'CONDUCTOR') AS canceladas
-         FROM r GROUP BY 1
-     ),
-     por_incidencia AS (
-       SELECT id_estacionamiento,
-              COUNT(*) FILTER (WHERE tipo = 'AUTO_EXCEDIDO') AS autos,
-              COUNT(*) FILTER (WHERE tipo = 'RESERVA_AFECTADA') AS sin_cochera
-         FROM incidencia WHERE ${EN_PERIODO('created_at')} GROUP BY 1
-     )
+    `WITH r AS (${RESERVAS})
      SELECT e.id_estacionamiento AS id, e.nombre,
-            COALESCE(pr.reasignadas, 0)::int AS reasignadas, COALESCE(pr.canceladas, 0)::int AS canceladas,
-            COALESCE(pi.autos, 0)::int AS autos, COALESCE(pi.sin_cochera, 0)::int AS sin_cochera
-       FROM estacionamiento e
-       LEFT JOIN por_reserva pr    ON pr.id_estacionamiento = e.id_estacionamiento
-       LEFT JOIN por_incidencia pi ON pi.id_estacionamiento = e.id_estacionamiento
-      WHERE COALESCE(pr.reasignadas, 0) + COALESCE(pr.canceladas, 0)
-            + COALESCE(pi.autos, 0) + COALESCE(pi.sin_cochera, 0) > 0`,
+            COUNT(*) FILTER (WHERE r.motivo_reasignacion = $3 AND r.estado <> 'CANCELADA')::int AS reasignadas,
+            COUNT(*) FILTER (WHERE r.estado = 'CANCELADA' AND r.motivo_reasignacion = $4
+                               AND r.cancelada_por IS DISTINCT FROM 'CONDUCTOR')::int AS canceladas
+       FROM r JOIN estacionamiento e ON e.id_estacionamiento = r.id_estacionamiento
+      GROUP BY e.id_estacionamiento, e.nombre`,
     [desde, hasta, AVISO_REASIGNADA, AVISO_CANCELADA_SIN_ALTERNATIVA],
   );
-  const porEstacionamiento = rows.map((f) => ({
-    id: f.id,
-    nombre: f.nombre,
-    reasignadas: f.reasignadas,
-    canceladas: f.canceladas,
-    autosExcedidos: f.autos,
-    sinCochera: f.sin_cochera,
-  }));
-  const total = (b) => b.reasignadas + b.canceladas + b.autosExcedidos + b.sinCochera;
+  const porEstacionamiento = rows.filter((b) => b.reasignadas + b.canceladas > 0);
+  const total = (b) => b.reasignadas + b.canceladas;
   const suma = (campo) => porEstacionamiento.reduce((acumulado, b) => acumulado + b[campo], 0);
   return {
     reasignadas: suma('reasignadas'),
     canceladas: suma('canceladas'),
-    autosExcedidos: suma('autosExcedidos'),
-    sinCochera: suma('sinCochera'),
     porEstacionamiento: porEstacionamiento
       .sort((a, b) => total(b) - total(a) || a.nombre.localeCompare(b.nombre))
       .slice(0, LIMITE_LISTA),
@@ -142,8 +83,7 @@ async function bloqueos(desde, hasta) {
 
 /**
  * Estacionamientos activos con suficientes reservas en el periodo que cancelan
- * mucho por su lado (propietario o sistema: no confirmo a tiempo) o acumulan
- * reclamos abiertos o perdidos.
+ * mucho por su lado (propietario o sistema: no confirmo a tiempo).
  */
 async function problematicos(desde, hasta) {
   const { rows } = await query(
@@ -154,40 +94,32 @@ async function problematicos(desde, hasta) {
                                  AND cancelada_por IN ('PROPIETARIO', 'SISTEMA'))::int AS canceladas
          FROM r GROUP BY 1
        HAVING COUNT(*) >= $3
-     ),
-     reclamos AS (
-       SELECT id_estacionamiento, COUNT(*)::int AS cantidad
-         FROM incidencia
-        WHERE abierta_por IS NOT NULL AND ${EN_PERIODO('created_at')}
-          AND (estado IN ('ABIERTA', 'DENUNCIADA') OR resolucion = 'A_FAVOR_CONDUCTOR')
-        GROUP BY 1
      )
      SELECT e.id_estacionamiento AS id, e.nombre, u.nombre || ' ' || u.apellido AS propietario,
-            a.reservas, a.canceladas, COALESCE(rc.cantidad, 0) AS reclamos
+            a.reservas, a.canceladas
        FROM agregado a
        JOIN estacionamiento e ON e.id_estacionamiento = a.id_estacionamiento AND e.activo
-       JOIN usuario u         ON u.id_usuario = e.id_propietario
-       LEFT JOIN reclamos rc  ON rc.id_estacionamiento = a.id_estacionamiento`,
+       JOIN usuario u         ON u.id_usuario = e.id_propietario`,
     [desde, hasta, MIN_RESERVAS_PROBLEMATICO],
   );
   return rows
-    .map((f) => {
-      const tasaCancelacion = redondear(f.canceladas / f.reservas, 4);
-      const razones = [];
-      if (tasaCancelacion > TASA_CANCELACION_PROBLEMATICO) razones.push('CANCELACIONES');
-      if (f.reclamos >= MIN_RECLAMOS_PROBLEMATICO) razones.push('RECLAMOS');
-      return { id: f.id, nombre: f.nombre, propietario: f.propietario, reservas: f.reservas, tasaCancelacion, reclamos: f.reclamos, razones };
-    })
-    .filter((p) => p.razones.length > 0)
-    .sort((a, b) => b.razones.length - a.razones.length || b.tasaCancelacion - a.tasaCancelacion)
+    .map((f) => ({
+      id: f.id,
+      nombre: f.nombre,
+      propietario: f.propietario,
+      reservas: f.reservas,
+      tasaCancelacion: redondear(f.canceladas / f.reservas, 4),
+    }))
+    .filter((p) => p.tasaCancelacion > TASA_CANCELACION_PROBLEMATICO)
+    .sort((a, b) => b.tasaCancelacion - a.tasaCancelacion)
     .slice(0, LIMITE_PROBLEMATICOS);
 }
 
 /* ------------------------------ actividad ------------------------------- */
 
 /**
- * Ingresos netos por estacionamiento en el periodo, como los del propietario:
- * reservas cobradas (sin las de abono) + abonos vendidos - devoluciones.
+ * Ingresos por estacionamiento en el periodo, como los del propietario:
+ * reservas cobradas (sin las de abono) + abonos vendidos.
  */
 const INGRESOS_POR_ESTACIONAMIENTO = `
   SELECT id_estacionamiento, SUM(monto) AS monto FROM (
@@ -197,10 +129,6 @@ const INGRESOS_POR_ESTACIONAMIENTO = `
     UNION ALL
     SELECT a.id_estacionamiento, a.precio_total
       FROM abono a WHERE ${EN_PERIODO('a.created_at')}
-    UNION ALL
-    SELECT ${ESTACIONAMIENTO_DE_DEVOLUCION}, -d.monto
-      FROM devolucion d
-     WHERE ${EN_PERIODO('d.created_at')}
   ) movimientos
   GROUP BY 1`;
 
@@ -213,8 +141,7 @@ async function kpisDe(desde, hasta) {
        (SELECT COUNT(*) FROM estacionamiento
          WHERE estado_aprobacion = 'APROBADO' AND ${EN_PERIODO('revisado_en')})::int AS aprobados,
        r.reservas, r.canceladas,
-       (SELECT COALESCE(SUM(monto), 0) FROM (${INGRESOS_POR_ESTACIONAMIENTO}) x) AS volumen,
-       (SELECT COALESCE(SUM(monto), 0) FROM devolucion WHERE ${EN_PERIODO('created_at')}) AS devoluciones
+       (SELECT COALESCE(SUM(monto), 0) FROM (${INGRESOS_POR_ESTACIONAMIENTO}) x) AS volumen
        FROM (SELECT COUNT(*)::int AS reservas, COUNT(*) FILTER (WHERE estado = 'CANCELADA')::int AS canceladas
                FROM reserva WHERE ${EN_PERIODO('inicio')}) r`,
     [desde, hasta],
@@ -226,7 +153,6 @@ async function kpisDe(desde, hasta) {
     estacionamientosAprobados: f.aprobados,
     reservas: f.reservas,
     volumen: numero(f.volumen),
-    devoluciones: numero(f.devoluciones),
     tasaCancelacion: f.reservas > 0 ? redondear(f.canceladas / f.reservas, 4) : 0,
   };
 }
@@ -261,7 +187,7 @@ async function reservasPorDia(desde, hasta) {
   }));
 }
 
-/** Los 5 estacionamientos con mas reservas y con mas ingresos netos del periodo. */
+/** Los 5 estacionamientos con mas reservas y con mas ingresos del periodo. */
 async function rankings(desde, hasta) {
   const ranking = (subconsulta) =>
     query(
@@ -297,11 +223,10 @@ async function actividad(desde, hasta) {
 
 /* ------------------------------------------------------------------------ */
 
-/** Todo el tablero del admin: pendientes, disputas, bloqueos, problemas y actividad. */
+/** Todo el tablero del admin: pendientes, bloqueos, problemas y actividad. */
 export async function estadisticas({ desde, hasta }) {
-  const [revisar, enDisputa, enBloqueos, conProblemas, deLaPlataforma] = await Promise.all([
+  const [revisar, enBloqueos, conProblemas, deLaPlataforma] = await Promise.all([
     pendientes(),
-    disputas(),
     bloqueos(desde, hasta),
     problematicos(desde, hasta),
     actividad(desde, hasta),
@@ -309,7 +234,6 @@ export async function estadisticas({ desde, hasta }) {
   return {
     periodo: { desde, hasta },
     pendientes: revisar,
-    disputas: enDisputa,
     conflictos: { bloqueos: enBloqueos, problematicos: conProblemas },
     actividad: deLaPlataforma,
   };

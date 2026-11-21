@@ -34,43 +34,6 @@ export function validarRechazo(body) {
   return conVersionVista(campos(body).texto('motivo', body.motivo, { min: 10, max: 300 }), body);
 }
 
-const ESTADOS_INCIDENCIA = ['ABIERTA', 'DENUNCIADA', 'RESUELTA', 'RETIRADA'];
-
-/** `GET /admin/incidencias?estado=`: sin estado, la cola de denunciadas. */
-export function validarFiltroIncidencias(query) {
-  const resultado = campos(query)
-    .enumerado('estado', query.estado, ESTADOS_INCIDENCIA, { requerido: false })
-    .resultado();
-  resultado.valores.estado ??= 'DENUNCIADA';
-  return resultado;
-}
-
-/** `POST /admin/incidencias/:id/mensajes`: solo en los chats privados (el general es de las partes). */
-export function validarMensajeModeracion(body) {
-  return campos(body)
-    .texto('texto', body.texto, { max: 1000 })
-    .enumerado('canal', body.canal, ['PROPIETARIO', 'CONDUCTOR'])
-    .resultado();
-}
-
-/** `PATCH /admin/incidencias/:id/resolver`: a favor del conductor, con monto; del propietario, sin. */
-export function validarResolucionModeracion(body) {
-  const resultado = campos(body)
-    .enumerado('resolucion', body.resolucion, ['A_FAVOR_CONDUCTOR', 'A_FAVOR_PROPIETARIO'])
-    .numero('monto', body.monto, { min: 0, decimales: 2, requerido: false })
-    .texto('fundamento', body.fundamento, { min: 20, max: 1000 })
-    .resultado();
-  const { resolucion, monto } = resultado.valores;
-  // 0 vale si no hay nada para devolver (p. ej. una reserva cancelada): lo controla el service.
-  if (resolucion === 'A_FAVOR_CONDUCTOR' && monto === undefined) {
-    resultado.errores.push({ campo: 'monto', mensaje: 'a favor del conductor, indica cuanto se le devuelve' });
-  }
-  if (resolucion === 'A_FAVOR_PROPIETARIO' && monto > 0) {
-    resultado.errores.push({ campo: 'monto', mensaje: 'a favor del propietario no hay devolucion' });
-  }
-  return resultado;
-}
-
 /** `GET /admin/resenas?estado=`: por defecto, las denuncias pendientes. */
 export function validarFiltroResenas(query) {
   const resultado = campos(query)

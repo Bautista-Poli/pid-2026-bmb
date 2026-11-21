@@ -37,8 +37,8 @@ export async function darDeBaja(idEstacionamiento, idPropietario) {
  * La baja de uno o varios estacionamientos, dentro de una transaccion (la usan
  * darDeBaja y la baja de la cuenta). Con un vehiculo adentro (reserva ACTIVA,
  * aunque se haya excedido) se rechaza: primero tiene que registrarse su egreso.
- * Las reservas que todavia no empezaron se cancelan, los abonos vigentes se
- * cancelan con la devolucion de lo no usado, y se desactiva todo.
+ * Las reservas que todavia no empezaron y los abonos vigentes se cancelan, y
+ * se desactiva todo.
  */
 export async function darDeBajaEnTransaccion(client, idsEstacionamientos) {
   if (idsEstacionamientos.length === 0) return;

@@ -1,11 +1,11 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { Tarjeta } from '@app/components/ui';
-import { ETIQUETA_RAZON_PROBLEMATICO, EstadisticasAdmin } from '@app/models';
+import { EstadisticasAdmin } from '@app/models';
 import { porciento } from '../formato';
 
 /**
  * "Estacionamientos con problemas" del tablero de admin (tablero.ts): los que
- * cancelan mucho por su lado o juntan reclamos, con sus razones.
+ * cancelan mucho por su lado.
  */
 @Component({
   selector: 'app-estacionamientos-problematicos',
@@ -18,6 +18,5 @@ import { porciento } from '../formato';
 export class EstacionamientosProblematicos {
   readonly datos = input.required<EstadisticasAdmin>();
 
-  protected readonly etiquetaRazon = ETIQUETA_RAZON_PROBLEMATICO;
   protected readonly porciento = porciento;
 }

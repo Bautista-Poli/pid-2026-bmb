@@ -13,15 +13,6 @@ export const OCUPAN = `('PENDIENTE', 'CONFIRMADA', 'ACTIVA', 'FINALIZADA')`;
 /** Se cobran (las de abono valen 0). */
 export const COBRADAS = `('FINALIZADA', 'ACTIVA')`;
 
-/**
- * Estacionamiento de una devolucion `d`: el de su abono o el de la cochera de
- * su reserva (las de una baja no tienen incidencia, asi que no sale de ahi).
- */
-export const ESTACIONAMIENTO_DE_DEVOLUCION = `COALESCE(
-  (SELECT a.id_estacionamiento FROM abono a WHERE a.id_abono = d.id_abono),
-  (SELECT c.id_estacionamiento FROM reserva r JOIN cochera c ON c.id_cochera = r.id_cochera
-    WHERE r.id_reserva = d.id_reserva))`;
-
 /** Inicio de un dia local (`$n::date`) como instante. */
 export const desdeDia = (parametro) => `(${parametro}::date)::timestamp AT TIME ZONE ${ZONA}`;
 /** Fin de un dia local (el inicio del siguiente) como instante. */

@@ -1,6 +1,6 @@
 // Aplica el esquema y los datos base. Ejecutar con: npm run db:migrate
 // Con `npm run dev` levantado no hace falta: el servidor lo aplica al arrancar y
-// se reinicia solo cuando se guarda schema.sql o seed.sql.
+// se reinicia solo cuando se guarda un .sql de tablas/ o seed.sql.
 import { pool } from '../config/database.js';
 import { aplicarEsquema } from './esquema.js';
 

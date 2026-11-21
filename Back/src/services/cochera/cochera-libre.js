@@ -1,5 +1,5 @@
-// Buscar una cochera libre (la usan crear reserva, el bloqueo y las
-// incidencias) y el orden natural de los identificadores.
+// Buscar una cochera libre (la usan crear reserva, el bloqueo y la
+// reasignacion por auto excedido) y el orden natural de los identificadores.
 import { ESTADOS_VIGENTES } from '../../utils/roles.js';
 import { cocheraReservable, sinSolapamiento } from '../../utils/solapamiento.js';
 

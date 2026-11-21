@@ -16,7 +16,6 @@ import {
 import { reservaEnJuego } from '@app/services/ciclo-reserva';
 import { desdeFechaISO } from '@app/utils/fecha.util';
 import { linksComoLlegar } from '@app/utils/mapas.util';
-import { reservaReclamable } from '@app/utils/reclamo.util';
 import { ReservaEnCurso } from './reserva-en-curso/reserva-en-curso';
 
 const TONO_ESTADO: Record<EstadoReserva, TonoEtiqueta> = {
@@ -56,11 +55,6 @@ export class TarjetaReserva {
 
   readonly cancelar = output<ReservaDetallada>();
   readonly verQr = output<ReservaDetallada>();
-  /** "Tengo un problema": abre un reclamo sobre esta reserva. */
-  readonly reclamar = output<ReservaDetallada>();
-
-  /** Pagada aparte, dentro de los 15 dias y sin otro reclamo abierto. */
-  protected readonly reclamable = computed(() => reservaReclamable(this.reserva()));
 
   /** El QR sirve mientras la reserva puede entrar o salir: confirmada o en curso. */
   protected readonly conQr = computed(() => {

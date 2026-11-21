@@ -20,7 +20,6 @@ const NAVEGACION: Record<RolUsuario, ItemNavegacion[]> = {
     { ruta: '/conductor/mis-reservas', etiqueta: 'Mis reservas', icono: 'reservas' },
     { ruta: '/conductor/abonos', etiqueta: 'Abonos', icono: 'calendario' },
     { ruta: '/conductor/vehiculos', etiqueta: 'Vehículos', icono: 'auto' },
-    { ruta: '/conductor/incidencias', etiqueta: 'Incidencias', icono: 'alerta' },
   ],
   PROPIETARIO: [
     { ruta: '/propietario/tablero', etiqueta: 'Inicio', icono: 'inicio' },
@@ -28,14 +27,12 @@ const NAVEGACION: Record<RolUsuario, ItemNavegacion[]> = {
     { ruta: '/propietario/estadisticas', etiqueta: 'Estadísticas', icono: 'tablero', enTabs: false },
     { ruta: '/propietario/reputacion', etiqueta: 'Reputación', icono: 'estrella', enTabs: false },
     { ruta: '/propietario/estacionamientos', etiqueta: 'Estacionamientos', icono: 'estacionamiento' },
-    { ruta: '/propietario/incidencias', etiqueta: 'Incidencias', icono: 'alerta' },
     { ruta: '/propietario/perfil', etiqueta: 'Configuración', icono: 'configuracion' },
     { ruta: '/propietario/cocheras', etiqueta: 'Cocheras', icono: 'auto' },
   ],
   ADMINISTRADOR: [
     { ruta: '/admin/tablero', etiqueta: 'Inicio', icono: 'inicio' },
     { ruta: '/admin/pendientes', etiqueta: 'Revisión', icono: 'estacionamiento' },
-    { ruta: '/admin/disputas', etiqueta: 'Disputas', icono: 'alerta' },
     { ruta: '/admin/resenas', etiqueta: 'Reseñas', icono: 'estrella' },
     { ruta: '/admin/perfil', etiqueta: 'Configuración', icono: 'configuracion' },
   ],

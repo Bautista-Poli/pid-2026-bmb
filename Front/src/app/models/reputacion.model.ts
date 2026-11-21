@@ -131,8 +131,6 @@ export interface ReputacionEstacionamiento {
     /** De 0 a 40. */
     puntos: number;
     confirmacion: IndicadorOperacion & { porcentaje: number; vencidas: number; reservas: number };
-    incidencias: IndicadorOperacion & { sinDenuncia: number; total: number };
-    respuesta: IndicadorOperacion & { minutos: number | null };
     cancelaciones: IndicadorOperacion & { propias: number };
   };
   insignias: CodigoInsignia[];

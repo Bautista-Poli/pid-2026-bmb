@@ -2,11 +2,6 @@ import {
   Calificacion,
   ReputacionEstacionamiento,
   ResumenReputacion,
-  Incidencia,
-  IncidenciaDetallada,
-  IncidenciaModerada,
-  NuevoReclamo,
-  MensajeIncidencia,
   Abono,
   AccesoReserva,
   Cochera,
@@ -36,7 +31,7 @@ import {
 import { aInstante, DIAS_POR_NUMERO, finDeFranja, partesLocales } from '@app/utils/fecha.util';
 import { CalificacionDto, ReputacionDto } from './api.dto';
 import { OpinionDto, ReputacionConductorDto, ResenaDenunciadaDto } from './api.dto';
-import { AbonoDto, AccesoReservaDto, IncidenciaDetalladaDto, IncidenciaDto, IncidenciaModeradaDto, MensajeIncidenciaDto, CocheraDto, EstacionamientoDto, FranjaDto, HorarioDto, PlanAbonoDto, ReservaDto, UsuarioDto, VehiculoDto } from './api.dto';
+import { AbonoDto, AccesoReservaDto, CocheraDto, EstacionamientoDto, FranjaDto, HorarioDto, PlanAbonoDto, ReservaDto, UsuarioDto, VehiculoDto } from './api.dto';
 
 /*
  * Traduccion entre la API (snake_case, ids de catalogo, instantes ISO) y los
@@ -160,12 +155,6 @@ export function aReputacion(dto: ReputacionDto): ReputacionEstacionamiento {
     operacion: {
       puntos: operacion.puntos,
       confirmacion: operacion.confirmacion,
-      incidencias: {
-        puntos: operacion.incidencias.puntos,
-        sinDenuncia: operacion.incidencias.sin_denuncia,
-        total: operacion.incidencias.total,
-      },
-      respuesta: operacion.respuesta,
       cancelaciones: operacion.cancelaciones,
     },
     insignias: dto.insignias.map((i) => i.codigo),
@@ -376,8 +365,6 @@ export function aReserva(dto: ReservaDto): ReservaDetallada {
     egresoEn: dto.egreso_real,
     motivoReasignacion: dto.motivo_reasignacion,
     codigoAcceso: dto.codigo_acceso ?? null,
-    devuelto: dto.devuelto ?? 0,
-    reclamoAbierto: dto.reclamo_abierto ?? null,
     calificable: dto.calificable ?? false,
     calificacionPromedio: dto.calificacion_promedio ?? null,
     reputacionConductor: {
@@ -475,8 +462,6 @@ export function aAbono(dto: AbonoDto): Abono {
     desde: dto.desde,
     hasta: dto.hasta,
     estado: dto.estado,
-    devuelto: dto.devuelto ?? 0,
-    reclamoAbierto: dto.reclamo_abierto ?? null,
   };
 }
 
@@ -487,97 +472,5 @@ export function aPayloadReservaConAbono(datos: NuevaReservaConAbono) {
     id_vehiculo: datos.vehiculoId,
     inicio: aInstante(datos.fecha, datos.horaDesde),
     fin: finDeFranja(datos.fecha, datos.horaDesde, datos.horaHasta),
-  };
-}
-
-/** IncidenciaDto -> Incidencia. */
-export function aIncidencia(dto: IncidenciaDto): Incidencia {
-  return {
-    id: dto.id_incidencia,
-    tipo: dto.tipo,
-    estado: dto.estado,
-    creadaEn: dto.created_at,
-    denunciadaEn: dto.denunciada_at,
-    denunciadaPor: dto.denunciada_por ?? null,
-    resueltaEn: dto.resuelta_at,
-    retiradaEn: dto.retirada_at ?? null,
-    reserva:
-      dto.id_reserva && dto.inicio && dto.fin && dto.estado_reserva
-        ? {
-            id: dto.id_reserva,
-            inicio: dto.inicio,
-            fin: dto.fin,
-            estado: dto.estado_reserva,
-            egresoEn: dto.egreso_real,
-          }
-        : null,
-    abono:
-      dto.id_abono && dto.abono_desde && dto.abono_hasta && dto.abono_turno
-        ? { id: dto.id_abono, desde: dto.abono_desde, hasta: dto.abono_hasta, turno: dto.abono_turno }
-        : null,
-    conductor: { id: dto.id_conductor, nombre: `${dto.conductor_nombre} ${dto.conductor_apellido}`.trim() },
-    patente: dto.patente,
-    cochera: dto.cochera,
-    estacionamiento: { id: dto.id_estacionamiento, nombre: dto.estacionamiento },
-    cantidadMensajes: dto.cantidad_mensajes ?? 0,
-    ultimoMensaje: dto.ultimo_mensaje ?? null,
-    motivo: dto.motivo ?? null,
-    montoPedido: dto.monto_pedido ?? null,
-    propuestaVigente: dto.propuesta_vigente ?? null,
-    pagado: dto.pagado ?? 0,
-    devuelto: dto.devuelto ?? 0,
-    tope: dto.tope ?? 0,
-    resolucion: dto.resolucion ?? null,
-  };
-}
-
-/** Un mensaje del chat de una incidencia. */
-function aMensajeIncidencia(dto: MensajeIncidenciaDto): MensajeIncidencia {
-  const autor = [dto.autor_nombre, dto.autor_apellido].filter(Boolean).join(' ');
-  return {
-    id: dto.id_mensaje,
-    canal: dto.canal ?? 'GENERAL',
-    rolAutor: dto.rol_autor,
-    autor: autor || null,
-    texto: dto.texto,
-    creadoEn: dto.created_at,
-    montoPropuesto: dto.monto_propuesto ?? null,
-  };
-}
-
-/** Incidencia con sus mensajes. */
-export function aIncidenciaDetallada(dto: IncidenciaDetalladaDto): IncidenciaDetallada {
-  return {
-    ...aIncidencia(dto),
-    canales: dto.canales ?? ['GENERAL'],
-    mensajes: dto.mensajes.map(aMensajeIncidencia),
-  };
-}
-
-/** Incidencia como la ve el administrador (los tres chats). */
-export function aIncidenciaModerada(dto: IncidenciaModeradaDto): IncidenciaModerada {
-  const r = dto.resumen ?? {};
-  return {
-    ...aIncidenciaDetallada(dto),
-    resumen: {
-      inicio: r.inicio,
-      fin: r.fin,
-      ingresoEn: r.ingreso_real,
-      egresoEn: r.egreso_real,
-      estadoReserva: r.estado_reserva,
-      canceladaPor: r.cancelada_por,
-      desde: r.desde,
-      hasta: r.hasta,
-    },
-  };
-}
-
-/** Reclamo nuevo -> body de la API. */
-export function aPayloadReclamo(datos: NuevoReclamo) {
-  return {
-    ...(datos.reservaId ? { id_reserva: datos.reservaId } : { id_abono: datos.abonoId }),
-    motivo: datos.motivo,
-    ...(datos.montoPedido !== undefined ? { monto_pedido: datos.montoPedido } : {}),
-    texto: datos.texto,
   };
 }

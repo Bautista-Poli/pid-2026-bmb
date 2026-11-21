@@ -1,4 +1,4 @@
-// Denuncia de reseñas: valores de los enums de schema.sql.
+// Denuncia de reseñas: valores de los enums de db/tablas/07-calificacion.sql.
 
 export const MOTIVOS_DENUNCIA = Object.freeze(['OFENSIVA', 'FALSA', 'DATOS_PERSONALES', 'OTRO']);
 

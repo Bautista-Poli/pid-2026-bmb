@@ -69,18 +69,29 @@ SQL a los archivos de abajo.
 
 | Qué cambia | Dónde va | Ejemplo |
 |---|---|---|
-| Estructura (tablas, columnas) | `Back/src/db/schema.sql` | `ALTER TABLE vehiculo ADD COLUMN IF NOT EXISTS color VARCHAR(30);` |
+| Estructura (tablas, columnas) | `Back/src/db/tablas/`, en el archivo de esa tabla (`03-vehiculo.sql`, `06-reserva.sql`, …) | Ver abajo |
 | Datos fijos (tipos, catálogos) | `Back/src/db/seed.sql` | Agregar `(4, 'Bicicleta')` al `INSERT INTO tipo_vehiculo` |
 
-Con `npm run dev` levantado **no hace falta nada más**: al guardar `schema.sql`
-o `seed.sql` el Back se reinicia solo y los aplica a la base (en la terminal
-aparece `[esquema] schema.sql aplicado`). Si el SQL tiene un error, el Back
+Cada archivo de `tablas/` tiene el `CREATE TABLE` completo de su tema (un
+archivo por tema, numerados en el orden en que se aplican). Para **agregar una
+columna** a una tabla que ya existe hacen falta dos cosas en ese archivo:
+
+1. Sumarla al `CREATE TABLE` (para una base nueva).
+2. Agregar debajo de la tabla la línea que la suma en la base que ya tenés:
+   `ALTER TABLE vehiculo ADD COLUMN IF NOT EXISTS kilometros INT;`
+
+Una tabla nueva va con su `CREATE TABLE IF NOT EXISTS` en el archivo del tema
+(o en uno nuevo, con el número que le toque por sus claves foráneas).
+
+Con `npm run dev` levantado **no hace falta nada más**: al guardar un `.sql`
+el Back se reinicia solo y los aplica a la base (en la terminal
+aparece `[esquema] tablas/03-vehiculo.sql aplicado`). Si el SQL tiene un error, el Back
 muestra el mensaje de Postgres y vuelve a arrancar cuando lo corregís.
 
 Si el Back no está levantado, se aplica a mano desde `Back/`:
 
 ```bash
-npm run db:migrate     # aplica schema.sql + seed.sql. No borra datos: se puede correr siempre
+npm run db:migrate     # aplica tablas/*.sql + seed.sql. No borra datos: se puede correr siempre
 ```
 
 Por eso todo lo de esos archivos tiene que poder correrse dos veces sin
@@ -100,4 +111,4 @@ npm run db:crear-admin -- --email admin@parkit.com --nombre Ana --apellido Perez
 | `Postgres no esta corriendo` / `ECONNREFUSED` | `brew services start postgresql@18` |
 | `Falta la variable de entorno ...` | Falta `Back/.env.local`: copiar `Back/.env.example` y completar |
 | `EADDRINUSE :3000` / `:4200` | Ya hay uno levantado en otra terminal: cerralo (Ctrl+C) |
-| Una columna nueva "no existe" | Fijate en la terminal del Back si `schema.sql` dio error (o corré `npm run db:migrate`) |
+| Una columna nueva "no existe" | Fijate en la terminal del Back si algún `.sql` dio error (o corré `npm run db:migrate`) |

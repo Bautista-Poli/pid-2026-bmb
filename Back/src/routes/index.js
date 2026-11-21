@@ -8,7 +8,6 @@ import authRoutes from './auth.routes.js';
 import calificacionRoutes from './calificacion.routes.js';
 import estacionamientoRoutes from './estacionamiento/estacionamiento.routes.js';
 import estadisticaRoutes from './estadistica.routes.js';
-import incidenciaRoutes from './incidencia.routes.js';
 import mapaRoutes from './mapa.routes.js';
 import reservaRoutes from './reserva.routes.js';
 import vehiculoRoutes from './vehiculo.routes.js';
@@ -23,7 +22,6 @@ router.use('/vehiculos', vehiculoRoutes);
 router.use('/reservas', reservaRoutes);
 router.use('/abonos', abonoRoutes);
 router.use('/admin', adminRoutes);
-router.use('/incidencias', incidenciaRoutes);
 router.use('/estadisticas', estadisticaRoutes);
 router.use('/calificaciones', calificacionRoutes);
 // El mapa local (/mapa).

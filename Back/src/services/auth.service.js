@@ -196,7 +196,7 @@ export async function eliminarCuenta(idUsuario) {
       throw ApiError.conflict('Tenes un vehiculo estacionado: la cuenta se da de baja despues de su egreso');
     }
 
-    // Reservas futuras que hizo como conductor, y sus abonos (los cancela el, sin devolucion).
+    // Reservas futuras que hizo como conductor, y sus abonos (los cancela el).
     await client.query(
       `UPDATE reserva SET estado = 'CANCELADA', cancelada_por = 'CONDUCTOR'
         WHERE id_conductor = $1 AND estado IN ('PENDIENTE', 'CONFIRMADA') AND fin > now()`,

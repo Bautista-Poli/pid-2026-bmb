@@ -17,9 +17,7 @@ export function kpisDe({ horas, ingresos, totales }) {
   const ofrecidas = horas.reduce((suma, d) => suma + d.horasOfrecidas, 0);
   return {
     ocupacion: ofrecidas > 0 ? usadas / ofrecidas : 0,
-    // Netos: lo devuelto por reclamos se descuenta el dia en que se devolvio.
-    ingresos: ingresos.reduce((suma, d) => suma + d.reservas + d.abonos - d.devoluciones, 0),
-    devoluciones: ingresos.reduce((suma, d) => suma + d.devoluciones, 0),
+    ingresos: ingresos.reduce((suma, d) => suma + d.reservas + d.abonos, 0),
     reservas: totales.total,
     tasaCancelacion: tasa(totales.canceladas, totales.total),
     ausentes: totales.ausentes,

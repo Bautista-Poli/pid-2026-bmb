@@ -32,21 +32,14 @@ export function lateralReputacion(desde, hasta, alias = 'rep') {
            -- Suma de las partes ya redondeadas: asi coincide con el detalle que se muestra.
            -- (numeric: redondea los .5 hacia arriba, como Math.round)
            (ROUND((60 * (COALESCE(k.prom_general, 4) - 1) / 4)::numeric)
-            + ROUND((10 * k.op_confirmacion)::numeric) + ROUND((10 * k.op_incidencias)::numeric)
-            + ROUND((10 * k.op_respuesta)::numeric) + ROUND((10 * k.op_cancelaciones)::numeric))::int AS puntaje
+            + ROUND((20 * k.op_confirmacion)::numeric) + ROUND((20 * k.op_cancelaciones)::numeric))::int AS puntaje
       FROM (
         SELECT cal.cantidad AS cal_cantidad, cal.con_detalle AS cal_con_detalle, cal.general AS prom_general,
                cal.limpieza AS prom_limpieza, cal.infraestructura AS prom_infraestructura,
                cal.atencion AS prom_atencion, cal.seguridad AS prom_seguridad, cal.acceso AS prom_acceso,
                res.total AS reservas_total, res.vencidas AS reservas_vencidas, res.propias AS cancelaciones_propias,
-               inc.total AS incidencias_total, inc.denunciadas AS incidencias_denunciadas,
-               inc.respuesta_min,
                CASE WHEN res.total = 0 THEN 1
                     ELSE 1 - res.vencidas::float / res.total END AS op_confirmacion,
-               CASE WHEN inc.total = 0 THEN 1
-                    ELSE 1 - inc.denunciadas::float / inc.total END AS op_incidencias,
-               CASE WHEN inc.respuesta_min IS NULL THEN 1
-                    ELSE GREATEST(0, LEAST(1, (60 - inc.respuesta_min) / 50)) END AS op_respuesta,
                CASE WHEN res.total = 0 THEN 1
                     ELSE 1 - LEAST(1, 5 * res.propias::float / res.total) END AS op_cancelaciones
           FROM (
@@ -73,22 +66,7 @@ export function lateralReputacion(desde, hasta, alias = 'rep') {
              WHERE cr.id_estacionamiento = e.id_estacionamiento
                AND r.estado <> 'PENDIENTE'
                AND r.inicio >= ${desde} AND r.inicio < ${hasta}
-          ) res,
-          (
-            -- Una incidencia sin respuesta cuenta los minutos que lleva esperando.
-            SELECT COUNT(*)::int AS total,
-                   COUNT(*) FILTER (WHERE i.denunciada_por IS NOT NULL)::int AS denunciadas,
-                   AVG(EXTRACT(EPOCH FROM (
-                     COALESCE(m.primera, LEAST(now(), ${hasta})) - i.created_at)) / 60)::float AS respuesta_min
-              FROM incidencia i
-              LEFT JOIN LATERAL (
-                SELECT MIN(im.created_at) AS primera
-                  FROM incidencia_mensaje im
-                 WHERE im.id_incidencia = i.id_incidencia AND im.rol_autor = 'PROPIETARIO'
-              ) m ON TRUE
-             WHERE i.id_estacionamiento = e.id_estacionamiento
-               AND i.created_at >= ${desde} AND i.created_at < ${hasta}
-          ) inc
+          ) res
       ) k
   ) ${alias} ON TRUE`;
 }

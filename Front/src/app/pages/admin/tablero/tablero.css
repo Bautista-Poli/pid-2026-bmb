@@ -15,10 +15,6 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .tarjetas-revisar {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .cuerpo-tablero {
     gap: 1.5rem;
   }

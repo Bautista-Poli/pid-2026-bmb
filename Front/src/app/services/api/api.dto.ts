@@ -8,9 +8,7 @@ import {
   EtiquetaCalificacion,
   EtiquetaConductor,
   MotivoDenunciaResena,
-  MotivoReclamo,
   PeriodoReputacion,
-  ResolucionIncidencia,
 } from '@app/models';
 import {
   EstadoAbono,
@@ -144,8 +142,6 @@ export interface ReputacionDto {
   operacion: {
     puntos: number;
     confirmacion: { puntos: number; porcentaje: number; vencidas: number; reservas: number };
-    incidencias: { puntos: number; sin_denuncia: number; total: number };
-    respuesta: { puntos: number; minutos: number | null };
     cancelaciones: { puntos: number; propias: number };
   };
   insignias: { codigo: CodigoInsignia; texto: string }[];
@@ -210,8 +206,6 @@ export interface ReservaDto {
   codigo_acceso?: string;
   id_abono: string | null;
   turno_abono: TurnoAbono | null;
-  devuelto?: number;
-  reclamo_abierto?: string | null;
   calificable?: boolean;
   calificacion_promedio?: number | null;
   conductor_promedio?: number | null;
@@ -261,73 +255,6 @@ export interface AbonoDto {
   hasta: string;
   estado: EstadoAbono;
   created_at: string;
-  devuelto?: number;
-  reclamo_abierto?: string | null;
-}
-
-export interface IncidenciaDto {
-  id_incidencia: string;
-  tipo: 'AUTO_EXCEDIDO' | 'RESERVA_AFECTADA' | 'RECLAMO';
-  estado: 'ABIERTA' | 'DENUNCIADA' | 'RESUELTA' | 'RETIRADA';
-  created_at: string;
-  denunciada_at: string | null;
-  denunciada_por: 'PROPIETARIO' | 'CONDUCTOR' | null;
-  resuelta_at: string | null;
-  retirada_at: string | null;
-  id_reserva: string | null;
-  inicio: string | null;
-  fin: string | null;
-  estado_reserva: EstadoReservaDto | null;
-  egreso_real: string | null;
-  id_abono: string | null;
-  abono_desde: string | null;
-  abono_hasta: string | null;
-  abono_turno: TurnoAbono | null;
-  id_conductor: string;
-  conductor_nombre: string;
-  conductor_apellido: string;
-  patente: string | null;
-  cochera: string | null;
-  id_estacionamiento: string;
-  estacionamiento: string;
-  cantidad_mensajes?: number;
-  ultimo_mensaje?: string | null;
-  motivo: MotivoReclamo | null;
-  monto_pedido: number | null;
-  propuesta_vigente: number | null;
-  pagado: number;
-  devuelto: number;
-  tope: number;
-  resolucion: ResolucionIncidencia | null;
-}
-
-export interface MensajeIncidenciaDto {
-  id_mensaje: string;
-  canal: 'GENERAL' | 'PROPIETARIO' | 'CONDUCTOR';
-  rol_autor: 'SISTEMA' | 'PROPIETARIO' | 'CONDUCTOR' | 'ADMINISTRADOR';
-  texto: string;
-  created_at: string;
-  autor_nombre: string | null;
-  autor_apellido: string | null;
-  monto_propuesto: number | null;
-}
-
-export interface IncidenciaDetalladaDto extends IncidenciaDto {
-  canales: ('GENERAL' | 'PROPIETARIO' | 'CONDUCTOR')[];
-  mensajes: MensajeIncidenciaDto[];
-}
-
-export interface IncidenciaModeradaDto extends IncidenciaDetalladaDto {
-  resumen: {
-    inicio?: string;
-    fin?: string;
-    ingreso_real?: string | null;
-    egreso_real?: string | null;
-    estado_reserva?: EstadoReservaDto;
-    cancelada_por?: 'CONDUCTOR' | 'PROPIETARIO' | 'SISTEMA' | null;
-    desde?: string;
-    hasta?: string;
-  };
 }
 
 export type OpinionDto = ReputacionDto['opiniones'][number];

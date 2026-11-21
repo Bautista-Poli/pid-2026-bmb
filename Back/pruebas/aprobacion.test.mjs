@@ -50,7 +50,7 @@ describe('estado de aprobacion en la base', () => {
     const propietario = await nuevoPropietario();
     const estacionamiento = await crearEstacionamiento(propietario.token, { aprobado: false });
 
-    // Las mismas sentencias de relleno que corre schema.sql en cada migracion.
+    // Un relleno de los que no tienen estado no tiene que tocar a los pendientes.
     await query(`UPDATE estacionamiento SET estado_aprobacion = 'APROBADO' WHERE estado_aprobacion IS NULL`);
 
     const { rows } = await query(

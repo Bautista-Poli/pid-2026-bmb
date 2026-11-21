@@ -3,12 +3,10 @@
   <div class="cuerpo-tarjeta">
     <div>
       <h3 class="titulo-tarjeta">Cocheras bloqueadas</h3>
-      <p class="subtitulo-tarjeta">Autos que se pasaron de su horario y lo que provocaron</p>
+      <p class="subtitulo-tarjeta">Reservas que hubo que mover o cancelar por un bloqueo</p>
     </div>
     <dl class="num-tabular bloqueos">
-      <div><dt class="bloqueo-etiqueta">Autos excedidos</dt><dd class="bloqueo-valor">{{ datos().conflictos.bloqueos.autosExcedidos }}</dd></div>
       <div><dt class="bloqueo-etiqueta">Reservas reasignadas</dt><dd class="bloqueo-valor">{{ datos().conflictos.bloqueos.reasignadas }}</dd></div>
-      <div><dt class="bloqueo-etiqueta">Sin cochera</dt><dd class="bloqueo-valor">{{ datos().conflictos.bloqueos.sinCochera }}</dd></div>
       <div><dt class="bloqueo-etiqueta">Canceladas</dt><dd class="bloqueo-valor">{{ datos().conflictos.bloqueos.canceladas }}</dd></div>
     </dl>
     @if (totalBloqueos() > 0) {
@@ -19,13 +17,7 @@
             <tr class="cabecera-tabla">
               <th class="tabla-th tabla-th--nombre">Estacionamiento</th>
               <th class="tabla-th tabla-th--numero">
-                <abbr title="Autos excedidos" aria-hidden="true">Exc.</abbr><span class="solo-lector">Autos excedidos</span>
-              </th>
-              <th class="tabla-th tabla-th--numero">
                 <abbr title="Reasignadas" aria-hidden="true">Reas.</abbr><span class="solo-lector">Reasignadas</span>
-              </th>
-              <th class="tabla-th tabla-th--numero">
-                <abbr title="Sin cochera" aria-hidden="true">S/coch.</abbr><span class="solo-lector">Sin cochera</span>
               </th>
               <th class="tabla-th tabla-th--numero tabla-th--ultima">
                 <abbr title="Canceladas" aria-hidden="true">Canc.</abbr><span class="solo-lector">Canceladas</span>
@@ -36,9 +28,7 @@
             @for (b of datos().conflictos.bloqueos.porEstacionamiento; track b.id) {
               <tr class="fila-tabla">
                 <td class="celda-nombre">{{ b.nombre }}</td>
-                <td class="celda-numero">{{ b.autosExcedidos }}</td>
                 <td class="celda-numero">{{ b.reasignadas }}</td>
-                <td class="celda-numero">{{ b.sinCochera }}</td>
                 <td class="celda-numero celda-numero--ultima">{{ b.canceladas }}</td>
               </tr>
             }

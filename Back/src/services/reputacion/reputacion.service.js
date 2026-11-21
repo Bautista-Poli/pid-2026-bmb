@@ -6,11 +6,8 @@
 //   - 60 puntos por lo que califican los conductores: el promedio general de
 //     las cinco categorias, llevado de 1..5 a 0..60. Sin calificaciones en la
 //     ventana se toma 4 (un estacionamiento nuevo no arranca hundido).
-//   - 40 puntos por como opera, 10 por cada indicador:
+//   - 40 puntos por como opera, 20 por cada indicador:
 //       confirmacion:  reservas que no vencieron sin confirmar (SISTEMA).
-//       incidencias:   incidencias que no terminaron en denuncia.
-//       respuesta:     minutos hasta la primera respuesta del propietario en el
-//                      chat de cada incidencia (<= 10 min suma todo, >= 60 nada).
 //       cancelaciones: cancelaciones del propietario; cada 1% resta 5%.
 //
 // Insignias: ANFITRION DESTACADO con puntaje >= 80 y al menos
@@ -134,22 +131,13 @@ export async function delEstacionamiento(idEstacionamiento, idPropietario, { dia
   }));
 
   const puntosCalificaciones = Math.round(60 * ((actual.prom_general ?? 4) - 1) / 4);
-  const indicador = (valor) => Math.round(10 * valor);
+  const indicador = (valor) => Math.round(20 * valor);
   const operacion = {
     confirmacion: {
       puntos: indicador(actual.op_confirmacion),
       porcentaje: Math.round(100 * actual.op_confirmacion),
       vencidas: actual.reservas_vencidas,
       reservas: actual.reservas_total,
-    },
-    incidencias: {
-      puntos: indicador(actual.op_incidencias),
-      sin_denuncia: actual.incidencias_total - actual.incidencias_denunciadas,
-      total: actual.incidencias_total,
-    },
-    respuesta: {
-      puntos: indicador(actual.op_respuesta),
-      minutos: actual.respuesta_min == null ? null : Math.round(actual.respuesta_min),
     },
     cancelaciones: {
       puntos: indicador(actual.op_cancelaciones),
@@ -165,7 +153,7 @@ export async function delEstacionamiento(idEstacionamiento, idPropietario, { dia
     puntaje: actual.puntaje,
     // Sin nada en el periodo anterior (ni calificaciones ni reservas) no hay con que comparar.
     puntaje_anterior:
-      anterior.cal_cantidad + anterior.reservas_total + anterior.incidencias_total > 0 ? anterior.puntaje : null,
+      anterior.cal_cantidad + anterior.reservas_total > 0 ? anterior.puntaje : null,
     destacado,
     nivel: nivelDe(actual.puntaje, actual.cal_cantidad),
     siguiente_nivel: siguienteNivel(actual.puntaje),

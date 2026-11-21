@@ -1,9 +1,8 @@
 // Controllers del administrador (todo /api/admin): revision de estacionamientos,
-// moderacion de incidencias y de reseñas denunciadas, y estadisticas de la plataforma.
+// moderacion de reseñas denunciadas y estadisticas de la plataforma.
 import * as adminEstadisticaService from '../services/admin-estadistica.service.js';
 import * as adminService from '../services/admin.service.js';
 import * as denunciaService from '../services/denuncia-resena.service.js';
-import * as moderacionService from '../services/moderacion.service.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
 /** GET /api/admin/estacionamientos (admin) */
@@ -28,27 +27,6 @@ export const aprobar = asyncHandler(async (req, res) => {
 export const rechazar = asyncHandler(async (req, res) => {
   const estacionamiento = await adminService.rechazar(req.params.id, req.usuario.id, req.body);
   res.json({ estacionamiento });
-});
-
-/** GET /api/admin/incidencias (admin) */
-export const listarIncidencias = asyncHandler(async (req, res) => {
-  res.json({ incidencias: await moderacionService.listar(req.query) });
-});
-
-/** GET /api/admin/incidencias/:id (admin) */
-export const obtenerIncidencia = asyncHandler(async (req, res) => {
-  res.json({ incidencia: await moderacionService.obtener(req.params.id) });
-});
-
-/** POST /api/admin/incidencias/:id/mensajes (admin) */
-export const escribirEnIncidencia = asyncHandler(async (req, res) => {
-  const incidencia = await moderacionService.escribir(req.usuario, req.params.id, req.body);
-  res.status(201).json({ incidencia });
-});
-
-/** PATCH /api/admin/incidencias/:id/resolver (admin) */
-export const resolverIncidencia = asyncHandler(async (req, res) => {
-  res.json({ incidencia: await moderacionService.resolver(req.usuario, req.params.id, req.body) });
 });
 
 /** GET /api/admin/estadisticas (admin) */

@@ -43,7 +43,7 @@ const MODALIDAD_ABONO = 'ABONO';
  * reservas existentes no alcanza: no impide que dos transacciones inserten
  * filas nuevas que se pisan entre si.)
  *
- * Ademas, el EXCLUDE constraint `reserva_sin_solapamiento` (ver schema.sql)
+ * Ademas, el EXCLUDE constraint `reserva_sin_solapamiento` (ver db/tablas/06-reserva.sql)
  * repite la garantia a nivel base de datos; si salta, se traduce a un 409.
  */
 export async function crear(

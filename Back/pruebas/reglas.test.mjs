@@ -111,7 +111,7 @@ describe('bajas con un vehiculo adentro (D-01)', () => {
 });
 
 describe('baja del estacionamiento con abonos vigentes (D-06, D-07)', () => {
-  test('cancela el abono, devuelve lo no usado y apaga los planes', async () => {
+  test('cancela el abono y apaga los planes', async () => {
     const { propietario, estacionamiento, conductor, ruta } = await escenario();
     const plan = await api('POST', `${ruta}/planes-abono`, {
       token: propietario.token,
@@ -124,11 +124,6 @@ describe('baja del estacionamiento con abonos vigentes (D-06, D-07)', () => {
 
     const { rows: abono } = await query('SELECT estado FROM abono WHERE id_abono = $1', [idAbono]);
     assert.equal(abono[0].estado, 'CANCELADO');
-    const { rows: devuelto } = await query('SELECT monto, id_incidencia FROM devolucion WHERE id_abono = $1', [
-      idAbono,
-    ]);
-    assert.equal(Number(devuelto[0].monto), 30000);
-    assert.equal(devuelto[0].id_incidencia, null);
     const { rows: planes } = await query('SELECT activo FROM plan_abono WHERE id_estacionamiento = $1', [
       estacionamiento.id_estacionamiento,
     ]);

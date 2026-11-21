@@ -1,10 +1,9 @@
 // Tareas automaticas (las revisa `revisar`):
 // - reserva/reserva-vencimientos.service.js: PENDIENTE sin confirmar que ya empezo -> CANCELADA, y
 //   CONFIRMADA sin ingreso pasada TOLERANCIA_NO_SHOW_MS -> NO_SHOW.
-// - incidencia/incidencia-vencimientos.service.js: ACTIVA que se paso de su fin sin egreso -> incidencia
-//   AUTO_EXCEDIDO (la reserva NO se cierra: la cochera queda bloqueada hasta el
-//   egreso), y las reservas siguientes de esa cochera se reasignan a otra o,
-//   sin alternativa, quedan con una incidencia RESERVA_AFECTADA.
+//   Una ACTIVA que se paso de su fin sin egreso NO se cierra (la cochera queda
+//   bloqueada hasta el egreso): las reservas siguientes de esa cochera se
+//   reasignan a otra o, sin alternativa, quedan con un aviso para el conductor.
 // - cochera/cochera-bloqueo.service.js: cocheras bloqueadas con `bloqueada_hasta` vencido se desbloquean solas.
 // - abono.service.js: abonos VIGENTES con `hasta` vencido -> VENCIDO.
 //
@@ -22,8 +21,11 @@
 // `npm test` el middleware no hace nada.
 import { vencerAbonos } from '../services/abono.service.js';
 import { desbloquearVencidas } from '../services/cochera/cochera-bloqueo.service.js';
-import { detectarExcedidos, protegerReservasSiguientes } from '../services/incidencia/incidencia-vencimientos.service.js';
-import { vencerAusentes, vencerPendientesSinConfirmar } from '../services/reserva/reserva-vencimientos.service.js';
+import {
+  protegerReservasSiguientes,
+  vencerAusentes,
+  vencerPendientesSinConfirmar,
+} from '../services/reserva/reserva-vencimientos.service.js';
 
 const INTERVALO_MINIMO_MS = 60_000;
 
@@ -31,14 +33,13 @@ const INTERVALO_MINIMO_MS = 60_000;
 async function revisar() {
   const canceladas = await vencerPendientesSinConfirmar();
   const ausentes = await vencerAusentes();
-  const excedidos = await detectarExcedidos();
   const { reasignadas, afectadas } = await protegerReservasSiguientes();
   const desbloqueadas = await desbloquearVencidas();
   const abonosVencidos = await vencerAbonos();
-  if (canceladas || ausentes || excedidos || reasignadas || afectadas || desbloqueadas || abonosVencidos) {
+  if (canceladas || ausentes || reasignadas || afectadas || desbloqueadas || abonosVencidos) {
     console.log(
       `[vencimientos] ${canceladas} pendiente(s) cancelada(s), ${ausentes} no-show(s), ` +
-        `${excedidos} auto(s) excedido(s), ${reasignadas} reserva(s) reasignada(s), ` +
+        `${reasignadas} reserva(s) reasignada(s), ` +
         `${afectadas} reserva(s) sin cochera, ${desbloqueadas} cochera(s) desbloqueada(s), ` +
         `${abonosVencidos} abono(s) vencido(s)`,
     );

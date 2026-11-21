@@ -6,9 +6,6 @@
         <h2 class="grafico-titulo">Ingresos (simulados)</h2>
         <p class="grafico-detalle">
           Total {{ pesos(datos().kpis.ingresos.valor) }}
-          @if (datos().kpis.devoluciones.valor > 0) {
-            (neto de {{ pesos(datos().kpis.devoluciones.valor) }} devueltos por reclamos)
-          }
           @if (datos().ingresosProyectados > 0) {
             · {{ pesos(datos().ingresosProyectados) }} por cobrar de reservas confirmadas que vienen
           }

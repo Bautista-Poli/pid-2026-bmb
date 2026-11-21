@@ -23,16 +23,14 @@ export interface EstadisticasPropietario {
   kpis: {
     /** De 0 a 1. */
     ocupacion: ValorComparado;
-    /** Netos: ya descuentan las devoluciones. */
     ingresos: ValorComparado;
-    devoluciones: ValorComparado;
     reservas: ValorComparado;
     /** De 0 a 1. */
     tasaCancelacion: ValorComparado;
     ausentes: ValorComparado;
   };
   ocupacionPorDia: { fecha: FechaISO; horasUsadas: number; horasOfrecidas: number }[];
-  ingresosPorDia: { fecha: FechaISO; reservas: number; abonos: number; devoluciones: number }[];
+  ingresosPorDia: { fecha: FechaISO; reservas: number; abonos: number }[];
   ingresosProyectados: number;
   /** Reservas que ocupan cada hora. `diaSemana`: 0 = domingo. */
   demanda: { diaSemana: number; hora: number; reservas: number }[];
@@ -45,20 +43,10 @@ export interface EstadisticasPropietario {
   ausentes: { total: number; tasa: number };
 }
 
-/** Por que un estacionamiento aparece como problematico en el dashboard del admin. */
-type RazonProblematico = 'CANCELACIONES' | 'RECLAMOS';
-
-export const ETIQUETA_RAZON_PROBLEMATICO: Record<RazonProblematico, string> = {
-  CANCELACIONES: 'Cancela mucho',
-  RECLAMOS: 'Reclamos',
-};
-
-/** Eventos de cocheras bloqueadas (por un auto que se excedio) en el periodo. */
+/** Reservas reasignadas o canceladas por cocheras bloqueadas en el periodo. */
 interface BloqueosAdmin {
   reasignadas: number;
   canceladas: number;
-  autosExcedidos: number;
-  sinCochera: number;
 }
 
 /** `GET /api/admin/estadisticas`. La API ya responde en camelCase. */
@@ -71,13 +59,6 @@ export interface EstadisticasAdmin {
     primeros: { id: string; nombre: string; propietario: string; enviadoEn: string }[];
     rechazadosSinReenviar: number;
   };
-  /** Incidencias denunciadas, y reclamos que siguen entre las partes. */
-  disputas: {
-    denunciadas: number;
-    masAntiguaDesde: string | null;
-    primeras: { id: string; tipo: string; motivo: string | null; estacionamiento: string; denunciadaEn: string }[];
-    reclamosEnConversacion: number;
-  };
   conflictos: {
     bloqueos: BloqueosAdmin & { porEstacionamiento: (BloqueosAdmin & { id: string; nombre: string })[] };
     problematicos: {
@@ -87,8 +68,6 @@ export interface EstadisticasAdmin {
       reservas: number;
       /** De 0 a 1: canceladas por el estacionamiento o el sistema. */
       tasaCancelacion: number;
-      reclamos: number;
-      razones: RazonProblematico[];
     }[];
   };
   actividad: {
@@ -97,9 +76,7 @@ export interface EstadisticasAdmin {
       propietariosNuevos: ValorComparado;
       estacionamientosAprobados: ValorComparado;
       reservas: ValorComparado;
-      /** Netos de devoluciones. */
       volumen: ValorComparado;
-      devoluciones: ValorComparado;
       /** De 0 a 1. */
       tasaCancelacion: ValorComparado;
     };

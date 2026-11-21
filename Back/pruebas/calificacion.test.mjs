@@ -267,8 +267,8 @@ describe('reputacion del estacionamiento', () => {
     );
     assert.equal(datos.operacion.confirmacion.reservas, 2);
     assert.equal(datos.operacion.confirmacion.vencidas, 1);
-    assert.equal(datos.operacion.confirmacion.puntos, 5);
-    assert.equal(datos.puntaje, 45 + 5 + 10 + 10 + 10);
+    assert.equal(datos.operacion.confirmacion.puntos, 10);
+    assert.equal(datos.puntaje, 45 + 10 + 20);
   });
 
   test('sugiere la categoria mas floja con la etiqueta negativa mas marcada', async () => {

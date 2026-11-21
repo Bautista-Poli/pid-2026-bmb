@@ -10,10 +10,9 @@ export * from './estacionamiento.model';
 export * from './cochera.model';
 export * from './tarifa.model';
 
-// Operacion: reservas, abonos y reclamos.
+// Operacion: reservas y abonos.
 export * from './reserva.model';
 export * from './abono.model';
-export * from './incidencia.model';
 
 // Calificaciones, reputacion y moderacion de reseñas.
 export * from './calificacion.model';

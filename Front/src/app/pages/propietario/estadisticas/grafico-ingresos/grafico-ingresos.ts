@@ -4,7 +4,7 @@ import { Tarjeta } from '@app/components/ui';
 import { EstadisticasPropietario } from '@app/models';
 import { diaDelMes, diaYMes, pesos } from '../formato';
 
-/** Ingresos (simulados) por dia de Estadisticas (estadisticas.ts): reservas y abonos, neto de devoluciones. */
+/** Ingresos (simulados) por dia de Estadisticas (estadisticas.ts): reservas y abonos. */
 @Component({
   selector: 'app-grafico-ingresos',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -26,9 +26,7 @@ export class GraficoIngresos {
         { valor: d.reservas, clase: 'bg-exito', etiqueta: 'reservas' },
         { valor: d.abonos, clase: 'bg-violet-500', etiqueta: 'abonos' },
       ],
-      detalle:
-        `${diaYMes(d.fecha)} · Reservas ${pesos(d.reservas)} · Abonos ${pesos(d.abonos)}` +
-        (d.devoluciones > 0 ? ` · − ${pesos(d.devoluciones)} devuelto` : ''),
+      detalle: `${diaYMes(d.fecha)} · Reservas ${pesos(d.reservas)} · Abonos ${pesos(d.abonos)}`,
     })),
   );
 

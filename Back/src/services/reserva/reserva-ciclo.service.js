@@ -5,7 +5,6 @@ import { ApiError } from '../../utils/ApiError.js';
 import { normalizarCodigo } from '../../utils/codigoAcceso.js';
 import { HORA_LOCAL } from '../../utils/horario.js';
 import { ESTADOS_RESERVA } from '../../utils/roles.js';
-import { registrarEgresoEnIncidencia } from '../incidencia/incidencia-vencimientos.service.js';
 import { obtenerDetalle } from './reserva-detalle.js';
 import {
   MARGEN_INGRESO_MS,
@@ -120,8 +119,6 @@ async function aplicarEgreso(client, reserva) {
 
   await client.query('UPDATE reserva SET egreso_real = now() WHERE id_reserva = $1', [reserva.id_reserva]);
   await cambiarEstado(client, reserva, ESTADOS_RESERVA.FINALIZADA);
-  // Si se habia excedido, queda constancia en su incidencia.
-  await registrarEgresoEnIncidencia(client, reserva.id_reserva);
 }
 
 /* ----------------------- ingreso y egreso por codigo -----------------------

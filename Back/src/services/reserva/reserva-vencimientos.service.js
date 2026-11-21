@@ -1,6 +1,7 @@
 // Vencimientos automaticos de reservas (los dispara src/jobs/vencimientos.job.js).
 import { query, withTransaction } from '../../config/database.js';
 import { ESTADOS_RESERVA, ORIGENES_CANCELACION } from '../../utils/roles.js';
+import { buscarCocheraLibre } from '../cochera/cochera-libre.js';
 import { TOLERANCIA_NO_SHOW_MS, cambiarEstado } from './reserva-estados.js';
 
 /*
@@ -68,4 +69,82 @@ export async function vencerAusentes() {
     await cambiarEstado(client, filas[0], ESTADOS_RESERVA.NO_SHOW);
     return true;
   });
+}
+
+// La reserva siguiente se protege cuando ya puede ingresar (30 min antes de su
+// inicio, igual que MARGEN_INGRESO_MS en reserva-estados.js).
+const ANTICIPACION_REASIGNACION_MS = 30 * 60 * 1000;
+
+export const AVISO_REASIGNADA_POR_EXCESO =
+  'Te reasignamos a otra cochera: la tuya sigue ocupada por el vehiculo anterior.';
+export const AVISO_AFECTADA_POR_EXCESO =
+  'Tu cochera sigue ocupada por el vehiculo anterior y no habia otra libre. ' +
+  'El estacionamiento te va a indicar donde estacionar.';
+
+/**
+ * Reservas que estan por empezar (o ya empezaron) en una cochera donde sigue un
+ * auto excedido (ACTIVA pasada de su fin, sin egreso): se reasignan a otra
+ * cochera libre del mismo estacionamiento y tipo; si no hay, quedan donde estan
+ * con un aviso para el conductor. Una afectada se vuelve a intentar en cada
+ * revision: si se libera otra cochera, se reasigna.
+ */
+export async function protegerReservasSiguientes() {
+  const { rows } = await query(
+    `SELECT r.id_reserva
+       FROM reserva r
+      WHERE r.estado IN ($1, $2)
+        AND r.inicio <= now() + make_interval(secs => $3::float / 1000)
+        AND r.fin > now()
+        AND EXISTS (
+          SELECT 1 FROM reserva x
+           WHERE x.id_cochera = r.id_cochera
+             AND x.id_reserva <> r.id_reserva
+             AND x.estado = $4
+             AND x.fin <= now()
+        )`,
+    [ESTADOS_RESERVA.PENDIENTE, ESTADOS_RESERVA.CONFIRMADA, ANTICIPACION_REASIGNACION_MS, ESTADOS_RESERVA.ACTIVA],
+  );
+
+  const resultado = { reasignadas: 0, afectadas: 0 };
+  for (const { id_reserva } of rows) {
+    const accion = await withTransaction(async (client) => {
+      const { rows: filas } = await client.query(
+        `SELECT r.id_reserva, r.inicio, r.fin, r.id_cochera, r.motivo_reasignacion,
+                c.id_estacionamiento, v.id_tipo_vehiculo
+           FROM reserva r
+           JOIN cochera c  ON c.id_cochera = r.id_cochera
+           JOIN vehiculo v ON v.id_vehiculo = r.id_vehiculo
+          WHERE r.id_reserva = $1 AND r.estado IN ($2, $3)
+          FOR UPDATE OF r`,
+        [id_reserva, ESTADOS_RESERVA.PENDIENTE, ESTADOS_RESERVA.CONFIRMADA],
+      );
+      const reserva = filas[0];
+      if (!reserva) return null;
+
+      const { libre } = await buscarCocheraLibre(client, {
+        idEstacionamiento: reserva.id_estacionamiento,
+        idTipoVehiculo: reserva.id_tipo_vehiculo,
+        inicio: reserva.inicio,
+        fin: reserva.fin,
+        excluir: reserva.id_cochera,
+      });
+      if (libre) {
+        await client.query(
+          'UPDATE reserva SET id_cochera = $1, motivo_reasignacion = $2 WHERE id_reserva = $3',
+          [libre.id_cochera, AVISO_REASIGNADA_POR_EXCESO, reserva.id_reserva],
+        );
+        return 'reasignadas';
+      }
+      // Ya estaba afectada y sigue sin alternativa: no hay nada nuevo.
+      if (reserva.motivo_reasignacion === AVISO_AFECTADA_POR_EXCESO) return null;
+
+      await client.query('UPDATE reserva SET motivo_reasignacion = $1 WHERE id_reserva = $2', [
+        AVISO_AFECTADA_POR_EXCESO,
+        reserva.id_reserva,
+      ]);
+      return 'afectadas';
+    });
+    if (accion) resultado[accion] += 1;
+  }
+  return resultado;
 }

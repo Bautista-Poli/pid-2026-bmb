@@ -3,9 +3,8 @@ import { Tarjeta } from '@app/components/ui';
 import { EstadisticasAdmin } from '@app/models';
 
 /**
- * "Cocheras bloqueadas" del tablero de admin (tablero.ts): autos que se pasaron
- * de su horario y lo que provocaron (reasignaciones, sin cochera, cancelaciones),
- * en total y por estacionamiento.
+ * "Cocheras bloqueadas" del tablero de admin (tablero.ts): reservas
+ * reasignadas o canceladas por un bloqueo, en total y por estacionamiento.
  */
 @Component({
   selector: 'app-cocheras-bloqueadas',
@@ -20,6 +19,6 @@ export class CocherasBloqueadas {
 
   protected readonly totalBloqueos = computed(() => {
     const b = this.datos().conflictos.bloqueos;
-    return b.reasignadas + b.canceladas + b.autosExcedidos + b.sinCochera;
+    return b.reasignadas + b.canceladas;
   });
 }

@@ -42,10 +42,6 @@ export interface Abono {
   desde: FechaISO;
   hasta: FechaISO;
   estado: EstadoAbono;
-  /** Lo devuelto por reclamos (simulado). */
-  devuelto: number;
-  /** El reclamo abierto o denunciado sobre este abono, si hay. */
-  reclamoAbierto: Id | null;
 }
 
 /** Reserva gratis dentro del turno del abono. */

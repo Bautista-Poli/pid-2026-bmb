@@ -42,8 +42,6 @@ export const routes: Routes = [
         title: 'Parkit · Explorar',
         loadComponent: () => import('./pages/conductor/explorar/mapa').then((m) => m.Mapa),
       },
-      // Direccion vieja de la vista de mapa, por si quedo en algun enlace o favorito.
-      { path: 'mapa', pathMatch: 'full', redirectTo: 'explorar' },
       {
         path: 'reservar/:estacionamientoId',
         title: 'Parkit · Reservar',
@@ -101,12 +99,6 @@ export const routes: Routes = [
         path: 'perfil',
         title: 'Parkit · Mi perfil',
         loadComponent: () => import('./pages/perfil/perfil').then((m) => m.Perfil),
-      },
-      {
-        // Problemas de una reserva (auto excedido, reserva sin cochera) con su hilo de mensajes.
-        path: 'incidencias',
-        title: 'Parkit · Incidencias',
-        loadComponent: () => import('./pages/incidencias/incidencias').then((m) => m.Incidencias),
       },
       { path: '', pathMatch: 'full', redirectTo: 'explorar' },
     ],
@@ -183,21 +175,10 @@ export const routes: Routes = [
         title: 'Parkit · Cocheras',
         loadComponent: () => import('./pages/propietario/cocheras/cocheras').then((m) => m.Cocheras),
       },
-      // Direccion vieja, por si quedo en algun enlace o favorito.
-      {
-        path: 'estacionamientos/:estacionamientoId/cocheras',
-        redirectTo: 'cocheras/:estacionamientoId',
-      },
       {
         path: 'perfil',
         title: 'Parkit · Mi perfil',
         loadComponent: () => import('./pages/perfil/perfil').then((m) => m.Perfil),
-      },
-      {
-        // Problemas de una reserva (auto excedido, reserva sin cochera) con su hilo de mensajes.
-        path: 'incidencias',
-        title: 'Parkit · Incidencias',
-        loadComponent: () => import('./pages/incidencias/incidencias').then((m) => m.Incidencias),
       },
       { path: '', pathMatch: 'full', redirectTo: 'tablero' },
     ],
@@ -228,19 +209,9 @@ export const routes: Routes = [
           ),
       },
       {
-        path: 'disputas',
-        title: 'Parkit · Disputas',
-        loadComponent: () => import('./pages/admin/disputas/disputas').then((m) => m.Disputas),
-      },
-      {
         path: 'resenas',
         title: 'Parkit · Reseñas',
         loadComponent: () => import('./pages/admin/resenas/resenas').then((m) => m.Resenas),
-      },
-      {
-        path: 'disputas/:incidenciaId',
-        title: 'Parkit · Disputa',
-        loadComponent: () => import('./pages/admin/detalle-disputa/detalle-disputa').then((m) => m.DetalleDisputa),
       },
       {
         path: 'perfil',

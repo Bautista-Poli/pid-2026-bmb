@@ -21,7 +21,7 @@
       </ui-estado-vacio>
     } @else {
       @for (abono of recurso.value(); track abono.id) {
-        <app-tarjeta-abono [abono]="abono" (cancelar)="aCancelar.set($event)" (reclamar)="pedirReclamo($event)" />
+        <app-tarjeta-abono [abono]="abono" (cancelar)="aCancelar.set($event)" />
       }
     }
   </div>
@@ -43,5 +43,3 @@
     </div>
   }
 </ui-modal>
-
-<app-abrir-reclamo [objeto]="aReclamar()" (cerrado)="aReclamar.set(null)" (creado)="verReclamo($event)" />

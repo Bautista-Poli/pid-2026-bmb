@@ -10,7 +10,7 @@ import { activarVencimientosADemanda, desactivarVencimientosADemanda } from './j
 async function main() {
   await connectDatabase();
 
-  // En local, cada arranque aplica schema.sql y seed.sql: con `npm run dev`
+  // En local, cada arranque aplica db/tablas/*.sql y seed.sql: con `npm run dev`
   // alcanza con guardar esos archivos para que el cambio llegue a la base.
   if (!config.isProduction) await aplicarEsquema();
 

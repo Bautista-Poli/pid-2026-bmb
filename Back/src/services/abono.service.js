@@ -5,7 +5,6 @@ import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
 import { HOY_LOCAL_SQL, partesLocales } from '../utils/horario.js';
 import { motivoFueraDeTurno, TURNOS } from '../utils/turnos.js';
-import { crearDevolucion, topeDe } from './devolucion.service.js';
 import { aceptaReservas, asegurarPropiedad } from './estacionamiento/estacionamiento.service.js';
 
 const VIOLACION_UNIQUE = '23505';
@@ -113,13 +112,7 @@ const SELECT_ABONO = `
          a.turno::text AS turno, a.cupos_totales, a.precio_total,
          a.desde::text AS desde, a.hasta::text AS hasta, a.estado::text AS estado, a.created_at,
          (SELECT COUNT(*)::int FROM reserva r
-           WHERE r.id_abono = a.id_abono AND r.estado <> 'CANCELADA') AS cupos_usados,
-         (SELECT COALESCE(SUM(d.monto), 0)::float FROM devolucion d
-           WHERE d.id_abono = a.id_abono) AS devuelto,
-         (SELECT i.id_incidencia FROM incidencia i
-           WHERE i.id_abono = a.id_abono AND i.abierta_por IS NOT NULL
-             AND i.estado IN ('ABIERTA', 'DENUNCIADA')
-           LIMIT 1) AS reclamo_abierto
+           WHERE r.id_abono = a.id_abono AND r.estado <> 'CANCELADA') AS cupos_usados
     FROM abono a
     JOIN estacionamiento e ON e.id_estacionamiento = a.id_estacionamiento
     JOIN usuario u         ON u.id_usuario = a.id_conductor
@@ -216,10 +209,8 @@ export async function cancelar(idAbono, idConductor) {
 
 /**
  * Baja de estacionamientos (el propio o la cuenta del propietario): sus abonos
- * VIGENTE se cancelan junto con las reservas que todavia no empezaron, los
- * planes dejan de ofrecerse y al conductor se le devuelve la parte no usada
- * (precio por los usos que le quedaban). La devolucion no tiene incidencia.
- * Corre dentro de la transaccion de la baja.
+ * VIGENTE se cancelan junto con las reservas que todavia no empezaron y los
+ * planes dejan de ofrecerse. Corre dentro de la transaccion de la baja.
  */
 export async function cancelarPorBajaDeEstacionamientos(client, idsEstacionamientos) {
   const { rows: abonos } = await client.query(
@@ -237,14 +228,6 @@ export async function cancelarPorBajaDeEstacionamientos(client, idsEstacionamien
       [id_abono],
     );
     await client.query(`UPDATE abono SET estado = 'CANCELADO' WHERE id_abono = $1`, [id_abono]);
-
-    const abono = await obtenerAbono(client, id_abono);
-    const noUsado = (Number(abono.precio_total) * abono.cupos_restantes) / abono.cupos_totales;
-    const { tope } = await topeDe(client, { idAbono: id_abono });
-    const monto = Math.min(Math.round(noUsado * 100) / 100, tope);
-    if (monto > 0) {
-      await crearDevolucion(client, { idIncidencia: null, idAbono: id_abono, monto, aplicadaPor: 'SISTEMA' });
-    }
   }
 
   await client.query('UPDATE plan_abono SET activo = FALSE WHERE id_estacionamiento = ANY($1::uuid[])', [

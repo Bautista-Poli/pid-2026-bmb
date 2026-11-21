@@ -1,9 +1,8 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
-import { Router, RouterLink } from '@angular/router';
-import { AbrirReclamo, ObjetoReclamo } from '@app/components/reclamo';
+import { RouterLink } from '@angular/router';
 import { Boton, Cargando, EstadoVacio, Modal } from '@app/components/ui';
-import { Abono, Id } from '@app/models';
+import { Abono } from '@app/models';
 import { AbonoService } from '@app/services/abono.service';
 import { TarjetaAbono } from './tarjeta-abono/tarjeta-abono';
 
@@ -16,31 +15,12 @@ import { TarjetaAbono } from './tarjeta-abono/tarjeta-abono';
 @Component({
   selector: 'app-abonos',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TarjetaAbono, AbrirReclamo, Boton, Cargando, EstadoVacio, Modal, RouterLink],
+  imports: [TarjetaAbono, Boton, Cargando, EstadoVacio, Modal, RouterLink],
   templateUrl: './abonos.html',
   styleUrl: './abonos.css',
 })
 export class Abonos {
   private readonly abonos = inject(AbonoService);
-  private readonly router = inject(Router);
-
-  /** Abono sobre el que el conductor abre un reclamo: mientras no sea null, el modal esta abierto. */
-  protected readonly aReclamar = signal<ObjetoReclamo | null>(null);
-
-  /** Abre el modal de reclamo sobre un abono (tope: lo pagado menos lo devuelto). */
-  protected pedirReclamo(abono: Abono): void {
-    this.aReclamar.set({
-      tipo: 'abono',
-      id: abono.id,
-      descripcion: `Abono en ${abono.estacionamiento}`,
-      tope: Math.max(0, abono.precioTotal - abono.devuelto),
-    });
-  }
-
-  protected verReclamo(id: Id): void {
-    this.aReclamar.set(null);
-    this.router.navigate(['/conductor/incidencias'], { queryParams: { id } });
-  }
 
   protected readonly aCancelar = signal<Abono | null>(null);
   protected readonly cancelando = signal(false);

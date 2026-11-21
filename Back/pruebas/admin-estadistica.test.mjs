@@ -13,12 +13,11 @@ import {
   crearEstacionamiento,
   crearUsuario,
   crearVehiculo,
-  franja,
   levantarApi,
   query,
 } from './ayuda.mjs';
 import { AVISO_CANCELADA_SIN_ALTERNATIVA, AVISO_REASIGNADA } from '../src/services/cochera/cochera-bloqueo.service.js';
-import { AVISO_AFECTADA_POR_EXCESO, AVISO_REASIGNADA_POR_EXCESO } from '../src/services/incidencia/incidencia-vencimientos.service.js';
+import { AVISO_REASIGNADA_POR_EXCESO } from '../src/services/reserva/reserva-vencimientos.service.js';
 
 before(() => levantarApi('admin-estadistica'));
 after(() => cerrarApi());
@@ -38,24 +37,6 @@ const stats = async (params = PERIODO, token = admin.token) => {
   const respuesta = await api('GET', `/admin/estadisticas?${new URLSearchParams(params)}`, { token });
   return { estado: respuesta.estado, e: respuesta.datos?.estadisticas };
 };
-
-/** Reserva confirmada de un conductor nuevo en un estacionamiento nuevo, y su reclamo abierto. */
-async function conReclamo() {
-  const propietario = await crearUsuario({ rol: 'PROPIETARIO' });
-  const estacionamiento = await crearEstacionamiento(propietario.token);
-  const conductor = await crearUsuario();
-  const vehiculo = await crearVehiculo(conductor.token);
-  const { datos } = await api('POST', '/reservas', {
-    token: conductor.token,
-    body: { id_estacionamiento: estacionamiento.id_estacionamiento, id_vehiculo: vehiculo.id_vehiculo, ...franja() },
-  });
-  await api('PATCH', `/reservas/${datos.reserva.id_reserva}/confirmar`, { token: propietario.token });
-  const reclamo = await api('POST', '/incidencias/reclamos', {
-    token: conductor.token,
-    body: { id_reserva: datos.reserva.id_reserva, motivo: 'OTRO', texto: 'Algo salio mal con esta reserva, lo cuento aca.' },
-  });
-  return { propietario, estacionamiento, conductor, reserva: datos.reserva, incidencia: reclamo.datos.incidencia };
-}
 
 /**
  * Estacionamiento con un conductor; `reserva()` inserta por SQL una reserva de
@@ -90,17 +71,7 @@ async function escenario() {
     );
     return creada[0].id_reserva;
   };
-  const incidencia = async (tipo, idReserva, extra = {}) =>
-    (
-      await query(
-        `INSERT INTO incidencia (tipo, id_reserva, id_estacionamiento, abierta_por, motivo, created_at)
-         VALUES ($1, $2, $3, $4, $5, COALESCE($6::timestamptz, now()))
-         RETURNING id_incidencia`,
-        [tipo, idReserva, estacionamiento.id_estacionamiento, extra.abiertaPor ?? null, extra.motivo ?? null,
-          extra.creadaEn ?? null],
-      )
-    ).rows[0].id_incidencia;
-  return { propietario, estacionamiento, conductor, reserva, incidencia };
+  return { propietario, estacionamiento, conductor, reserva };
 }
 
 describe('acceso', () => {
@@ -146,31 +117,6 @@ describe('para revisar', () => {
     assert.ok(!e.pendientes.primeros.some((p) => p.id === estacionamiento.id_estacionamiento));
   });
 
-  test('un reclamo denunciado entra en las disputas y uno abierto en los que siguen en conversacion', async () => {
-    const abierto = await conReclamo();
-    const denunciado = await conReclamo();
-    await api('PATCH', `/incidencias/${denunciado.incidencia.id_incidencia}/denunciar`, {
-      token: denunciado.conductor.token,
-      body: { motivo: 'No nos ponemos de acuerdo.' },
-    });
-    // Se lleva la denuncia al pasado para que sea la mas antigua de la cola.
-    await query(`UPDATE incidencia SET denunciada_at = '2000-01-02T12:00:00Z' WHERE id_incidencia = $1`, [
-      denunciado.incidencia.id_incidencia,
-    ]);
-
-    const { e } = await stats();
-
-    assert.ok(e.disputas.denunciadas >= 1);
-    assert.ok(e.disputas.reclamosEnConversacion >= 1);
-    assert.deepEqual(e.disputas.primeras[0], {
-      id: denunciado.incidencia.id_incidencia,
-      tipo: 'RECLAMO',
-      motivo: 'OTRO',
-      estacionamiento: denunciado.estacionamiento.nombre,
-      denunciadaEn: '2000-01-02T12:00:00.000Z',
-    });
-    assert.ok(!e.disputas.primeras.some((d) => d.id === abierto.incidencia.id_incidencia));
-  });
 });
 
 /* ------------------------------ conflictos ------------------------------ */
@@ -205,8 +151,6 @@ describe('estacionamientos problematicos', () => {
       propietario: 'Prueba Parkit',
       reservas: 5,
       tasaCancelacion: 0.4,
-      reclamos: 0,
-      razones: ['CANCELACIONES'],
     });
   });
 
@@ -216,19 +160,6 @@ describe('estacionamientos problematicos', () => {
     for (let i = 0; i < 3; i++) await x.reserva({ fecha, estado: 'CANCELADA', canceladaPor: 'CONDUCTOR' });
 
     assert.equal(await problematicoDe(x), undefined);
-  });
-
-  test('dos reclamos abiertos o perdidos', async () => {
-    const x = await escenario();
-    const ids = [];
-    for (let i = 0; i < 5; i++) ids.push(await x.reserva({ fecha }));
-    const creadaEn = instante(fecha, 22);
-    await x.incidencia('RECLAMO', ids[0], { abiertaPor: x.conductor.id, motivo: 'OTRO', creadaEn });
-    await x.incidencia('RECLAMO', ids[1], { abiertaPor: x.conductor.id, motivo: 'OTRO', creadaEn });
-
-    const p = await problematicoDe(x);
-    assert.deepEqual(p.razones, ['RECLAMOS']);
-    assert.equal(p.reclamos, 2);
   });
 
   test('un estacionamiento dado de baja no aparece', async () => {
@@ -241,22 +172,18 @@ describe('estacionamientos problematicos', () => {
     assert.equal(await problematicoDe(x), undefined);
   });
 
-  test('con dos razones va primero, y los empates por tasa', async () => {
+  test('se ordenan por tasa de cancelacion, de mayor a menor', async () => {
     const lista = await problematicos();
-    const clave = (p) => [p.razones.length, p.tasaCancelacion];
     for (let i = 1; i < lista.length; i++) {
-      const [razonesA, tasaA] = clave(lista[i - 1]);
-      const [razonesB, tasaB] = clave(lista[i]);
-      assert.ok(razonesA > razonesB || (razonesA === razonesB && tasaA >= tasaB));
+      assert.ok(lista[i - 1].tasaCancelacion >= lista[i].tasaCancelacion);
     }
   });
 });
 
 describe('bloqueos', () => {
-  test('reasignadas, canceladas por bloqueo, autos excedidos y reservas sin cochera', async () => {
+  test('reasignadas y canceladas por bloqueo', async () => {
     const SEMANA = { desde: '2001-05-01', hasta: '2001-05-07' };
     const fecha = '2001-05-03';
-    const creadaEn = instante(fecha, 23);
     const x = await escenario();
     await x.reserva({ fecha, motivoReasignacion: AVISO_REASIGNADA });
     await x.reserva({
@@ -267,27 +194,17 @@ describe('bloqueos', () => {
     });
     // Reasignada y despues cancelada por el conductor: no es un bloqueo.
     await x.reserva({ fecha, estado: 'CANCELADA', canceladaPor: 'CONDUCTOR', motivoReasignacion: AVISO_REASIGNADA });
-    // Los avisos de un auto excedido cuentan por su incidencia, no como bloqueo (D-18).
-    await x.incidencia('AUTO_EXCEDIDO', await x.reserva({ fecha, motivoReasignacion: AVISO_REASIGNADA_POR_EXCESO }), {
-      creadaEn,
-    });
-    await x.incidencia('RESERVA_AFECTADA', await x.reserva({ fecha, motivoReasignacion: AVISO_AFECTADA_POR_EXCESO }), {
-      creadaEn,
-    });
+    // La reasignada por un auto excedido no es un bloqueo del propietario.
+    await x.reserva({ fecha, motivoReasignacion: AVISO_REASIGNADA_POR_EXCESO });
 
     const { bloqueos } = (await stats(SEMANA)).e.conflictos;
-    assert.deepEqual(
-      [bloqueos.reasignadas, bloqueos.canceladas, bloqueos.autosExcedidos, bloqueos.sinCochera],
-      [1, 1, 1, 1],
-    );
+    assert.deepEqual([bloqueos.reasignadas, bloqueos.canceladas], [1, 1]);
     assert.deepEqual(bloqueos.porEstacionamiento, [
       {
         id: x.estacionamiento.id_estacionamiento,
         nombre: x.estacionamiento.nombre,
         reasignadas: 1,
         canceladas: 1,
-        autosExcedidos: 1,
-        sinCochera: 1,
       },
     ]);
   });
@@ -311,18 +228,12 @@ describe('actividad', () => {
     assert.equal(kpis.propietariosNuevos.valor, 2);
   });
 
-  test('volumen neto de devoluciones, reservas, aprobados, reservas por dia y rankings', async () => {
+  test('volumen, reservas, aprobados, reservas por dia y rankings', async () => {
     const SEMANA = { desde: '2001-04-01', hasta: '2001-04-07' };
     const fecha = '2001-04-03';
     const x = await escenario();
-    const idReserva = await x.reserva({ fecha, precio: 3000 });
+    await x.reserva({ fecha, precio: 3000 });
     await x.reserva({ fecha, estado: 'CANCELADA', canceladaPor: 'CONDUCTOR', precio: 999 });
-    const idIncidencia = await x.incidencia('AUTO_EXCEDIDO', idReserva, { creadaEn: instante(fecha, 20) });
-    await query(
-      `INSERT INTO devolucion (id_incidencia, id_reserva, monto, aplicada_por, created_at)
-       VALUES ($1, $2, 1000, 'ADMINISTRADOR', $3)`,
-      [idIncidencia, idReserva, instante(fecha, 21)],
-    );
     await query(`UPDATE estacionamiento SET revisado_en = '2001-04-04T15:00:00Z' WHERE id_estacionamiento = $1`, [
       x.estacionamiento.id_estacionamiento,
     ]);
@@ -330,8 +241,7 @@ describe('actividad', () => {
     const { actividad } = (await stats(SEMANA)).e;
     const { kpis } = actividad;
     assert.equal(kpis.reservas.valor, 2);
-    assert.equal(kpis.volumen.valor, 2000);
-    assert.equal(kpis.devoluciones.valor, 1000);
+    assert.equal(kpis.volumen.valor, 3000);
     assert.equal(kpis.tasaCancelacion.valor, 0.5);
     assert.equal(kpis.estacionamientosAprobados.valor, 1);
     assert.equal(actividad.reservasPorDia.length, 7);
@@ -341,7 +251,7 @@ describe('actividad', () => {
     );
     const propio = { id: x.estacionamiento.id_estacionamiento, nombre: x.estacionamiento.nombre };
     assert.deepEqual(actividad.topPorReservas, [{ ...propio, valor: 2 }]);
-    assert.deepEqual(actividad.topPorIngresos, [{ ...propio, valor: 2000 }]);
+    assert.deepEqual(actividad.topPorIngresos, [{ ...propio, valor: 3000 }]);
   });
 
   test('un periodo sin datos da ceros, no NaN', async () => {

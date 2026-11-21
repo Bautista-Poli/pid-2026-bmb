@@ -1,8 +1,8 @@
 // Codigo de acceso de la reserva: el que va en su QR y que el operador
 // escanea (o tipea) al entrar y al salir. Lo genera la base
-// (generar_codigo_acceso() en schema.sql); aca solo se valida lo que llega.
+// (generar_codigo_acceso() en db/tablas/06-reserva.sql); aca solo se valida lo que llega.
 
-/** Sin 0 O 1 I L, que se confunden al leerlos o dictarlos. Tiene que coincidir con schema.sql. */
+/** Sin 0 O 1 I L, que se confunden al leerlos o dictarlos. Tiene que coincidir con db/tablas/06-reserva.sql. */
 const ALFABETO_CODIGO = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const LARGO_CODIGO = 8;
 

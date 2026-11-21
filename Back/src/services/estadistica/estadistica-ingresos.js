@@ -1,4 +1,4 @@
-// Plata del propietario: lo cobrado por dia (reservas + abonos - devoluciones) y
+// Plata del propietario: lo cobrado por dia (reservas + abonos) y
 // lo que falta cobrar.
 import { query } from '../../config/database.js';
 import { numero } from './estadistica-calculos.js';
@@ -6,7 +6,6 @@ import {
   COBRADAS,
   DIAS,
   ESTACIONAMIENTOS,
-  ESTACIONAMIENTO_DE_DEVOLUCION,
   RESERVAS,
   ZONA,
   desdeDia,
@@ -30,21 +29,11 @@ export async function ingresosPorDia(parametros) {
           AND a.created_at >= ${desdeDia('$2')}
           AND a.created_at <  ${hastaDia('$3')}
         GROUP BY 1
-     ),
-     devoluciones AS (
-       SELECT (d.created_at AT TIME ZONE ${ZONA})::date AS fecha, SUM(d.monto) AS monto
-         FROM devolucion d
-        WHERE ${ESTACIONAMIENTO_DE_DEVOLUCION} IN (${ESTACIONAMIENTOS})
-          AND d.created_at >= ${desdeDia('$2')}
-          AND d.created_at <  ${hastaDia('$3')}
-        GROUP BY 1
      )
-     SELECT d.fecha::text AS fecha, COALESCE(r.monto, 0) AS reservas, COALESCE(a.monto, 0) AS abonos,
-            COALESCE(dv.monto, 0) AS devoluciones
+     SELECT d.fecha::text AS fecha, COALESCE(r.monto, 0) AS reservas, COALESCE(a.monto, 0) AS abonos
        FROM dias d
        LEFT JOIN reservas r ON r.fecha = d.fecha
        LEFT JOIN abonos a ON a.fecha = d.fecha
-       LEFT JOIN devoluciones dv ON dv.fecha = d.fecha
       ORDER BY d.fecha`,
     parametros,
   );
@@ -52,7 +41,6 @@ export async function ingresosPorDia(parametros) {
     fecha: r.fecha,
     reservas: numero(r.reservas),
     abonos: numero(r.abonos),
-    devoluciones: numero(r.devoluciones),
   }));
 }
 

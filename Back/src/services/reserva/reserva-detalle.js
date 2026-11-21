@@ -39,12 +39,6 @@ export const selectDetalle = ({ conCodigo = false, vista = 'PROPIETARIO' } = {})
          r.modalidad, r.precio_total, r.motivo_reasignacion,${conCodigo ? ' r.codigo_acceso,' : ''}
          r.id_abono, a.turno::text AS turno_abono,
          u.nombre AS conductor_nombre, u.apellido AS conductor_apellido,
-         (SELECT COALESCE(SUM(d.monto), 0)::float FROM devolucion d
-           WHERE d.id_reserva = r.id_reserva) AS devuelto,
-         (SELECT i.id_incidencia FROM incidencia i
-           WHERE i.id_reserva = r.id_reserva AND i.abierta_por IS NOT NULL
-             AND i.estado IN ('ABIERTA', 'DENUNCIADA')
-           LIMIT 1) AS reclamo_abierto,
          -- Calificacion: el promedio que dio (null si no califico) y si todavia puede.
          q.promedio AS calificacion_promedio,
          (q.promedio IS NULL AND r.estado = 'FINALIZADA'

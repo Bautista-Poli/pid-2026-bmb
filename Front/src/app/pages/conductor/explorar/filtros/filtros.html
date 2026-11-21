@@ -1,5 +1,21 @@
-<!-- Modal "Filtrar" de Explorar: fecha, horario, precio, orden, nivel y techo. Logica en modal-filtros.ts. -->
-<ui-modal titulo="Filtrar" [abierto]="abierto()" (cerrado)="cerrado.emit()">
+<!-- Boton "Filtrar" de Explorar y su modal: fecha, horario, precio, orden, nivel y techo. Logica en filtros.ts. -->
+<button
+  type="button"
+  class="boton-filtros"
+  [class.boton-filtros--activo]="activos() > 0"
+  aria-haspopup="dialog"
+  (click)="abrir()"
+>
+  <ui-icono nombre="filtros" [tamano]="18" />
+  Filtrar
+  @if (activos() > 0) {
+    <span class="num-tabular boton-filtros__contador">
+      {{ activos() }}
+    </span>
+  }
+</button>
+
+<ui-modal titulo="Filtrar" [abierto]="abierto()" (cerrado)="abierto.set(false)">
   <form class="filtros__formulario" (submit)="$event.preventDefault(); aplicarFiltros()" novalidate>
     <!-- Fecha y horario -->
     <div class="filtros__fecha-hora">

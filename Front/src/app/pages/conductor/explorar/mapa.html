@@ -10,21 +10,26 @@
 <div class="mapa-vista">
   <div class="mapa-columna">
     <!-- ============================ Buscador y vehiculo ============================ -->
-    <app-panel-buscador
-      [texto]="texto()"
-      [estacionamientos]="todos.value()"
-      [vehiculo]="vehiculoActual()"
-      [variosVehiculos]="vehiculosDelConductor.value().length > 1"
-      [filtrosActivos]="filtrosActivos()"
-      [sinOrigen]="sinOrigen()"
-      (textoCambiado)="escribir($event)"
-      (textoBuscado)="buscarTexto()"
-      (destinoElegido)="elegirDestino($event)"
-      (ubicacionPedida)="usarMiUbicacion()"
-      (vehiculoAnterior)="vehiculoAnterior()"
-      (vehiculoSiguiente)="vehiculoSiguiente()"
-      (filtrosPedidos)="abrirFiltros()"
-    />
+    <!-- Cada parte se arregla sola y deja un solo valor: lo buscado, el vehiculo y los filtros. -->
+    <section class="panel-buscador">
+      <app-buscador-destino [(busqueda)]="busqueda" />
+
+      <div class="panel-buscador__fila">
+        <!-- Se muestran los estacionamientos aptos para el tipo del vehiculo elegido. -->
+        <app-selector-vehiculo [(vehiculo)]="vehiculo" />
+        <app-filtros [(filtros)]="filtros" />
+      </div>
+
+      @if (sinOrigen()) {
+        <p class="panel-buscador__aviso">
+          <span class="panel-buscador__aviso-corto">Activá tu ubicación o buscá una dirección para ver distancias.</span>
+          <span class="panel-buscador__aviso-largo">
+            Activá la ubicación del navegador, o buscá la dirección a la que vas, para ver a qué distancia
+            está cada estacionamiento.
+          </span>
+        </p>
+      }
+    </section>
 
     <!-- ================================ Resultados ================================ -->
     <section #lista class="panel-resultados" aria-labelledby="titulo-resultados">
@@ -151,12 +156,3 @@
     }
   </div>
 </div>
-
-<!-- ================================== Filtros ================================== -->
-<app-modal-filtros
-  [abierto]="filtrosAbiertos()"
-  [inicial]="panelInicial()"
-  (cerrado)="filtrosAbiertos.set(false)"
-  (aplicar)="aplicarFiltros($event)"
-  (limpiar)="limpiarFiltros()"
-/>

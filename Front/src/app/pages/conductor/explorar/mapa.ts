@@ -13,14 +13,14 @@ import { EstacionamientoService, LIMITE_BUSQUEDA, ordenarEstacionamientos,
 
 import { Destino } from '@app/utils/direcciones.util';
 import { DetalleEstacionamiento } from './detalle-estacionamiento/detalle-estacionamiento';
-import { ModalFiltros } from './modal-filtros/modal-filtros';
+import { Filtros } from './filtros/filtros';
 import { ResultadoEstacionamiento } from './resultado-estacionamiento/resultado-estacionamiento';
-import { PanelBuscador } from './panel-buscador/panel-buscador';
+import { Busqueda, BuscadorDestino, SIN_BUSQUEDA } from './buscador-destino/buscador-destino';
+import { SelectorVehiculo } from './selector-vehiculo/selector-vehiculo';
 import { Panel, horaFin } from './panel.interface';
 import { ORDENES, PANEL_INICIAL, POR_PAGINA, PRECIO_TOPE } from './constantes';
 
 import { UbicacionService } from '@app/services/conductor/ubicacion.service';
-import { VehiculoService } from '@app/services/conductor/vehiculo.service';
 
 import { diaCorto } from '@app/utils/fecha.util';
 
@@ -52,8 +52,9 @@ import { diaCorto } from '@app/utils/fecha.util';
     Cargando,
     EstadoVacio,
     Icono,
-    ModalFiltros,
-    PanelBuscador,
+    BuscadorDestino,
+    SelectorVehiculo,
+    Filtros,
     ResultadoEstacionamiento,
   ],
   templateUrl: './mapa.html',
@@ -62,120 +63,30 @@ import { diaCorto } from '@app/utils/fecha.util';
 })
 export class Mapa {
   private readonly estacionamientos = inject(EstacionamientoService);
-  private readonly vehiculos = inject(VehiculoService);
   private readonly ubicacion = inject(UbicacionService);
   private readonly router = inject(Router);
   private readonly injector = inject(Injector);
 
 
-  /* -------------------------------- Vehiculo ------------------------------- */
+  /* ------------------- Lo que elige el conductor en el panel ------------------ */
 
-  protected readonly vehiculosDelConductor = rxResource({
-    stream: () => this.vehiculos.listarMisVehiculos(),
-    defaultValue: [] as Vehiculo[],
-  });
+  /** Lo buscado (buscador-destino/). */
+  protected readonly busqueda = signal<Busqueda>(SIN_BUSQUEDA);
+  /** Vehiculo elegido (selector-vehiculo/); `null` si el conductor no cargo ninguno. */
+  protected readonly vehiculo = signal<Vehiculo | null>(null);
+  /** Los filtros en uso (filtros/). */
+  protected readonly filtros = signal<Panel>(PANEL_INICIAL);
 
-  /** Posicion del vehiculo elegido. Arranca en el predeterminado cuando llega la lista. */
-  protected readonly indiceVehiculo = linkedSignal<number>(() => {
-    const indice = this.vehiculosDelConductor.value().findIndex((v) => v.predeterminado);
-    return indice >= 0 ? indice : 0;
-  });
-
-  protected readonly vehiculoActual = computed<Vehiculo | null>(
-    () => this.vehiculosDelConductor.value()[this.indiceVehiculo()] ?? null,
-  );
-
-  /** Anterior/siguiente vehiculo, ciclico. Sin efecto con 0 o 1 vehiculo. */
-  protected vehiculoAnterior(): void {
-    const total = this.vehiculosDelConductor.value().length;
-    if (total < 2) return;
-    this.indiceVehiculo.update((i) => (i - 1 + total) % total);
-  }
-
-  protected vehiculoSiguiente(): void {
-    const total = this.vehiculosDelConductor.value().length;
-    if (total < 2) return;
-    this.indiceVehiculo.update((i) => (i + 1) % total);
-  }
-
-  /* --------------------------------- Filtros -------------------------------- */
-
-  protected readonly ordenes = ORDENES;
-  /** Los filtros en uso. */
-  private readonly aplicado = signal<Panel>(PANEL_INICIAL);
-
-  /** Con que filtros se abre el modal (ver modal-filtros/). */
-  protected readonly panelInicial = signal<Panel>(PANEL_INICIAL);
-  protected readonly filtrosAbiertos = signal(false);
-
-  /** Cuantos filtros del modal estan en uso (el orden no cuenta: tiene su propio selector). */
-  protected readonly filtrosActivos = computed(() => {
-    const { desde, precioMinimo, precioMaximo, soloCubiertos, nivelMinimo } = this.aplicado();
-    return [desde, precioMinimo > 0 || precioMaximo < PRECIO_TOPE, soloCubiertos, nivelMinimo].filter(
-      Boolean,
-    ).length;
-  });
-
-  /** El modal arranca con lo que esta en uso: si se cierra sin aplicar, no cambia nada. */
-  protected abrirFiltros(): void {
-    this.panelInicial.set({ ...this.aplicado(), orden: this.orden() });
-    this.filtrosAbiertos.set(true);
-  }
-
-  /** El modal ya valido el horario: se aplican los filtros y se cierra. */
-  protected aplicarFiltros(panel: Panel): void {
-    this.aplicado.set(panel);
-    this.orden.set(panel.orden);
-    this.filtrosAbiertos.set(false);
-  }
-
-  /** Vuelve los filtros a los iniciales (sin tocar el orden). */
-  protected limpiarFiltros(): void {
-    const limpio = { ...PANEL_INICIAL, orden: this.orden() };
-    this.panelInicial.set(limpio);
-    this.aplicado.set(limpio);
-    this.filtrosAbiertos.set(false);
-  }
-
-  /**
-   * "Ordenar por" de los resultados: se aplica al toque. No toca `aplicado`, asi
-   * que no vuelve a pedir al backend: solo reordena lo que ya llego.
-   */
-  protected ordenar(orden: string): void {
-    this.orden.set(orden as OrdenEstacionamiento);
-  }
-
-  /* -------------------------- Buscador y ubicacion ------------------------- */
-
-  /** Lo escrito en el buscador. Sin elegir una sugerencia, filtra por nombre o zona. */
-  protected readonly texto = signal('');
-  private readonly textoAplicado = signal('');
   /** Zona o direccion elegida de las sugerencias: las distancias se miden desde ahi. */
-  protected readonly destino = signal<Destino | null>(null);
+  protected readonly destino = computed(() => this.busqueda().destino);
+  /** Texto buscado con Enter, sin elegir sugerencia: filtra por nombre o zona. */
+  private readonly textoAplicado = computed(() => this.busqueda().nombre);
 
-  protected escribir(texto: string): void {
-    this.texto.set(texto);
-    this.destino.set(null);
-    if (!texto.trim()) this.textoAplicado.set('');
-  }
+  /* --------------------------------- Ubicacion ------------------------------- */
 
-  /** Enter sin elegir una sugerencia: filtra por nombre o zona. */
-  protected buscarTexto(): void {
-    this.textoAplicado.set(this.destino() ? '' : this.texto().trim());
-  }
-
-  /** Centra la busqueda en el lugar elegido. */
-  protected elegirDestino(destino: Destino): void {
-    this.destino.set(destino);
-    this.texto.set(destino.nombre);
-    this.textoAplicado.set('');
-  }
-
-  /** Centra la busqueda en la ubicacion del usuario. */
+  /** El boton del mapa: vuelve a buscar alrededor del conductor. */
   protected usarMiUbicacion(): void {
-    this.destino.set(null);
-    this.texto.set('');
-    this.textoAplicado.set('');
+    this.busqueda.set(SIN_BUSQUEDA);
     this.ubicacion.solicitar();
   }
 
@@ -197,12 +108,6 @@ export class Mapa {
     return !this.destino() && (estado === 'denegada' || estado === 'no-disponible');
   });
 
-  /** Todos los estacionamientos publicados: el buscador (panel-buscador) sugiere sus barrios y nombres. */
-  protected readonly todos = rxResource({
-    stream: () => this.estacionamientos.listar({}),
-    defaultValue: [] as Estacionamiento[],
-  });
-
   /* ------------------------------- Resultados ------------------------------ */
 
   /** La parte del mapa que se esta viendo. `null` hasta que el mapa se crea. */
@@ -217,7 +122,7 @@ export class Mapa {
 
   /** `undefined` (no pide nada) hasta saber que zona se ve. */
   private readonly consulta = computed<FiltrosEstacionamiento | undefined>(() => {
-    const panel = this.aplicado();
+    const panel = this.filtros();
     const porNombre = this.buscandoPorNombre();
     const area = this.area();
     if (!porNombre && !area) return undefined;
@@ -225,7 +130,7 @@ export class Mapa {
       busqueda: this.textoAplicado(),
       area: porNombre ? null : area,
       // Sin vehiculos cargados se muestran los aptos para auto.
-      tipoVehiculo: this.vehiculoActual()?.tipo ?? 'AUTO',
+      tipoVehiculo: this.vehiculo()?.tipo ?? 'AUTO',
       precioMinimo: panel.precioMinimo > 0 ? panel.precioMinimo : null,
       precioMaximo: panel.precioMaximo < PRECIO_TOPE ? panel.precioMaximo : null,
       soloCubiertos: panel.soloCubiertos,
@@ -235,7 +140,8 @@ export class Mapa {
       incluirNoDisponibles: true,
       origen: this.origen(),
     };
-  });
+    // Cambiar solo el orden (que va en los mismos filtros) no vuelve a pedir nada.
+  }, { equal: mismaConsulta });
 
   protected readonly recurso = rxResource({
     params: () => this.consulta(),
@@ -263,7 +169,14 @@ export class Mapa {
   );
 
   /** El orden se resuelve en el front: cambiarlo no pide nada al backend. */
-  protected readonly orden = signal<OrdenEstacionamiento>(PANEL_INICIAL.orden);
+  protected readonly ordenes = ORDENES;
+  protected readonly orden = computed(() => this.filtros().orden);
+
+  /** "Ordenar por" de la lista: se aplica al toque y solo reordena lo que ya llego. */
+  protected ordenar(orden: string): void {
+    this.filtros.update((filtros) => ({ ...filtros, orden: orden as OrdenEstacionamiento }));
+  }
+
   protected readonly resultados = computed(() =>
     ordenarEstacionamientos(this.ultimosRecibidos(), this.orden()),
   );
@@ -303,7 +216,7 @@ export class Mapa {
 
   /** "Ahora" o "Sáb 3 oct · 10:00 – 14:00": para cuando se busco. */
   protected readonly cuando = computed(() => {
-    const { fecha, desde, horas } = this.aplicado();
+    const { fecha, desde, horas } = this.filtros();
     const hasta = desde ? horaFin(desde, horas) : null;
     if (!desde || !hasta) return 'Ahora';
     return `${diaCorto(fecha)} · ${desde} – ${hasta}`;
@@ -344,6 +257,11 @@ export class Mapa {
   constructor() {
     this.ubicacion.solicitar();
   }
+}
+
+/** Dos consultas piden lo mismo si todos sus datos coinciden. */
+function mismaConsulta(a: FiltrosEstacionamiento | undefined, b: FiltrosEstacionamiento | undefined): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
 }
 
 function momentoDe(panel: Panel): Momento {

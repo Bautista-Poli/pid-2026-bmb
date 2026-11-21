@@ -1,0 +1,30 @@
+/* Buscador de destino de Explorar (buscador-destino.html). */
+
+/* Una fila: el campo ocupa lo que haya y el boton de ubicacion queda a la derecha. */
+:host {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.buscador-destino__formulario {
+  min-width: 0;
+  flex: 1 1 0%;
+}
+
+.boton-ubicacion {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  place-items: center;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radius-control);
+  background: var(--color-papel);
+  color: var(--color-acento);
+  box-shadow: var(--shadow-tarjeta);
+}
+
+.boton-ubicacion:hover {
+  border-color: var(--color-acento-borde);
+}

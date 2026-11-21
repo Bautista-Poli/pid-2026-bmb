@@ -254,3 +254,51 @@
   padding: 0 0.625rem;
   font-size: 12px;
 }
+
+/* ------------------------------------------------- Panel de arriba (buscador) */
+
+/* z-index 900: las sugerencias del buscador tienen que quedar sobre el mapa
+   (Leaflet usa z-index de 400 a 800). */
+.panel-buscador {
+  position: relative;
+  z-index: 900;
+  order: 1;
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+}
+
+.panel-buscador__fila {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.panel-buscador__aviso {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--color-plomo);
+}
+
+/* El aviso largo solo aparece en desktop; el corto, en mobile. */
+.panel-buscador__aviso-largo {
+  display: none;
+}
+
+/* lg: 1024px o más (desktop) */
+@media (min-width: 1024px) {
+  .panel-buscador {
+    padding-top: 1.5rem;
+    padding-inline: 1.5rem;
+  }
+
+  .panel-buscador__aviso-corto {
+    display: none;
+  }
+
+  .panel-buscador__aviso-largo {
+    display: inline;
+  }
+}

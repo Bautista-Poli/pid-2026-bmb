@@ -1,0 +1,37 @@
+<!-- Selector de vehiculo del conductor: flechas para pasar de uno a otro. Logica en selector-vehiculo.ts. -->
+@if (vehiculo(); as elegido) {
+  <div class="selector-vehiculo" role="group" aria-label="Vehículo">
+    <button
+      type="button"
+      class="selector-vehiculo__boton"
+      [disabled]="!hayVarios()"
+      aria-label="Vehículo anterior"
+      (click)="pasar(-1)"
+    >
+      <ui-icono nombre="cheuron" [tamano]="18" class="selector-vehiculo__flecha-anterior" />
+    </button>
+
+    <span class="selector-vehiculo__info" aria-live="polite">
+      <ui-icono [nombre]="iconoTipo[elegido.tipo]" [tamano]="18" class="selector-vehiculo__icono" />
+      <span class="selector-vehiculo__texto">
+        <span class="num-tabular selector-vehiculo__patente">{{ elegido.patente }}</span>
+        <span class="selector-vehiculo__descripcion">{{ descripcion(elegido) }}</span>
+      </span>
+    </span>
+
+    <button
+      type="button"
+      class="selector-vehiculo__boton"
+      [disabled]="!hayVarios()"
+      aria-label="Vehículo siguiente"
+      (click)="pasar(1)"
+    >
+      <ui-icono nombre="cheuron" [tamano]="18" class="selector-vehiculo__flecha-siguiente" />
+    </button>
+  </div>
+} @else {
+  <a routerLink="/conductor/vehiculos/nuevo" class="enlace-agregar-vehiculo">
+    <ui-icono nombre="auto" [tamano]="18" />
+    <span class="enlace-agregar-vehiculo__texto">Agregá tu vehículo</span>
+  </a>
+}

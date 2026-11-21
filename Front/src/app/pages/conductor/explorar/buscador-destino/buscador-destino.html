@@ -1,0 +1,22 @@
+<!-- Buscador de destino de Explorar: campo con sugerencias y boton "mi ubicacion". Logica en buscador-destino.ts. -->
+<!-- Enter sin elegir sugerencia busca por nombre o zona (un solo campo: el form se envia solo). -->
+<form class="buscador-destino__formulario" role="search" (submit)="$event.preventDefault(); buscarPorNombre()">
+  <app-campo-busqueda
+    etiqueta="Buscar por dirección, lugar o zona"
+    marcador="Buscar por dirección, lugar o zona..."
+    [valor]="busqueda().escrito"
+    [minimo]="3"
+    [buscar]="buscarSugerencias"
+    (valorChange)="escribir($event)"
+    (elegida)="elegir($event)"
+  />
+</form>
+<button
+  type="button"
+  class="boton-ubicacion"
+  aria-label="Usar mi ubicación"
+  title="Usar mi ubicación"
+  (click)="usarMiUbicacion()"
+>
+  <ui-icono nombre="navegar" [tamano]="19" />
+</button>

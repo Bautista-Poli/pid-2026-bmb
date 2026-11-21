@@ -1,33 +1,40 @@
-import { ChangeDetectionStrategy, Component, computed, input, linkedSignal, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, linkedSignal, model, signal } from '@angular/core';
 import { Chip, Icono, Modal, NombreIcono } from '@app/components/ui';
 import { OrdenEstacionamiento } from '@app/models';
 import { hoyISO } from '@app/utils/fecha.util';
-import { HORAS_MAXIMAS, OPCIONES_NIVEL, ORDENES, PRECIO_PASO, PRECIO_TOPE } from '../constantes';
+import { HORAS_MAXIMAS, OPCIONES_NIVEL, ORDENES, PANEL_INICIAL, PRECIO_PASO, PRECIO_TOPE } from '../constantes';
 import { Panel, horaFin, pesos } from '../panel.interface';
 
 /**
- * Modal "Filtrar" de la pantalla Explorar (mapa.ts).
+ * Boton "Filtrar" de la pantalla Explorar, con su modal.
  *
- * Trabaja sobre un borrador: arranca con `inicial` (lo que esta en uso) y los
- * cambios no se aplican hasta tocar "Aplicar", que valida el horario y emite
- * `aplicar` con los filtros nuevos. "Limpiar" emite `limpiar` y la pantalla
- * vuelve a los filtros iniciales.
+ * Se arregla solo: abre y cierra el modal, cuenta cuantos filtros hay en uso y
+ * trabaja sobre un borrador, que recien pasa a ser `filtros` al tocar "Aplicar"
+ * (si el horario es valido). "Limpiar" vuelve a los filtros de fabrica sin
+ * tocar el orden. A quien lo usa solo le deja los filtros en uso:
+ *
+ *   <app-filtros [(filtros)]="filtros" />
  */
 @Component({
-  selector: 'app-modal-filtros',
+  selector: 'app-filtros',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [Chip, Icono, Modal],
-  templateUrl: './modal-filtros.html',
-  styleUrl: './modal-filtros.css',
+  templateUrl: './filtros.html',
+  styleUrl: './filtros.css',
 })
-export class ModalFiltros {
-  readonly abierto = input(false);
-  /** Filtros con los que se abre el modal. Cada vez que cambia, se descarta el borrador. */
-  readonly inicial = input.required<Panel>();
+export class Filtros {
+  /** Los filtros en uso. */
+  readonly filtros = model.required<Panel>();
 
-  readonly cerrado = output<void>();
-  readonly aplicar = output<Panel>();
-  readonly limpiar = output<void>();
+  protected readonly abierto = signal(false);
+
+  /** Cuantos filtros estan en uso (el orden no cuenta: tiene su propio selector en la lista). */
+  protected readonly activos = computed(() => {
+    const { desde, precioMinimo, precioMaximo, soloCubiertos, nivelMinimo } = this.filtros();
+    return [desde, precioMinimo > 0 || precioMaximo < PRECIO_TOPE, soloCubiertos, nivelMinimo].filter(
+      Boolean,
+    ).length;
+  });
 
   protected readonly opcionesNivel = OPCIONES_NIVEL;
   protected readonly ordenes = ORDENES;
@@ -42,12 +49,16 @@ export class ModalFiltros {
   protected readonly hoy = hoyISO();
 
   /** Borrador del modal: lo que se esta editando. */
-  protected readonly panel = linkedSignal(() => this.inicial());
+  protected readonly panel = linkedSignal(() => this.filtros());
   /** Si ya se toco "Aplicar" (recien ahi se muestra el error del horario). */
-  protected readonly intentoBuscar = linkedSignal(() => {
-    this.inicial();
-    return false;
-  });
+  protected readonly intentoBuscar = signal(false);
+
+  /** El modal arranca con lo que esta en uso: si se cierra sin aplicar, no cambia nada. */
+  protected abrir(): void {
+    this.panel.set(this.filtros());
+    this.intentoBuscar.set(false);
+    this.abierto.set(true);
+  }
 
   protected readonly errorHorario = computed(() => {
     const { fecha, desde, horas } = this.panel();
@@ -89,14 +100,17 @@ export class ModalFiltros {
     this.cambiar({ precioMaximo: Math.max(Number(valor), this.panel().precioMinimo + PRECIO_PASO) });
   }
 
-  /** Valida el horario y, si esta bien, le pasa a la pantalla los filtros nuevos. */
+  /** Valida el horario y, si esta bien, pone en uso los filtros nuevos. */
   protected aplicarFiltros(): void {
     this.intentoBuscar.set(true);
     if (this.errorHorario()) return;
-    this.aplicar.emit(this.panel());
+    this.filtros.set(this.panel());
+    this.abierto.set(false);
   }
 
+  /** Vuelve a los filtros iniciales (sin tocar el orden). */
   protected limpiarFiltros(): void {
-    this.limpiar.emit();
+    this.filtros.set({ ...PANEL_INICIAL, orden: this.filtros().orden });
+    this.abierto.set(false);
   }
 }

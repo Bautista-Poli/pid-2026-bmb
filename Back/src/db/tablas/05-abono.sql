@@ -3,6 +3,9 @@
 -- ese turno. Cada reserva con abono descuenta un uso. Los usos consumidos no se
 -- guardan: son las reservas del abono que no estan CANCELADAS.
 
+/* LOS DO BEGIN SON CONDICIONALES QUE EN CASO DE FALTAR, CREAN EN pg_type
+EL TIPO DE VALORES QUE PUEDE UNA COLUMNA ACEPTAR */
+
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'turno_abono') THEN
@@ -10,6 +13,9 @@ BEGIN
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'estado_abono') THEN
     CREATE TYPE estado_abono AS ENUM ('VIGENTE', 'CANCELADO', 'VENCIDO');
+    /*
+    ALTER TYPE estado_abono ADD VALUE IF NOT EXISTS '...';
+    */
   END IF;
 END
 $$;

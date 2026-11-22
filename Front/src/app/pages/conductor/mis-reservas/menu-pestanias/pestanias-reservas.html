@@ -1,16 +1,11 @@
-<ui-chip [activo]="activa() === 'VIGENTES'" (alternar)="cambiar.emit('VIGENTES')">
-  Vigentes
-  @if (!cargando()) {
-    <span class="num-tabular contador-pestania">
-      {{ cantidadVigentes() }}
-    </span>
-  }
-</ui-chip>
-<ui-chip [activo]="activa() === 'HISTORIAL'" (alternar)="cambiar.emit('HISTORIAL')">
-  Historial
-  @if (!cargando()) {
-    <span class="num-tabular contador-pestania">
-      {{ cantidadHistorial() }}
-    </span>
-  }
-</ui-chip>
+<!-- Menu de pestañas de Mis reservas. Datos en pestanias-reservas.ts. -->
+@for (pestania of pestanias; track pestania.clave) {
+  <ui-chip [activo]="activa() === pestania.clave" (alternar)="cambiar.emit(pestania.clave)">
+    {{ pestania.titulo }}
+    @if (!cargando()) {
+      <span class="num-tabular contador-pestania">
+        {{ cantidades()[pestania.clave] }}
+      </span>
+    }
+  </ui-chip>
+}

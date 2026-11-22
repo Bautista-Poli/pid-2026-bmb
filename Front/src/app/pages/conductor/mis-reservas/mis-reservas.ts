@@ -1,35 +1,34 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
-import { RouterLink } from '@angular/router';
 import { HistorialReservas } from './historial-reservas/historial-reservas';
+import { InvitacionCalificar } from './invitacion-calificar/invitacion-calificar';
 import { Pestania, PestaniasReservas } from './menu-pestanias/pestanias-reservas';
-import { ReservasVigentes } from './reservas-vigentes/reservas-vigentes';
+import { ReservasEnCurso } from './reservas-en-curso/reservas-en-curso';
+import { ReservasProximas } from './reservas-proximas/reservas-proximas';
 import { Boton, Cargando, EstadoVacio } from '@app/components/ui';
 import { ReservaDetallada, reservaSinUsar } from '@app/models';
-import { reservaEnJuego } from '@app/services/ciclo-reserva';
+import { inicioDe, reservaEnJuego } from '@app/services/ciclo-reserva';
 import { ReservaService } from '@app/services/reserva.service';
-import { aInstante } from '@app/utils/fecha.util';
-
-const inicioDe = (reserva: ReservaDetallada) =>
-  Date.parse(aInstante(reserva.fecha, reserva.horaDesde));
 
 /**
  * Pantalla `/conductor/mis-reservas` · rol CONDUCTOR
  *
- * Carga las reservas del conductor y las reparte entre las dos pestañas:
- * Vigentes (reservas-vigentes) e Historial (historial-reservas).
+ * Carga las reservas del conductor y las reparte entre las tres pestañas:
+ * Próximas (reservas-proximas), En curso (reservas-en-curso) e Historial
+ * (historial-reservas).
  */
 @Component({
   selector: 'app-mis-reservas',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     PestaniasReservas,
-    ReservasVigentes,
+    InvitacionCalificar,
+    ReservasProximas,
+    ReservasEnCurso,
     HistorialReservas,
     Cargando,
     EstadoVacio,
     Boton,
-    RouterLink,
   ],
   templateUrl: './mis-reservas.html',
   styleUrl: './mis-reservas.css',
@@ -37,7 +36,13 @@ const inicioDe = (reserva: ReservaDetallada) =>
 export class MisReservas {
   private readonly reservas = inject(ReservaService);
 
-  protected readonly pestania = signal<Pestania>('VIGENTES');
+  /** Pestaña que eligio el conductor; `null` hasta que toca alguna. */
+  private readonly pestaniaElegida = signal<Pestania | null>(null);
+
+  /** Sin elegir, arranca en "En curso" si tiene una reserva en curso; si no, en "Próximas". */
+  protected readonly pestania = computed<Pestania>(
+    () => this.pestaniaElegida() ?? (this.enCurso().length > 0 ? 'EN_CURSO' : 'PROXIMAS'),
+  );
 
   /** Confirmacion visible: la reserva cancelada se va a Historial. */
   protected readonly aviso = signal<string | null>(null);
@@ -47,12 +52,18 @@ export class MisReservas {
     defaultValue: [] as ReservaDetallada[],
   });
 
-  protected readonly vigentes = computed(() =>
+  /** Las que siguen en juego (proximas y en curso), de la mas cercana a la mas lejana. */
+  private readonly vigentes = computed(() =>
     this.recurso
       .value()
       .filter(reservaEnJuego)
       .sort((a, b) => inicioDe(a) - inicioDe(b)),
   );
+
+  /** Ya ingreso al estacionamiento. */
+  protected readonly enCurso = computed(() => this.vigentes().filter((reserva) => reserva.estado === 'ACTIVA'));
+  /** Pendientes o confirmadas, todavia sin ingreso. */
+  protected readonly proximas = computed(() => this.vigentes().filter((reserva) => reserva.estado !== 'ACTIVA'));
 
   protected readonly pasadas = computed(() =>
     this.recurso
@@ -61,29 +72,28 @@ export class MisReservas {
       .sort((a, b) => inicioDe(b) - inicioDe(a)),
   );
 
-  /** La mas reciente que todavia puede calificar (entro y salio hace menos de 7 dias). */
-  protected readonly porCalificar = computed(() => this.pasadas().find((reserva) => reserva.calificable) ?? null);
-
   /**
    * Si el historial muestra tambien las canceladas, expiradas y ausentes. Vive
    * aca y no en la pestaña porque cambia el contador de "Historial".
    */
   protected readonly mostrarSinUsar = signal(false);
 
-  protected readonly cantidadVigentes = computed(() => this.vigentes().length);
-  protected readonly cantidadHistorial = computed(() =>
-    this.mostrarSinUsar()
+  /** El contador de cada pestaña. */
+  protected readonly cantidades = computed<Record<Pestania, number>>(() => ({
+    PROXIMAS: this.proximas().length,
+    EN_CURSO: this.enCurso().length,
+    HISTORIAL: this.mostrarSinUsar()
       ? this.pasadas().length
       : this.pasadas().filter((reserva) => !reservaSinUsar(reserva)).length,
-  );
+  }));
 
   protected cambiarPestania(pestania: Pestania): void {
-    this.pestania.set(pestania);
+    this.pestaniaElegida.set(pestania);
     // Los avisos son de la pestaña anterior: al cambiar dejan de tener sentido.
     this.aviso.set(null);
   }
 
-  /** La reserva pasa a CANCELADA: sale de Vigentes y aparece en Historial. */
+  /** La reserva pasa a CANCELADA: sale de Próximas y aparece en Historial. */
   protected alCancelar(reserva: ReservaDetallada): void {
     this.aviso.set(`Cancelamos tu reserva en ${reserva.estacionamiento.nombre}.`);
     this.recurso.reload();

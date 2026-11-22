@@ -70,3 +70,42 @@
   font-size: 13px;
   color: var(--color-ocupada);
 }
+
+/* El boton que abre el modal, en el pie de la tarjeta. */
+.boton-cancelar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding-inline: 0.75rem;
+  border-radius: var(--radius-boton);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-ocupada);
+  transition: background-color 160ms var(--ease-suave);
+}
+
+.boton-cancelar:hover {
+  background: color-mix(in oklab, var(--color-ocupada) 8%, transparent);
+}
+
+.boton-cancelar:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* Rueda de espera mientras viaja la cancelacion. */
+.girando {
+  width: 0.875rem;
+  height: 0.875rem;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 999px;
+  animation: girar 1s linear infinite;
+}
+
+@keyframes girar {
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -45,6 +45,11 @@ export function reservaSinUsar(reserva: Pick<Reserva, 'estado'>): boolean {
   return reserva.estado === 'CANCELADA' || reserva.estado === 'NO_SHOW';
 }
 
+/** La reserva termina un dia distinto del que empieza. */
+export function cruzaMedianoche(reserva: Pick<Reserva, 'fecha' | 'fechaHasta'>): boolean {
+  return reserva.fechaHasta !== reserva.fecha;
+}
+
 /**
  * Texto del estado, distinguiendo quien cancelo: el propietario tiene que
  * saber si fue el conductor, el estacionamiento o el sistema (Expirada).

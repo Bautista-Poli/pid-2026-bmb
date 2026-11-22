@@ -33,17 +33,8 @@
     <app-precio-reserva [reserva]="r" />
 
     <div class="acciones">
-      @if (conQr()) {
-        <app-ver-qr [reserva]="r" />
-      }
-      @if (cancelable()) {
-        <button type="button" class="boton-cancelar" [disabled]="cancelando()" (click)="cancelar.emit(r)">
-          @if (cancelando()) {
-            <span class="girando" aria-hidden="true"></span>
-          }
-          Cancelar
-        </button>
-      }
+      <app-ver-qr [reserva]="r" />
+      <app-cancelar-reserva [reserva]="r" (cancelada)="cancelada.emit($event)" />
     </div>
   </footer>
 </article>

@@ -57,7 +57,7 @@
                 </p>
               }
 
-              <!-- Calificar despues de usarla (o lo que ya califico) -->
+              <!-- La nota que ya le puso o, si todavia puede calificarla, el recordatorio -->
               @if (nota(reserva); as puesta) {
                 <p class="num-tabular calificada">
                   <svg class="calificada__estrella" width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -66,10 +66,13 @@
                   Calificaste {{ puesta }}
                 </p>
               } @else if (reserva.calificable) {
-                <a class="enlace-calificar" [routerLink]="['/conductor/calificar', reserva.id]">
-                  <ui-icono nombre="estrella" [tamano]="16" />
-                  Calificar
-                </a>
+                <p class="por-calificar">
+                  <span>¿Cómo estuvo? Todavía no calificaste esta estadía.</span>
+                  <a class="enlace-calificar" [routerLink]="['/conductor/calificar', reserva.id]">
+                    <ui-icono nombre="estrella" [tamano]="16" />
+                    Calificar
+                  </a>
+                </p>
               }
             </li>
           }

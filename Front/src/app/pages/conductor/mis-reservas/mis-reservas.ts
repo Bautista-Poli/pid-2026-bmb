@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { HistorialReservas } from './historial-reservas/historial-reservas';
-import { InvitacionCalificar } from './invitacion-calificar/invitacion-calificar';
 import { Pestania, PestaniasReservas } from './menu-pestanias/pestanias-reservas';
 import { ReservasEnCurso } from './reservas-en-curso/reservas-en-curso';
 import { ReservasProximas } from './reservas-proximas/reservas-proximas';
@@ -22,7 +21,6 @@ import { ReservaService } from '@app/services/reserva.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     PestaniasReservas,
-    InvitacionCalificar,
     ReservasProximas,
     ReservasEnCurso,
     HistorialReservas,

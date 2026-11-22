@@ -8,11 +8,11 @@ import {
   OnInit,
   signal,
 } from '@angular/core';
+import { EstadoReserva } from '@app/components/reserva';
 import { Icono } from '@app/components/ui';
 import { direccionCorta, ReservaDetallada } from '@app/models';
 import { aInstante, desdeFechaISO } from '@app/utils/fecha.util';
 import { AvisoReasignacion } from '../../partes-tarjeta/aviso-reasignacion';
-import { EstadoReserva } from '../../partes-tarjeta/estado-reserva';
 import { partesDeFecha } from '../../partes-tarjeta/fecha-reserva';
 import { ComoLlegar } from '../partes-tarjeta/como-llegar';
 import { PrecioReserva } from '../partes-tarjeta/precio-reserva';

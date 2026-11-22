@@ -38,6 +38,14 @@ export function esExpirada(reserva: Pick<Reserva, 'estado' | 'canceladaPor'>): b
 }
 
 /**
+ * Reservas que no llegaron a usarse (canceladas, expiradas y ausentes): no
+ * ocuparon la cochera ni se cobran.
+ */
+export function reservaSinUsar(reserva: Pick<Reserva, 'estado'>): boolean {
+  return reserva.estado === 'CANCELADA' || reserva.estado === 'NO_SHOW';
+}
+
+/**
  * Texto del estado, distinguiendo quien cancelo: el propietario tiene que
  * saber si fue el conductor, el estacionamiento o el sistema (Expirada).
  * `vista` es quien mira: al conductor no se le dice "por el conductor".

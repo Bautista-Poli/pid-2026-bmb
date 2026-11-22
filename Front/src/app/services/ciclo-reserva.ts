@@ -1,7 +1,5 @@
-import { Observable } from 'rxjs';
-import { esReservaActiva, Reserva, ReservaDetallada } from '@app/models';
+import { esReservaActiva, Reserva } from '@app/models';
 import { aInstante } from '@app/utils/fecha.util';
-import { ReservaService } from './reserva.service';
 
 /**
  * Misma tolerancia que el backend (TOLERANCIA_NO_SHOW_MS): sin ingreso a los
@@ -51,27 +49,4 @@ export function reservaEnJuego(reserva: Reserva): boolean {
   const ahora = Date.now();
   if (!esReservaActiva(reserva) || finDe(reserva) <= ahora) return false;
   return reserva.estado !== 'CONFIRMADA' || ahora <= limiteIngreso(reserva);
-}
-
-/**
- * El paso siguiente del ciclo de una reserva, con el aviso que se le muestra
- * al propietario cuando sale bien. Lo comparten el panel y "Reservas
- * recibidas", que ofrecen el mismo boton (Confirmar).
- */
-interface PasoReserva {
-  llamada: Observable<Reserva>;
-  aviso: string;
-}
-
-/** Ejecuta el siguiente paso del ciclo de la reserva (hoy, confirmar). */
-export function avanzarReserva(
-  servicio: ReservaService,
-  reserva: ReservaDetallada,
-): PasoReserva | null {
-  if (!puedeAvanzar(reserva)) return null;
-
-  return {
-    llamada: servicio.confirmar(reserva.id),
-    aviso: `Confirmaste la reserva de ${reserva.vehiculo.patente}.`,
-  };
 }

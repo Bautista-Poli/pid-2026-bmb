@@ -1,9 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { EstadoReserva } from '@app/components/reserva';
 import { Icono } from '@app/components/ui';
 import { direccionCorta, ReservaDetallada } from '@app/models';
 import { reservaEnJuego } from '@app/services/ciclo-reserva';
 import { AvisoReasignacion } from '../../partes-tarjeta/aviso-reasignacion';
-import { EstadoReserva } from '../../partes-tarjeta/estado-reserva';
 import { FechaReserva } from '../../partes-tarjeta/fecha-reserva';
 import { ComoLlegar } from '../partes-tarjeta/como-llegar';
 import { PrecioReserva } from '../partes-tarjeta/precio-reserva';

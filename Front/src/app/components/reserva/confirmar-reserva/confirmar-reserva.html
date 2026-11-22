@@ -1,0 +1,15 @@
+<!-- Boton "Confirmar" de una reserva pendiente. Logica en confirmar-reserva.ts. -->
+@if (visible()) {
+  <button
+    type="button"
+    class="confirmar"
+    [class]="'confirmar--' + variante()"
+    [disabled]="confirmando()"
+    (click)="confirmar()"
+  >
+    @if (confirmando()) {
+      <span class="spinner" aria-hidden="true"></span>
+    }
+    Confirmar
+  </button>
+}

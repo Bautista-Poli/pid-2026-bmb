@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Reserva } from '@app/models';
 import {
   avanzaConCodigo,
-  avanzarReserva,
   puedeAvanzar,
   puedeMarcarAusente,
   reservaEnJuego,
@@ -95,25 +94,6 @@ describe('pasos del propietario', () => {
     expect(avanzaConCodigo({ ...porHora, estado: 'ACTIVA' })).toBe(true);
     expect(avanzaConCodigo({ ...porHora, estado: 'PENDIENTE' })).toBe(false);
     expect(avanzaConCodigo({ ...porHora, estado: 'NO_SHOW' })).toBe(false);
-  });
-
-  it('avanzarReserva confirma una pendiente', () => {
-    const confirmar = vi.fn();
-    const paso = avanzarReserva({ confirmar } as never, {
-      ...porHora,
-      id: 7,
-      estado: 'PENDIENTE',
-      vehiculo: { patente: 'AB 123 CD' },
-    } as never);
-    expect(confirmar).toHaveBeenCalledWith(7);
-    expect(paso?.aviso).toContain('AB 123 CD');
-  });
-
-  it('avanzarReserva no ofrece ingreso ni egreso', () => {
-    const servicio = { confirmar: vi.fn() } as never;
-    const conVehiculo = { ...porHora, vehiculo: { patente: 'AB 123 CD' } };
-    expect(avanzarReserva(servicio, conVehiculo as never)).toBeNull();
-    expect(avanzarReserva(servicio, { ...conVehiculo, estado: 'ACTIVA' } as never)).toBeNull();
   });
 });
 

@@ -113,18 +113,6 @@
   box-shadow: 0 10px 30px rgb(15 23 42 / 0.1), 0 4px 8px rgb(15 23 42 / 0.04);
 }
 
-.confirmar-texto {
-  font-size: 13.5px;
-  line-height: 1.625;
-  color: var(--color-grafito);
-}
-
-.confirmar-botones {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-}
-
 /* sm: 640px o más */
 @media (width >= 40rem) {
   .encabezado {

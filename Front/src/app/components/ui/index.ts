@@ -12,3 +12,4 @@ export * from './logo/logo';
 export * from './miniatura/miniatura';
 export * from './modal/modal';
 export * from './ver-password/ver-password';
+export * from './confirmar/confirmar';

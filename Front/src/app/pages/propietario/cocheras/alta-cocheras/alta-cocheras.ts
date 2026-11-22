@@ -13,7 +13,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Boton, Icono, Modal } from '@app/components/ui';
 import { ETIQUETA_TIPO_VEHICULO, ICONO_TIPO_VEHICULO, Id, TIPOS_VEHICULO, TipoVehiculo } from '@app/models';
 import { CocheraService } from '@app/services/propietario/cochera.service';
-import { Planta, SIN_PLANTA } from '../constantes';
+import { Planta, SIN_PLANTA, nombresDePlantas, prefijoDePlanta, ultimoNumero } from '../planta.interface';
 
 /** Plantas comunes; al elegir una se sugiere tambien el prefijo. */
 const SUGERENCIAS_PLANTA = [
@@ -87,15 +87,9 @@ export class AltaCocheras {
     });
   });
 
-  private readonly nombresPlantas = computed(() =>
-    this.plantas()
-      .map((p) => p.nombre)
-      .filter((nombre) => nombre !== SIN_PLANTA),
-  );
-
   /** Plantas para los chips del alta: las cargadas primero, despues las sugeridas. */
   protected readonly opcionesPlanta = computed(() => {
-    const cargadas = this.nombresPlantas().map((detalle) => ({
+    const cargadas = nombresDePlantas(this.plantas()).map((detalle) => ({
       detalle,
       prefijo: this.prefijoDePlanta(detalle),
     }));
@@ -239,14 +233,11 @@ export class AltaCocheras {
     });
   }
 
-  /** Prefijo que ya usa una planta ("PB" de "PB-7"), o uno sugerido por su nombre. */
-  private prefijoDePlanta(planta: string): string {
-    const cochera = this.plantas()
-      .find((p) => p.nombre === planta)
-      ?.cocheras.find((c) => /^.+-\d+$/.test(c.identificador));
-    const deCochera = cochera?.identificador.replace(/-\d+$/, '');
-    if (deCochera) return deCochera;
-    const sugerida = SUGERENCIAS_PLANTA.find((s) => s.detalle.toLowerCase() === planta.toLowerCase());
+  /** Prefijo que ya usa una planta, o uno sugerido por su nombre. */
+  private prefijoDePlanta(nombre: string): string {
+    const usado = prefijoDePlanta(this.plantas().find((p) => p.nombre === nombre));
+    if (usado) return usado;
+    const sugerida = SUGERENCIAS_PLANTA.find((s) => s.detalle.toLowerCase() === nombre.toLowerCase());
     return sugerida?.prefijo ?? '';
   }
 
@@ -254,26 +245,16 @@ export class AltaCocheras {
     const { cantidad, prefijo } = this.lotes.at(indice).getRawValue();
     const base = prefijo.trim().toUpperCase();
     if (!base || !Number.isInteger(cantidad) || cantidad < 1) return null;
-    const desde = this.ultimoNumero(base, indice) + 1;
+    const desde = ultimoNumero(this.plantas(), base) + this.nuevasAntes(base, indice) + 1;
     return { prefijo: base, desde, hasta: desde + cantidad - 1 };
   }
 
-  /**
-   * Ultimo numero usado con ese prefijo, entre las cocheras cargadas y los lotes
-   * anteriores del formulario que comparten prefijo.
-   */
-  private ultimoNumero(prefijo: string, hastaLote: number): number {
-    const patron = new RegExp(`^${prefijo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-(\\d+)$`, 'i');
-    const numeros = this.plantas()
-      .flatMap((p) => p.cocheras)
-      .map((c) => Number(patron.exec(c.identificador)?.[1] ?? 0));
-
-    const anteriores = this.lotes
+  /** Cocheras que suman los lotes anteriores del formulario con el mismo prefijo. */
+  private nuevasAntes(prefijo: string, hastaLote: number): number {
+    return this.lotes
       .getRawValue()
       .slice(0, hastaLote)
       .filter((lote) => lote.prefijo.trim().toUpperCase() === prefijo)
       .reduce((suma, lote) => suma + (Number.isInteger(lote.cantidad) ? lote.cantidad : 0), 0);
-
-    return Math.max(0, ...numeros) + anteriores;
   }
 }

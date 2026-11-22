@@ -2,14 +2,17 @@ import { DatePipe } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   effect,
   inject,
   input,
   output,
+  signal,
   untracked,
 } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Boton, Etiqueta, Icono, TonoEtiqueta } from '@app/components/ui';
+import { Observable } from 'rxjs';
+import { Boton, Confirmar, Etiqueta, Icono, TonoEtiqueta } from '@app/components/ui';
 import {
   Cochera,
   ETIQUETA_ESTADO_COCHERA,
@@ -20,8 +23,16 @@ import {
   ReservaDetallada,
   TIPOS_VEHICULO,
   TipoVehiculo,
+  cocheraActiva,
 } from '@app/models';
-import { desdeFechaISO } from '@app/utils/fecha.util';
+import { reservaEnJuego } from '@app/services/ciclo-reserva';
+import { CocheraService } from '@app/services/propietario/cochera.service';
+import { aInstante, desdeFechaISO } from '@app/utils/fecha.util';
+import { BloqueoCochera } from '../bloqueo-cochera/bloqueo-cochera';
+import { CambioCocheras } from '../planta.interface';
+
+/** Cuantas reservas por delante muestra la ficha. */
+const MAX_PROXIMAS = 3;
 
 const TONO_ESTADO: Record<EstadoCochera, TonoEtiqueta> = {
   LIBRE: 'exito',
@@ -35,32 +46,50 @@ const TONO_ESTADO: Record<EstadoCochera, TonoEtiqueta> = {
  * planta, tipo de vehiculo, techo y sus proximas reservas. Si esta dada de baja,
  * solo ofrece reactivarla o eliminarla.
  *
- * Los cambios se guardan desde la pantalla, que recibe `guardar` con lo
- * editado; al volver la cochera actualizada, la ficha se recarga sola.
+ * Se arregla sola: guarda los cambios, da de baja, reactiva, elimina, bloquea
+ * y desbloquea (con sus confirmaciones y su error). A quien la usa solo le
+ * avisa que algo cambio, para que recargue, y que se quiere cerrar:
+ *
+ *   <app-ficha-cochera [cochera]="cochera" (cambiada)="alCambiar($event)" (cerrar)="cerrarPanel()" />
  */
 @Component({
   selector: 'app-ficha-cochera',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, ReactiveFormsModule, Boton, Etiqueta, Icono],
+  imports: [DatePipe, ReactiveFormsModule, BloqueoCochera, Boton, Confirmar, Etiqueta, Icono],
   templateUrl: './ficha-cochera.html',
   styleUrls: ['../compartido.css', './ficha-cochera.css'],
   host: { style: 'display: contents' },
 })
 export class FichaCochera {
   private readonly fb = inject(FormBuilder);
+  private readonly cocheras = inject(CocheraService);
 
   readonly cochera = input.required<Cochera>();
-  /** Las proximas reservas vigentes de la cochera. */
-  readonly proximas = input<ReservaDetallada[]>([]);
-  readonly enviando = input(false);
+  /** Reservas del estacionamiento: de aca salen las proximas de esta cochera. */
+  readonly reservas = input<ReservaDetallada[]>([]);
+  /** Nombres de las plantas cargadas, para sugerirlas al escribir. */
+  readonly plantas = input<string[]>([]);
 
   readonly cerrar = output<void>();
-  readonly guardar = output<Partial<NuevaCochera>>();
-  readonly reactivar = output<void>();
-  readonly eliminar = output<void>();
-  readonly darDeBaja = output<void>();
-  readonly bloquear = output<void>();
-  readonly desbloquear = output<void>();
+  /** Ya se hizo el pedido: la pantalla recarga las cocheras y muestra el aviso. */
+  readonly cambiada = output<CambioCocheras>();
+
+  protected readonly enviando = signal(false);
+  protected readonly error = signal<string | null>(null);
+  /** Accion que espera confirmacion (abre su modal), o null. */
+  protected readonly confirmando = signal<'baja' | 'eliminar' | null>(null);
+  /** Si esta abierto el modal de bloqueo. */
+  protected readonly bloqueando = signal(false);
+
+  protected readonly activa = computed(() => cocheraActiva(this.cochera()));
+
+  /** Las proximas reservas vigentes de la cochera, de la mas cercana a la mas lejana. */
+  protected readonly proximas = computed(() =>
+    this.reservas()
+      .filter((r) => r.cocheraId === this.cochera().id && reservaEnJuego(r))
+      .sort((a, b) => aInstante(a.fecha, a.horaDesde).localeCompare(aInstante(b.fecha, b.horaDesde)))
+      .slice(0, MAX_PROXIMAS),
+  );
 
   protected readonly tipos = TIPOS_VEHICULO;
   protected readonly iconoTipo = ICONO_TIPO_VEHICULO;
@@ -119,6 +148,7 @@ export class FichaCochera {
   }
 
   private cargarFormulario(cochera: Cochera): void {
+    if (cochera.id !== this.cargadaId) this.error.set(null);
     this.cargadaId = cochera.id;
     this.formulario.reset({
       identificador: cochera.identificador,
@@ -128,18 +158,87 @@ export class FichaCochera {
     });
   }
 
-  /** Avisa los cambios a la pantalla, que los guarda. */
-  protected enviar(): void {
+  /** Guarda lo editado; si cambio de planta, el plano pasa a mostrar esa planta. */
+  protected guardar(): void {
     if (this.formulario.invalid) {
       this.formulario.markAllAsTouched();
       return;
     }
     const valores = this.formulario.getRawValue();
-    this.guardar.emit({
+    const cambios: Partial<NuevaCochera> = {
       identificador: valores.identificador.trim().toUpperCase(),
       sector: valores.sector.trim(),
       tipoVehiculo: valores.tipo,
       cubierta: valores.cubierta,
+    };
+    this.ejecutar(this.cocheras.actualizar(this.cochera(), cambios), {
+      aviso: `Guardamos los cambios de la cochera ${cambios.identificador}.`,
+      planta: cambios.sector || undefined,
+    });
+  }
+
+  protected reactivar(): void {
+    const cochera = this.cochera();
+    this.ejecutar(this.cocheras.reactivar(cochera), {
+      aviso: `La cochera ${cochera.identificador} volvió a estar activa.`,
+    });
+  }
+
+  protected desbloquear(): void {
+    const cochera = this.cochera();
+    this.ejecutar(this.cocheras.desbloquear(cochera), {
+      aviso: `La cochera ${cochera.identificador} quedó desbloqueada.`,
+    });
+  }
+
+  /** Ya confirmada: la da de baja (cancela sus reservas vigentes) y cierra la ficha. */
+  protected darDeBaja(): void {
+    const cochera = this.cochera();
+    this.confirmando.set(null);
+    this.ejecutar(
+      this.cocheras.darDeBaja(cochera),
+      { aviso: `La cochera ${cochera.identificador} quedó dada de baja.` },
+      true,
+    );
+  }
+
+  /** Ya confirmada: la borra del todo (solo si nunca tuvo reservas) y cierra la ficha. */
+  protected eliminar(): void {
+    const cochera = this.cochera();
+    this.confirmando.set(null);
+    this.ejecutar(
+      this.cocheras.eliminar(cochera),
+      { aviso: `La cochera ${cochera.identificador} fue eliminada.` },
+      true,
+    );
+  }
+
+  /** El modal de bloqueo ya la bloqueo: avisa con su mensaje y cierra la ficha. */
+  protected alBloquear(aviso: string): void {
+    this.bloqueando.set(false);
+    this.cambiada.emit({ aviso });
+    this.cerrar.emit();
+  }
+
+  /**
+   * Corre el pedido y avisa a la pantalla. Si falla, el error queda en la
+   * ficha y se avisa igual (sin mensaje) para que el plano se ponga al dia.
+   */
+  private ejecutar(pedido: Observable<unknown>, cambio: CambioCocheras, cerrarAlTerminar = false): void {
+    this.enviando.set(true);
+    this.error.set(null);
+
+    pedido.subscribe({
+      next: () => {
+        this.enviando.set(false);
+        this.cambiada.emit(cambio);
+        if (cerrarAlTerminar) this.cerrar.emit();
+      },
+      error: (e: Error) => {
+        this.enviando.set(false);
+        this.error.set(e.message);
+        this.cambiada.emit({});
+      },
     });
   }
 

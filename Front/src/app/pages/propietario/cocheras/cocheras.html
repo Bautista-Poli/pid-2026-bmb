@@ -52,15 +52,6 @@
       </p>
     }
 
-    @if (error(); as mensaje) {
-      <p
-        class="aviso-error"
-        role="alert"
-      >
-        {{ mensaje }}
-      </p>
-    }
-
     @if (!recursoEstacionamientos.isLoading() && recursoEstacionamientos.value().length === 0) {
       <ui-estado-vacio
         titulo="Todavía no cargaste estacionamientos"
@@ -90,12 +81,10 @@
       >
         <app-plano-cocheras
           [plantas]="plantas()"
-          [plantaActiva]="plantaActiva()"
+          [(planta)]="planta"
           [seleccion]="seleccion()"
-          (plantaElegida)="verPlanta($event)"
-          (tocada)="tocar($event.cochera, $event.evento)"
+          (seleccionChange)="elegir($event)"
           (nuevaPlanta)="abrirAlta('')"
-          (todaLaPlanta)="elegirTodaLaPlanta()"
         />
 
         <!-- Panel de la seleccion -->
@@ -113,23 +102,17 @@
             @if (unica(); as cochera) {
               <app-ficha-cochera
                 [cochera]="cochera"
-                [proximas]="proximas()"
-                [enviando]="enviando()"
+                [reservas]="recursoReservas.value()"
+                [plantas]="nombresPlantas()"
+                (cambiada)="alCambiar($event)"
                 (cerrar)="cerrarPanel()"
-                (guardar)="guardar(cochera, $event)"
-                (reactivar)="reactivar(cochera)"
-                (eliminar)="pedirEliminacion(cochera)"
-                (darDeBaja)="pedirBaja()"
-                (bloquear)="bloqueando.set(cochera)"
-                (desbloquear)="desbloquear(cochera)"
               />
             } @else {
               <app-edicion-masiva
                 [elegidas]="elegidas()"
-                [enviando]="enviando()"
+                [plantas]="nombresPlantas()"
+                (cambiada)="alCambiar($event)"
                 (cerrar)="cerrarPanel()"
-                (aplicar)="aplicarMasivo($event)"
-                (darDeBaja)="pedirBaja()"
               />
             }
           </aside>
@@ -139,25 +122,6 @@
   </div>
 </div>
 
-<datalist id="plantas-cargadas">
-  @for (nombre of nombresPlantas(); track nombre) {
-    <option [value]="nombre"></option>
-  }
-</datalist>
-
-<!-- Confirmacion (baja / eliminacion) -->
-<ui-modal
-  [titulo]="confirmacion()?.titulo ?? ''"
-  [abierto]="confirmacion() !== null"
-  (cerrado)="confirmacion.set(null)"
->
-  <p class="confirmar-texto">{{ confirmacion()?.texto }}</p>
-  <div class="confirmar-botones">
-    <ui-boton (presionado)="confirmacion.set(null)">Cancelar</ui-boton>
-    <ui-boton variante="peligro" (presionado)="confirmar()">{{ confirmacion()?.boton }}</ui-boton>
-  </div>
-</ui-modal>
-
 <app-alta-cocheras
   [abierto]="agregando()"
   [estacionamientoId]="idActivo()"
@@ -165,10 +129,4 @@
   [planta]="plantaAlta()"
   (cerrado)="agregando.set(false)"
   (creadas)="alCrear($event)"
-/>
-
-<app-bloqueo-cochera
-  [cochera]="bloqueando()"
-  (cerrado)="bloqueando.set(null)"
-  (bloqueada)="alBloquear($event)"
 />

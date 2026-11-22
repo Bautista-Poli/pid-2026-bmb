@@ -7,6 +7,7 @@
 import { withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
 import { ESTADOS_RESERVA } from '../utils/roles.js';
+import { reservaDelConductor, reservaDelPropietario } from './pertenencia.js';
 
 export const PLAZO_CALIFICACION_DIAS = 7;
 const PLAZO_MS = PLAZO_CALIFICACION_DIAS * 86_400_000;
@@ -23,19 +24,7 @@ const puntajeGeneral = (d) =>
 /** El conductor califica el estacionamiento de una reserva usada (una vez, 7 dias). */
 export async function crear(idReserva, idConductor, datos) {
   return withTransaction(async (client) => {
-    const { rows } = await client.query(
-      `SELECT r.id_reserva, r.id_conductor, r.estado::text AS estado, r.ingreso_real, r.egreso_real,
-              c.id_estacionamiento, e.id_propietario
-         FROM reserva r
-         JOIN cochera c         ON c.id_cochera = r.id_cochera
-         JOIN estacionamiento e ON e.id_estacionamiento = c.id_estacionamiento
-        WHERE r.id_reserva = $1
-        FOR UPDATE OF r`,
-      [idReserva],
-    );
-    const reserva = rows[0];
-    if (!reserva) throw ApiError.notFound('La reserva no existe');
-    if (reserva.id_conductor !== idConductor) throw ApiError.forbidden('La reserva es de otro conductor');
+    const reserva = await reservaDelConductor(client, idReserva, idConductor);
     // Con los dos perfiles se puede reservar en el estacionamiento propio: esa
     // reserva no suma a su reputacion.
     if (reserva.id_propietario === idConductor) {
@@ -91,21 +80,7 @@ const PLAZO_VENCIDO = `El plazo para calificar es de ${PLAZO_CALIFICACION_DIAS} 
  */
 export async function crearDelPropietario(idReserva, idPropietario, datos) {
   return withTransaction(async (client) => {
-    const { rows } = await client.query(
-      `SELECT r.id_reserva, r.id_conductor, r.estado::text AS estado, r.ingreso_real, r.egreso_real, r.fin,
-              c.id_estacionamiento, e.id_propietario
-         FROM reserva r
-         JOIN cochera c         ON c.id_cochera = r.id_cochera
-         JOIN estacionamiento e ON e.id_estacionamiento = c.id_estacionamiento
-        WHERE r.id_reserva = $1
-        FOR UPDATE OF r`,
-      [idReserva],
-    );
-    const reserva = rows[0];
-    if (!reserva) throw ApiError.notFound('La reserva no existe');
-    if (reserva.id_propietario !== idPropietario) {
-      throw ApiError.forbidden('La reserva es de otro estacionamiento');
-    }
+    const reserva = await reservaDelPropietario(client, idReserva, idPropietario);
     // Con los dos perfiles se puede reservar en el estacionamiento propio: esa
     // reserva no suma a la reputacion de nadie.
     if (reserva.id_conductor === idPropietario) {

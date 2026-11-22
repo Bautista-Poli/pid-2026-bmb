@@ -5,6 +5,7 @@ import { ApiError } from '../../utils/ApiError.js';
 import { normalizarCodigo } from '../../utils/codigoAcceso.js';
 import { HORA_LOCAL } from '../../utils/horario.js';
 import { ESTADOS_RESERVA } from '../../utils/roles.js';
+import { reservaDelPropietario } from '../pertenencia.js';
 import { obtenerDetalle } from './reserva-detalle.js';
 import {
   MARGEN_INGRESO_MS,
@@ -14,31 +15,10 @@ import {
   limiteIngreso,
 } from './reserva-estados.js';
 
-/** Bloquea la reserva y verifica que la cochera sea de un estacionamiento propio. */
-async function bloquearReservaDelPropietario(client, idReserva, idPropietario) {
-  const { rows } = await client.query(
-    `SELECT r.id_reserva, r.estado, r.inicio, r.fin, r.ingreso_real, r.egreso_real,
-            r.id_cochera, e.id_propietario
-       FROM reserva r
-       JOIN cochera c         ON c.id_cochera = r.id_cochera
-       JOIN estacionamiento e ON e.id_estacionamiento = c.id_estacionamiento
-      WHERE r.id_reserva = $1
-      FOR UPDATE OF r`,
-    [idReserva],
-  );
-
-  const reserva = rows[0];
-  if (!reserva) throw ApiError.notFound('La reserva no existe');
-  if (reserva.id_propietario !== idPropietario) {
-    throw ApiError.forbidden('La reserva es de otro estacionamiento');
-  }
-  return reserva;
-}
-
 /** El propietario acepta una reserva pendiente. */
 export async function confirmar(idReserva, idPropietario) {
   return withTransaction(async (client) => {
-    const reserva = await bloquearReservaDelPropietario(client, idReserva, idPropietario);
+    const reserva = await reservaDelPropietario(client, idReserva, idPropietario);
 
     if (reserva.fin <= new Date()) throw ApiError.conflict('La reserva ya termino');
     // Sin confirmar al empezar ya es Expirada, aunque la revision de vencimientos no la haya cancelado.
@@ -61,7 +41,7 @@ export async function confirmar(idReserva, idPropietario) {
  */
 export async function marcarAusente(idReserva, idPropietario) {
   return withTransaction(async (client) => {
-    const reserva = await bloquearReservaDelPropietario(client, idReserva, idPropietario);
+    const reserva = await reservaDelPropietario(client, idReserva, idPropietario);
 
     if (reserva.estado !== ESTADOS_RESERVA.CONFIRMADA) {
       throw ApiError.conflict('Solo se marca ausente una reserva confirmada sin ingreso');

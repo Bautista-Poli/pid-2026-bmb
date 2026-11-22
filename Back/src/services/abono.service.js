@@ -5,7 +5,8 @@ import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
 import { HOY_LOCAL_SQL, partesLocales } from '../utils/horario.js';
 import { motivoFueraDeTurno, TURNOS } from '../utils/turnos.js';
-import { aceptaReservas, asegurarPropiedad } from './estacionamiento/estacionamiento.service.js';
+import { aceptaReservas } from './estacionamiento/estacionamiento.service.js';
+import { estacionamientoDelPropietario } from './pertenencia.js';
 
 const VIOLACION_UNIQUE = '23505';
 
@@ -39,7 +40,7 @@ async function asegurarQueAbreEnElTurno(idEstacionamiento, turno) {
 
 /** El propietario ofrece un plan de abono (uno activo por turno y estacionamiento). */
 export async function crearPlan(idEstacionamiento, idPropietario, { turno, cupos, precio }) {
-  await asegurarPropiedad(idEstacionamiento, idPropietario);
+  await estacionamientoDelPropietario(idEstacionamiento, idPropietario);
   await asegurarQueAbreEnElTurno(idEstacionamiento, turno);
 
   try {
@@ -60,7 +61,7 @@ export async function crearPlan(idEstacionamiento, idPropietario, { turno, cupos
 
 /** Cambia usos y/o precio. Los abonos ya vendidos no cambian: copiaron el plan al comprar. */
 export async function actualizarPlan(idEstacionamiento, idPropietario, idPlan, cambios) {
-  await asegurarPropiedad(idEstacionamiento, idPropietario);
+  await estacionamientoDelPropietario(idEstacionamiento, idPropietario);
 
   const sets = [];
   const valores = [];
@@ -84,7 +85,7 @@ export async function actualizarPlan(idEstacionamiento, idPropietario, idPlan, c
 
 /** Baja logica: los abonos vendidos lo referencian. Libera el turno para un plan nuevo. */
 export async function darDeBajaPlan(idEstacionamiento, idPropietario, idPlan) {
-  await asegurarPropiedad(idEstacionamiento, idPropietario);
+  await estacionamientoDelPropietario(idEstacionamiento, idPropietario);
 
   const { rowCount } = await query(
     `UPDATE plan_abono SET activo = FALSE
@@ -169,7 +170,7 @@ export async function listarPorConductor(idConductor) {
 
 /** Los abonos vendidos de un estacionamiento (vista del propietario). */
 export async function listarPorEstacionamiento(idEstacionamiento, idPropietario) {
-  await asegurarPropiedad(idEstacionamiento, idPropietario);
+  await estacionamientoDelPropietario(idEstacionamiento, idPropietario);
   const { rows } = await query(
     `${SELECT_ABONO} WHERE a.id_estacionamiento = $1 ORDER BY a.created_at DESC`,
     [idEstacionamiento],

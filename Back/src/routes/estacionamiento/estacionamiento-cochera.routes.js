@@ -10,7 +10,7 @@ import {
   validarBloqueoCochera,
   validarCochera,
   validarLoteCocheras,
-} from '../../validators/estacionamiento.validator.js';
+} from '../../validators/estacionamiento-cochera.validator.js';
 
 // mergeParams: para leer el :id del estacionamiento, que esta en la ruta padre.
 const router = Router({ mergeParams: true });

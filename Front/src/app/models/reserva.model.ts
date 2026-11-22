@@ -1,4 +1,4 @@
-// Modelos de reservas: estados, modalidades, el borrador del flujo de reserva y las
+// Modelos de reservas: estados, modalidades y las
 // etiquetas que se muestran segun quien mira.
 import { TurnoAbono } from './abono.model';
 import { FechaHoraISO, FechaISO, HoraHHmm, Id } from './api.model';
@@ -151,28 +151,6 @@ export interface FranjaDisponible {
   cocherasLibres: number;
   causa: CausaNoDisponible | null;
 }
-
-/** Estado del formulario de reserva mientras el usuario lo completa. */
-export interface BorradorReserva {
-  estacionamientoId: Id | null;
-  vehiculoId: Id | null;
-  modalidad: ModalidadReserva;
-  fecha: FechaISO | null;
-  horaDesde: HoraHHmm | null;
-  horaHasta: HoraHHmm | null;
-  /** Horas a reservar. 12 y 24 pueden ser estadia y jornada (ver `modalidadPorHoras`). */
-  horas: number;
-}
-
-export const BORRADOR_VACIO: BorradorReserva = {
-  estacionamientoId: null,
-  vehiculoId: null,
-  modalidad: 'HORA',
-  fecha: null,
-  horaDesde: null,
-  horaHasta: null,
-  horas: 2,
-};
 
 /** Estados sobre los que el conductor todavia puede accionar. */
 const ESTADOS_ACTIVOS: EstadoReserva[] = ['PENDIENTE', 'CONFIRMADA', 'ACTIVA'];

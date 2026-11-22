@@ -6,7 +6,7 @@ import {
   inject,
   input,
   signal,
-  untracked,
+  viewChild,
 } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
@@ -15,15 +15,17 @@ import { ReservaConfirmada } from './reserva-confirmada/reserva-confirmada';
 import { ResumenReserva } from './resumen-reserva/resumen-reserva';
 import { SelectorDuracion } from './selector-duracion/selector-duracion';
 import { SelectorFecha } from './selector-fecha/selector-fecha';
-import { SelectorVehiculo } from './selector-vehiculo/selector-vehiculo';
 import { Boton, Cargando, EstadoVacio, Tarjeta } from '@app/components/ui';
-import { ETIQUETA_MODALIDAD, FranjaDisponible, Id, Reserva, Vehiculo } from '@app/models';
+import { SelectorVehiculo } from '@app/components/vehiculo';
+import { Duracion, FechaISO, Id, Reserva, Vehiculo } from '@app/models';
 import { EstacionamientoService } from '@app/services/estacionamiento.service';
 import { ReservaService } from '@app/services/reserva.service';
-import { VehiculoService } from '@app/services/conductor/vehiculo.service';
-import { calcularPrecio, horasReservables, modalidadPorHoras, resumenTarifas } from '@app/utils/tarifa.util';
+import { resumenTarifas } from '@app/utils/tarifa.util';
 import { formatearDistancia, resumenHorario } from '@app/utils/disponibilidad.util';
 import { diaSemanaDe, hoyISO } from '@app/utils/fecha.util';
+
+/** Con lo que arranca una reserva: 2 horas, cobradas por hora (selector-duracion la ajusta a las tarifas). */
+const DURACION_INICIAL: Duracion = { horas: 2, modalidad: 'HORA' };
 
 /**
  * Pantalla `/conductor/reservar/:estacionamientoId` · rol CONDUCTOR
@@ -32,8 +34,9 @@ import { diaSemanaDe, hoyISO } from '@app/utils/fecha.util';
  * hora de ingreso en una sola vista, con el resumen y la confirmacion al pie
  * (columna derecha sticky en desktop).
  *
- * La modalidad sale de las horas: 12 h se cobra como estadia y 24 h como
- * jornada si el estacionamiento tiene esas tarifas; el resto, por hora.
+ * Cada parte se arregla sola y deja un solo valor: el vehiculo, la fecha, la
+ * duracion (horas y modalidad) y el horario. La pantalla los junta, muestra el
+ * resumen y crea la reserva.
  */
 @Component({
   selector: 'app-reservar',
@@ -56,15 +59,25 @@ import { diaSemanaDe, hoyISO } from '@app/utils/fecha.util';
 })
 export class Reservar {
   private readonly estacionamientos = inject(EstacionamientoService);
-  private readonly vehiculos = inject(VehiculoService);
   private readonly reservas = inject(ReservaService);
 
   /** Llega del parametro de ruta `:estacionamientoId`. */
   readonly estacionamientoId = input.required<Id>();
 
-  protected readonly borrador = this.reservas.borrador;
-  protected readonly horas = this.reservas.duracionHoras;
-  protected readonly completo = this.reservas.borradorCompleto;
+  /* ------------------- Lo que elige el conductor en cada parte ------------------ */
+
+  /** Vehiculo elegido (components/vehiculo/selector-vehiculo); `null` si no cargo ninguno. */
+  protected readonly vehiculo = signal<Vehiculo | null>(null);
+  /** Dia de la reserva (selector-fecha/). */
+  protected readonly fecha = signal<FechaISO | null>(hoyISO());
+  /** Cuantas horas y con que modalidad se cobran (selector-duracion/). */
+  protected readonly duracion = signal<Duracion>(DURACION_INICIAL);
+  /** Hora de ingreso y de salida (selector-franja/); `null` si no hay ninguna libre. */
+  protected readonly rango = signal<RangoHorario | null>(null);
+
+  protected readonly completo = computed(() => Boolean(this.vehiculo() && this.fecha() && this.rango()));
+
+  /* --------------------------------- Pantalla -------------------------------- */
 
   protected readonly confirmando = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -75,60 +88,11 @@ export class Reservar {
     stream: ({ params }) => this.estacionamientos.obtener(params),
   });
 
-  protected readonly recursoVehiculos = rxResource({
-    stream: () => this.vehiculos.listarMisVehiculos(),
-    defaultValue: [] as Vehiculo[],
-  });
+  /** Para pedirle que vuelva a buscar los horarios si la reserva falla. */
+  private readonly selectorFranja = viewChild(SelectorFranja);
 
-  protected readonly vehiculoElegido = computed(
-    () => this.recursoVehiculos.value().find((v) => v.id === this.borrador().vehiculoId) ?? null,
-  );
-
-  /**
-   * Los ingresos posibles dependen del tipo de vehiculo y de cuantas horas se
-   * quieren: se piden con fecha, vehiculo y horas elegidos.
-   */
-  protected readonly recursoDisponibilidad = rxResource({
-    params: () => {
-      const { fecha, modalidad, horas } = this.borrador();
-      const tipoVehiculo = this.vehiculoElegido()?.tipo;
-      return fecha && tipoVehiculo
-        ? {
-            estacionamientoId: this.estacionamientoId(),
-            fecha,
-            tipoVehiculo,
-            modalidad,
-            horas: modalidad === 'HORA' ? horas : undefined,
-          }
-        : undefined;
-    },
-    stream: ({ params }) => this.reservas.disponibilidad(params),
-    defaultValue: [] as FranjaDisponible[],
-  });
-
-  protected readonly total = computed(() => {
-    const estacionamiento = this.recursoEstacionamiento.value();
-    return estacionamiento ? this.reservas.precioEstimado(estacionamiento.tarifas) : 0;
-  });
-
-  /** "$900 por hora", "Estadía · 12 h" o "Jornada · 24 h". */
-  protected readonly textoTarifa = computed(() => {
-    const estacionamiento = this.recursoEstacionamiento.value();
-    if (!estacionamiento) return null;
-    const { modalidad } = this.borrador();
-    const { hora } = estacionamiento.tarifas;
-    if (modalidad !== 'HORA') return ETIQUETA_MODALIDAD[modalidad];
-    return hora !== null ? `$${hora.toLocaleString('es-AR')} por hora` : null;
-  });
-
-  /** Con estadia o jornada: cuanto se ahorra frente a pagar esas horas por hora. */
-  protected readonly textoAhorro = computed(() => {
-    const estacionamiento = this.recursoEstacionamiento.value();
-    const { modalidad, horas } = this.borrador();
-    if (!estacionamiento || modalidad === 'HORA' || estacionamiento.tarifas.hora === null) return null;
-    const ahorro = calcularPrecio('HORA', estacionamiento.tarifas, horas) - this.total();
-    return ahorro > 0 ? `Ahorrás $${ahorro.toLocaleString('es-AR')} frente a pagar por hora` : null;
-  });
+  /** Despues de cargar su primer vehiculo, el conductor vuelve a esta reserva. */
+  protected readonly rutaVolver = computed(() => `/conductor/reservar/${this.estacionamientoId()}`);
 
   /**
    * Deja clara la politica de cancelacion antes de reservar: mientras esta
@@ -145,16 +109,19 @@ export class Reservar {
   /** Horario de atencion del dia elegido, para explicar por que no aparecen todas las horas. */
   protected readonly horarioAtencion = computed(() => {
     const estacionamiento = this.recursoEstacionamiento.value();
-    const fecha = this.borrador().fecha;
+    const fecha = this.fecha();
     if (!estacionamiento || !fecha || estacionamiento.horarios.length === 0) return '';
     const horario = resumenHorario(estacionamiento.horarios, diaSemanaDe(fecha));
     return horario === 'Cerrado hoy' ? 'Cerrado ese día' : `Atiende ${horario}`;
   });
 
-  /** Hay ingresos para mostrar (disponibles o sin cochera libre) en el dia y la duracion elegidos. */
-  protected readonly hayIngresos = computed(() =>
-    this.recursoDisponibilidad.value().some((f) => f.disponible || f.causa === 'SIN_COCHERA'),
-  );
+  /** Aclaracion debajo de las horas de ingreso, segun como se cobra. */
+  protected readonly notaHorario = computed(() => {
+    const { modalidad } = this.duracion();
+    if (modalidad === 'HORA') return 'Por hora tenés que entrar y salir dentro del horario de atención.';
+    const nombre = modalidad === 'ESTADIA' ? 'estadía' : 'jornada';
+    return `La ${nombre} puede seguir después del cierre: solo tenés que entrar con el estacionamiento abierto.`;
+  });
 
   /** "Av. Belgrano 1240 · 1,2 km · $ 900 por hora": direccion, distancia y resumen de tarifas. */
   protected readonly contexto = computed(() => {
@@ -167,96 +134,50 @@ export class Reservar {
   });
 
   constructor() {
-    // Cada estacionamiento arranca su propio borrador, con hoy preseleccionado.
+    // Cada estacionamiento arranca su propia reserva, con hoy preseleccionado.
+    // El vehiculo elegido se conserva.
     effect(() => {
-      const id = this.estacionamientoId();
-      this.reservas.iniciarBorrador(id);
-      this.reservas.actualizarBorrador({ fecha: hoyISO() });
+      this.estacionamientoId();
+      this.fecha.set(hoyISO());
+      this.duracion.set(DURACION_INICIAL);
+      this.rango.set(null);
       this.reservaConfirmada.set(null);
       this.error.set(null);
     });
-
-    // Al llegar los ingresos: se mantiene la hora elegida si sigue libre (con la
-    // salida de la nueva duracion); si no, queda propuesta la primera libre.
-    effect(() => {
-      const franjas = this.recursoDisponibilidad.value();
-      if (this.recursoDisponibilidad.isLoading()) return;
-      const { horaDesde, horaHasta } = untracked(this.borrador);
-      const actual = franjas.find((f) => f.disponible && f.horaDesde === horaDesde);
-      const elegida = actual ?? franjas.find((f) => f.disponible);
-      const cambios = elegida
-        ? { horaDesde: elegida.horaDesde, horaHasta: elegida.horaHasta }
-        : { horaDesde: null, horaHasta: null };
-      if (cambios.horaDesde !== horaDesde || cambios.horaHasta !== horaHasta) {
-        this.reservas.actualizarBorrador(cambios);
-      }
-    });
-
-    // El vehiculo predeterminado del conductor queda elegido de entrada.
-    effect(() => {
-      const vehiculos = this.recursoVehiculos.value();
-      if (vehiculos.length === 0 || this.borrador().vehiculoId) return;
-      const predeterminado = vehiculos.find((v) => v.predeterminado) ?? vehiculos[0];
-      this.reservas.actualizarBorrador({ vehiculoId: predeterminado.id });
-    });
-
-    // Si las horas elegidas no se pueden reservar aca (p. ej. no cobra por
-    // hora), se pasa a la primera cantidad que si; la modalidad sale de las horas.
-    effect(() => {
-      const estacionamiento = this.recursoEstacionamiento.value();
-      if (!estacionamiento) return;
-      const { horas, modalidad } = this.borrador();
-      const posibles = horasReservables(estacionamiento.tarifas);
-      if (posibles.length === 0) return;
-      const validas = posibles.includes(horas) ? horas : posibles[0];
-      const nuevaModalidad = modalidadPorHoras(validas, estacionamiento.tarifas)!;
-      if (validas !== horas || nuevaModalidad !== modalidad) {
-        this.reservas.actualizarBorrador({ horas: validas, modalidad: nuevaModalidad });
-      }
-    });
-  }
-
-  /** Cambiar de vehiculo, fecha u horas cambia los ingresos libres: se recalculan al llegar. */
-  protected elegirVehiculo(vehiculoId: Id | null): void {
-    this.reservas.actualizarBorrador({ vehiculoId });
-  }
-
-  protected elegirFecha(fecha: string | null): void {
-    this.reservas.actualizarBorrador({ fecha });
-  }
-
-  /** Cambia la duracion (y con ella la modalidad) y limpia la franja elegida. */
-  protected elegirHoras(horas: number): void {
-    const estacionamiento = this.recursoEstacionamiento.value();
-    if (!estacionamiento) return;
-    const modalidad = modalidadPorHoras(horas, estacionamiento.tarifas);
-    if (modalidad) this.reservas.actualizarBorrador({ horas, modalidad });
-  }
-
-  protected elegirRango(rango: RangoHorario): void {
-    this.reservas.actualizarBorrador(rango);
   }
 
   /** `POST /api/reservas` */
   protected confirmar(): void {
-    const payload = this.reservas.aPayload();
-    if (!payload) return;
+    const vehiculo = this.vehiculo();
+    const fecha = this.fecha();
+    const rango = this.rango();
+    if (!vehiculo || !fecha || !rango) return;
+    const { modalidad } = this.duracion();
 
     this.confirmando.set(true);
     this.error.set(null);
 
-    this.reservas.crear(payload).subscribe({
-      next: (reserva) => {
-        this.confirmando.set(false);
-        this.reservaConfirmada.set(reserva);
-        this.reservas.reiniciarBorrador();
-      },
-      error: (e: Error) => {
-        this.confirmando.set(false);
-        // Caso tipico: la ultima cochera se ocupo mientras el usuario elegia.
-        this.error.set(e.message);
-        this.recursoDisponibilidad.reload();
-      },
-    });
+    this.reservas
+      .crear({
+        estacionamientoId: this.estacionamientoId(),
+        vehiculoId: vehiculo.id,
+        modalidad,
+        fecha,
+        horaDesde: rango.horaDesde,
+        // Estadia y jornada terminan solas (12 h / 24 h despues).
+        horaHasta: modalidad === 'HORA' ? rango.horaHasta : null,
+      })
+      .subscribe({
+        next: (reserva) => {
+          this.confirmando.set(false);
+          this.reservaConfirmada.set(reserva);
+        },
+        error: (e: Error) => {
+          this.confirmando.set(false);
+          // Caso tipico: la ultima cochera se ocupo mientras el usuario elegia.
+          this.error.set(e.message);
+          this.selectorFranja()?.recargar();
+        },
+      });
   }
 }

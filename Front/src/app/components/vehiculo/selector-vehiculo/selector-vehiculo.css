@@ -114,3 +114,60 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* ------------------------- modo lista (radio por fila) ------------------------- */
+
+.opcion {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 14px 16px;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radius-control);
+  background: var(--color-papel);
+  box-shadow: var(--shadow-tarjeta);
+  transition:
+    border-color 160ms var(--ease-suave),
+    background-color 160ms var(--ease-suave),
+    box-shadow 160ms var(--ease-suave);
+}
+
+.opcion:hover {
+  border-color: var(--color-acento-borde);
+}
+
+.opcion:focus-visible {
+  outline: 2px solid var(--color-acento);
+  outline-offset: 2px;
+}
+
+/* Activa: borde y fondo tenue del acento -- se lee de un vistazo cual de las
+   filas quedo elegida, cosa que el borde solo no lograba. */
+.opcion--activa {
+  border-color: var(--color-acento);
+  background: var(--color-acento-suave);
+  box-shadow: none;
+}
+
+/* 16px con borde de 1.5px; activo se rellena con un borde de 5px del acento. */
+.radio {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--color-borde);
+  border-radius: 50%;
+  background: var(--color-papel);
+  transition:
+    border-color 160ms var(--ease-suave),
+    border-width 160ms var(--ease-suave);
+}
+
+.opcion:hover .radio {
+  border-color: var(--color-acento-borde);
+}
+
+.opcion--activa .radio {
+  border: 5px solid var(--color-acento);
+}

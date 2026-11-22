@@ -2,10 +2,10 @@ import { ChangeDetectionStrategy, Component, computed, inject, input, signal } f
 import { rxResource } from '@angular/core/rxjs-interop';
 import { Router, RouterLink } from '@angular/router';
 import { Boton, Cargando, EstadoVacio, Tarjeta } from '@app/components/ui';
+import { SelectorVehiculo } from '@app/components/vehiculo';
 import { Abono, HoraHHmm, Id, TURNOS, Vehiculo } from '@app/models';
 import { AbonoService } from '@app/services/abono.service';
 import { ReservaService } from '@app/services/reserva.service';
-import { VehiculoService } from '@app/services/conductor/vehiculo.service';
 import { hoyISO } from '@app/utils/fecha.util';
 
 const dosDigitos = (n: number) => String(n).padStart(2, '0');
@@ -19,14 +19,13 @@ const dosDigitos = (n: number) => String(n).padStart(2, '0');
 @Component({
   selector: 'app-reservar-con-abono',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Boton, Cargando, EstadoVacio, Tarjeta, RouterLink],
+  imports: [Boton, Cargando, EstadoVacio, Tarjeta, RouterLink, SelectorVehiculo],
   templateUrl: './reservar-con-abono.html',
   styleUrl: './reservar-con-abono.css',
 })
 export class ReservarConAbono {
   private readonly abonos = inject(AbonoService);
   private readonly reservas = inject(ReservaService);
-  private readonly vehiculosService = inject(VehiculoService);
   private readonly router = inject(Router);
 
   readonly abonoId = input.required<Id>();
@@ -40,21 +39,17 @@ export class ReservarConAbono {
     defaultValue: [] as Abono[],
   });
 
-  protected readonly vehiculos = rxResource({
-    stream: () => this.vehiculosService.listarMisVehiculos(),
-    defaultValue: [] as Vehiculo[],
-  });
+  /** Vehiculo elegido (components/vehiculo/selector-vehiculo); `null` si no cargo ninguno. */
+  protected readonly vehiculo = signal<Vehiculo | null>(null);
+
+  /** Despues de cargar su primer vehiculo, el conductor vuelve a esta reserva. */
+  protected readonly rutaVolver = computed(() => `/conductor/abonos/${this.abonoId()}/reservar`);
 
   protected readonly abono = computed(() =>
     this.misAbonos.hasValue()
       ? (this.misAbonos.value().find((a) => a.id === this.abonoId() && a.estado === 'VIGENTE') ?? null)
       : null,
   );
-
-  protected reintentar(): void {
-    this.misAbonos.reload();
-    this.vehiculos.reload();
-  }
 
   /** Hoy o el primer dia del abono, lo que venga despues. */
   protected minimo(abono: Abono): string {
@@ -77,7 +72,9 @@ export class ReservarConAbono {
   }
 
   /** Crea la reserva con el abono (sin pago) y muestra la confirmacion. */
-  protected confirmar(abono: Abono, vehiculoId: string, fecha: string, horaDesde: string, horaHasta: string): void {
+  protected confirmar(abono: Abono, fecha: string, horaDesde: string, horaHasta: string): void {
+    const vehiculo = this.vehiculo();
+    if (!vehiculo) return;
     if (horaHasta <= horaDesde) {
       this.error.set('La hora de salida tiene que ser posterior a la de entrada.');
       return;
@@ -85,7 +82,7 @@ export class ReservarConAbono {
     this.enviando.set(true);
     this.error.set(null);
     this.reservas
-      .crearConAbono({ abonoId: abono.id, vehiculoId, fecha, horaDesde, horaHasta })
+      .crearConAbono({ abonoId: abono.id, vehiculoId: vehiculo.id, fecha, horaDesde, horaHasta })
       .subscribe({
         next: () => void this.router.navigate(['/conductor/mis-reservas']),
         error: (e: Error) => {

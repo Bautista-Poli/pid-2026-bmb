@@ -4,6 +4,7 @@ import {
 import { rxResource } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { MapaEstacionamientos } from '@app/components/estacionamiento';
+import { SelectorVehiculo } from '@app/components/vehiculo';
 import { Cargando, EstadoVacio, Icono } from '@app/components/ui';
 import { AreaMapa, Estacionamiento, FiltrosEstacionamiento, Id, Momento, OrdenEstacionamiento, Vehiculo,
 } from '@app/models';
@@ -16,7 +17,6 @@ import { DetalleEstacionamiento } from './detalle-estacionamiento/detalle-estaci
 import { Filtros } from './filtros/filtros';
 import { ResultadoEstacionamiento } from './resultado-estacionamiento/resultado-estacionamiento';
 import { Busqueda, BuscadorDestino, SIN_BUSQUEDA } from './buscador-destino/buscador-destino';
-import { SelectorVehiculo } from './selector-vehiculo/selector-vehiculo';
 import { Panel, horaFin } from './panel.interface';
 import { ORDENES, PANEL_INICIAL, POR_PAGINA, PRECIO_TOPE } from './constantes';
 

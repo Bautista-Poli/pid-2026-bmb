@@ -97,17 +97,14 @@
   color: var(--color-plomo);
 }
 
-.aviso-sin-horarios {
-  padding: 0.75rem 1rem;
-  border-radius: var(--radius-control);
-  background: var(--color-lienzo);
-  font-size: 13px;
-  color: var(--color-plomo);
-}
-
 .nota-campo {
   font-size: 12px;
   color: var(--color-plomo);
+}
+
+/* Va adentro de selector-franja, debajo de las horas: misma separacion que el resto del campo. */
+.nota-horario {
+  margin-top: 0.75rem;
 }
 
 .columna-resumen {

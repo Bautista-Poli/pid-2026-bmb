@@ -6,11 +6,11 @@
       <h1 class="titulo-vista titulo-reserva">{{ abono()?.estacionamiento ?? 'Abono' }}</h1>
     </header>
 
-    @if (misAbonos.status() === 'loading' || vehiculos.status() === 'loading') {
+    @if (misAbonos.status() === 'loading') {
       <ui-cargando [cantidad]="1" />
-    } @else if (misAbonos.error() ?? vehiculos.error(); as e) {
+    } @else if (misAbonos.error(); as e) {
       <ui-estado-vacio titulo="No pudimos cargar los datos del abono" [descripcion]="e.message">
-        <ui-boton (presionado)="reintentar()">Reintentar</ui-boton>
+        <ui-boton (presionado)="misAbonos.reload()">Reintentar</ui-boton>
       </ui-estado-vacio>
     } @else if (!abono()) {
       <ui-estado-vacio titulo="No encontramos ese abono">
@@ -22,19 +22,15 @@
       </ui-estado-vacio>
     } @else if (abono(); as a) {
       <ui-tarjeta>
-        <form class="formulario-reserva" (submit)="$event.preventDefault(); confirmar(a, vehiculo.value, fecha.value, desde.value, hasta.value)">
+        <form class="formulario-reserva" (submit)="$event.preventDefault(); confirmar(a, fecha.value, desde.value, hasta.value)">
           <p class="formulario-reserva__resumen">
             Turno {{ turnos[a.turno].etiqueta.toLowerCase() }} ({{ turnos[a.turno].desde }} a
             {{ turnos[a.turno].hasta }}) · te quedan {{ a.cuposRestantes }} usos · vale hasta el {{ a.hasta }}
           </p>
-          <label class="campo-reserva">
+          <div class="campo-reserva">
             Vehículo
-            <select #vehiculo class="control-reserva">
-              @for (v of vehiculos.value(); track v.id) {
-                <option [value]="v.id" [selected]="v.predeterminado">{{ v.patente }}</option>
-              }
-            </select>
-          </label>
+            <app-selector-vehiculo modo="lista" [volver]="rutaVolver()" [(vehiculo)]="vehiculo" />
+          </div>
           <label class="campo-reserva">
             Día
             <input #fecha type="date" required [min]="minimo(a)" [max]="a.hasta" [value]="minimo(a)"
@@ -57,7 +53,7 @@
           @if (error(); as mensaje) {
             <p class="mensaje-error" role="alert">{{ mensaje }}</p>
           }
-          <ui-boton tipo="submit" variante="primario" [bloque]="true" [cargando]="enviando()">
+          <ui-boton tipo="submit" variante="primario" [bloque]="true" [deshabilitado]="!vehiculo()" [cargando]="enviando()">
             Reservar gratis (usa 1 de {{ a.cuposRestantes }})
           </ui-boton>
         </form>

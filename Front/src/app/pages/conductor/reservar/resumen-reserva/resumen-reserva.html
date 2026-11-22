@@ -2,10 +2,10 @@
 <dl class="flex flex-col gap-4">
   <div class="flex items-center justify-between gap-4">
     <dt class="text-[13px] text-plomo">Duración</dt>
-    <dd class="num-tabular text-right text-[13px] font-medium text-tinta">{{ duracion() }}</dd>
+    <dd class="num-tabular text-right text-[13px] font-medium text-tinta">{{ textoDuracion() }}</dd>
   </div>
 
-  @if (tarifa(); as texto) {
+  @if (textoTarifa(); as texto) {
     <div class="flex items-center justify-between gap-4">
       <dt class="text-[13px] text-plomo">Tarifa</dt>
       <dd class="num-tabular text-right text-[13px] font-medium text-tinta">{{ texto }}</dd>
@@ -14,7 +14,7 @@
 
   <div class="flex items-center justify-between gap-4">
     <dt class="text-[13px] text-plomo">Cochera asignada</dt>
-    <dd class="text-[13px] font-medium text-tinta">{{ textoCochera() }}</dd>
+    <dd class="text-[13px] font-medium text-tinta">Se asigna al confirmar</dd>
   </div>
 
   <div class="h-px bg-borde-sutil"></div>
@@ -22,11 +22,11 @@
   <div class="flex items-center justify-between gap-4">
     <dt class="text-[13px] font-semibold text-tinta">Total</dt>
     <dd class="num-tabular text-[22px] font-semibold tracking-[-0.02em] text-acento">
-      $ {{ totalFormateado() }}
+      $ {{ textoTotal() }}
     </dd>
   </div>
 
-  @if (nota(); as texto) {
+  @if (textoAhorro(); as texto) {
     <p class="-mt-2 text-right text-[12px] font-medium text-exito">{{ texto }}</p>
   }
 </dl>

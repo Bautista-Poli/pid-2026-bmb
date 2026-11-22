@@ -1,5 +1,5 @@
 import { Tarifas } from '@app/models';
-import { calcularPrecio, resumenTarifas } from '@app/utils/tarifa.util';
+import { calcularPrecio, duracionReservable, resumenTarifas } from '@app/utils/tarifa.util';
 
 const TODAS: Tarifas = { hora: 900, estadia: 5000, jornada: 8000 };
 const SOLO_JORNADA: Tarifas = { hora: null, estadia: null, jornada: 8000 };
@@ -16,6 +16,25 @@ describe('calcularPrecio', () => {
 
   it('devuelve 0 si la modalidad no se ofrece', () => {
     expect(calcularPrecio('HORA', SOLO_JORNADA, 2)).toBe(0);
+  });
+});
+
+describe('duracionReservable', () => {
+  it('mantiene las horas pedidas si se ofrecen, cobradas por hora', () => {
+    expect(duracionReservable(3, TODAS)).toEqual({ horas: 3, modalidad: 'HORA' });
+  });
+
+  it('12 h y 24 h se cobran como estadia y jornada si hay esas tarifas', () => {
+    expect(duracionReservable(12, TODAS)).toEqual({ horas: 12, modalidad: 'ESTADIA' });
+    expect(duracionReservable(24, TODAS)).toEqual({ horas: 24, modalidad: 'JORNADA' });
+  });
+
+  it('si las horas pedidas no se ofrecen pasa a la primera cantidad posible', () => {
+    expect(duracionReservable(2, SOLO_JORNADA)).toEqual({ horas: 24, modalidad: 'JORNADA' });
+  });
+
+  it('devuelve null si no hay ninguna tarifa', () => {
+    expect(duracionReservable(2, { hora: null, estadia: null, jornada: null })).toBeNull();
   });
 });
 

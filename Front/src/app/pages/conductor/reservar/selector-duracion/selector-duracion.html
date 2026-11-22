@@ -7,7 +7,7 @@
              transition-colors duration-160 hover:border-acento-borde disabled:opacity-40"
       aria-label="Menos horas"
       [disabled]="anterior() === undefined"
-      (click)="horasChange.emit(anterior()!)"
+      (click)="elegir(anterior()!)"
     >
       <ui-icono nombre="menos" [tamano]="18" />
     </button>
@@ -27,7 +27,7 @@
              transition-colors duration-160 hover:border-acento-borde disabled:opacity-40"
       aria-label="Más horas"
       [disabled]="siguiente() === undefined"
-      (click)="horasChange.emit(siguiente()!)"
+      (click)="elegir(siguiente()!)"
     >
       <ui-icono nombre="mas" [tamano]="18" />
     </button>
@@ -41,7 +41,7 @@
         role="radio"
         [class.atajo--activo]="atajo.horas === horas()"
         [attr.aria-checked]="atajo.horas === horas()"
-        (click)="horasChange.emit(atajo.horas)"
+        (click)="elegir(atajo.horas)"
       >
         <span class="font-semibold">{{ atajo.etiqueta }}</span>
         <span class="num-tabular atajo__precio">{{ atajo.precio }}</span>

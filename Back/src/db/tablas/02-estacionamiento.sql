@@ -88,24 +88,3 @@ CREATE TABLE IF NOT EXISTS horario (
   CONSTRAINT horario_dia_semana_valido CHECK (dia_semana BETWEEN 0 AND 6),
   CONSTRAINT horario_unico_por_dia UNIQUE (id_estacionamiento, dia_semana)
 );
-
--- ESTACIONAMIENTO_IMAGEN: galeria de fotos; la de menor `orden` es la portada.
--- Cada fila tiene los `bytes` de la foto o su `public_id` de Cloudinary.
-CREATE TABLE IF NOT EXISTS estacionamiento_imagen (
-  id_imagen          UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
-  id_estacionamiento UUID         NOT NULL,
-  orden              SMALLINT     NOT NULL DEFAULT 0,
-  mime               VARCHAR(30),
-  bytes              BYTEA,
-  public_id          VARCHAR(200),
-  actualizada        TIMESTAMPTZ  NOT NULL DEFAULT now(),
-  CONSTRAINT estacionamiento_imagen_fk
-    FOREIGN KEY (id_estacionamiento) REFERENCES estacionamiento (id_estacionamiento) ON DELETE CASCADE,
-  CONSTRAINT estacionamiento_imagen_con_origen CHECK (public_id IS NOT NULL OR bytes IS NOT NULL)
-);
-
-CREATE INDEX IF NOT EXISTS idx_estacionamiento_imagen_orden
-  ON estacionamiento_imagen (id_estacionamiento, orden);
--- Una foto de Cloudinary pertenece a una sola fila.
-CREATE UNIQUE INDEX IF NOT EXISTS estacionamiento_imagen_public_id_unico
-  ON estacionamiento_imagen (public_id) WHERE public_id IS NOT NULL;

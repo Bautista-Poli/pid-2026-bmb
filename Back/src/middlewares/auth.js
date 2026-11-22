@@ -4,6 +4,7 @@ import { query } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
 import { verificarToken } from '../utils/jwt.js';
 import { COOKIE_SESION } from '../utils/cookies.js';
+import { ROLES } from '../utils/roles.js';
 
 /**
  * Valida la cookie httpOnly que dejo `/auth/login` y deja el usuario
@@ -73,3 +74,15 @@ export function requireRole(...roles) {
     return next();
   };
 }
+
+/*
+ * Porteros listos para usar en las rutas: sesion (401) + rol (403).
+ * Se usan con "...": router.get('/', ...soloConductor, controller.x);
+ */
+export const soloConductor = [authenticate, requireRole(ROLES.CONDUCTOR)];
+export const soloPropietario = [authenticate, requireRole(ROLES.PROPIETARIO)];
+export const soloAdmin = [authenticate, requireRole(ROLES.ADMINISTRADOR)];
+export const conductorOPropietario = [
+  authenticate,
+  requireRole(ROLES.CONDUCTOR, ROLES.PROPIETARIO),
+];

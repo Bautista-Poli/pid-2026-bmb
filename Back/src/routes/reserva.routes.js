@@ -3,16 +3,13 @@
 import { Router } from 'express';
 
 import * as reservaController from '../controllers/reserva.controller.js';
-import { authenticate, requireRole } from '../middlewares/auth.js';
+import { soloConductor, soloPropietario } from '../middlewares/auth.js';
 import { validate } from '../middlewares/validate.js';
-import { ROLES } from '../utils/roles.js';
 import { validarCalificacion, validarCalificacionConductor } from '../validators/calificacion.validator.js';
 import { validarAcceso, validarReserva } from '../validators/reserva.validator.js';
 
 const router = Router();
 
-const soloConductor = [authenticate, requireRole(ROLES.CONDUCTOR)];
-const soloPropietario = [authenticate, requireRole(ROLES.PROPIETARIO)];
 
 router.post('/', ...soloConductor, validate(validarReserva), reservaController.crear);
 

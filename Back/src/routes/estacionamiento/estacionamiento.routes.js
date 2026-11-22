@@ -4,9 +4,8 @@
 import { Router } from 'express';
 
 import * as estacionamientoController from '../../controllers/estacionamiento/estacionamiento.controller.js';
-import { authenticate, authenticateOpcional, requireRole } from '../../middlewares/auth.js';
+import { authenticateOpcional, soloPropietario } from '../../middlewares/auth.js';
 import { validate } from '../../middlewares/validate.js';
-import { ROLES } from '../../utils/roles.js';
 import { validarPeriodoReputacion } from '../../validators/calificacion.validator.js';
 import {
   validarBusqueda,
@@ -20,7 +19,6 @@ import cocheraRoutes from './estacionamiento-cochera.routes.js';
 
 const router = Router();
 
-const soloPropietario = [authenticate, requireRole(ROLES.PROPIETARIO)];
 
 // Publico: busqueda de estacionamientos publicados.
 router.get('/', validate(validarBusqueda, 'query'), estacionamientoController.buscar);

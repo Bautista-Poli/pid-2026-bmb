@@ -7,6 +7,7 @@ import { armarSet } from '../../utils/sql.js';
 import { CAMPOS_TARIFA } from '../../utils/tarifas.js';
 import { ESTADOS_APROBACION } from '../../utils/roles.js';
 import { listarPorEstacionamiento as listarCocheras } from '../cochera/cochera.service.js';
+import { estacionamientoDelPropietario } from '../pertenencia.js';
 import { DIAS_BUSQUEDA } from '../reputacion/reputacion-reglas.js';
 import { COLUMNAS_REPUTACION, darFormaReputacion, lateralReputacion } from '../reputacion/reputacion-sql.js';
 
@@ -173,22 +174,6 @@ export function aceptaReservas(fila, { conAbono = false } = {}) {
   return fila.activo && fila.publicado && aprobado;
 }
 
-/** Verifica que el estacionamiento exista y sea del propietario autenticado. */
-export async function asegurarPropiedad(idEstacionamiento, idPropietario) {
-  const { rows } = await query(
-    `SELECT id_estacionamiento, id_propietario, activo
-       FROM estacionamiento WHERE id_estacionamiento = $1`,
-    [idEstacionamiento],
-  );
-
-  if (!rows[0]) throw ApiError.notFound('Estacionamiento no encontrado');
-  if (rows[0].id_propietario !== idPropietario) {
-    throw ApiError.forbidden('El estacionamiento pertenece a otro propietario');
-  }
-
-  return rows[0];
-}
-
 /** Los estacionamientos del propietario, con sus agregados y reputacion. */
 export async function listarPorPropietario(idPropietario) {
   const { rows } = await query(
@@ -250,7 +235,7 @@ async function cambiosDeRevision(client, idEstacionamiento, datos) {
  * o sin cambios, sin esperar. Solo desde RECHAZADO.
  */
 export async function reenviarRevision(idEstacionamiento, idPropietario) {
-  await asegurarPropiedad(idEstacionamiento, idPropietario);
+  await estacionamientoDelPropietario(idEstacionamiento, idPropietario);
 
   const { rows } = await query(
     `UPDATE estacionamiento
@@ -272,7 +257,7 @@ export async function reenviarRevision(idEstacionamiento, idPropietario) {
  * cargados: es lo que espera la pantalla, que manda la semana completa.
  */
 export async function actualizar(idEstacionamiento, idPropietario, datos) {
-  const { activo } = await asegurarPropiedad(idEstacionamiento, idPropietario);
+  const { activo } = await estacionamientoDelPropietario(idEstacionamiento, idPropietario);
   if (!activo) throw ApiError.conflict('El estacionamiento esta dado de baja');
 
 

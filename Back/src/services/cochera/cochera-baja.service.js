@@ -3,7 +3,7 @@ import { query, withTransaction } from '../../config/database.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { ESTADOS_COCHERA, ESTADOS_RESERVA } from '../../utils/roles.js';
 import { MENSAJE_VEHICULO_ADENTRO } from '../estacionamiento/estacionamiento-baja.service.js';
-import { asegurarPropiedad } from '../estacionamiento/estacionamiento.service.js';
+import { estacionamientoDelPropietario } from '../pertenencia.js';
 import { CAMPOS } from './cochera.service.js';
 
 // Borrar una fila referenciada por una FK ON DELETE RESTRICT: Postgres 18 (el de
@@ -16,7 +16,7 @@ const VIOLACION_RESTRICT = ['23001', '23503'];
  * que al dar de baja el estacionamiento entero.
  */
 export async function darDeBaja(idEstacionamiento, idPropietario, idCochera) {
-  await asegurarPropiedad(idEstacionamiento, idPropietario);
+  await estacionamientoDelPropietario(idEstacionamiento, idPropietario);
 
   return withTransaction(async (client) => {
     const { rows: existentes } = await client.query(
@@ -51,7 +51,7 @@ export async function darDeBaja(idEstacionamiento, idPropietario, idCochera) {
 
 /** Deshace la baja logica. No se puede reactivar dentro de un estacionamiento dado de baja. */
 export async function reactivar(idEstacionamiento, idPropietario, idCochera) {
-  const estacionamiento = await asegurarPropiedad(idEstacionamiento, idPropietario);
+  const estacionamiento = await estacionamientoDelPropietario(idEstacionamiento, idPropietario);
   if (!estacionamiento.activo) {
     throw ApiError.conflict('El estacionamiento esta dado de baja: no se puede reactivar una cochera');
   }
@@ -78,7 +78,7 @@ export async function reactivar(idEstacionamiento, idPropietario, idCochera) {
  * la FK lo impide y la cochera queda inactiva.
  */
 export async function eliminar(idEstacionamiento, idPropietario, idCochera) {
-  await asegurarPropiedad(idEstacionamiento, idPropietario);
+  await estacionamientoDelPropietario(idEstacionamiento, idPropietario);
 
   const { rows } = await query(
     'SELECT activo FROM cochera WHERE id_cochera = $1 AND id_estacionamiento = $2',

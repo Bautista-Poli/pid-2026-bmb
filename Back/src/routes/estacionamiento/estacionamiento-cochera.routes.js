@@ -3,9 +3,8 @@
 import { Router } from 'express';
 
 import * as cocheraController from '../../controllers/estacionamiento/estacionamiento-cochera.controller.js';
-import { authenticate, requireRole } from '../../middlewares/auth.js';
+import { soloPropietario } from '../../middlewares/auth.js';
 import { validate } from '../../middlewares/validate.js';
-import { ROLES } from '../../utils/roles.js';
 import {
   validarActualizacionCochera,
   validarBloqueoCochera,
@@ -16,7 +15,6 @@ import {
 // mergeParams: para leer el :id del estacionamiento, que esta en la ruta padre.
 const router = Router({ mergeParams: true });
 
-const soloPropietario = [authenticate, requireRole(ROLES.PROPIETARIO)];
 
 // Publico: las cocheras de un estacionamiento.
 router.get('/', cocheraController.listarCocheras);

@@ -19,6 +19,7 @@
 // reputacion-conductor.service.js.
 import { query } from '../../config/database.js';
 import { ApiError } from '../../utils/ApiError.js';
+import { estacionamientoDelPropietario } from '../pertenencia.js';
 import {
   CATEGORIAS,
   ETIQUETAS,
@@ -80,14 +81,7 @@ function sugerencia(categorias, etiquetas) {
  * indicadores de operacion, etiquetas mas marcadas y opiniones recientes.
  */
 export async function delEstacionamiento(idEstacionamiento, idPropietario, { dias = 30 } = {}) {
-  const { rows: duenos } = await query(
-    'SELECT id_propietario FROM estacionamiento WHERE id_estacionamiento = $1',
-    [idEstacionamiento],
-  );
-  if (!duenos[0]) throw ApiError.notFound('Estacionamiento no encontrado');
-  if (duenos[0].id_propietario !== idPropietario) {
-    throw ApiError.forbidden('El estacionamiento pertenece a otro propietario');
-  }
+  await estacionamientoDelPropietario(idEstacionamiento, idPropietario);
 
   // La ventana se corta con la hora de la base (la de `created_at`), no la del
   // servidor: si el reloj del servidor va atrasado, lo recien creado quedaria afuera.

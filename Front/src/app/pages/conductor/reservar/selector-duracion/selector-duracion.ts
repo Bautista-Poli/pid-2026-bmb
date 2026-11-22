@@ -1,7 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, input, model, untracked } from '@angular/core';
 import { Icono } from '@app/components/ui';
-import { ETIQUETA_MODALIDAD, HORAS_POR_MODALIDAD, Tarifas } from '@app/models';
-import { calcularPrecio, horasReservables, modalidadPorHoras } from '@app/utils/tarifa.util';
+import { Duracion, ETIQUETA_MODALIDAD, HORAS_POR_MODALIDAD, Tarifas } from '@app/models';
+import { calcularPrecio, duracionReservable, horasReservables, modalidadPorHoras } from '@app/utils/tarifa.util';
 
 interface Atajo {
   horas: number;
@@ -21,6 +21,13 @@ const ATAJOS_POR_HORA = [1, 2, 3, 4];
  * Cuantas horas se quiere reservar: un contador (- 3 h +) y atajos con el
  * precio de cada opcion. 12 h y 24 h se cobran como estadia y jornada cuando
  * el estacionamiento tiene esas tarifas.
+ *
+ * Se arregla solo: sabe que cantidades se pueden reservar con las tarifas del
+ * estacionamiento y con que modalidad se cobra cada una; si lo elegido no se
+ * puede reservar ahi, pasa a la primera cantidad que si. A quien lo usa solo le
+ * deja la duracion (horas y modalidad):
+ *
+ *   <app-selector-duracion [tarifas]="tarifas" [(duracion)]="duracion" />
  */
 @Component({
   selector: 'app-selector-duracion',
@@ -32,9 +39,25 @@ const ATAJOS_POR_HORA = [1, 2, 3, 4];
 })
 export class SelectorDuracion {
   readonly tarifas = input.required<Tarifas>();
-  readonly horas = input.required<number>();
+  readonly duracion = model.required<Duracion>();
 
-  readonly horasChange = output<number>();
+  protected readonly horas = computed(() => this.duracion().horas);
+
+  constructor() {
+    // Con otras tarifas (otro estacionamiento) lo elegido puede dejar de valer.
+    effect(() => {
+      const actual = this.duracion();
+      const valida = duracionReservable(actual.horas, this.tarifas());
+      if (valida && (valida.horas !== actual.horas || valida.modalidad !== actual.modalidad)) {
+        untracked(() => this.duracion.set(valida));
+      }
+    });
+  }
+
+  protected elegir(horas: number): void {
+    const duracion = duracionReservable(horas, this.tarifas());
+    if (duracion) this.duracion.set(duracion);
+  }
 
   private readonly posibles = computed(() => horasReservables(this.tarifas()));
 
@@ -43,8 +66,8 @@ export class SelectorDuracion {
 
   /** "Estadía · 12 h" cuando la duracion elegida tiene tarifa propia. */
   protected readonly tarifaEspecial = computed(() => {
-    const modalidad = modalidadPorHoras(this.horas(), this.tarifas());
-    return modalidad && modalidad !== 'HORA' ? ETIQUETA_MODALIDAD[modalidad] : null;
+    const { modalidad } = this.duracion();
+    return modalidad !== 'HORA' ? ETIQUETA_MODALIDAD[modalidad] : null;
   });
 
   protected readonly atajos = computed<Atajo[]>(() => {

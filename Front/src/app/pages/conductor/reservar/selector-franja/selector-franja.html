@@ -1,20 +1,29 @@
 <!-- Hora de ingreso: una opcion por hora, con la hora de salida segun la duracion elegida. Datos y acciones en selector-franja.ts. -->
-<div class="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-5" role="radiogroup" aria-label="Hora de ingreso">
-  @for (franja of visibles(); track franja.horaDesde) {
-    <button
-      type="button"
-      class="franja"
-      role="radio"
-      [class.franja--activa]="esActiva(franja)"
-      [disabled]="!franja.disponible"
-      [attr.aria-checked]="esActiva(franja)"
-      [attr.title]="franja.disponible ? null : 'Sin cocheras libres en ese horario'"
-      (click)="rangoElegido.emit({ horaDesde: franja.horaDesde, horaHasta: franja.horaHasta })"
-    >
-      <span class="num-tabular text-[14px] font-semibold">{{ franja.horaDesde }}</span>
-      <span class="num-tabular franja__salida">
-        hasta {{ franja.horaHasta }}@if (diaSiguiente(franja)) {<sup>+1</sup>}
-      </span>
-    </button>
-  }
-</div>
+@if (disponibilidad.isLoading()) {
+  <ui-cargando [cantidad]="1" />
+} @else if (visibles().length === 0) {
+  <p class="aviso-sin-horarios">
+    No hay horarios para reservar {{ duracion().horas }} h ese día. Probá con menos horas u otra fecha.
+  </p>
+} @else {
+  <div class="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-5" role="radiogroup" aria-label="Hora de ingreso">
+    @for (franja of visibles(); track franja.horaDesde) {
+      <button
+        type="button"
+        class="franja"
+        role="radio"
+        [class.franja--activa]="esActiva(franja)"
+        [disabled]="!franja.disponible"
+        [attr.aria-checked]="esActiva(franja)"
+        [attr.title]="franja.disponible ? null : 'Sin cocheras libres en ese horario'"
+        (click)="rango.set({ horaDesde: franja.horaDesde, horaHasta: franja.horaHasta })"
+      >
+        <span class="num-tabular text-[14px] font-semibold">{{ franja.horaDesde }}</span>
+        <span class="num-tabular franja__salida">
+          hasta {{ franja.horaHasta }}@if (diaSiguiente(franja)) {<sup>+1</sup>}
+        </span>
+      </button>
+    }
+  </div>
+  <ng-content />
+}

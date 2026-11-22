@@ -23,94 +23,44 @@
         <div class="layout-reserva">
           <!-- Campos: sueltos en mobile, dentro de una tarjeta en desktop -->
           <div class="campos-reserva">
-              <div class="grupo-campo">
-                <p class="label-campo">Vehículo</p>
-                @if (recursoVehiculos.isLoading()) {
-                  <ui-cargando [cantidad]="1" />
-                } @else if (recursoVehiculos.value().length === 0) {
-                  <ui-estado-vacio
-                    titulo="Todavía no cargaste vehículos"
-                    descripcion="Agregá uno para poder reservar."
-                  >
-                    <ui-boton
-                      routerLink="/conductor/vehiculos"
-                      [queryParams]="{ volver: '/conductor/reservar/' + estacionamientoId() }"
-                    >
-                      Agregar vehículo
-                    </ui-boton>
-                  </ui-estado-vacio>
-                } @else {
-                  <app-selector-vehiculo
-                    [vehiculos]="recursoVehiculos.value()"
-                    [seleccionado]="borrador().vehiculoId"
-                    (seleccionadoChange)="elegirVehiculo($event)"
-                  />
+            <div class="grupo-campo">
+              <p class="label-campo">Vehículo</p>
+              <app-selector-vehiculo modo="lista" [volver]="rutaVolver()" [(vehiculo)]="vehiculo" />
+            </div>
+
+            <div class="grupo-campo">
+              <p class="label-campo">Fecha</p>
+              <app-selector-fecha [(seleccionada)]="fecha" />
+            </div>
+
+            <div class="grupo-campo">
+              <p class="label-campo">¿Cuántas horas?</p>
+              <app-selector-duracion [tarifas]="estacionamiento.tarifas" [(duracion)]="duracion" />
+            </div>
+
+            <div class="grupo-campo">
+              <div class="cabecera-campo">
+                <p class="label-campo">Hora de ingreso</p>
+                @if (horarioAtencion(); as horario) {
+                  <span class="num-tabular horario-atencion">{{ horario }}</span>
                 }
               </div>
-
-              <div class="grupo-campo">
-                <p class="label-campo">Fecha</p>
-                <app-selector-fecha
-                  [seleccionada]="borrador().fecha"
-                  (seleccionadaChange)="elegirFecha($event)"
-                />
-              </div>
-
-              <div class="grupo-campo">
-                <p class="label-campo">¿Cuántas horas?</p>
-                <app-selector-duracion
-                  [tarifas]="estacionamiento.tarifas"
-                  [horas]="borrador().horas"
-                  (horasChange)="elegirHoras($event)"
-                />
-              </div>
-
-              <div class="grupo-campo">
-                <div class="cabecera-campo">
-                  <p class="label-campo">Hora de ingreso</p>
-                  @if (horarioAtencion(); as horario) {
-                    <span class="num-tabular horario-atencion">{{ horario }}</span>
-                  }
-                </div>
-                @if (recursoDisponibilidad.isLoading()) {
-                  <ui-cargando [cantidad]="1" />
-                } @else if (!hayIngresos()) {
-                  <p class="aviso-sin-horarios">
-                    No hay horarios para reservar {{ horas() }} h ese día. Probá con menos horas u otra fecha.
-                  </p>
-                } @else {
-                  <app-selector-franja
-                    [franjas]="recursoDisponibilidad.value()"
-                    [horaDesde]="borrador().horaDesde"
-                    [fecha]="borrador().fecha"
-                    (rangoElegido)="elegirRango($event)"
-                  />
-                  @if (borrador().modalidad === 'HORA') {
-                    <p class="nota-campo">
-                      Por hora tenés que entrar y salir dentro del horario de atención.
-                    </p>
-                  } @else {
-                    <p class="nota-campo">
-                      La {{ borrador().modalidad === 'ESTADIA' ? 'estadía' : 'jornada' }} puede seguir después
-                      del cierre: solo tenés que entrar con el estacionamiento abierto.
-                    </p>
-                  }
-                }
-              </div>
+              <app-selector-franja
+                [estacionamientoId]="estacionamientoId()"
+                [fecha]="fecha()"
+                [tipoVehiculo]="vehiculo()?.tipo ?? null"
+                [duracion]="duracion()"
+                [(rango)]="rango"
+              >
+                <p class="nota-campo nota-horario">{{ notaHorario() }}</p>
+              </app-selector-franja>
+            </div>
           </div>
 
           <!-- Resumen + confirmacion -->
           <div class="columna-resumen">
             <ui-tarjeta relleno="lg">
-              <app-resumen-reserva
-                [modalidad]="borrador().modalidad"
-                [horaDesde]="borrador().horaDesde"
-                [horaHasta]="borrador().horaHasta"
-                [horas]="horas()"
-                [tarifa]="textoTarifa()"
-                [nota]="textoAhorro()"
-                [total]="total()"
-              />
+              <app-resumen-reserva [tarifas]="estacionamiento.tarifas" [duracion]="duracion()" [rango]="rango()" />
             </ui-tarjeta>
 
             <p class="nota-campo">{{ textoPolitica() }}</p>

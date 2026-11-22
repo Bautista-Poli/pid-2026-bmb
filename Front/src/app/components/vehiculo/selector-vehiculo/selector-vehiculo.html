@@ -1,0 +1,71 @@
+<!-- Selector de vehiculo del conductor, compacto (flechas) o en lista (una fila por vehiculo). Logica en selector-vehiculo.ts. -->
+@if (modo() === 'compacto') {
+  @if (vehiculo(); as elegido) {
+    <div class="selector-vehiculo" role="group" aria-label="Vehículo">
+      <button
+        type="button"
+        class="selector-vehiculo__boton"
+        [disabled]="!hayVarios()"
+        aria-label="Vehículo anterior"
+        (click)="pasar(-1)"
+      >
+        <ui-icono nombre="cheuron" [tamano]="18" class="selector-vehiculo__flecha-anterior" />
+      </button>
+
+      <span class="selector-vehiculo__info" aria-live="polite">
+        <ui-icono [nombre]="iconoTipo[elegido.tipo]" [tamano]="18" class="selector-vehiculo__icono" />
+        <span class="selector-vehiculo__texto">
+          <span class="num-tabular selector-vehiculo__patente">{{ elegido.patente }}</span>
+          <span class="selector-vehiculo__descripcion">{{ descripcion(elegido) }}</span>
+        </span>
+      </span>
+
+      <button
+        type="button"
+        class="selector-vehiculo__boton"
+        [disabled]="!hayVarios()"
+        aria-label="Vehículo siguiente"
+        (click)="pasar(1)"
+      >
+        <ui-icono nombre="cheuron" [tamano]="18" class="selector-vehiculo__flecha-siguiente" />
+      </button>
+    </div>
+  } @else {
+    <a routerLink="/conductor/vehiculos/nuevo" class="enlace-agregar-vehiculo">
+      <ui-icono nombre="auto" [tamano]="18" />
+      <span class="enlace-agregar-vehiculo__texto">Agregá tu vehículo</span>
+    </a>
+  }
+} @else if (lista.isLoading()) {
+  <ui-cargando [cantidad]="1" />
+} @else if (lista.value().length === 0) {
+  <ui-estado-vacio titulo="Todavía no cargaste vehículos" descripcion="Agregá uno para poder reservar.">
+    <ui-boton routerLink="/conductor/vehiculos" [queryParams]="paramsAlta()">Agregar vehículo</ui-boton>
+  </ui-estado-vacio>
+} @else {
+  <ul class="grid gap-2.5 lg:grid-cols-2" role="radiogroup" aria-label="Vehículo">
+    @for (opcion of lista.value(); track opcion.id) {
+      <li>
+        <button
+          type="button"
+          class="opcion"
+          role="radio"
+          [class.opcion--activa]="vehiculo()?.id === opcion.id"
+          [attr.aria-checked]="vehiculo()?.id === opcion.id"
+          (click)="vehiculo.set(opcion)"
+        >
+          <span class="flex min-w-0 flex-col text-left">
+            <span class="num-tabular truncate text-[14px] font-semibold text-tinta">
+              {{ opcion.patente }}
+            </span>
+            <span class="mt-0.5 truncate text-[12px] text-plomo">
+              {{ opcion.marca }} {{ opcion.modelo }} · {{ etiquetaTipo[opcion.tipo] }}
+            </span>
+          </span>
+
+          <span class="radio" aria-hidden="true"></span>
+        </button>
+      </li>
+    }
+  </ul>
+}

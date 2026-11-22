@@ -1,4 +1,4 @@
-import { HORAS_POR_MODALIDAD, ModalidadReserva, Tarifas } from '@app/models';
+import { Duracion, HORAS_POR_MODALIDAD, ModalidadReserva, Tarifas } from '@app/models';
 
 const CLAVE: Record<ModalidadReserva, keyof Tarifas> = {
   HORA: 'hora',
@@ -21,6 +21,19 @@ export function modalidadPorHoras(horas: number, tarifas: Tarifas): ModalidadRes
 /** Las cantidades de horas que se pueden reservar: de 1 a 24 si cobra por hora, mas 12 y 24 si tiene esas tarifas. */
 export function horasReservables(tarifas: Tarifas): number[] {
   return Array.from({ length: 24 }, (_, i) => i + 1).filter((h) => modalidadPorHoras(h, tarifas) !== null);
+}
+
+/**
+ * La duracion que se puede reservar con esas tarifas: las horas pedidas si se
+ * ofrecen, o la primera cantidad posible si no (p. ej. 2 h donde solo hay
+ * jornada pasa a 24 h). La modalidad sale siempre de las horas. `null` si el
+ * estacionamiento no tiene ninguna tarifa.
+ */
+export function duracionReservable(horas: number, tarifas: Tarifas): Duracion | null {
+  const posibles = horasReservables(tarifas);
+  if (posibles.length === 0) return null;
+  const validas = posibles.includes(horas) ? horas : posibles[0];
+  return { horas: validas, modalidad: modalidadPorHoras(validas, tarifas)! };
 }
 
 /** Precio estimado (el definitivo lo calcula el backend). `horas` solo cuenta por hora. */

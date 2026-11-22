@@ -2,3 +2,4 @@
 /* Piezas de los vehiculos del conductor. */
 export * from './formulario-vehiculo/formulario-vehiculo';
 export * from './chapa-patente/chapa-patente';
+export * from './selector-vehiculo/selector-vehiculo';

@@ -1,82 +1,25 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Observable, forkJoin, map, of } from 'rxjs';
 import {
   AccesoReserva,
-  BORRADOR_VACIO,
-  BorradorReserva,
   ConsultaDisponibilidad,
   FechaISO,
   FranjaDisponible,
-  HORAS_POR_MODALIDAD,
   Id,
   NuevaReserva,
   NuevaReservaConAbono,
   Reserva,
   ReservaDetallada,
-  Tarifas,
 } from '@app/models';
-import { calcularPrecio } from '@app/utils/tarifa.util';
 import { AccesoReservaDto, FranjaDto, ReservaDto } from './api/api.dto';
 import { ID_TIPO_VEHICULO, aAccesoReserva, aFranja, aPayloadReserva, aPayloadReservaConAbono, aReserva } from './api/api.mapeo';
 
-/**
- * Acceso a `/api/reservas` mas el estado del wizard de reserva.
- * El borrador vive en un signal para que los tres pasos del flujo compartan
- * la misma seleccion sin pasarse inputs entre rutas.
- */
+/** Acceso a `/api/reservas`: disponibilidad, alta, listados y el ciclo de la reserva. */
 @Injectable({ providedIn: 'root' })
 export class ReservaService {
   private readonly http = inject(HttpClient);
   private readonly ruta = '/reservas';
-
-  private readonly borradorInterno = signal<BorradorReserva>({ ...BORRADOR_VACIO });
-
-  readonly borrador = this.borradorInterno.asReadonly();
-
-  /** Horas del borrador: las elegidas por hora, o el bloque fijo de estadia / jornada. */
-  readonly duracionHoras = computed(() => {
-    const { modalidad, horas } = this.borradorInterno();
-    return modalidad === 'HORA' ? horas : HORAS_POR_MODALIDAD[modalidad];
-  });
-
-  readonly borradorCompleto = computed(() => {
-    const b = this.borradorInterno();
-    const tieneHorario = b.modalidad === 'HORA' ? Boolean(b.horaDesde && b.horaHasta) : Boolean(b.horaDesde);
-    return Boolean(b.estacionamientoId && b.vehiculoId && b.fecha && tieneHorario);
-  });
-
-  /* ------------------------------ borrador ------------------------------ */
-
-  iniciarBorrador(estacionamientoId: Id): void {
-    this.borradorInterno.set({ ...BORRADOR_VACIO, estacionamientoId });
-  }
-
-  actualizarBorrador(cambios: Partial<BorradorReserva>): void {
-    this.borradorInterno.update((actual) => ({ ...actual, ...cambios }));
-  }
-
-  reiniciarBorrador(): void {
-    this.borradorInterno.set({ ...BORRADOR_VACIO });
-  }
-
-  /** Convierte el borrador en los datos de la nueva reserva. */
-  aPayload(): NuevaReserva | null {
-    const b = this.borradorInterno();
-    if (!this.borradorCompleto() || !b.estacionamientoId || !b.vehiculoId || !b.fecha || !b.horaDesde) {
-      return null;
-    }
-    return {
-      estacionamientoId: b.estacionamientoId,
-      vehiculoId: b.vehiculoId,
-      modalidad: b.modalidad,
-      fecha: b.fecha,
-      horaDesde: b.horaDesde,
-      horaHasta: b.modalidad === 'HORA' ? b.horaHasta : null,
-    };
-  }
-
-  /* -------------------------------- API --------------------------------- */
 
   /** `GET /api/estacionamientos/:id/disponibilidad?fecha=YYYY-MM-DD` */
   disponibilidad(consulta: ConsultaDisponibilidad): Observable<FranjaDisponible[]> {
@@ -175,10 +118,5 @@ export class ReservaService {
     return this.http
       .patch<{ reserva: ReservaDto }>(`${this.ruta}/${id}/${paso}`, {})
       .pipe(map(({ reserva }) => aReserva(reserva)));
-  }
-
-  /** Precio estimado del borrador segun las tarifas del estacionamiento (el definitivo lo calcula el backend). */
-  precioEstimado(tarifas: Tarifas): number {
-    return calcularPrecio(this.borradorInterno().modalidad, tarifas, this.duracionHoras());
   }
 }

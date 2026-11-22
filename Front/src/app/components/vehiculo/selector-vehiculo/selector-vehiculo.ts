@@ -41,8 +41,11 @@ export class SelectorVehiculo {
     defaultValue: [] as Vehiculo[],
   });
 
+  /** Los vehiculos del conductor; vacio mientras cargan o si el pedido fallo (leer `value()` con error tira). */
+  protected readonly vehiculos = computed(() => (this.lista.hasValue() ? this.lista.value() : []));
+
   /** Con un solo vehiculo las flechas quedan deshabilitadas. */
-  protected readonly hayVarios = computed(() => this.lista.value().length > 1);
+  protected readonly hayVarios = computed(() => this.vehiculos().length > 1);
 
   protected readonly paramsAlta = computed(() => {
     const volver = this.volver();
@@ -56,14 +59,14 @@ export class SelectorVehiculo {
   constructor() {
     // Cuando llega la lista, queda elegido el predeterminado (o el primero).
     effect(() => {
-      const lista = this.lista.value();
+      const lista = this.vehiculos();
       untracked(() => this.vehiculo.set(lista.find((v) => v.predeterminado) ?? lista[0] ?? null));
     });
   }
 
   /** Pasa al anterior (-1) o al siguiente (+1), dando la vuelta al llegar a la punta. */
   protected pasar(pasos: number): void {
-    const lista = this.lista.value();
+    const lista = this.vehiculos();
     if (lista.length < 2) return;
     const actual = lista.findIndex((v) => v.id === this.vehiculo()?.id);
     this.vehiculo.set(lista[(actual + pasos + lista.length) % lista.length]);

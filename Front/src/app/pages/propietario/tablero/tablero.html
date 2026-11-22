@@ -39,9 +39,11 @@
     <div class="contenido">
       <!-- Metricas -->
       <div class="aparece-en-cadena metricas">
-        @for (metrica of metricas(); track metrica.etiqueta) {
-          <app-tarjeta-metrica [metrica]="metrica" />
-        }
+        <app-resumen-hoy
+          [estacionamientos]="recursoEstacionamientos.value()"
+          [reservas]="recursoReservas.value()"
+          [cargando]="recursoReservas.isLoading()"
+        />
       </div>
 
       @if (error(); as mensaje) {
@@ -56,17 +58,16 @@
       <div class="fila-paneles">
         <!-- Ocupacion de la semana -->
         <app-ocupacion-semana
-          [semana]="semana()"
-          [totalCocheras]="totales().cocheras"
+          [estacionamientos]="recursoEstacionamientos.value()"
+          [reservas]="recursoReservas.value()"
           [cargando]="recursoReservas.isLoading()"
         />
 
         <!-- Reservas de hoy -->
         <app-reservas-hoy
-          [reservas]="reservasHoy()"
+          [reservas]="recursoReservas.value()"
           [cargando]="recursoReservas.isLoading()"
-          [procesandoId]="procesandoId()"
-          (avanzar)="avanzar($event)"
+          (confirmada)="alConfirmar($event)"
         />
       </div>
 

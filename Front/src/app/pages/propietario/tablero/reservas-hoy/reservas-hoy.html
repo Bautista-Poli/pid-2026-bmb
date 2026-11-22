@@ -12,13 +12,13 @@
 
   @if (cargando()) {
     <p class="reservas-cargando">Cargando…</p>
-  } @else if (reservas().length === 0) {
+  } @else if (visibles().length === 0) {
     <p class="reservas-vacio">
       No hay reservas para hoy.
     </p>
   } @else {
     <ul class="aparece-en-cadena">
-      @for (reserva of reservas().slice(0, 6); track reserva.id) {
+      @for (reserva of visibles(); track reserva.id) {
         <li
           class="reserva"
         >
@@ -42,29 +42,18 @@
           </div>
 
           <div class="reserva-acciones">
-            <ui-etiqueta [tono]="tonoEstado(reserva)">
-              {{ etiquetaEstado(reserva) }}
-            </ui-etiqueta>
-            @if (pasoDe(reserva); as paso) {
-              <button
-                type="button"
-                class="reserva-boton"
-                [disabled]="procesandoId() === reserva.id"
-                (click)="avanzar.emit(reserva)"
-              >
-                {{ procesandoId() === reserva.id ? 'Guardando…' : paso }}
-              </button>
-            }
+            <app-estado-reserva [reserva]="reserva" />
+            <app-confirmar-reserva [reserva]="reserva" variante="texto" (resultado)="confirmada.emit($event)" />
           </div>
         </li>
       }
     </ul>
-    @if (reservas().length > 6) {
+    @if (restantes() > 0) {
       <a
         class="ver-mas"
         routerLink="/propietario/reservas"
       >
-        Ver {{ reservas().length - 6 }} más
+        Ver {{ restantes() }} más
       </a>
     }
   }

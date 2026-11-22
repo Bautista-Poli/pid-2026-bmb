@@ -7,7 +7,7 @@
     <div class="datos">
       <div class="titulo-y-estado">
         <h3 class="nombre">{{ r.estacionamiento.nombre }}</h3>
-        <app-estado-reserva [reserva]="r" />
+        <app-estado-reserva [reserva]="r" vista="CONDUCTOR" />
       </div>
       <p class="direccion">{{ direccion() }}</p>
       <p class="num-tabular horario">

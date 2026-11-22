@@ -9,8 +9,8 @@
       class="buscador-input"
       placeholder="Buscar por patente, vehículo o estacionamiento…"
       aria-label="Buscar reservas"
-      [value]="busqueda()"
-      (input)="busqueda.set(leer($event))"
+      [value]="filtro().busqueda"
+      (input)="cambiar({ busqueda: leer($event) })"
     />
   </label>
 
@@ -18,8 +18,8 @@
     <select
       class="selector"
       aria-label="Estacionamiento"
-      [value]="estacionamientoId()"
-      (change)="estacionamientoId.set(leer($event))"
+      [value]="filtro().estacionamientoId"
+      (change)="cambiar({ estacionamientoId: leer($event) })"
     >
       <option value="">Todos los estacionamientos</option>
       @for (lote of estacionamientos(); track lote.id) {
@@ -33,8 +33,8 @@
       type="date"
       class="fecha-input"
       aria-label="Filtrar por fecha"
-      [value]="fecha()"
-      (change)="fecha.set(leer($event))"
+      [value]="filtro().fecha"
+      (change)="cambiar({ fecha: leer($event) })"
     />
     @if (hayFiltros()) {
       <button
@@ -50,9 +50,9 @@
   <button
     type="button"
     class="boton-texto"
-    [attr.aria-pressed]="verCanceladas()"
-    (click)="verCanceladas.set(!verCanceladas())"
+    [attr.aria-pressed]="filtro().verCanceladas"
+    (click)="cambiar({ verCanceladas: !filtro().verCanceladas })"
   >
-    {{ verCanceladas() ? 'Ocultar canceladas' : 'Ver canceladas' }}
+    {{ filtro().verCanceladas ? 'Ocultar canceladas' : 'Ver canceladas' }}
   </button>
 </div>

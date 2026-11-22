@@ -1,9 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { EstadoReserva } from '@app/components/reserva';
 import { Icono } from '@app/components/ui';
-import { ReservaDetallada, TURNOS } from '@app/models';
+import { ReservaDetallada, TURNOS, reservaSinUsar } from '@app/models';
 import { AvisoReasignacion } from '../../partes-tarjeta/aviso-reasignacion';
-import { EstadoReserva } from '../../partes-tarjeta/estado-reserva';
 import { FechaReserva } from '../../partes-tarjeta/fecha-reserva';
 
 /**
@@ -21,6 +21,9 @@ export class TarjetaHistorial {
   readonly reserva = input.required<ReservaDetallada>();
 
   protected readonly turnos = TURNOS;
+
+  /** No se uso (cancelada, expirada o ausente): el precio va tachado. */
+  protected readonly sinUsar = computed(() => reservaSinUsar(this.reserva()));
 
   protected readonly cruzaMedianoche = computed(
     () => this.reserva().fechaHasta !== this.reserva().fecha,

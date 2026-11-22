@@ -15,10 +15,10 @@
       </p>
     </div>
     <div class="flex shrink-0 flex-col items-end gap-1.5">
-      <app-estado-reserva [reserva]="r" />
+      <app-estado-reserva [reserva]="r" vista="CONDUCTOR" />
       <span
         class="num-tabular text-[13px] font-semibold"
-        [class]="r.estado === 'CANCELADA' || r.estado === 'NO_SHOW' ? 'text-humo line-through' : 'text-tinta'"
+        [class]="sinUsar() ? 'text-humo line-through' : 'text-tinta'"
       >
         @if (r.abono; as abono) {
           Abono · Turno {{ turnos[abono.turno].etiqueta.toLowerCase() }}

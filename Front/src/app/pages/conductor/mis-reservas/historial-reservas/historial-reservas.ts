@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input, model } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Boton, EstadoVacio, Tarjeta } from '@app/components/ui';
-import { ReservaDetallada } from '@app/models';
+import { ReservaDetallada, reservaSinUsar } from '@app/models';
 import { TarjetaHistorial } from './tarjeta-historial/tarjeta-historial';
 
 interface MesHistorial {
@@ -13,15 +13,9 @@ interface MesHistorial {
 const MES_Y_ANIO = new Intl.DateTimeFormat('es-AR', { month: 'long', year: 'numeric' });
 
 /**
- * Reservas que no llegaron a usarse (canceladas, expiradas y ausentes): en el
- * historial quedan ocultas hasta que el conductor pide verlas.
- */
-export const sinUsar = (reserva: ReservaDetallada) =>
-  reserva.estado === 'CANCELADA' || reserva.estado === 'NO_SHOW';
-
-/**
  * Pestaña "Historial" de Mis reservas: las reservas pasadas agrupadas por mes,
- * lo mas reciente primero. Las que no se usaron se ven solo si el conductor lo pide.
+ * lo mas reciente primero. Las que no se usaron (canceladas, expiradas y
+ * ausentes) se ven solo si el conductor lo pide.
  */
 @Component({
   selector: 'app-historial-reservas',
@@ -41,11 +35,11 @@ export class HistorialReservas {
   readonly mostrarSinUsar = model(false);
 
   private readonly visibles = computed(() =>
-    this.mostrarSinUsar() ? this.reservas() : this.reservas().filter((reserva) => !sinUsar(reserva)),
+    this.mostrarSinUsar() ? this.reservas() : this.reservas().filter((reserva) => !reservaSinUsar(reserva)),
   );
 
   protected readonly cantidadVisibles = computed(() => this.visibles().length);
-  protected readonly cantidadSinUsar = computed(() => this.reservas().filter(sinUsar).length);
+  protected readonly cantidadSinUsar = computed(() => this.reservas().filter(reservaSinUsar).length);
 
   protected readonly meses = computed<MesHistorial[]>(() => {
     const meses: MesHistorial[] = [];

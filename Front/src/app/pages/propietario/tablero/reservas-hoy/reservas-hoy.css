@@ -91,20 +91,6 @@
   gap: 0.375rem;
 }
 
-.reserva-boton {
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--color-acento);
-}
-
-.reserva-boton:hover {
-  color: var(--color-acento-fuerte);
-}
-
-.reserva-boton:disabled {
-  opacity: 50%;
-}
-
 .ver-mas {
   display: block;
   border-top-style: solid;

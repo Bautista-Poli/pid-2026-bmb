@@ -1,11 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
-import { HistorialReservas, sinUsar } from './historial-reservas/historial-reservas';
+import { HistorialReservas } from './historial-reservas/historial-reservas';
 import { Pestania, PestaniasReservas } from './menu-pestanias/pestanias-reservas';
 import { ReservasVigentes } from './reservas-vigentes/reservas-vigentes';
 import { Boton, Cargando, EstadoVacio } from '@app/components/ui';
-import { ReservaDetallada } from '@app/models';
+import { ReservaDetallada, reservaSinUsar } from '@app/models';
 import { reservaEnJuego } from '@app/services/ciclo-reserva';
 import { ReservaService } from '@app/services/reserva.service';
 import { aInstante } from '@app/utils/fecha.util';
@@ -74,7 +74,7 @@ export class MisReservas {
   protected readonly cantidadHistorial = computed(() =>
     this.mostrarSinUsar()
       ? this.pasadas().length
-      : this.pasadas().filter((reserva) => !sinUsar(reserva)).length,
+      : this.pasadas().filter((reserva) => !reservaSinUsar(reserva)).length,
   );
 
   protected cambiarPestania(pestania: Pestania): void {

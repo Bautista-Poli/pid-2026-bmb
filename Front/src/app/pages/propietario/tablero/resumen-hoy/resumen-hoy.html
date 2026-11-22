@@ -1,0 +1,4 @@
+<!-- Las metricas de arriba del tablero. Datos en resumen-hoy.ts. -->
+@for (metrica of metricas(); track metrica.etiqueta) {
+  <app-tarjeta-metrica [metrica]="metrica" />
+}

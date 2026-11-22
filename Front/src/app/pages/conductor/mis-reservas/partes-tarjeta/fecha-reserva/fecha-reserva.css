@@ -1,0 +1,37 @@
+:host {
+  flex-shrink: 0;
+}
+
+.fecha {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  align-items: center;
+  width: 58px;
+  padding-block: 0.5rem;
+  border: 1px solid var(--color-borde);
+  border-radius: var(--radius-control);
+  background: var(--color-lienzo);
+  line-height: 1;
+}
+
+.fecha__semana {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--color-acento);
+  text-transform: uppercase;
+}
+
+.fecha__numero {
+  margin-top: 0.25rem;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--color-tinta);
+}
+
+.fecha__mes {
+  margin-top: 0.25rem;
+  font-size: 11px;
+  color: var(--color-plomo);
+}

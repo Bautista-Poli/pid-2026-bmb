@@ -1,0 +1,54 @@
+<!-- Pestaña "En curso" de Mis reservas. Datos y reloj en reservas-en-curso.ts. -->
+@for (reserva of reservas(); track reserva.id) {
+  <article class="aparece tarjeta">
+    <!-- Cuanto lleva, cuanto falta y la barra de la franja -->
+    <div class="reloj">
+      <div class="reloj__cabecera">
+        <app-estado-reserva [reserva]="reserva" vista="CONDUCTOR" />
+        <span class="reloj__fecha">{{ fechaLarga(reserva) }}</span>
+      </div>
+
+      <div class="reloj__tiempos">
+        <div>
+          <p class="reloj__etiqueta">Lleva</p>
+          <p class="num-tabular reloj__lleva" aria-live="polite">{{ lleva(reserva) }}</p>
+        </div>
+        <p class="num-tabular reloj__falta">Termina a las {{ reserva.horaHasta }} · {{ falta(reserva) }}</p>
+      </div>
+
+      <div
+        class="barra"
+        role="progressbar"
+        aria-label="Avance de la reserva"
+        [attr.aria-valuenow]="progreso(reserva)"
+        aria-valuemin="0"
+        aria-valuemax="100"
+      >
+        <div class="barra__avance" [style.width.%]="progreso(reserva)"></div>
+      </div>
+      <div class="num-tabular barra__extremos">
+        <span>{{ reserva.horaDesde }}</span>
+        <span>{{ reserva.horaHasta }}</span>
+      </div>
+    </div>
+
+    <!-- Donde -->
+    <div class="lugar">
+      <h3 class="lugar__nombre">{{ reserva.estacionamiento.nombre }}</h3>
+      <p class="lugar__direccion">
+        <ui-icono nombre="explorar" [tamano]="15" />
+        {{ direccion(reserva) }}
+      </p>
+    </div>
+
+    <!-- Auto, cochera, como llegar y precio; al pie, el QR para salir -->
+    <app-detalle-reserva [reserva]="reserva">
+      <app-ver-qr [reserva]="reserva" />
+    </app-detalle-reserva>
+  </article>
+} @empty {
+  <ui-estado-vacio
+    titulo="No tenés ninguna reserva en curso"
+    descripcion="Cuando ingreses al estacionamiento, tu reserva aparece acá con el tiempo que te queda."
+  />
+}

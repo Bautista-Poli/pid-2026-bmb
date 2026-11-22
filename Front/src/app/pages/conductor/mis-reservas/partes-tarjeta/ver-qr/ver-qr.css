@@ -1,0 +1,62 @@
+.boton-qr {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding-inline: 0.75rem;
+  border-radius: var(--radius-boton);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-acento);
+  transition: background-color 160ms var(--ease-suave);
+}
+
+.boton-qr:hover {
+  background: var(--color-acento-suave);
+}
+
+.qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  text-align: center;
+}
+
+.qr__texto {
+  font-size: 13px;
+  color: var(--color-plomo);
+}
+
+/* Siempre sobre blanco, tambien en modo noche: si no, la camara no lo lee. */
+.qr__imagen,
+.qr__esqueleto {
+  width: 14rem;
+  height: 14rem;
+  margin-top: 0.25rem;
+  border-radius: var(--radius-boton);
+}
+
+.qr__imagen {
+  padding: 0.5rem;
+  background: #ffffff;
+}
+
+/* Mientras se dibuja el QR. */
+.qr__esqueleto {
+  background: var(--color-borde-sutil);
+  animation: latir 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.qr__codigo {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--color-tinta);
+}
+
+@keyframes latir {
+  50% {
+    opacity: 0.5;
+  }
+}

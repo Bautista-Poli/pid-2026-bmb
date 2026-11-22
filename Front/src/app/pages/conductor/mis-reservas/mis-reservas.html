@@ -20,8 +20,6 @@
       </p>
     }
 
-    <app-invitacion-calificar [reservas]="pasadas()" />
-
     @if (recurso.isLoading()) {
       <ui-cargando [cantidad]="2" />
     } @else if (recurso.error(); as error) {

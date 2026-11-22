@@ -4,7 +4,7 @@ import { query, withTransaction } from '../../config/database.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { ESTADOS_RESERVA, ESTADOS_VIGENTES } from '../../utils/roles.js';
 import { finEfectivo } from '../../utils/solapamiento.js';
-import { asegurarPropiedad } from '../estacionamiento/estacionamiento.service.js';
+import { estacionamientoDelPropietario } from '../pertenencia.js';
 import { buscarCocheraLibre } from './cochera-libre.js';
 import { CAMPOS } from './cochera.service.js';
 
@@ -25,7 +25,7 @@ export const AVISO_CANCELADA_SIN_ALTERNATIVA =
  * adentro) siempre impide bloquear, con o sin `forzar`.
  */
 export async function bloquear(idEstacionamiento, idPropietario, idCochera, { motivo, hasta, forzar = false } = {}) {
-  await asegurarPropiedad(idEstacionamiento, idPropietario);
+  await estacionamientoDelPropietario(idEstacionamiento, idPropietario);
 
   return withTransaction(async (client) => {
     const { rows: existentes } = await client.query(
@@ -102,7 +102,7 @@ export async function bloquear(idEstacionamiento, idPropietario, idCochera, { mo
 
 /** Saca el bloqueo a mano. */
 export async function desbloquear(idEstacionamiento, idPropietario, idCochera) {
-  await asegurarPropiedad(idEstacionamiento, idPropietario);
+  await estacionamientoDelPropietario(idEstacionamiento, idPropietario);
 
   const { rows } = await query(
     `UPDATE cochera SET bloqueada = FALSE, motivo_bloqueo = NULL, bloqueada_hasta = NULL

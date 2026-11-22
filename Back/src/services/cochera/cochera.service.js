@@ -5,7 +5,7 @@ import { query, withTransaction } from '../../config/database.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { armarSet } from '../../utils/sql.js';
 import { ESTADOS_COCHERA } from '../../utils/roles.js';
-import { asegurarPropiedad } from '../estacionamiento/estacionamiento.service.js';
+import { estacionamientoDelPropietario } from '../pertenencia.js';
 import { ORDEN_NATURAL } from './cochera-libre.js';
 
 const VIOLACION_UNIQUE = '23505';
@@ -34,7 +34,7 @@ function traducirError(error, datos) {
 
 /** Alta de una cochera dentro de un estacionamiento del propietario autenticado. */
 export async function crear(idEstacionamiento, idPropietario, datos) {
-  await asegurarPropiedad(idEstacionamiento, idPropietario);
+  await estacionamientoDelPropietario(idEstacionamiento, idPropietario);
 
   try {
     const { rows } = await query(
@@ -63,7 +63,7 @@ export async function crear(idEstacionamiento, idPropietario, datos) {
  * asi que un lote posterior con el mismo prefijo continua la numeracion.
  */
 export async function crearLote(idEstacionamiento, idPropietario, lotes) {
-  await asegurarPropiedad(idEstacionamiento, idPropietario);
+  await estacionamientoDelPropietario(idEstacionamiento, idPropietario);
 
   let loteActual;
   try {
@@ -132,7 +132,7 @@ export async function listarPorEstacionamiento(idEstacionamiento) {
 
 /** Modifica identificador, tipo de vehiculo, sector y/o cubierta de una cochera propia. */
 export async function actualizar(idEstacionamiento, idPropietario, idCochera, datos) {
-  await asegurarPropiedad(idEstacionamiento, idPropietario);
+  await estacionamientoDelPropietario(idEstacionamiento, idPropietario);
 
   if (datos.estado_actual === ESTADOS_COCHERA.INACTIVA) {
     throw ApiError.badRequest('Para desactivar una cochera usa la baja (DELETE), no el estado');

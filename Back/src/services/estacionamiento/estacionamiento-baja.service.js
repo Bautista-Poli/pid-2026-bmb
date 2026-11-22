@@ -4,7 +4,8 @@ import { withTransaction } from '../../config/database.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { ESTADOS_COCHERA } from '../../utils/roles.js';
 import { cancelarPorBajaDeEstacionamientos as cancelarAbonos } from '../abono.service.js';
-import { CAMPOS, asegurarPropiedad } from './estacionamiento.service.js';
+import { CAMPOS } from './estacionamiento.service.js';
+import { estacionamientoDelPropietario } from '../pertenencia.js';
 
 /**
  * Baja logica: las cocheras tienen reservas historicas (FK RESTRICT), asi que
@@ -13,7 +14,7 @@ import { CAMPOS, asegurarPropiedad } from './estacionamiento.service.js';
  * `PATCH { publicado: false }`.
  */
 export async function darDeBaja(idEstacionamiento, idPropietario) {
-  await asegurarPropiedad(idEstacionamiento, idPropietario);
+  await estacionamientoDelPropietario(idEstacionamiento, idPropietario);
 
   return withTransaction(async (client) => {
     const { rows } = await client.query(

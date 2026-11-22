@@ -2,9 +2,8 @@
 import { Router } from 'express';
 
 import * as vehiculoController from '../controllers/vehiculo.controller.js';
-import { authenticate, requireRole } from '../middlewares/auth.js';
+import { soloConductor } from '../middlewares/auth.js';
 import { validate } from '../middlewares/validate.js';
-import { ROLES } from '../utils/roles.js';
 import { validarCambiosVehiculo, validarVehiculo } from '../validators/vehiculo.validator.js';
 
 const router = Router();
@@ -13,22 +12,20 @@ router.get('/tipos', vehiculoController.listarTipos);
 
 router.post(
   '/',
-  authenticate,
-  requireRole(ROLES.CONDUCTOR),
+  ...soloConductor,
   validate(validarVehiculo),
   vehiculoController.crear,
 );
 
-router.get('/', authenticate, requireRole(ROLES.CONDUCTOR), vehiculoController.listarMios);
+router.get('/', ...soloConductor, vehiculoController.listarMios);
 
 router.patch(
   '/:id',
-  authenticate,
-  requireRole(ROLES.CONDUCTOR),
+  ...soloConductor,
   validate(validarCambiosVehiculo),
   vehiculoController.actualizar,
 );
 
-router.delete('/:id', authenticate, requireRole(ROLES.CONDUCTOR), vehiculoController.eliminar);
+router.delete('/:id', ...soloConductor, vehiculoController.eliminar);
 
 export default router;

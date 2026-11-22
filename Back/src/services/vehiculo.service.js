@@ -2,6 +2,7 @@
 import { query, withTransaction } from '../config/database.js';
 import { ApiError } from '../utils/ApiError.js';
 import { errorPatente } from '../validators/vehiculo.validator.js';
+import { vehiculoDelConductor } from './pertenencia.js';
 
 const VIOLACION_UNIQUE = '23505';
 const VIOLACION_FK = '23503';
@@ -87,17 +88,6 @@ export async function listarPorConductor(idConductor) {
   return rows;
 }
 
-/** Un vehiculo del conductor; 404 si no existe o es de otro. */
-async function obtenerDelConductor(idVehiculo, idConductor) {
-  const { rows } = await query(
-    `SELECT ${CAMPOS} FROM vehiculo WHERE id_vehiculo = $1 AND id_conductor = $2`,
-    [idVehiculo, idConductor],
-  );
-
-  if (!rows[0]) throw ApiError.notFound('Vehiculo no encontrado para este conductor');
-  return rows[0];
-}
-
 /**
  * Actualiza solo los campos presentes en `cambios`. Verifica antes que el
  * vehiculo sea del conductor (404 si no) para no filtrar los de otros.
@@ -168,7 +158,7 @@ export async function actualizar(idVehiculo, idConductor, cambios) {
  * propietario lo sigue esperando. Primero hay que cancelarlas.
  */
 export async function darDeBaja(idVehiculo, idConductor) {
-  await obtenerDelConductor(idVehiculo, idConductor);
+  await vehiculoDelConductor(idVehiculo, idConductor);
 
   const { rows: vigentes } = await query(
     `SELECT 1 FROM reserva

@@ -8,7 +8,7 @@ import { instanteLocal, sumarDias } from '../../utils/horario.js';
 import { ESTADOS_RESERVA, ESTADOS_VIGENTES, ORIGENES_CANCELACION } from '../../utils/roles.js';
 import { MODALIDADES } from '../../utils/tarifas.js';
 import { validarAbonoParaReservar } from '../abono.service.js';
-import { asegurarPropiedad } from '../estacionamiento/estacionamiento.service.js';
+import { estacionamientoDelPropietario, reservaDelConductor } from '../pertenencia.js';
 import { obtenerDetalle, selectDetalle } from './reserva-detalle.js';
 import { MENSAJE_NO_SHOW, cambiarEstado, limiteIngreso } from './reserva-estados.js';
 import {
@@ -124,7 +124,7 @@ export async function listarPorConductor(idConductor) {
 
 /** Reservas recibidas por un estacionamiento propio; con `fecha`, las que tocan ese dia. */
 export async function listarPorEstacionamiento(idEstacionamiento, idPropietario, { fecha } = {}) {
-  await asegurarPropiedad(idEstacionamiento, idPropietario);
+  await estacionamientoDelPropietario(idEstacionamiento, idPropietario);
 
   const condiciones = ['c.id_estacionamiento = $1'];
   const parametros = [idEstacionamiento];
@@ -149,22 +149,8 @@ export async function listarPorEstacionamiento(idEstacionamiento, idPropietario,
  */
 export async function cancelar(idReserva, idConductor) {
   return withTransaction(async (client) => {
-    const { rows } = await client.query(
-      `SELECT r.id_reserva, r.id_conductor, r.estado, r.inicio, r.fin,
-              e.politica_cancelacion_horas
-         FROM reserva r
-         JOIN cochera c         ON c.id_cochera = r.id_cochera
-         JOIN estacionamiento e ON e.id_estacionamiento = c.id_estacionamiento
-        WHERE r.id_reserva = $1
-        FOR UPDATE OF r`,
-      [idReserva],
-    );
+    const reserva = await reservaDelConductor(client, idReserva, idConductor);
 
-    const reserva = rows[0];
-    if (!reserva) throw ApiError.notFound('La reserva no existe');
-    if (reserva.id_conductor !== idConductor) {
-      throw ApiError.forbidden('La reserva pertenece a otro conductor');
-    }
     if (reserva.estado === ESTADOS_RESERVA.ACTIVA) {
       throw ApiError.conflict('La reserva ya esta en curso');
     }

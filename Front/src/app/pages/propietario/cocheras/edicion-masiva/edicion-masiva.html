@@ -24,6 +24,9 @@
 </div>
 
 <div class="panel-campos">
+  @if (error(); as mensaje) {
+    <p class="aviso-error" role="alert">{{ mensaje }}</p>
+  }
   <p class="panel-ayuda">
     Elegí solo lo que quieras cambiar; lo demás queda como está.
   </p>
@@ -75,11 +78,16 @@
     <span class="label-campo">Mover a planta</span>
     <input
       type="text"
-      list="plantas-cargadas"
+      list="plantas-masiva"
       placeholder="Sin cambios"
       [value]="masivoPlanta()"
       (input)="masivoPlanta.set(leer($event))"
     />
+    <datalist id="plantas-masiva">
+      @for (nombre of plantas(); track nombre) {
+        <option [value]="nombre"></option>
+      }
+    </datalist>
   </label>
 </div>
 
@@ -87,7 +95,8 @@
   <button
     type="button"
     class="accion-baja"
-    (click)="darDeBaja.emit()"
+    [disabled]="activas().length === 0"
+    (click)="confirmandoBaja.set(true)"
   >
     Dar de baja
   </button>
@@ -95,10 +104,22 @@
   <ui-boton
     variante="primario"
     tamano="sm"
-    [deshabilitado]="!hayCambiosMasivos()"
+    [deshabilitado]="!hayCambiosMasivos() || activas().length === 0"
     [cargando]="enviando()"
     (presionado)="aplicarCambios()"
   >
-    Aplicar a {{ elegidas().length }}
+    Aplicar a {{ activas().length }}
   </ui-boton>
 </div>
+
+<!-- Confirmacion de la baja: la abre y la resuelve el propio panel -->
+<ui-confirmar
+  [titulo]="'Dar de baja ' + textoActivas()"
+  boton="Dar de baja"
+  [abierto]="confirmandoBaja()"
+  (cerrado)="confirmandoBaja.set(false)"
+  (confirmado)="darDeBaja()"
+>
+  Vas a dar de baja {{ textoActivas() }}. No se van a poder reservar y se cancelan sus reservas
+  vigentes. Podés reactivarlas después.
+</ui-confirmar>

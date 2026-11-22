@@ -21,22 +21,28 @@
   </button>
 </div>
 
-@if (cochera().estado === 'INACTIVA') {
+@if (!activa()) {
   <div class="panel-cuerpo">
+    @if (error(); as mensaje) {
+      <p class="aviso-error" role="alert">{{ mensaje }}</p>
+    }
     <p class="panel-texto">
       Esta cochera está dada de baja: no aparece para reservar. Podés reactivarla o,
       si nunca tuvo reservas, eliminarla del todo.
     </p>
     <div class="panel-botones">
-      <ui-boton variante="primario" [cargando]="enviando()" (presionado)="reactivar.emit()">
+      <ui-boton variante="primario" [cargando]="enviando()" (presionado)="reactivar()">
         Reactivar
       </ui-boton>
-      <ui-boton variante="peligro" (presionado)="eliminar.emit()">Eliminar</ui-boton>
+      <ui-boton variante="peligro" (presionado)="confirmando.set('eliminar')">Eliminar</ui-boton>
     </div>
   </div>
 } @else {
-  <form class="panel-form" [formGroup]="formulario" (ngSubmit)="enviar()" novalidate>
+  <form class="panel-form" [formGroup]="formulario" (ngSubmit)="guardar()" novalidate>
     <div class="panel-campos">
+      @if (error(); as mensaje) {
+        <p class="aviso-error" role="alert">{{ mensaje }}</p>
+      }
       @if (cochera().bloqueada) {
         <div class="aviso-bloqueo">
           <ui-icono nombre="candado" [tamano]="15" class="aviso-bloqueo-icono" />
@@ -59,7 +65,12 @@
         </label>
         <label class="campo">
           <span class="label-campo">Planta</span>
-          <input type="text" formControlName="sector" list="plantas-cargadas" placeholder="Planta baja" />
+          <input type="text" formControlName="sector" list="plantas-ficha" placeholder="Planta baja" />
+          <datalist id="plantas-ficha">
+            @for (nombre of plantas(); track nombre) {
+              <option [value]="nombre"></option>
+            }
+          </datalist>
         </label>
       </div>
 
@@ -135,7 +146,7 @@
       <button
         type="button"
         class="accion-baja"
-        (click)="darDeBaja.emit()"
+        (click)="confirmando.set('baja')"
       >
         Dar de baja
       </button>
@@ -143,7 +154,8 @@
         <button
           type="button"
           class="accion-aviso"
-          (click)="desbloquear.emit()"
+          [disabled]="enviando()"
+          (click)="desbloquear()"
         >
           Desbloquear
         </button>
@@ -151,7 +163,7 @@
         <button
           type="button"
           class="accion-aviso"
-          (click)="bloquear.emit()"
+          (click)="bloqueando.set(true)"
         >
           Bloquear
         </button>
@@ -172,3 +184,31 @@
     </div>
   </form>
 }
+
+<!-- Confirmaciones y bloqueo: los abre y los resuelve la propia ficha -->
+<ui-confirmar
+  [titulo]="'Dar de baja ' + cochera().identificador"
+  boton="Dar de baja"
+  [abierto]="confirmando() === 'baja'"
+  (cerrado)="confirmando.set(null)"
+  (confirmado)="darDeBaja()"
+>
+  Vas a dar de baja la cochera {{ cochera().identificador }}. No se va a poder reservar y se cancelan
+  sus reservas vigentes. Podés reactivarla después.
+</ui-confirmar>
+
+<ui-confirmar
+  [titulo]="'Eliminar ' + cochera().identificador"
+  boton="Eliminar"
+  [abierto]="confirmando() === 'eliminar'"
+  (cerrado)="confirmando.set(null)"
+  (confirmado)="eliminar()"
+>
+  Se borra definitivamente y no se puede deshacer. Solo es posible si la cochera nunca tuvo reservas.
+</ui-confirmar>
+
+<app-bloqueo-cochera
+  [cochera]="bloqueando() ? cochera() : null"
+  (cerrado)="bloqueando.set(false)"
+  (bloqueada)="alBloquear($event)"
+/>

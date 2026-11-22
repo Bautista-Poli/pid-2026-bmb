@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { Icono } from '@app/components/ui';
-import { Cochera, EstadoCochera } from '@app/models';
+import { Cochera, EstadoCochera, cocheraActiva } from '@app/models';
 
 /** Fila de conteos arriba del plano (cocheras.ts): libres, ocupadas, reservadas, techo y de baja. */
 @Component({
@@ -23,8 +23,8 @@ export class ResumenCocheras {
       ocupadas: contar('OCUPADA'),
       reservadas: contar('RESERVADA'),
       inactivas: contar('INACTIVA'),
-      cubiertas: lista.filter((c) => c.estado !== 'INACTIVA' && c.cubierta).length,
-      descubiertas: lista.filter((c) => c.estado !== 'INACTIVA' && !c.cubierta).length,
+      cubiertas: lista.filter((c) => cocheraActiva(c) && c.cubierta).length,
+      descubiertas: lista.filter((c) => cocheraActiva(c) && !c.cubierta).length,
     };
   });
 }

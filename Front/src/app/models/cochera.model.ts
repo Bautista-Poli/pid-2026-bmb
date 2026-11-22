@@ -53,3 +53,8 @@ export interface LoteCocheras {
   tipoVehiculo: TipoVehiculo;
   cubierta: boolean;
 }
+
+/** Una cochera dada de baja (INACTIVA) no se reserva ni se edita: solo se reactiva o se elimina. */
+export function cocheraActiva(cochera: Cochera): boolean {
+  return cochera.estado !== 'INACTIVA';
+}

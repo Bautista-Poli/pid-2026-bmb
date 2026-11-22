@@ -1,7 +1,14 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, model, output } from '@angular/core';
 import { Icono } from '@app/components/ui';
-import { Cochera, ETIQUETA_ESTADO_COCHERA, EstadoCochera, ICONO_TIPO_VEHICULO, Id } from '@app/models';
-import { Planta } from '../constantes';
+import {
+  Cochera,
+  ETIQUETA_ESTADO_COCHERA,
+  EstadoCochera,
+  ICONO_TIPO_VEHICULO,
+  Id,
+  cocheraActiva,
+} from '@app/models';
+import { Planta } from '../planta.interface';
 
 /** Fondo y borde de cada cochera del plano segun su estado (estilos en plano-cocheras.css). */
 const CLASE_COCHERA: Record<EstadoCochera, string> = {
@@ -24,8 +31,13 @@ const CLASE_BLOQUEADA = 'cochera-bloqueada';
 
 /**
  * El plano de Cocheras (cocheras.ts): las pestañas de plantas, la grilla de
- * cocheras de la planta activa y la leyenda. No elige nada por si mismo: avisa
- * a la pantalla que planta o cochera se toco.
+ * cocheras de la planta activa y la leyenda.
+ *
+ * Se arregla solo: sabe que planta se esta viendo y como se eligen las
+ * cocheras (clic, Shift / Ctrl / Cmd + clic, "Elegir toda la planta"). A quien
+ * lo usa le deja la planta que se ve y los ids elegidos:
+ *
+ *   <app-plano-cocheras [plantas]="plantas()" [(planta)]="planta" [(seleccion)]="seleccion" />
  */
 @Component({
   selector: 'app-plano-cocheras',
@@ -37,15 +49,14 @@ const CLASE_BLOQUEADA = 'cochera-bloqueada';
 })
 export class PlanoCocheras {
   readonly plantas = input.required<Planta[]>();
-  readonly plantaActiva = input<Planta | null>(null);
-  /** Ids de las cocheras elegidas (anillo de acento). */
-  readonly seleccion = input<Id[]>([]);
 
-  readonly plantaElegida = output<string>();
-  /** El evento va para saber si se toco con Shift / Ctrl / Cmd. */
-  readonly tocada = output<{ cochera: Cochera; evento: MouseEvent }>();
+  /** Nombre de la planta que se ve; `null` (o una que ya no existe) muestra la primera. */
+  readonly planta = model<string | null>(null);
+  /** Ids de las cocheras elegidas (anillo de acento). */
+  readonly seleccion = model<Id[]>([]);
+
+  /** "+ Nueva planta": el alta de cocheras es de la pantalla. */
   readonly nuevaPlanta = output<void>();
-  readonly todaLaPlanta = output<void>();
 
   protected readonly iconoTipo = ICONO_TIPO_VEHICULO;
   protected readonly etiquetaEstado = ETIQUETA_ESTADO_COCHERA;
@@ -53,7 +64,34 @@ export class PlanoCocheras {
   protected readonly clasePunto = CLASE_PUNTO;
   protected readonly claseBloqueada = CLASE_BLOQUEADA;
 
+  protected readonly plantaActiva = computed<Planta | null>(() => {
+    const lista = this.plantas();
+    return lista.find((p) => p.nombre === this.planta()) ?? lista[0] ?? null;
+  });
+
   protected estaElegida(cochera: Cochera): boolean {
     return this.seleccion().includes(cochera.id);
+  }
+
+  /** Clic: elige solo esa (o la suelta). Shift / Ctrl / Cmd: la suma o la saca. */
+  protected tocar(cochera: Cochera, evento: MouseEvent): void {
+    const elegidas = this.seleccion();
+    if (evento.shiftKey || evento.metaKey || evento.ctrlKey) {
+      this.seleccion.set(
+        elegidas.includes(cochera.id)
+          ? elegidas.filter((id) => id !== cochera.id)
+          : [...elegidas, cochera.id],
+      );
+    } else if (elegidas.length === 1 && elegidas[0] === cochera.id) {
+      this.seleccion.set([]);
+    } else {
+      this.seleccion.set([cochera.id]);
+    }
+  }
+
+  /** Elige todas las cocheras activas de la planta que se ve. */
+  protected elegirTodaLaPlanta(): void {
+    const planta = this.plantaActiva();
+    if (planta) this.seleccion.set(planta.cocheras.filter(cocheraActiva).map((c) => c.id));
   }
 }

@@ -4,28 +4,28 @@
   aria-label="Plano de cocheras"
 >
   <div class="plantas">
-    @for (planta of plantas(); track planta.nombre) {
+    @for (opcion of plantas(); track opcion.nombre) {
       <button
         type="button"
         class="planta-tab"
         [class]="
-          plantaActiva()?.nombre === planta.nombre
+          plantaActiva()?.nombre === opcion.nombre
             ? 'planta-tab-activa'
             : 'planta-tab-inactiva'
         "
-        [attr.aria-pressed]="plantaActiva()?.nombre === planta.nombre"
-        (click)="plantaElegida.emit(planta.nombre)"
+        [attr.aria-pressed]="plantaActiva()?.nombre === opcion.nombre"
+        (click)="planta.set(opcion.nombre)"
       >
-        {{ planta.nombre }}
+        {{ opcion.nombre }}
         <span
           class="num-tabular planta-cantidad"
           [class]="
-            plantaActiva()?.nombre === planta.nombre
+            plantaActiva()?.nombre === opcion.nombre
               ? 'planta-cantidad-activa'
               : 'planta-cantidad-inactiva'
           "
         >
-          {{ planta.cocheras.length }}
+          {{ opcion.cocheras.length }}
         </span>
       </button>
     }
@@ -64,7 +64,7 @@
             etiquetaEstado[cochera.estado] +
             (cochera.bloqueada ? ', bloqueada' : '')
           "
-          (click)="tocada.emit({ cochera, evento: $event })"
+          (click)="tocar(cochera, $event)"
         >
           @if (cochera.bloqueada) {
             <span
@@ -116,7 +116,7 @@
       <button
         type="button"
         class="elegir-planta"
-        (click)="todaLaPlanta.emit()"
+        (click)="elegirTodaLaPlanta()"
       >
         Elegir toda la planta
       </button>

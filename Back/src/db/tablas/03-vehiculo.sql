@@ -14,8 +14,6 @@ CREATE TABLE IF NOT EXISTS vehiculo (
   marca            VARCHAR(60),
   modelo           VARCHAR(60),
   color            VARCHAR(30),
-  -- Foto propia (opcional). Sin ella el front usa la de catalogo.
-  foto_public_id   VARCHAR(200),
   predeterminado   BOOLEAN      NOT NULL DEFAULT FALSE,
   activo           BOOLEAN      NOT NULL DEFAULT TRUE,
   CONSTRAINT vehiculo_conductor_fk
@@ -30,5 +28,3 @@ CREATE INDEX IF NOT EXISTS idx_vehiculo_conductor ON vehiculo (id_conductor);
 CREATE UNIQUE INDEX IF NOT EXISTS vehiculo_patente_unica ON vehiculo (patente) WHERE activo;
 -- Un conductor tiene como mucho un vehiculo predeterminado.
 CREATE UNIQUE INDEX IF NOT EXISTS vehiculo_un_predeterminado ON vehiculo (id_conductor) WHERE predeterminado;
-CREATE UNIQUE INDEX IF NOT EXISTS vehiculo_foto_public_id_unico
-  ON vehiculo (foto_public_id) WHERE foto_public_id IS NOT NULL;

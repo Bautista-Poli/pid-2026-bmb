@@ -1,0 +1,58 @@
+<!-- Vehiculo, cochera, como llegar, aviso y precio de una reserva. Datos en detalle-reserva.ts. -->
+@let r = reserva();
+
+<!-- Con que auto y en que cochera -->
+<div class="casilleros">
+  <div class="casillero">
+    <ui-chapa-patente [patente]="r.vehiculo.patente" />
+    <span class="casillero__texto">{{ vehiculo() }}</span>
+  </div>
+
+  @if (r.cochera; as cochera) {
+    <div class="casillero">
+      <span class="letra-cochera" aria-hidden="true">P</span>
+      <span class="casillero__texto">
+        <span class="casillero__destacado">{{ cochera.identificador }}</span>
+        @if (cochera.sector) {
+          · {{ cochera.sector }}
+        }
+      </span>
+    </div>
+  } @else {
+    <div class="casillero casillero--pendiente">
+      <span class="letra-cochera letra-cochera--pendiente" aria-hidden="true">P</span>
+      <span class="casillero__texto casillero__texto--pendiente">Cochera a asignar</span>
+    </div>
+  }
+</div>
+
+<!-- Como llegar: abre la navegacion en la app que use el conductor -->
+<nav class="como-llegar" aria-label="Cómo llegar">
+  <span class="como-llegar__titulo">
+    <ui-icono nombre="navegar" [tamano]="15" />
+    Cómo llegar
+  </span>
+  @for (link of links(); track link.app) {
+    <a class="como-llegar__link" [href]="link.url" target="_blank" rel="noopener">
+      {{ link.app }}
+    </a>
+  }
+</nav>
+
+<!-- El estacionamiento la cambio de cochera -->
+@if (r.motivoReasignacion; as motivo) {
+  <p class="aviso" role="status">{{ motivo }}</p>
+}
+
+<!-- Pie: lo que cuesta a la izquierda y los botones de la tarjeta a la derecha -->
+<footer class="pie">
+  <p class="precio">
+    <span class="precio__monto" [class.num-tabular]="!conAbono()" [class.precio__monto--abono]="conAbono()">
+      {{ monto() }}
+    </span>
+    <span class="precio__detalle">{{ comoSeCobra() }}</span>
+  </p>
+  <div class="acciones">
+    <ng-content />
+  </div>
+</footer>

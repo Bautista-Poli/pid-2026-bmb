@@ -15,28 +15,8 @@ import { ReservaService } from '@app/services/reserva.service';
   selector: 'app-marcar-ausente',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [Boton, Modal],
-  template: `
-    <ui-modal titulo="Marcar ausente" [abierto]="reserva() !== null" (cerrado)="cerrar()">
-      @if (reserva(); as r) {
-        <div class="flex flex-col gap-4">
-          <p class="text-[13.5px] text-grafito">
-            La reserva de <strong class="text-tinta">{{ r.vehiculo.patente }}</strong>
-            ({{ r.horaDesde }} - {{ r.horaHasta }}) queda como <strong class="text-tinta">Ausente</strong>
-            y la cochera {{ r.cochera?.identificador ?? '' }} vuelve a estar disponible. No se puede deshacer.
-          </p>
-          <p class="text-[12.5px] text-plomo">
-            Usalo si el conductor avisó que no viene. Si no hacés nada, pasa a Ausente sola a los 15 minutos del inicio.
-          </p>
-          @if (error(); as mensaje) {
-            <p class="text-[13px] text-ocupada" role="alert">{{ mensaje }}</p>
-          }
-          <ui-boton variante="peligro" [bloque]="true" [cargando]="enviando()" (presionado)="marcar(r)">
-            Marcar ausente
-          </ui-boton>
-        </div>
-      }
-    </ui-modal>
-  `,
+  templateUrl: './marcar-ausente.html',
+  styleUrl: './marcar-ausente.css',
 })
 export class MarcarAusente {
   private readonly reservas = inject(ReservaService);

@@ -1,0 +1,4 @@
+/* Sin caja propia: las tarjetas son hijas directas de la grilla del tablero. */
+:host {
+  display: contents;
+}

@@ -18,22 +18,8 @@ export function partesDeFecha(fechaISO: string) {
 @Component({
   selector: 'app-fecha-reserva',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { class: 'shrink-0' },
-  template: `
-    <div
-      class="flex w-[58px] shrink-0 flex-col items-center rounded-control border border-borde
-             bg-lienzo py-2 leading-none"
-      aria-hidden="true"
-    >
-      <span class="text-[10.5px] font-semibold tracking-[0.08em] text-acento uppercase">
-        {{ bloqueFecha().semana }}
-      </span>
-      <span class="num-tabular mt-1 text-[22px] font-semibold text-tinta">
-        {{ bloqueFecha().numero }}
-      </span>
-      <span class="mt-1 text-[11px] text-plomo">{{ bloqueFecha().mes }}</span>
-    </div>
-  `,
+  templateUrl: './fecha-reserva.html',
+  styleUrl: './fecha-reserva.css',
 })
 export class FechaReserva {
   /** Fecha ISO (`yyyy-mm-dd`). */

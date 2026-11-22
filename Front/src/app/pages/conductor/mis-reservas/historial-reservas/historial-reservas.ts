@@ -1,8 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, input, model } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { Boton, EstadoVacio, Tarjeta } from '@app/components/ui';
-import { ReservaDetallada, reservaSinUsar } from '@app/models';
-import { TarjetaHistorial } from './tarjeta-historial/tarjeta-historial';
+import { EstadoReserva } from '@app/components/reserva';
+import { Boton, EstadoVacio, Icono, Tarjeta } from '@app/components/ui';
+import { cruzaMedianoche, formatearNota, ReservaDetallada, reservaSinUsar, TURNOS } from '@app/models';
+import { FechaReserva } from '../partes-tarjeta/fecha-reserva/fecha-reserva';
 
 interface MesHistorial {
   clave: string;
@@ -16,11 +17,14 @@ const MES_Y_ANIO = new Intl.DateTimeFormat('es-AR', { month: 'long', year: 'nume
  * Pestaña "Historial" de Mis reservas: las reservas pasadas agrupadas por mes,
  * lo mas reciente primero. Las que no se usaron (canceladas, expiradas y
  * ausentes) se ven solo si el conductor lo pide.
+ *
+ * Cada fila muestra fecha, estacionamiento, horario, estado y precio; si ya la
+ * uso, tambien el acceso a calificarla (o la nota que le puso).
  */
 @Component({
   selector: 'app-historial-reservas',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TarjetaHistorial, Tarjeta, EstadoVacio, Boton, RouterLink],
+  imports: [RouterLink, Boton, EstadoVacio, Icono, Tarjeta, EstadoReserva, FechaReserva],
   templateUrl: './historial-reservas.html',
   styleUrl: './historial-reservas.css',
 })
@@ -55,4 +59,21 @@ export class HistorialReservas {
     }
     return meses;
   });
+
+  /* --------------------------- Lo que muestra cada fila --------------------------- */
+
+  protected readonly sinUsar = reservaSinUsar;
+  protected readonly cruzaMedianoche = cruzaMedianoche;
+
+  /** "$ 6.000", o "Abono · Turno mañana" si se reservo con un abono. */
+  protected precio(reserva: ReservaDetallada): string {
+    return reserva.abono
+      ? `Abono · Turno ${TURNOS[reserva.abono.turno].etiqueta.toLowerCase()}`
+      : `$ ${reserva.precioTotal.toLocaleString('es-AR')}`;
+  }
+
+  /** La nota que ya le puso ("4,5"), o null si todavia no la califico. */
+  protected nota(reserva: ReservaDetallada): string | null {
+    return reserva.calificacionPromedio == null ? null : formatearNota(reserva.calificacionPromedio);
+  }
 }

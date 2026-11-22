@@ -38,12 +38,8 @@ function porcentaje(hoy: number, ayer: number): Variacion {
   selector: 'app-resumen-hoy',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [TarjetaMetrica],
-  template: `
-    @for (metrica of metricas(); track metrica.etiqueta) {
-      <app-tarjeta-metrica [metrica]="metrica" />
-    }
-  `,
-  host: { style: 'display: contents' },
+  templateUrl: './resumen-hoy.html',
+  styleUrl: './resumen-hoy.css',
 })
 export class ResumenHoy {
   readonly estacionamientos = input.required<Estacionamiento[]>();

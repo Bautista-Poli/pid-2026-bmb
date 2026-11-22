@@ -1,15 +1,33 @@
-<!-- Pestaña "Próximas" de Mis reservas. Datos y acciones en reservas-proximas.ts. -->
-@if (reservas().length === 0) {
-  <ui-estado-vacio
-    titulo="No tenés reservas próximas"
-    descripcion="Cuando reserves una cochera la vas a ver acá."
-  >
+<!-- Pestaña "Próximas" de Mis reservas. Datos en reservas-proximas.ts. -->
+@for (reserva of reservas(); track reserva.id) {
+  <article class="aparece tarjeta">
+    <!-- Cuando es y donde -->
+    <div class="cabecera">
+      <app-fecha-reserva [fecha]="reserva.fecha" />
+      <div class="datos">
+        <div class="titulo-y-estado">
+          <h3 class="nombre">{{ reserva.estacionamiento.nombre }}</h3>
+          <app-estado-reserva [reserva]="reserva" vista="CONDUCTOR" />
+        </div>
+        <p class="direccion">{{ direccion(reserva) }}</p>
+        <p class="num-tabular horario">
+          <ui-icono class="icono-horario" nombre="reloj" [tamano]="15" />
+          {{ reserva.horaDesde }} – {{ reserva.horaHasta }}
+          @if (cruzaMedianoche(reserva)) {
+            <span class="dia-siguiente">(día siguiente)</span>
+          }
+        </p>
+      </div>
+    </div>
+
+    <!-- Auto, cochera, como llegar y precio; al pie, los botones -->
+    <app-detalle-reserva [reserva]="reserva">
+      <app-ver-qr [reserva]="reserva" />
+      <app-cancelar-reserva [reserva]="reserva" (cancelada)="cancelada.emit($event)" />
+    </app-detalle-reserva>
+  </article>
+} @empty {
+  <ui-estado-vacio titulo="No tenés reservas próximas" descripcion="Cuando reserves una cochera la vas a ver acá.">
     <ui-boton routerLink="/conductor/explorar">Explorar estacionamientos</ui-boton>
   </ui-estado-vacio>
-} @else {
-  <div class="aparece-en-cadena lista-reservas">
-    @for (reserva of reservas(); track reserva.id) {
-      <app-tarjeta-proxima [reserva]="reserva" (cancelada)="cancelada.emit($event)" />
-    }
-  </div>
 }

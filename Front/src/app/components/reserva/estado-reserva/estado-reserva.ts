@@ -22,20 +22,16 @@ const TONO_ESTADO: Record<Estado, TonoEtiqueta> = {
   selector: 'app-estado-reserva',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [Etiqueta],
-  template: `
-    <ui-etiqueta [tono]="tono()">
-      @if (reserva().estado === 'ACTIVA') {
-        <span class="size-1.5 rounded-full bg-current" aria-hidden="true"></span>
-      }
-      {{ etiquetaEstado() }}
-    </ui-etiqueta>
-  `,
+  templateUrl: './estado-reserva.html',
+  styleUrl: './estado-reserva.css',
 })
 export class EstadoReserva {
   readonly reserva = input.required<Reserva>();
   /** Quien mira: al conductor no se le dice "cancelada por el conductor". */
   readonly vista = input<'CONDUCTOR' | 'PROPIETARIO'>('PROPIETARIO');
 
+  /** En curso lleva un punto adelante. */
+  protected readonly enCurso = computed(() => this.reserva().estado === 'ACTIVA');
   protected readonly etiquetaEstado = computed(() => etiquetaReserva(this.reserva(), this.vista()));
   protected readonly tono = computed(() =>
     esExpirada(this.reserva()) ? 'aviso' : TONO_ESTADO[this.reserva().estado],

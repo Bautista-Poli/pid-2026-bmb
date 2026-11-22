@@ -1,0 +1,22 @@
+<!-- Boton "Ver QR" de una reserva y su modal. Datos y acciones en ver-qr.ts. -->
+@let r = reserva();
+
+@if (visible()) {
+  <button type="button" class="boton-qr" (click)="abierto.set(true)">Ver QR</button>
+
+  <ui-modal titulo="QR de tu reserva" [abierto]="abierto()" (cerrado)="abierto.set(false)">
+    <div class="qr">
+      <p class="qr__texto">
+        {{ r.estacionamiento.nombre }} · Cochera {{ r.cochera?.identificador ?? 'a asignar' }} ·
+        {{ r.horaDesde }}–{{ r.horaHasta }}
+      </p>
+      @if (imagen.value(); as src) {
+        <img class="qr__imagen" [src]="src" alt="QR de la reserva" />
+      } @else {
+        <div class="qr__esqueleto" aria-hidden="true"></div>
+      }
+      <p class="num-tabular qr__codigo">{{ codigoVisible() }}</p>
+      <p class="qr__texto">Mostralo al entrar y al salir del estacionamiento.</p>
+    </div>
+  </ui-modal>
+}

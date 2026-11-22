@@ -1,0 +1,7 @@
+<!-- Etiqueta con el estado de una reserva. Datos en estado-reserva.ts. -->
+<ui-etiqueta [tono]="tono()">
+  @if (enCurso()) {
+    <span class="punto" aria-hidden="true"></span>
+  }
+  {{ etiquetaEstado() }}
+</ui-etiqueta>

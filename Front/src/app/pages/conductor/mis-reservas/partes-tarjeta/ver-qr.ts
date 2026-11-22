@@ -2,12 +2,19 @@ import { ChangeDetectionStrategy, Component, computed, input, resource, signal }
 import QRCode from 'qrcode';
 import { Modal } from '@app/components/ui';
 import { ReservaDetallada } from '@app/models';
+import { tieneQr } from '@app/services/ciclo-reserva';
 import { formatearCodigo, urlDeAcceso } from '@app/utils/codigo-acceso.util';
 
 /**
  * Boton "Ver QR" de una reserva, con su modal: el QR y el codigo debajo. El
  * conductor lo muestra al entrar y al salir; si la camara no lo lee, el
- * operador tipea el codigo. La tarjeta solo lo pone: abrir y cerrar es cosa suya.
+ * operador tipea el codigo.
+ *
+ * Se arregla solo: aparece unicamente si la reserva ya tiene QR para mostrar
+ * (confirmada o en curso), y abrir y cerrar el modal es cosa suya. La tarjeta
+ * solo lo pone:
+ *
+ *   <app-ver-qr [reserva]="reserva" />
  */
 @Component({
   selector: 'app-ver-qr',
@@ -15,6 +22,7 @@ import { formatearCodigo, urlDeAcceso } from '@app/utils/codigo-acceso.util';
   imports: [Modal],
   template: `
     @let r = reserva();
+    @if (visible()) {
     <button
       type="button"
       class="inline-flex min-h-11 items-center gap-2 rounded-boton px-3 text-[13px] font-semibold
@@ -41,11 +49,13 @@ import { formatearCodigo, urlDeAcceso } from '@app/utils/codigo-acceso.util';
         <p class="text-[13px] text-plomo">Mostralo al entrar y al salir del estacionamiento.</p>
       </div>
     </ui-modal>
+    }
   `,
 })
 export class VerQr {
   readonly reserva = input.required<ReservaDetallada>();
 
+  protected readonly visible = computed(() => tieneQr(this.reserva()));
   protected readonly abierto = signal(false);
 
   private readonly codigo = computed(() => this.reserva().codigoAcceso ?? '');

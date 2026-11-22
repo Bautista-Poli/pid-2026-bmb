@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 import { RouterLink } from '@angular/router';
 import { EstadoReserva } from '@app/components/reserva';
 import { Icono } from '@app/components/ui';
-import { ReservaDetallada, TURNOS, reservaSinUsar } from '@app/models';
+import { ReservaDetallada, TURNOS, cruzaMedianoche, formatearNota, reservaSinUsar } from '@app/models';
 import { AvisoReasignacion } from '../../partes-tarjeta/aviso-reasignacion';
 import { FechaReserva } from '../../partes-tarjeta/fecha-reserva';
 
@@ -20,12 +20,22 @@ import { FechaReserva } from '../../partes-tarjeta/fecha-reserva';
 export class TarjetaHistorial {
   readonly reserva = input.required<ReservaDetallada>();
 
-  protected readonly turnos = TURNOS;
+  /** "$ 6.000", o "Abono · Turno mañana" si se reservo con un abono. */
+  protected readonly precio = computed(() => {
+    const { abono, precioTotal } = this.reserva();
+    return abono
+      ? `Abono · Turno ${TURNOS[abono.turno].etiqueta.toLowerCase()}`
+      : `$ ${precioTotal.toLocaleString('es-AR')}`;
+  });
+
+  /** La nota que ya le puso ("4,5"), o null si todavia no la califico. */
+  protected readonly nota = computed(() => {
+    const promedio = this.reserva().calificacionPromedio;
+    return promedio == null ? null : formatearNota(promedio);
+  });
 
   /** No se uso (cancelada, expirada o ausente): el precio va tachado. */
   protected readonly sinUsar = computed(() => reservaSinUsar(this.reserva()));
 
-  protected readonly cruzaMedianoche = computed(
-    () => this.reserva().fechaHasta !== this.reserva().fecha,
-  );
+  protected readonly cruzaMedianoche = computed(() => cruzaMedianoche(this.reserva()));
 }

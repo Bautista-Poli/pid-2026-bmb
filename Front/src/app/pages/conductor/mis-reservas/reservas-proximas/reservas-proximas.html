@@ -1,0 +1,15 @@
+<!-- Pestaña "Próximas" de Mis reservas. Datos y acciones en reservas-proximas.ts. -->
+@if (reservas().length === 0) {
+  <ui-estado-vacio
+    titulo="No tenés reservas próximas"
+    descripcion="Cuando reserves una cochera la vas a ver acá."
+  >
+    <ui-boton routerLink="/conductor/explorar">Explorar estacionamientos</ui-boton>
+  </ui-estado-vacio>
+} @else {
+  <div class="aparece-en-cadena lista-reservas">
+    @for (reserva of reservas(); track reserva.id) {
+      <app-tarjeta-proxima [reserva]="reserva" (cancelada)="cancelada.emit($event)" />
+    }
+  </div>
+}

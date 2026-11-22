@@ -7,8 +7,10 @@ import { aInstante } from '@app/utils/fecha.util';
  */
 const TOLERANCIA_NO_SHOW_MS = 15 * 60 * 1000;
 
-const inicioDe = (reserva: Reserva) => Date.parse(aInstante(reserva.fecha, reserva.horaDesde));
-const finDe = (reserva: Reserva) => Date.parse(aInstante(reserva.fechaHasta, reserva.horaHasta));
+/** Instante (ms) en que empieza la franja de la reserva. */
+export const inicioDe = (reserva: Reserva) => Date.parse(aInstante(reserva.fecha, reserva.horaDesde));
+/** Instante (ms) en que termina la franja de la reserva. */
+export const finDe = (reserva: Reserva) => Date.parse(aInstante(reserva.fechaHasta, reserva.horaHasta));
 
 /** Ultimo instante en que se acepta el ingreso: inicio + tolerancia, sin pasar del fin. */
 function limiteIngreso(reserva: Reserva): number {
@@ -49,4 +51,22 @@ export function reservaEnJuego(reserva: Reserva): boolean {
   const ahora = Date.now();
   if (!esReservaActiva(reserva) || finDe(reserva) <= ahora) return false;
   return reserva.estado !== 'CONFIRMADA' || ahora <= limiteIngreso(reserva);
+}
+
+/**
+ * El conductor puede cancelar una reserva pendiente o confirmada que sigue en
+ * juego. Una en curso ya no se cancela: termina cuando registra la salida.
+ */
+export function puedeCancelar(reserva: Reserva): boolean {
+  return reserva.estado !== 'ACTIVA' && reservaEnJuego(reserva);
+}
+
+/**
+ * Si la reserva tiene QR para mostrar: recien sirve para entrar cuando el
+ * estacionamiento la confirmo, y una en curso lo necesita para salir, aunque
+ * ya haya pasado su fin.
+ */
+export function tieneQr(reserva: Reserva): boolean {
+  if (reserva.estado === 'ACTIVA') return true;
+  return reserva.estado === 'CONFIRMADA' && reservaEnJuego(reserva);
 }

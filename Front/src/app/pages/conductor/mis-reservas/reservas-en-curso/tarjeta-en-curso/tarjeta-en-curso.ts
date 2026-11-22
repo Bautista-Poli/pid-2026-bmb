@@ -11,13 +11,14 @@ import {
 import { EstadoReserva } from '@app/components/reserva';
 import { Icono } from '@app/components/ui';
 import { direccionCorta, ReservaDetallada } from '@app/models';
-import { aInstante, desdeFechaISO } from '@app/utils/fecha.util';
+import { finDe, inicioDe } from '@app/services/ciclo-reserva';
+import { desdeFechaISO } from '@app/utils/fecha.util';
 import { AvisoReasignacion } from '../../partes-tarjeta/aviso-reasignacion';
 import { partesDeFecha } from '../../partes-tarjeta/fecha-reserva';
-import { ComoLlegar } from '../partes-tarjeta/como-llegar';
-import { PrecioReserva } from '../partes-tarjeta/precio-reserva';
-import { VehiculoYCochera } from '../partes-tarjeta/vehiculo-y-cochera';
-import { VerQr } from '../ver-qr/ver-qr';
+import { ComoLlegar } from '../../partes-tarjeta/como-llegar';
+import { PrecioReserva } from '../../partes-tarjeta/precio-reserva';
+import { VehiculoYCochera } from '../../partes-tarjeta/vehiculo-y-cochera';
+import { VerQr } from '../../partes-tarjeta/ver-qr';
 
 /** El reloj de la reserva en curso se refresca cada 30 s: alcanza para los minutos. */
 const REFRESCO_MS = 30_000;
@@ -69,12 +70,8 @@ export class TarjetaEnCurso implements OnInit {
     return fecha;
   });
 
-  private readonly inicio = computed(() =>
-    Date.parse(aInstante(this.reserva().fecha, this.reserva().horaDesde)),
-  );
-  private readonly fin = computed(() =>
-    Date.parse(aInstante(this.reserva().fechaHasta, this.reserva().horaHasta)),
-  );
+  private readonly inicio = computed(() => inicioDe(this.reserva()));
+  private readonly fin = computed(() => finDe(this.reserva()));
 
   /** Desde el ingreso real si el propietario lo registro; si no, desde la franja. */
   protected readonly lleva = computed(() => {

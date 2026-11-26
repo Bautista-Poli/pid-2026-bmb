@@ -150,7 +150,7 @@ export async function cambiarVehiculo(idReserva, idConductor, idVehiculo) {
   const { rowCount } = await query(
     `UPDATE reserva 
     SET id_vehiculo = $1 
-    WHERE id_reserva = $2 AND id_conductor = $3 RETURNING *`,
+    WHERE id_reserva = $2 AND id_conductor = $3 AND estado='CONFIRMADA' AND inicio>now() RETURNING *`,
     [idVehiculo, idReserva, idConductor],
   );
   return rowCount;

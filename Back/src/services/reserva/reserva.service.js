@@ -209,6 +209,21 @@ export async function cambiarAutoEstacionamiento(idReserva, idConductor) {
         FOR UPDATE OF r`,
       [idReserva],
     );
+    const { rows: cocheras } = await client.query(
+      `SELECT  r.id_reserva, r.id_cochera, e.id_cochera, e.id_tipo_vehiculo
+        FROM reserva r
+        JOIN estacionamiento e ON e.id_cochera = r.id_cochera
+        WHERE r.id_reserva = $1
+        FOR UPDATE OF c`,
+      [idReserva],
+    );
+    //falta validar correctamente que el tipo del nuevo vehiculo concuerde con el tipo de la cochera. O por lo menos con el vehiculo '1e8bcb23-c656-47c6-8d0e-cae0d3bb206d'
+    const cochera = cocheras[0];
+
+
+    if (vehiculo.id_tipo_vehiculo !== cochera.id_tipo_vehiculo) {
+      throw ApiError.conflict('La cochera no admite el tipo de vehiculo seleccionado');
+    }
 
     const reserva = rows[0];
     if (!reserva) throw ApiError.notFound('La reserva no existe');

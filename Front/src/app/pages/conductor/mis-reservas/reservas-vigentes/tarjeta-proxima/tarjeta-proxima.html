@@ -44,6 +44,12 @@
           Cancelar
         </button>
       }
+      <button type="button" class="boton-cambiarAuto" [disabled]="cambiando()" (click)="cambiarAuto.emit(r)">
+          @if (cambiando()) {
+            <span class="girando" aria-hidden="true"></span>
+          }
+          Cancelar
+        </button>
     </div>
   </footer>
 </article>

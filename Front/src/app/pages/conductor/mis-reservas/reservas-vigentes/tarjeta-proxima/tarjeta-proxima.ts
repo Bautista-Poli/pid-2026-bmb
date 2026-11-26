@@ -9,6 +9,7 @@ import { ComoLlegar } from '../partes-tarjeta/como-llegar';
 import { PrecioReserva } from '../partes-tarjeta/precio-reserva';
 import { VehiculoYCochera } from '../partes-tarjeta/vehiculo-y-cochera';
 import { VerQr } from '../ver-qr/ver-qr';
+import { CambiarAuto } from '../cambiar-auto/cambiar-auto';
 
 /**
  * Tarjeta de una reserva proxima del conductor (pendiente o confirmada, todavia
@@ -27,6 +28,7 @@ import { VerQr } from '../ver-qr/ver-qr';
     ComoLlegar,
     PrecioReserva,
     VerQr,
+    
   ],
   templateUrl: './tarjeta-proxima.html',
   styleUrl: './tarjeta-proxima.css',
@@ -34,8 +36,10 @@ import { VerQr } from '../ver-qr/ver-qr';
 export class TarjetaProxima {
   readonly reserva = input.required<ReservaDetallada>();
   readonly cancelando = input(false);
+  readonly cambiando = input(false);
 
   readonly cancelar = output<ReservaDetallada>();
+  readonly cambiarAuto = output<ReservaDetallada>();
 
   /** El QR recien sirve para entrar cuando el estacionamiento confirmo la reserva. */
   protected readonly conQr = computed(

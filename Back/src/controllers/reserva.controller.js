@@ -24,6 +24,13 @@ export const cancelar = asyncHandler(async (req, res) => {
   res.json({ reserva });
 });
 
+
+/** PATCH /api/reservas/:id/cambiarAuto (conductor) */
+export const cambiarAuto = asyncHandler(async (req, res) => {
+  const reserva = await reservaService.cambiarAuto(req.params.id, req.usuario.id);
+  res.json({ reserva });
+});
+
 /** PATCH /api/reservas/:id/confirmar (propietario) */
 export const confirmar = asyncHandler(async (req, res) => {
   const reserva = await cicloService.confirmar(req.params.id, req.usuario.id);

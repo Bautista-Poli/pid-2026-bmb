@@ -86,3 +86,11 @@ export async function cambiarEstado(client, reserva, estadoNuevo, { canceladaPor
   );
   await permitido.efecto?.(client, reserva);
 }
+export async function cambiarAuto(client, reserva, id_auto) {
+ 
+  await client.query(
+    'UPDATE reserva SET id_vehiculo = $1 WHERE id_reserva = $2',
+    [id_auto, reserva.id_reserva],
+  );
+  await permitido.efecto?.(client, reserva);
+}

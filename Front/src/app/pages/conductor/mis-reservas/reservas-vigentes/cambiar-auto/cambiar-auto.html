@@ -1,0 +1,18 @@
+<!-- Modal para confirmar la cancelacion de una reserva. Datos en cancelar-reserva.ts. -->
+<ui-modal
+  titulo="Cambiar auto"
+  [abierto]="reserva() !== null"
+  (cerrado)="cerrado.emit()"
+>
+  @if (reserva(); as r) {
+    <div class="detalle-modal">
+      <ui-boton
+          variante="peligro"
+          [cargando]="cambiando()"
+          (presionado)="confirmar.emit()"
+        >
+          Cambiar auto
+        </ui-boton>
+    </div>
+  }
+</ui-modal>

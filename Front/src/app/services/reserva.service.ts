@@ -181,4 +181,14 @@ export class ReservaService {
   precioEstimado(tarifas: Tarifas): number {
     return calcularPrecio(this.borradorInterno().modalidad, tarifas, this.duracionHoras());
   }
+
+    /** `PATCH /api/reservas/:id/cambiarAuto` */
+  cambiarAuto(id: Id): Observable<Reserva> {
+    return this.http
+      .patch<{ reserva: ReservaDto }>(`${this.ruta}/${id}/cambiarAuto`, {})
+      .pipe(map(({ reserva }) => aReserva(reserva)));
+  }
+
 }
+
+

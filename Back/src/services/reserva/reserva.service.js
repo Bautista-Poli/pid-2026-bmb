@@ -10,7 +10,7 @@ import { MODALIDADES } from '../../utils/tarifas.js';
 import { validarAbonoParaReservar } from '../abono.service.js';
 import { asegurarPropiedad } from '../estacionamiento/estacionamiento.service.js';
 import { obtenerDetalle, selectDetalle } from './reserva-detalle.js';
-import { MENSAJE_NO_SHOW, cambiarEstado, limiteIngreso } from './reserva-estados.js';
+import { MENSAJE_NO_SHOW, cambiarEstado, limiteIngreso, cambiarAuto } from './reserva-estados.js';
 import {
   asegurarVehiculoLibre,
   asignarCochera,
@@ -192,6 +192,44 @@ export async function cancelar(idReserva, idConductor) {
     await cambiarEstado(client, reserva, ESTADOS_RESERVA.CANCELADA, {
       canceladaPor: ORIGENES_CANCELACION.CONDUCTOR,
     });
+
+    return obtenerDetalle(client, idReserva, { conCodigo: true, vista: 'CONDUCTOR' });
+  });
+}
+
+export async function cambiarAutoEstacionamiento(idReserva, idConductor) {
+  return withTransaction(async (client) => {
+    const { rows } = await client.query(
+      `SELECT r.id_reserva, r.id_conductor, r.estado, r.inicio, r.fin,
+              e.politica_cancelacion_horas
+         FROM reserva r
+         JOIN cochera c         ON c.id_cochera = r.id_cochera
+         JOIN estacionamiento e ON e.id_estacionamiento = c.id_estacionamiento
+        WHERE r.id_reserva = $1
+        FOR UPDATE OF r`,
+      [idReserva],
+    );
+
+    const reserva = rows[0];
+    if (!reserva) throw ApiError.notFound('La reserva no existe');
+    if (reserva.id_conductor !== idConductor) {
+      throw ApiError.forbidden('La reserva pertenece a otro conductor');
+    }
+    if (reserva.estado === ESTADOS_RESERVA.NO_SHOW) throw ApiError.conflict(MENSAJE_NO_SHOW);
+    if (!ESTADOS_VIGENTES.includes(reserva.estado)) {
+      throw ApiError.conflict(`La reserva ya esta ${reserva.estado.toLowerCase()}`);
+    }
+    if (reserva.fin <= new Date()) {
+      throw ApiError.conflict('La reserva ya termino');
+    }
+    // Pasada la tolerancia ya es un no-show (aunque la revision de vencimientos no la haya marcado):
+    // cancelarla ahi la sacaria de la estadistica de ausentes.
+    if (reserva.estado === ESTADOS_RESERVA.CONFIRMADA && Date.now() > limiteIngreso(reserva)) {
+      throw ApiError.conflict(MENSAJE_NO_SHOW);
+    }
+    
+
+    await cambiarAuto(client, reserva, '1e8bcb23-c656-47c6-8d0e-cae0d3bb206d' );
 
     return obtenerDetalle(client, idReserva, { conCodigo: true, vista: 'CONDUCTOR' });
   });

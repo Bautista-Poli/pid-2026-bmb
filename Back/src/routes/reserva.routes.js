@@ -22,6 +22,8 @@ router.get('/', ...soloConductor, reservaController.listarMias);
 router.get('/mi-reputacion', ...soloConductor, reservaController.miReputacion);
 
 router.patch('/:id/cancelar', ...soloConductor, reservaController.cancelar);
+router.patch('/:id/cambiarAuto', ...soloConductor, reservaController.cambiarAuto);
+
 
 // Despues de entrar y salir, el conductor califica el estacionamiento (una vez).
 router.post(

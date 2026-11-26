@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, input, OnInit, signal } from '@angular/core';
 import { EstadoReserva } from '@app/components/reserva';
 import { EstadoVacio, Icono } from '@app/components/ui';
-import { direccionCorta, ReservaDetallada } from '@app/models';
+import { direccionCorta, Id, ReservaDetallada } from '@app/models';
 import { finDe, inicioDe } from '@app/services/ciclo-reserva';
 import { desdeFechaISO } from '@app/utils/fecha.util';
 import { DetalleReserva } from '../partes-tarjeta/detalle-reserva/detalle-reserva';

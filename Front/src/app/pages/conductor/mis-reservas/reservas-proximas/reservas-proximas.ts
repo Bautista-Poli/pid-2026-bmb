@@ -1,12 +1,14 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input, output, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { EstadoReserva } from '@app/components/reserva';
 import { Boton, EstadoVacio, Icono } from '@app/components/ui';
-import { cruzaMedianoche, direccionCorta, ReservaDetallada } from '@app/models';
+import { cruzaMedianoche, direccionCorta, Id, ReservaDetallada, Vehiculo } from '@app/models';
 import { DetalleReserva } from '../partes-tarjeta/detalle-reserva/detalle-reserva';
 import { FechaReserva } from '../partes-tarjeta/fecha-reserva/fecha-reserva';
 import { VerQr } from '../partes-tarjeta/ver-qr/ver-qr';
 import { CancelarReserva } from './cancelar-reserva/cancelar-reserva';
+import { ReservaService } from '@app/services';
+import { SelectorVehiculo } from '@app/components/vehiculo';
 
 /**
  * Pestaña "Próximas" de Mis reservas: una tarjeta por cada reserva pendiente o

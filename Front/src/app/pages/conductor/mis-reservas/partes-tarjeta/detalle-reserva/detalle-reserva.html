@@ -55,4 +55,9 @@
   <div class="acciones">
     <ng-content />
   </div>
+  
 </footer>
+@if (r.estado == 'CONFIRMADA') {
+  <app-selector-vehiculo [(vehiculo)]="vehiculoSignal" />
+  <button (click)=cambiarVehiculo(r)> Enviar cambio </button>
+}

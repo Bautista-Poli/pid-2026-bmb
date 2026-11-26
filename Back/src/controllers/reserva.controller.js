@@ -62,3 +62,10 @@ export const calificarConductor = asyncHandler(async (req, res) => {
   const calificacion = await calificacionService.crearDelPropietario(req.params.id, req.usuario.id, req.body);
   res.status(201).json({ calificacion });
 });
+
+/** PATCH /api/reservas/:idReserva/cambiarVehiculo */
+export const cambiarVehiculo = asyncHandler(async (req, res) => {
+  //Necesito idReserva, idVehiculo, el idConductor que ya lo tengo con usuario.id
+  const result = await reservaService.cambiarVehiculo(req.params.idReserva, req.usuario.id, req.body.idVehiculo);
+  res.json(result);
+});

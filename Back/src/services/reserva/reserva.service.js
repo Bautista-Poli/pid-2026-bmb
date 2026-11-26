@@ -122,6 +122,29 @@ export async function listarPorConductor(idConductor) {
   return rows;
 }
 
+export async function cambiarVehiculo(idReserva, idConductor, idVehiculo) {
+  
+  const { rowCount } = await query(
+    `UPDATE reserva 
+    SET id_vehiculo = $1 
+    WHERE id_reserva = $2 AND id_conductor = $3 RETURNING *`,
+    [idVehiculo, idReserva, idConductor],
+  );
+  
+ /*
+  const { rows } = await query(
+    `SELECT v.id_vehiculo AS id
+      FROM vehiculo v
+      JOIN tipo_vehiculo t ON t.id_tipo_vehiculo = v.id_tipo_vehiculo
+      JOIN tipo_vehiculo t ON t.id_tipo_vehiculo = v.id_tipo_vehiculo
+      WHERE v.id_conductor = $1`,
+    [idConductor],
+  );
+  */
+  return rowCount;
+}
+
+
 /** Reservas recibidas por un estacionamiento propio; con `fecha`, las que tocan ese dia. */
 export async function listarPorEstacionamiento(idEstacionamiento, idPropietario, { fecha } = {}) {
   await estacionamientoDelPropietario(idEstacionamiento, idPropietario);

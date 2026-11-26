@@ -1,7 +1,8 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { Icono } from '@app/components/ui';
-import { ChapaPatente } from '@app/components/vehiculo';
-import { ETIQUETA_MODALIDAD, ETIQUETA_TIPO_VEHICULO, ReservaDetallada, TURNOS } from '@app/models';
+import { ChapaPatente, SelectorVehiculo } from '@app/components/vehiculo';
+import { ETIQUETA_MODALIDAD, ETIQUETA_TIPO_VEHICULO, Id, ReservaDetallada, TURNOS, Vehiculo } from '@app/models';
+import { ReservaService } from '@app/services';
 import { linksComoLlegar } from '@app/utils/mapas.util';
 
 /**
@@ -17,12 +18,14 @@ import { linksComoLlegar } from '@app/utils/mapas.util';
 @Component({
   selector: 'app-detalle-reserva',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [Icono, ChapaPatente],
+  imports: [Icono, ChapaPatente, SelectorVehiculo],
   templateUrl: './detalle-reserva.html',
   styleUrl: './detalle-reserva.css',
 })
 export class DetalleReserva {
   readonly reserva = input.required<ReservaDetallada>();
+  private readonly reservaService = inject(ReservaService);
+  protected readonly vehiculoSignal = signal<Vehiculo | null>(null);
 
   /** "Toyota Corolla · Auto" */
   protected readonly vehiculo = computed(() => {
@@ -47,4 +50,7 @@ export class DetalleReserva {
     const { abono, modalidad } = this.reserva();
     return abono ? `Turno ${TURNOS[abono.turno].etiqueta.toLowerCase()}` : ETIQUETA_MODALIDAD[modalidad];
   });
+  protected cambiarVehiculo(reserva: any): void {
+    this.reservaService.cambiarVehiculo(this.vehiculoSignal()?.id, reserva.id).subscribe();
+  }
 }

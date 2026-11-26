@@ -11,6 +11,7 @@ import {
   NuevaReservaConAbono,
   Reserva,
   ReservaDetallada,
+  Vehiculo,
 } from '@app/models';
 import { AccesoReservaDto, FranjaDto, ReservaDto } from './api/api.dto';
 import { ID_TIPO_VEHICULO, aAccesoReserva, aFranja, aPayloadReserva, aPayloadReservaConAbono, aReserva } from './api/api.mapeo';
@@ -18,6 +19,7 @@ import { ID_TIPO_VEHICULO, aAccesoReserva, aFranja, aPayloadReserva, aPayloadRes
 /** Acceso a `/api/reservas`: disponibilidad, alta, listados y el ciclo de la reserva. */
 @Injectable({ providedIn: 'root' })
 export class ReservaService {
+  
   private readonly http = inject(HttpClient);
   private readonly ruta = '/reservas';
 
@@ -118,5 +120,13 @@ export class ReservaService {
     return this.http
       .patch<{ reserva: ReservaDto }>(`${this.ruta}/${id}/${paso}`, {})
       .pipe(map(({ reserva }) => aReserva(reserva)));
+  }
+  // /api/reservas/:idReserva/cambiarVehiculo
+  cambiarVehiculo(idVehiculo: any, idReserva: any) {
+    console.log(idVehiculo)
+    console.log(idReserva)
+    return this.http
+      .patch<void>(`${this.ruta}/${idReserva}/cambiarVehiculo`, {idVehiculo})
+    
   }
 }

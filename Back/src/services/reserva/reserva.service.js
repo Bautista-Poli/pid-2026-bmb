@@ -122,7 +122,30 @@ export async function listarPorConductor(idConductor) {
   return rows;
 }
 
+export async function buscarSiCoincideTipo(idTipoVehiculo, idReserva){
+  const { rows } = await query(
+    `SELECT *
+      FROM cochera c
+      JOIN reserva r ON r.id_cochera = c.id_cochera
+      WHERE id_tipo_vehiculo = $1 AND r.id_reserva = $2`,
+    [idTipoVehiculo, idReserva],
+  );
+  if (!rows[0]) throw ApiError.notFound('Vehiculo no compatible');
+  return rows[0];
+}
+
 export async function cambiarVehiculo(idReserva, idConductor, idVehiculo) {
+  
+  const { rows } = await query(
+    `SELECT *
+      FROM vehiculo
+      WHERE id_vehiculo=$1 `,
+    [idVehiculo],
+  );
+  const idTipoVehiculo = rows[0].id_tipo_vehiculo;
+
+  const result = await buscarSiCoincideTipo(idTipoVehiculo, idReserva)
+
   
   const { rowCount } = await query(
     `UPDATE reserva 
@@ -130,17 +153,6 @@ export async function cambiarVehiculo(idReserva, idConductor, idVehiculo) {
     WHERE id_reserva = $2 AND id_conductor = $3 RETURNING *`,
     [idVehiculo, idReserva, idConductor],
   );
-  
- /*
-  const { rows } = await query(
-    `SELECT v.id_vehiculo AS id
-      FROM vehiculo v
-      JOIN tipo_vehiculo t ON t.id_tipo_vehiculo = v.id_tipo_vehiculo
-      JOIN tipo_vehiculo t ON t.id_tipo_vehiculo = v.id_tipo_vehiculo
-      WHERE v.id_conductor = $1`,
-    [idConductor],
-  );
-  */
   return rowCount;
 }
 

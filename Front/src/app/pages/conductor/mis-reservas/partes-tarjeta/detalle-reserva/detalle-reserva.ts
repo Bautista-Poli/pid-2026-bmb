@@ -51,6 +51,7 @@ export class DetalleReserva {
     return abono ? `Turno ${TURNOS[abono.turno].etiqueta.toLowerCase()}` : ETIQUETA_MODALIDAD[modalidad];
   });
   protected cambiarVehiculo(reserva: any): void {
+    //this.reservaService.cambiarVehiculo(this.vehiculoSignal()?.id, reserva.id).subscribe(()=> window.location.reload());
     this.reservaService.cambiarVehiculo(this.vehiculoSignal()?.id, reserva.id).subscribe();
   }
 }

@@ -1,0 +1,3 @@
+Si bien en el front no permiti que este la opcion de poder cambiar
+En el backend tambien se chequea que este confirmada
+Y que 

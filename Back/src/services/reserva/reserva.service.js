@@ -150,9 +150,10 @@ export async function cambiarVehiculo(idReserva, idConductor, idVehiculo) {
   const { rowCount } = await query(
     `UPDATE reserva 
     SET id_vehiculo = $1 
-    WHERE id_reserva = $2 AND id_conductor = $3 AND estado='CONFIRMADA' AND inicio>now() RETURNING *`,
+    WHERE id_reserva = $2 AND id_conductor = $3 AND estado='CONFIRMADA' AND inicio > now() RETURNING *`,
     [idVehiculo, idReserva, idConductor],
   );
+  if (rowCount == 0) throw ApiError.notFound('No se puede cambiar el vehiculo ');
   return rowCount;
 }
 

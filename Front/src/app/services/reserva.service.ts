@@ -123,8 +123,6 @@ export class ReservaService {
   }
   // /api/reservas/:idReserva/cambiarVehiculo
   cambiarVehiculo(idVehiculo: any, idReserva: any) {
-    console.log(idVehiculo)
-    console.log(idReserva)
     return this.http
       .patch<void>(`${this.ruta}/${idReserva}/cambiarVehiculo`, {idVehiculo})
     

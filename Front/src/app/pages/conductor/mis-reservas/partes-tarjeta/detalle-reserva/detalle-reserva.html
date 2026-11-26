@@ -57,7 +57,9 @@
   </div>
   
 </footer>
+
 @if (r.estado == 'CONFIRMADA') {
   <app-selector-vehiculo [(vehiculo)]="vehiculoSignal" />
   <button (click)=cambiarVehiculo(r)> Enviar cambio </button>
+  <!-- No se como mostrar el error de forma linda-->
 }

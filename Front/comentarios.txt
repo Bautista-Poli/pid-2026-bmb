@@ -1,3 +1,10 @@
 Si bien en el front no permiti que este la opcion de poder cambiar
 En el backend tambien se chequea que este confirmada
-Y que 
+
+
+Saque el if para chequear, intente cambiar el vehiculo con una reserva que registro un ingreso
+Y me tira error asi que bien
+
+No cambie el codigo de acceso ni nada por el estilo
+
+No muestro los tipos de vehiculos compatibles, porque una cochera solo tiene un tipo de

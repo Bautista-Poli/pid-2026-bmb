@@ -50,8 +50,9 @@ export class DetalleReserva {
     const { abono, modalidad } = this.reserva();
     return abono ? `Turno ${TURNOS[abono.turno].etiqueta.toLowerCase()}` : ETIQUETA_MODALIDAD[modalidad];
   });
+  protected readonly respuesta = signal<any>(null);
   protected cambiarVehiculo(reserva: any): void {
-    //this.reservaService.cambiarVehiculo(this.vehiculoSignal()?.id, reserva.id).subscribe(()=> window.location.reload());
-    this.reservaService.cambiarVehiculo(this.vehiculoSignal()?.id, reserva.id).subscribe();
+    this.reservaService.cambiarVehiculo(this.vehiculoSignal()?.id, reserva.id).subscribe(()=> window.location.reload());
+    //const result = this.reservaService.cambiarVehiculo(this.vehiculoSignal()?.id, reserva.id).subscribe()
   }
 }
